@@ -302,12 +302,15 @@ export class DatabaseStorage implements IStorage {
     const today = new Date().toISOString().split('T')[0];
     
     // Total reservations
-    const totalReservationsQuery = db
+    let totalReservationsQuery = db
       .select({ count: sql<number>`count(*)` })
       .from(reservations);
     
     if (branchId) {
-      totalReservationsQuery.where(eq(reservations.branchId, branchId));
+      totalReservationsQuery = db
+        .select({ count: sql<number>`count(*)` })
+        .from(reservations)
+        .where(eq(reservations.branchId, branchId));
     }
     
     const [{ count: totalReservations }] = await totalReservationsQuery;
@@ -345,17 +348,21 @@ export class DatabaseStorage implements IStorage {
     const occupancyRate = totalRooms > 0 ? (occupiedRooms / totalRooms) * 100 : 0;
 
     // Revenue today (simplified - sum of paid amounts for today's check-ins)
-    const revenueTodayQuery = db
+    let revenueTodayQuery = db
       .select({ sum: sql<number>`COALESCE(SUM(${reservations.paidAmount}), 0)` })
       .from(reservations)
       .innerJoin(reservationRooms, eq(reservations.id, reservationRooms.reservationId))
       .where(eq(reservationRooms.checkInDate, today));
     
     if (branchId) {
-      revenueTodayQuery.where(and(
-        eq(reservationRooms.checkInDate, today),
-        eq(reservations.branchId, branchId)
-      ));
+      revenueTodayQuery = db
+        .select({ sum: sql<number>`COALESCE(SUM(${reservations.paidAmount}), 0)` })
+        .from(reservations)
+        .innerJoin(reservationRooms, eq(reservations.id, reservationRooms.reservationId))
+        .where(and(
+          eq(reservationRooms.checkInDate, today),
+          eq(reservations.branchId, branchId)
+        ));
     }
     
     const [{ sum: revenueToday }] = await revenueTodayQuery;
