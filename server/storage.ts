@@ -122,9 +122,9 @@ export class DatabaseStorage implements IStorage {
 
   // Room operations
   async getRooms(branchId?: number): Promise<Room[]> {
-    const query = db.select().from(rooms).where(eq(rooms.isActive, true));
+    let query = db.select().from(rooms).where(eq(rooms.isActive, true));
     if (branchId) {
-      query.where(and(eq(rooms.isActive, true), eq(rooms.branchId, branchId)));
+      query = db.select().from(rooms).where(and(eq(rooms.isActive, true), eq(rooms.branchId, branchId)));
     }
     return await query.orderBy(rooms.number);
   }
@@ -158,9 +158,9 @@ export class DatabaseStorage implements IStorage {
 
   // Room type operations
   async getRoomTypes(branchId?: number): Promise<RoomType[]> {
-    const query = db.select().from(roomTypes).where(eq(roomTypes.isActive, true));
+    let query = db.select().from(roomTypes).where(eq(roomTypes.isActive, true));
     if (branchId) {
-      query.where(and(eq(roomTypes.isActive, true), eq(roomTypes.branchId, branchId)));
+      query = db.select().from(roomTypes).where(and(eq(roomTypes.isActive, true), eq(roomTypes.branchId, branchId)));
     }
     return await query.orderBy(roomTypes.name);
   }
@@ -313,7 +313,7 @@ export class DatabaseStorage implements IStorage {
     const [{ count: totalReservations }] = await totalReservationsQuery;
 
     // Room status counts
-    const roomStatusQuery = db
+    let roomStatusQuery = db
       .select({
         status: rooms.status,
         count: sql<number>`count(*)`,
@@ -323,7 +323,14 @@ export class DatabaseStorage implements IStorage {
       .groupBy(rooms.status);
     
     if (branchId) {
-      roomStatusQuery.where(and(eq(rooms.isActive, true), eq(rooms.branchId, branchId)));
+      roomStatusQuery = db
+        .select({
+          status: rooms.status,
+          count: sql<number>`count(*)`,
+        })
+        .from(rooms)
+        .where(and(eq(rooms.isActive, true), eq(rooms.branchId, branchId)))
+        .groupBy(rooms.status);
     }
     
     const roomStatusResults = await roomStatusQuery;

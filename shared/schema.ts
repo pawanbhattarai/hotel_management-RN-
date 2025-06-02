@@ -37,6 +37,8 @@ export const users = pgTable("users", {
   role: varchar("role", { enum: ["superadmin", "branch-admin", "front-desk"] }).notNull().default("front-desk"),
   branchId: integer("branch_id"),
   isActive: boolean("is_active").default(true),
+  permissions: jsonb("permissions").default('[]'),
+  lastLogin: timestamp("last_login"),
   createdAt: timestamp("created_at").defaultNow(),
   updatedAt: timestamp("updated_at").defaultNow(),
 });
