@@ -1,0 +1,181 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  --background: 0 0% 100%;
+  --foreground: 20 14.3% 4.1%;
+  --muted: 60 4.8% 95.9%;
+  --muted-foreground: 25 5.3% 44.7%;
+  --popover: 0 0% 100%;
+  --popover-foreground: 20 14.3% 4.1%;
+  --card: 0 0% 100%;
+  --card-foreground: 20 14.3% 4.1%;
+  --border: 20 5.9% 90%;
+  --input: 20 5.9% 90%;
+  --primary: 207 90% 54%; /* #1976D2 */
+  --primary-foreground: 211 100% 99%;
+  --secondary: 60 4.8% 95.9%;
+  --secondary-foreground: 24 9.8% 10%;
+  --accent: 60 4.8% 95.9%;
+  --accent-foreground: 24 9.8% 10%;
+  --destructive: 0 84.2% 60.2%;
+  --destructive-foreground: 60 9.1% 97.8%;
+  --ring: 20 14.3% 4.1%;
+  --radius: 0.5rem;
+  
+  /* Custom colors for hotel PMS */
+  --success: 123 46% 34%; /* #4CAF50 */
+  --success-foreground: 0 0% 100%;
+  --warning: 36 100% 50%; /* #FF9800 */
+  --warning-foreground: 0 0% 100%;
+  --error: 4 90% 58%; /* #F44336 */
+  --error-foreground: 0 0% 100%;
+}
+
+.dark {
+  --background: 240 10% 3.9%;
+  --foreground: 0 0% 98%;
+  --muted: 240 3.7% 15.9%;
+  --muted-foreground: 240 5% 64.9%;
+  --popover: 240 10% 3.9%;
+  --popover-foreground: 0 0% 98%;
+  --card: 240 10% 3.9%;
+  --card-foreground: 0 0% 98%;
+  --border: 240 3.7% 15.9%;
+  --input: 240 3.7% 15.9%;
+  --primary: 207 90% 54%;
+  --primary-foreground: 211 100% 99%;
+  --secondary: 240 3.7% 15.9%;
+  --secondary-foreground: 0 0% 98%;
+  --accent: 240 3.7% 15.9%;
+  --accent-foreground: 0 0% 98%;
+  --destructive: 0 62.8% 30.6%;
+  --destructive-foreground: 0 0% 98%;
+  --ring: 240 4.9% 83.9%;
+  --radius: 0.5rem;
+  
+  /* Dark mode custom colors */
+  --success: 123 46% 34%;
+  --success-foreground: 0 0% 100%;
+  --warning: 36 100% 50%;
+  --warning-foreground: 0 0% 100%;
+  --error: 4 90% 58%;
+  --error-foreground: 0 0% 100%;
+}
+
+@layer base {
+  * {
+    @apply border-border;
+  }
+
+  body {
+    @apply font-sans antialiased bg-background text-foreground;
+    font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', sans-serif;
+  }
+}
+
+/* Custom utility classes for hotel PMS */
+@layer utilities {
+  .text-success {
+    color: hsl(var(--success));
+  }
+  
+  .text-success-foreground {
+    color: hsl(var(--success-foreground));
+  }
+  
+  .bg-success {
+    background-color: hsl(var(--success));
+  }
+  
+  .bg-success-50 {
+    background-color: hsl(123 46% 94%);
+  }
+  
+  .text-warning {
+    color: hsl(var(--warning));
+  }
+  
+  .text-warning-foreground {
+    color: hsl(var(--warning-foreground));
+  }
+  
+  .bg-warning {
+    background-color: hsl(var(--warning));
+  }
+  
+  .bg-warning-50 {
+    background-color: hsl(36 100% 95%);
+  }
+  
+  .text-error {
+    color: hsl(var(--error));
+  }
+  
+  .text-error-foreground {
+    color: hsl(var(--error-foreground));
+  }
+  
+  .bg-error {
+    background-color: hsl(var(--error));
+  }
+  
+  .bg-error-50 {
+    background-color: hsl(4 90% 96%);
+  }
+  
+  .w-280 {
+    width: 280px;
+  }
+}
+
+/* Hotel status indicators */
+.status-available {
+  @apply bg-success text-success-foreground;
+}
+
+.status-occupied {
+  @apply bg-primary text-primary-foreground;
+}
+
+.status-maintenance {
+  @apply bg-warning text-warning-foreground;
+}
+
+.status-housekeeping {
+  @apply bg-gray-500 text-white;
+}
+
+.status-out-of-order {
+  @apply bg-error text-error-foreground;
+}
+
+.status-reserved {
+  @apply bg-purple-500 text-white;
+}
+
+/* Reservation status indicators */
+.reservation-confirmed {
+  @apply bg-success-50 text-success border border-success/20;
+}
+
+.reservation-pending {
+  @apply bg-warning-50 text-warning border border-warning/20;
+}
+
+.reservation-checked-in {
+  @apply bg-primary-50 text-primary border border-primary/20;
+}
+
+.reservation-checked-out {
+  @apply bg-gray-50 text-gray-600 border border-gray-200;
+}
+
+.reservation-cancelled {
+  @apply bg-error-50 text-error border border-error/20;
+}
+
+.reservation-no-show {
+  @apply bg-gray-100 text-gray-700 border border-gray-300;
+}
