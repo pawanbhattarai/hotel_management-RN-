@@ -28,39 +28,39 @@ export interface IStorage {
   // User operations - mandatory for Replit Auth
   getUser(id: string): Promise<User | undefined>;
   upsertUser(user: UpsertUser): Promise<User>;
-  
+
   // Branch operations
   getBranches(): Promise<Branch[]>;
   getBranch(id: number): Promise<Branch | undefined>;
   createBranch(branch: InsertBranch): Promise<Branch>;
   updateBranch(id: number, branch: Partial<InsertBranch>): Promise<Branch>;
-  
+
   // Room operations
   getRooms(branchId?: number): Promise<Room[]>;
   getRoom(id: number): Promise<Room | undefined>;
   createRoom(room: InsertRoom): Promise<Room>;
   updateRoom(id: number, room: Partial<InsertRoom>): Promise<Room>;
   getRoomsByBranch(branchId: number): Promise<Room[]>;
-  
+
   // Room type operations
   getRoomTypes(branchId?: number): Promise<RoomType[]>;
   getRoomType(id: number): Promise<RoomType | undefined>;
   createRoomType(roomType: InsertRoomType): Promise<RoomType>;
   updateRoomType(id: number, roomType: Partial<InsertRoomType>): Promise<RoomType>;
-  
+
   // Guest operations
   getGuests(branchId?: number): Promise<Guest[]>;
   getGuest(id: number): Promise<Guest | undefined>;
   createGuest(guest: InsertGuest): Promise<Guest>;
   updateGuest(id: number, guest: Partial<InsertGuest>): Promise<Guest>;
   searchGuests(query: string, branchId?: number): Promise<Guest[]>;
-  
+
   // Reservation operations
   getReservations(branchId?: number): Promise<(Reservation & { guest: Guest; reservationRooms: (ReservationRoom & { room: Room & { roomType: RoomType } })[] })[]>;
   getReservation(id: string): Promise<(Reservation & { guest: Guest; reservationRooms: (ReservationRoom & { room: Room & { roomType: RoomType } })[] }) | undefined>;
   createReservation(reservation: InsertReservation, rooms: InsertReservationRoom[]): Promise<Reservation>;
   updateReservation(id: string, reservation: Partial<InsertReservation>): Promise<Reservation>;
-  
+
   // Dashboard metrics
   getDashboardMetrics(branchId?: number): Promise<{
     totalReservations: number;
@@ -69,7 +69,7 @@ export interface IStorage {
     availableRooms: number;
     roomStatusCounts: Record<string, number>;
   }>;
-  
+
   // Room availability
   getAvailableRooms(branchId: number, checkIn: string, checkOut: string): Promise<Room[]>;
 }
@@ -270,14 +270,14 @@ export class DatabaseStorage implements IStorage {
   async createReservation(reservation: InsertReservation, roomsData: InsertReservationRoom[]): Promise<Reservation> {
     return await db.transaction(async (tx) => {
       const [newReservation] = await tx.insert(reservations).values(reservation).returning();
-      
+
       const roomsWithReservationId = roomsData.map(room => ({
         ...room,
         reservationId: newReservation.id,
       }));
-      
+
       await tx.insert(reservationRooms).values(roomsWithReservationId);
-      
+
       return newReservation;
     });
   }
@@ -300,19 +300,19 @@ export class DatabaseStorage implements IStorage {
     roomStatusCounts: Record<string, number>;
   }> {
     const today = new Date().toISOString().split('T')[0];
-    
+
     // Total reservations
     let totalReservationsQuery = db
       .select({ count: sql<number>`count(*)` })
       .from(reservations);
-    
+
     if (branchId) {
       totalReservationsQuery = db
         .select({ count: sql<number>`count(*)` })
         .from(reservations)
         .where(eq(reservations.branchId, branchId));
     }
-    
+
     const [{ count: totalReservations }] = await totalReservationsQuery;
 
     // Room status counts
@@ -324,7 +324,7 @@ export class DatabaseStorage implements IStorage {
       .from(rooms)
       .where(eq(rooms.isActive, true))
       .groupBy(rooms.status);
-    
+
     if (branchId) {
       roomStatusQuery = db
         .select({
@@ -335,7 +335,7 @@ export class DatabaseStorage implements IStorage {
         .where(and(eq(rooms.isActive, true), eq(rooms.branchId, branchId)))
         .groupBy(rooms.status);
     }
-    
+
     const roomStatusResults = await roomStatusQuery;
     const roomStatusCounts = roomStatusResults.reduce((acc, row) => {
       acc[row.status] = row.count;
@@ -353,7 +353,7 @@ export class DatabaseStorage implements IStorage {
       .from(reservations)
       .innerJoin(reservationRooms, eq(reservations.id, reservationRooms.reservationId))
       .where(eq(reservationRooms.checkInDate, today));
-    
+
     if (branchId) {
       revenueTodayQuery = db
         .select({ sum: sql<number>`COALESCE(SUM(${reservations.paidAmount}), 0)` })
@@ -364,7 +364,7 @@ export class DatabaseStorage implements IStorage {
           eq(reservations.branchId, branchId)
         ));
     }
-    
+
     const [{ sum: revenueToday }] = await revenueTodayQuery;
 
     return {

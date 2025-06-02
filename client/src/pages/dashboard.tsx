@@ -8,10 +8,17 @@ import MetricsCards from "@/components/dashboard/metrics-cards";
 import RecentReservations from "@/components/dashboard/recent-reservations";
 import QuickActions from "@/components/dashboard/quick-actions";
 import RoomStatusOverview from "@/components/dashboard/room-status-overview";
+import BranchMetrics from "@/components/dashboard/branch-metrics";
+import { useQuery } from "@tanstack/react-query";
 
 export default function Dashboard() {
   const { toast } = useToast();
   const { isAuthenticated, isLoading } = useAuth();
+  
+  const { data: user } = useQuery({
+    queryKey: ["/api/auth/user"],
+    enabled: isAuthenticated,
+  });
 
   useEffect(() => {
     if (!isLoading && !isAuthenticated) {
@@ -49,6 +56,9 @@ export default function Dashboard() {
         />
         <main className="flex-1 overflow-y-auto p-6">
           <MetricsCards />
+          
+          {/* Show branch metrics only for super admin */}
+          {user?.role === "superadmin" && <BranchMetrics />}
           
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-8">
             <div className="lg:col-span-2">
