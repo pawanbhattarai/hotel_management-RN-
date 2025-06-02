@@ -157,18 +157,15 @@
 
 /* Reservation status indicators */
 .reservation-confirmed {
-  @apply bg-success-50 text-success border;
-  border-color: hsl(var(--success) / 0.2);
+  @apply bg-green-50 text-green-700 border border-green-200;
 }
 
 .reservation-pending {
-  @apply bg-warning-50 text-warning border;
-  border-color: hsl(var(--warning) / 0.2);
+  @apply bg-yellow-50 text-yellow-700 border border-yellow-200;
 }
 
 .reservation-checked-in {
-  @apply bg-primary-50 text-primary border;
-  border-color: hsl(var(--primary) / 0.2);
+  @apply bg-blue-50 text-blue-700 border border-blue-200;
 }
 
 .reservation-checked-out {
@@ -176,8 +173,7 @@
 }
 
 .reservation-cancelled {
-  @apply bg-error-50 text-error border;
-  border-color: hsl(var(--error) / 0.2);
+  @apply bg-red-50 text-red-700 border border-red-200;
 }
 
 .reservation-no-show {
