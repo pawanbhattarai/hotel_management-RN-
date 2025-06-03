@@ -9,10 +9,22 @@ import {
   insertGuestSchema,
   insertReservationSchema,
   insertReservationRoomSchema,
+  insertUserSchema,
 } from "@shared/schema";
 import { z } from "zod";
 
 // Helper function to check user permissions based on role and branch
+function checkBranchPermissions(userRole: string, userBranchId: number | null, targetBranchId: number): boolean {
+  if (userRole === "superadmin") {
+    return true;
+  }
+  
+  if (userRole === "branch-admin" || userRole === "front-desk") {
+    return userBranchId === targetBranchId;
+  }
+  
+  return false;
+}
 function checkBranchPermissions(userRole: string, userBranchId: number | null, targetBranchId?: number) {
   if (userRole === "superadmin") return true;
   if (!targetBranchId) return true; // For operations that don't specify a branch
@@ -72,6 +84,104 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  app.put("/api/branches/:id", isAuthenticated, async (req: any, res) => {
+    try {
+      const user = await storage.getUser(req.user.claims.sub);
+      if (!user || user.role !== "superadmin") {
+        return res.status(403).json({ message: "Insufficient permissions" });
+      }
+
+      const branchId = parseInt(req.params.id);
+      const branchData = insertBranchSchema.partial().parse(req.body);
+      const branch = await storage.updateBranch(branchId, branchData);
+      res.json(branch);
+    } catch (error) {
+      console.error("Error updating branch:", error);
+      res.status(500).json({ message: "Failed to update branch" });
+    }
+  });
+
+  app.delete("/api/branches/:id", isAuthenticated, async (req: any, res) => {
+    try {
+      const user = await storage.getUser(req.user.claims.sub);
+      if (!user || user.role !== "superadmin") {
+        return res.status(403).json({ message: "Insufficient permissions" });
+      }
+
+      const branchId = parseInt(req.params.id);
+      await storage.updateBranch(branchId, { isActive: false });
+      res.status(204).send();
+    } catch (error) {
+      console.error("Error deleting branch:", error);
+      res.status(500).json({ message: "Failed to delete branch" });
+    }
+  });
+
+  // User management routes
+  app.get("/api/users", isAuthenticated, async (req: any, res) => {
+    try {
+      const user = await storage.getUser(req.user.claims.sub);
+      if (!user || user.role !== "superadmin") {
+        return res.status(403).json({ message: "Insufficient permissions" });
+      }
+
+      const users = await storage.getAllUsers();
+      res.json(users);
+    } catch (error) {
+      console.error("Error fetching users:", error);
+      res.status(500).json({ message: "Failed to fetch users" });
+    }
+  });
+
+  app.post("/api/users", isAuthenticated, async (req: any, res) => {
+    try {
+      const user = await storage.getUser(req.user.claims.sub);
+      if (!user || user.role !== "superadmin") {
+        return res.status(403).json({ message: "Insufficient permissions" });
+      }
+
+      const userData = insertUserSchema.parse(req.body);
+      const newUser = await storage.upsertUser(userData);
+      res.status(201).json(newUser);
+    } catch (error) {
+      console.error("Error creating user:", error);
+      res.status(500).json({ message: "Failed to create user" });
+    }
+  });
+
+  app.put("/api/users/:id", isAuthenticated, async (req: any, res) => {
+    try {
+      const user = await storage.getUser(req.user.claims.sub);
+      if (!user || user.role !== "superadmin") {
+        return res.status(403).json({ message: "Insufficient permissions" });
+      }
+
+      const userId = req.params.id;
+      const userData = insertUserSchema.partial().parse(req.body);
+      const updatedUser = await storage.updateUser(userId, userData);
+      res.json(updatedUser);
+    } catch (error) {
+      console.error("Error updating user:", error);
+      res.status(500).json({ message: "Failed to update user" });
+    }
+  });
+
+  app.delete("/api/users/:id", isAuthenticated, async (req: any, res) => {
+    try {
+      const user = await storage.getUser(req.user.claims.sub);
+      if (!user || user.role !== "superadmin") {
+        return res.status(403).json({ message: "Insufficient permissions" });
+      }
+
+      const userId = req.params.id;
+      await storage.updateUser(userId, { isActive: false });
+      res.status(204).send();
+    } catch (error) {
+      console.error("Error deleting user:", error);
+      res.status(500).json({ message: "Failed to delete user" });
+    }
+  });
+
   // Room routes
   app.get("/api/rooms", isAuthenticated, async (req: any, res) => {
     try {
@@ -93,6 +203,67 @@ export async function registerRoutes(app: Express): Promise<Server> {
       if (!user || !["superadmin", "branch-admin"].includes(user.role)) {
         return res.status(403).json({ message: "Insufficient permissions" });
       }
+
+      const roomData = insertRoomSchema.parse(req.body);
+      
+      if (!checkBranchPermissions(user.role, user.branchId, roomData.branchId)) {
+        return res.status(403).json({ message: "Insufficient permissions for this branch" });
+      }
+
+      const room = await storage.createRoom(roomData);
+      res.status(201).json(room);
+    } catch (error) {
+      console.error("Error creating room:", error);
+      res.status(500).json({ message: "Failed to create room" });
+    }
+  });
+
+  app.put("/api/rooms/:id", isAuthenticated, async (req: any, res) => {
+    try {
+      const user = await storage.getUser(req.user.claims.sub);
+      if (!user || !["superadmin", "branch-admin"].includes(user.role)) {
+        return res.status(403).json({ message: "Insufficient permissions" });
+      }
+
+      const roomId = parseInt(req.params.id);
+      const roomData = insertRoomSchema.partial().parse(req.body);
+      
+      // Check if user has permission for the room's branch
+      const existingRoom = await storage.getRoom(roomId);
+      if (!existingRoom || !checkBranchPermissions(user.role, user.branchId, existingRoom.branchId)) {
+        return res.status(403).json({ message: "Insufficient permissions for this room" });
+      }
+
+      const room = await storage.updateRoom(roomId, roomData);
+      res.json(room);
+    } catch (error) {
+      console.error("Error updating room:", error);
+      res.status(500).json({ message: "Failed to update room" });
+    }
+  });
+
+  app.delete("/api/rooms/:id", isAuthenticated, async (req: any, res) => {
+    try {
+      const user = await storage.getUser(req.user.claims.sub);
+      if (!user || !["superadmin", "branch-admin"].includes(user.role)) {
+        return res.status(403).json({ message: "Insufficient permissions" });
+      }
+
+      const roomId = parseInt(req.params.id);
+      
+      // Check if user has permission for the room's branch
+      const existingRoom = await storage.getRoom(roomId);
+      if (!existingRoom || !checkBranchPermissions(user.role, user.branchId, existingRoom.branchId)) {
+        return res.status(403).json({ message: "Insufficient permissions for this room" });
+      }
+
+      await storage.updateRoom(roomId, { isActive: false });
+      res.status(204).send();
+    } catch (error) {
+      console.error("Error deleting room:", error);
+      res.status(500).json({ message: "Failed to delete room" });
+    }
+  });
 
       const roomData = insertRoomSchema.parse(req.body);
       
