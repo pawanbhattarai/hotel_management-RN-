@@ -1,7 +1,6 @@
 import type { Express } from "express";
 import { createServer, type Server } from "http";
 import { storage } from "./storage";
-import { setupAuth, isAuthenticated } from "./replitAuth";
 import {
   insertBranchSchema,
   insertRoomSchema,
@@ -33,8 +32,10 @@ function checkBranchPermissions(
 }
 
 export async function registerRoutes(app: Express): Promise<Server> {
+  // Import session with ES6 syntax
+  const session = (await import('express-session')).default;
+  
   // Auth middleware for session handling
-  const session = require('express-session');
   app.use(session({
     secret: process.env.SESSION_SECRET || 'your-secret-key',
     resave: false,
@@ -124,7 +125,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Branch routes
   app.get("/api/branches", isAuthenticated, async (req: any, res) => {
     try {
-      const user = await storage.getUser(req.user.claims.sub);
+      const user = await storage.getUser(req.session.user.id);
       if (!user) return res.status(401).json({ message: "User not found" });
 
       const branches = await storage.getBranches();
@@ -144,7 +145,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   app.post("/api/branches", isAuthenticated, async (req: any, res) => {
     try {
-      const user = await storage.getUser(req.user.claims.sub);
+      const user = await storage.getUser(req.session.user.id);
       if (!user || user.role !== "superadmin") {
         return res.status(403).json({ message: "Insufficient permissions" });
       }
@@ -160,7 +161,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   app.put("/api/branches/:id", isAuthenticated, async (req: any, res) => {
     try {
-      const user = await storage.getUser(req.user.claims.sub);
+      const user = await storage.getUser(req.session.user.id);
       if (!user || user.role !== "superadmin") {
         return res.status(403).json({ message: "Insufficient permissions" });
       }
@@ -177,7 +178,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   app.delete("/api/branches/:id", isAuthenticated, async (req: any, res) => {
     try {
-      const user = await storage.getUser(req.user.claims.sub);
+      const user = await storage.getUser(req.session.user.id);
       if (!user || user.role !== "superadmin") {
         return res.status(403).json({ message: "Insufficient permissions" });
       }
@@ -194,7 +195,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // User management routes
   app.get("/api/users", isAuthenticated, async (req: any, res) => {
     try {
-      const user = await storage.getUser(req.user.claims.sub);
+      const user = await storage.getUser(req.session.user.id);
       if (!user || user.role !== "superadmin") {
         return res.status(403).json({ message: "Insufficient permissions" });
       }
@@ -209,7 +210,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   app.post("/api/users", isAuthenticated, async (req: any, res) => {
     try {
-      const user = await storage.getUser(req.user.claims.sub);
+      const user = await storage.getUser(req.session.user.id);
       if (!user || user.role !== "superadmin") {
         return res.status(403).json({ message: "Insufficient permissions" });
       }
@@ -225,7 +226,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   app.put("/api/users/:id", isAuthenticated, async (req: any, res) => {
     try {
-      const user = await storage.getUser(req.user.claims.sub);
+      const user = await storage.getUser(req.session.user.id);
       if (!user || user.role !== "superadmin") {
         return res.status(403).json({ message: "Insufficient permissions" });
       }
@@ -242,7 +243,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   app.delete("/api/users/:id", isAuthenticated, async (req: any, res) => {
     try {
-      const user = await storage.getUser(req.user.claims.sub);
+      const user = await storage.getUser(req.session.user.id);
       if (!user || user.role !== "superadmin") {
         return res.status(403).json({ message: "Insufficient permissions" });
       }
@@ -259,7 +260,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Room routes
   app.get("/api/rooms", isAuthenticated, async (req: any, res) => {
     try {
-      const user = await storage.getUser(req.user.claims.sub);
+      const user = await storage.getUser(req.session.user.id);
       if (!user) return res.status(401).json({ message: "User not found" });
 
       const branchId = user.role === "superadmin" ? undefined : user.branchId!;
@@ -273,7 +274,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   app.post("/api/rooms", isAuthenticated, async (req: any, res) => {
     try {
-      const user = await storage.getUser(req.user.claims.sub);
+      const user = await storage.getUser(req.session.user.id);
       if (!user || !["superadmin", "branch-admin"].includes(user.role)) {
         return res.status(403).json({ message: "Insufficient permissions" });
       }
@@ -298,7 +299,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   app.put("/api/rooms/:id", isAuthenticated, async (req: any, res) => {
     try {
-      const user = await storage.getUser(req.user.claims.sub);
+      const user = await storage.getUser(req.session.user.id);
       if (!user || !["superadmin", "branch-admin"].includes(user.role)) {
         return res.status(403).json({ message: "Insufficient permissions" });
       }
@@ -327,7 +328,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   app.delete("/api/rooms/:id", isAuthenticated, async (req: any, res) => {
     try {
-      const user = await storage.getUser(req.user.claims.sub);
+      const user = await storage.getUser(req.session.user.id);
       if (!user || !["superadmin", "branch-admin"].includes(user.role)) {
         return res.status(403).json({ message: "Insufficient permissions" });
       }
@@ -355,7 +356,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   app.patch("/api/rooms/:id", isAuthenticated, async (req: any, res) => {
     try {
-      const user = await storage.getUser(req.user.claims.sub);
+      const user = await storage.getUser(req.session.user.id);
       if (!user) return res.status(401).json({ message: "User not found" });
 
       const roomId = parseInt(req.params.id);
@@ -385,7 +386,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Room type routes
   app.get("/api/room-types", isAuthenticated, async (req: any, res) => {
     try {
-      const user = await storage.getUser(req.user.claims.sub);
+      const user = await storage.getUser(req.session.user.id);
       if (!user) return res.status(401).json({ message: "User not found" });
 
       const branchId = user.role === "superadmin" ? undefined : user.branchId!;
@@ -399,7 +400,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   app.post("/api/room-types", isAuthenticated, async (req: any, res) => {
     try {
-      const user = await storage.getUser(req.user.claims.sub);
+      const user = await storage.getUser(req.session.user.id);
       if (!user || !["superadmin", "branch-admin"].includes(user.role)) {
         return res.status(403).json({ message: "Insufficient permissions" });
       }
@@ -425,7 +426,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Guest routes
   app.get("/api/guests", isAuthenticated, async (req: any, res) => {
     try {
-      const user = await storage.getUser(req.user.claims.sub);
+      const user = await storage.getUser(req.session.user.id);
       if (!user) return res.status(401).json({ message: "User not found" });
 
       const branchId = user.role === "superadmin" ? undefined : user.branchId!;
@@ -439,7 +440,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   app.get("/api/guests/search", isAuthenticated, async (req: any, res) => {
     try {
-      const user = await storage.getUser(req.user.claims.sub);
+      const user = await storage.getUser(req.session.user.id);
       if (!user) return res.status(401).json({ message: "User not found" });
 
       const query = req.query.q as string;
@@ -456,7 +457,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   app.post("/api/guests", isAuthenticated, async (req: any, res) => {
     try {
-      const user = await storage.getUser(req.user.claims.sub);
+      const user = await storage.getUser(req.session.user.id);
       if (!user) return res.status(401).json({ message: "User not found" });
 
       const guestData = insertGuestSchema.parse(req.body);
@@ -480,7 +481,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Reservation routes
   app.get("/api/reservations", isAuthenticated, async (req: any, res) => {
     try {
-      const user = await storage.getUser(req.user.claims.sub);
+      const user = await storage.getUser(req.session.user.id);
       if (!user) return res.status(401).json({ message: "User not found" });
 
       const branchId = user.role === "superadmin" ? undefined : user.branchId!;
@@ -494,7 +495,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   app.get("/api/reservations/:id", isAuthenticated, async (req: any, res) => {
     try {
-      const user = await storage.getUser(req.user.claims.sub);
+      const user = await storage.getUser(req.session.user.id);
       if (!user) return res.status(401).json({ message: "User not found" });
 
       const reservation = await storage.getReservation(req.params.id);
@@ -525,7 +526,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   app.post("/api/reservations", isAuthenticated, async (req: any, res) => {
     try {
-      const user = await storage.getUser(req.user.claims.sub);
+      const user = await storage.getUser(req.session.user.id);
       if (!user) return res.status(401).json({ message: "User not found" });
 
       const { reservation: reservationData, rooms: roomsData } =
@@ -564,7 +565,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   app.patch("/api/reservations/:id", isAuthenticated, async (req: any, res) => {
     try {
-      const user = await storage.getUser(req.user.claims.sub);
+      const user = await storage.getUser(req.session.user.id);
       if (!user) return res.status(401).json({ message: "User not found" });
 
       const reservationId = req.params.id;
@@ -601,7 +602,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Dashboard metrics
   app.get("/api/dashboard/metrics", isAuthenticated, async (req: any, res) => {
     try {
-      const user = await storage.getUser(req.user.claims.sub);
+      const user = await storage.getUser(req.session.user.id);
       if (!user) return res.status(401).json({ message: "User not found" });
 
       const branchId = user.role === "superadmin" ? undefined : user.branchId!;
@@ -616,7 +617,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Room availability
   app.get("/api/rooms/availability", isAuthenticated, async (req: any, res) => {
     try {
-      const user = await storage.getUser(req.user.claims.sub);
+      const user = await storage.getUser(req.session.user.id);
       if (!user) return res.status(401).json({ message: "User not found" });
 
       const { branchId, checkIn, checkOut } = req.query;
