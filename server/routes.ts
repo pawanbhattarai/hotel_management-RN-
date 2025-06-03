@@ -14,21 +14,18 @@ import {
 import { z } from "zod";
 
 // Helper function to check user permissions based on role and branch
-function checkBranchPermissions(userRole: string, userBranchId: number | null, targetBranchId: number): boolean {
+function checkBranchPermissions(userRole: string, userBranchId: number | null, targetBranchId?: number): boolean {
   if (userRole === "superadmin") {
     return true;
   }
+  
+  if (!targetBranchId) return true; // For operations that don't specify a branch
   
   if (userRole === "branch-admin" || userRole === "front-desk") {
     return userBranchId === targetBranchId;
   }
   
   return false;
-}
-function checkBranchPermissions(userRole: string, userBranchId: number | null, targetBranchId?: number) {
-  if (userRole === "superadmin") return true;
-  if (!targetBranchId) return true; // For operations that don't specify a branch
-  return userBranchId === targetBranchId;
 }
 
 export async function registerRoutes(app: Express): Promise<Server> {
@@ -265,21 +262,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-      const roomData = insertRoomSchema.parse(req.body);
-      
-      if (!checkBranchPermissions(user.role, user.branchId, roomData.branchId)) {
-        return res.status(403).json({ message: "Insufficient permissions for this branch" });
-      }
-
-      const room = await storage.createRoom(roomData);
-      res.status(201).json(room);
-    } catch (error) {
-      console.error("Error creating room:", error);
-      res.status(500).json({ message: "Failed to create room" });
-    }
-  });
-
-  app.patch("/api/rooms/:id", isAuthenticated, async (req: any, res) => {
+      app.patch("/api/rooms/:id", isAuthenticated, async (req: any, res) => {
     try {
       const user = await storage.getUser(req.user.claims.sub);
       if (!user) return res.status(401).json({ message: "User not found" });
