@@ -249,16 +249,6 @@ export class DatabaseStorage implements IStorage {
     return await db.select().from(guests).where(conditions).limit(10);
   }
 
-  async getGuestByPhone(phone: string, branchId?: number): Promise<Guest | null> {
-    const phoneCondition = eq(guests.phone, phone);
-    const conditions = branchId 
-      ? and(phoneCondition, eq(guests.branchId, branchId))
-      : phoneCondition;
-
-    const [guest] = await db.select().from(guests).where(conditions).limit(1);
-    return guest || null;
-  }
-
   // Reservation operations
   async getReservations(branchId?: number): Promise<(Reservation & { guest: Guest; reservationRooms: (ReservationRoom & { room: Room & { roomType: RoomType } })[] })[]> {
     const query = db.query.reservations.findMany({
