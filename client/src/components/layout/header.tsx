@@ -22,12 +22,12 @@ export default function Header({ title, subtitle, action }: HeaderProps) {
           <h2 className="text-2xl font-bold text-gray-900">{title}</h2>
           <p className="text-gray-600">{subtitle}</p>
         </div>
-        
+
         <div className="flex items-center space-x-4">
           <div className="text-right">
             <p className="text-sm font-medium text-gray-900">Today: {currentDate}</p>
           </div>
-          
+
           {action}
         </div>
       </div>

@@ -29,7 +29,7 @@ import {
 } from "@/components/ui/select";
 import { Badge } from "@/components/ui/badge";
 import { Sidebar } from "@/components/layout/sidebar";
-import { Header } from "@/components/layout/header";
+import Header from "@/components/layout/header";
 import { apiRequest, isUnauthorizedError } from "@/lib/authUtils";
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/hooks/useAuth";
@@ -246,7 +246,12 @@ export default function Users() {
       }
       updateUserMutation.mutate(updateData);
     } else {
-      createUserMutation.mutate(userForm);
+      // Generate a unique ID for new users
+      const newUserData = {
+        ...userForm,
+        id: `user_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`
+      };
+      createUserMutation.mutate(newUserData);
     }
   };
 
