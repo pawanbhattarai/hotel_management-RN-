@@ -74,12 +74,19 @@ export interface IStorage {
 
   // Room availability
   getAvailableRooms(branchId: number, checkIn: string, checkOut: string): Promise<Room[]>;
+
+    getUserByEmail(email: string): Promise<User | undefined>;
 }
 
 export class DatabaseStorage implements IStorage {
   // User operations - mandatory for Replit Auth
   async getUser(id: string): Promise<User | undefined> {
     const [user] = await db.select().from(users).where(eq(users.id, id));
+    return user;
+  }
+
+  async getUserByEmail(email: string): Promise<User | undefined> {
+    const [user] = await db.select().from(users).where(eq(users.email, email));
     return user;
   }
 

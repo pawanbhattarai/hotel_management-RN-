@@ -33,13 +33,86 @@ function checkBranchPermissions(
 }
 
 export async function registerRoutes(app: Express): Promise<Server> {
-  // Auth middleware
-  await setupAuth(app);
+  // Auth middleware for session handling
+  const session = require('express-session');
+  app.use(session({
+    secret: process.env.SESSION_SECRET || 'your-secret-key',
+    resave: false,
+    saveUninitialized: false,
+    cookie: {
+      httpOnly: true,
+      secure: false, // Set to true in production with HTTPS
+      maxAge: 7 * 24 * 60 * 60 * 1000, // 1 week
+    },
+  }));
+
+  // Custom auth middleware
+  const isAuthenticated = (req: any, res: any, next: any) => {
+    if (req.session && req.session.user) {
+      return next();
+    }
+    return res.status(401).json({ message: "Unauthorized" });
+  };
 
   // Auth routes
+  app.post("/api/auth/login", async (req: any, res) => {
+    try {
+      const { email, password } = req.body;
+      
+      if (!email || !password) {
+        return res.status(400).json({ message: "Email and password are required" });
+      }
+
+      // Get user by email
+      const user = await storage.getUserByEmail(email);
+      
+      if (!user || !user.isActive) {
+        return res.status(401).json({ message: "Invalid credentials" });
+      }
+
+      // In a real application, you would hash and compare passwords
+      // For now, we'll use a simple comparison (NOT SECURE - implement proper password hashing)
+      if (user.password !== password) {
+        return res.status(401).json({ message: "Invalid credentials" });
+      }
+
+      // Set session
+      req.session.user = {
+        id: user.id,
+        email: user.email,
+        role: user.role,
+        branchId: user.branchId
+      };
+
+      res.json({ 
+        message: "Login successful",
+        user: {
+          id: user.id,
+          email: user.email,
+          firstName: user.firstName,
+          lastName: user.lastName,
+          role: user.role,
+          branchId: user.branchId
+        }
+      });
+    } catch (error) {
+      console.error("Error during login:", error);
+      res.status(500).json({ message: "Internal server error" });
+    }
+  });
+
+  app.post("/api/auth/logout", (req: any, res) => {
+    req.session.destroy((err: any) => {
+      if (err) {
+        return res.status(500).json({ message: "Could not log out" });
+      }
+      res.json({ message: "Logout successful" });
+    });
+  });
+
   app.get("/api/auth/user", isAuthenticated, async (req: any, res) => {
     try {
-      const userId = req.user.claims.sub;
+      const userId = req.session.user.id;
       const user = await storage.getUser(userId);
       res.json(user);
     } catch (error) {
