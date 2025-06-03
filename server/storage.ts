@@ -56,7 +56,6 @@ export interface IStorage {
   createGuest(guest: InsertGuest): Promise<Guest>;
   updateGuest(id: number, guest: Partial<InsertGuest>): Promise<Guest>;
   searchGuests(query: string, branchId?: number): Promise<Guest[]>;
-  getGuestByPhone(phone: string, branchId?: number): Promise<Guest | null>;
 
   // Reservation operations
   getReservations(branchId?: number): Promise<(Reservation & { guest: Guest; reservationRooms: (ReservationRoom & { room: Room & { roomType: RoomType } })[] })[]>;

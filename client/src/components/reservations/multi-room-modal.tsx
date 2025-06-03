@@ -60,39 +60,6 @@ export default function MultiRoomModal({ isOpen, onClose }: MultiRoomModalProps)
   const [existingGuest, setExistingGuest] = useState<any>(null);
   const [isSearchingGuest, setIsSearchingGuest] = useState(false);
 
-  // Search for existing guest by phone number
-  const searchGuestByPhone = async (phone: string) => {
-    if (!phone || phone.length < 10) return;
-    
-    setIsSearchingGuest(true);
-    try {
-      const response = await apiRequest("GET", `/api/guests/search-by-phone?phone=${encodeURIComponent(phone)}`);
-      const guest = await response.json();
-      
-      if (guest) {
-        setExistingGuest(guest);
-        setGuestData({
-          firstName: guest.firstName || "",
-          lastName: guest.lastName || "",
-          email: guest.email || "",
-          phone: guest.phone || "",
-          idType: guest.idType || "passport",
-          idNumber: guest.idNumber || "",
-        });
-        toast({
-          title: "Guest Found",
-          description: `Found existing guest: ${guest.firstName} ${guest.lastName}`,
-        });
-      } else {
-        setExistingGuest(null);
-      }
-    } catch (error) {
-      console.error("Error searching guest:", error);
-    } finally {
-      setIsSearchingGuest(false);
-    }
-  };
-
   const [rooms, setRooms] = useState<RoomData[]>([
     {
       roomTypeId: "",
@@ -153,7 +120,6 @@ export default function MultiRoomModal({ isOpen, onClose }: MultiRoomModalProps)
       idType: "passport",
       idNumber: "",
     });
-    setExistingGuest(null);
     setRooms([
       {
         roomTypeId: "",
@@ -262,19 +228,13 @@ export default function MultiRoomModal({ isOpen, onClose }: MultiRoomModalProps)
     const summary = calculateSummary();
 
     try {
-      let guest;
-      
-      if (existingGuest) {
-        // Use existing guest
-        guest = existingGuest;
-      } else {
-        // Create new guest
-        const guestResponse = await apiRequest("POST", "/api/guests", {
-          ...guestData,
-          branchId: user.branchId,
-        });
-        guest = await guestResponse.json();
-      }
+      // First create guest, then create reservation
+      const guestResponse = await apiRequest("POST", "/api/guests", {
+        ...guestData,
+        branchId: user.branchId,
+      });
+
+      const guest = await guestResponse.json();
 
       const reservationData = {
         reservation: {
@@ -286,7 +246,7 @@ export default function MultiRoomModal({ isOpen, onClose }: MultiRoomModalProps)
           notes: "",
         },
         rooms: rooms.map(room => ({
-          roomId: parseInt(room.roomTypeId), // Using roomTypeId as placeholder - should be actual available room
+          roomId: parseInt(room.roomTypeId), // This would need to be actual room ID in production
           checkInDate: room.checkInDate,
           checkOutDate: room.checkOutDate,
           adults: room.adults,
@@ -354,34 +314,12 @@ export default function MultiRoomModal({ isOpen, onClose }: MultiRoomModalProps)
               </div>
               <div>
                 <Label htmlFor="phone">Phone</Label>
-                <div className="relative">
-                  <Input
-                    id="phone"
-                    value={guestData.phone}
-                    onChange={(e) => {
-                      const phone = e.target.value;
-                      setGuestData({ ...guestData, phone });
-                      
-                      // Search for guest when phone number is entered
-                      if (phone.length >= 10) {
-                        searchGuestByPhone(phone);
-                      } else if (phone.length < 10) {
-                        setExistingGuest(null);
-                      }
-                    }}
-                    placeholder="+1 (555) 123-4567"
-                  />
-                  {isSearchingGuest && (
-                    <div className="absolute right-3 top-1/2 transform -translate-y-1/2">
-                      <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-primary"></div>
-                    </div>
-                  )}
-                </div>
-                {existingGuest && (
-                  <p className="text-sm text-green-600 mt-1">
-                    ✓ Existing guest found: {existingGuest.firstName} {existingGuest.lastName}
-                  </p>
-                )}
+                <Input
+                  id="phone"
+                  value={guestData.phone}
+                  onChange={(e) => setGuestData({ ...guestData, phone: e.target.value })}
+                  placeholder="+1 (555) 123-4567"
+                />
               </div>
               <div>
                 <Label htmlFor="idType">ID Type</Label>
