@@ -2,7 +2,7 @@ import type { Express } from "express";
 import { createServer, type Server } from "http";
 import { storage } from "./storage";
 import { setupAuth, isAuthenticated } from "./replitAuth";
-import { 
+import {
   insertBranchSchema,
   insertRoomSchema,
   insertRoomTypeSchema,
@@ -14,17 +14,21 @@ import {
 import { z } from "zod";
 
 // Helper function to check user permissions based on role and branch
-function checkBranchPermissions(userRole: string, userBranchId: number | null, targetBranchId?: number): boolean {
+function checkBranchPermissions(
+  userRole: string,
+  userBranchId: number | null,
+  targetBranchId?: number,
+): boolean {
   if (userRole === "superadmin") {
     return true;
   }
-  
+
   if (!targetBranchId) return true; // For operations that don't specify a branch
-  
+
   if (userRole === "branch-admin" || userRole === "front-desk") {
     return userBranchId === targetBranchId;
   }
-  
+
   return false;
 }
 
@@ -33,7 +37,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   await setupAuth(app);
 
   // Auth routes
-  app.get('/api/auth/user', isAuthenticated, async (req: any, res) => {
+  app.get("/api/auth/user", isAuthenticated, async (req: any, res) => {
     try {
       const userId = req.user.claims.sub;
       const user = await storage.getUser(userId);
@@ -51,12 +55,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
       if (!user) return res.status(401).json({ message: "User not found" });
 
       const branches = await storage.getBranches();
-      
+
       // Filter branches based on user role
       if (user.role === "superadmin") {
         res.json(branches);
       } else {
-        const userBranch = branches.filter(b => b.id === user.branchId);
+        const userBranch = branches.filter((b) => b.id === user.branchId);
         res.json(userBranch);
       }
     } catch (error) {
@@ -202,9 +206,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
 
       const roomData = insertRoomSchema.parse(req.body);
-      
-      if (!checkBranchPermissions(user.role, user.branchId, roomData.branchId)) {
-        return res.status(403).json({ message: "Insufficient permissions for this branch" });
+
+      if (
+        !checkBranchPermissions(user.role, user.branchId, roomData.branchId)
+      ) {
+        return res
+          .status(403)
+          .json({ message: "Insufficient permissions for this branch" });
       }
 
       const room = await storage.createRoom(roomData);
@@ -224,11 +232,16 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       const roomId = parseInt(req.params.id);
       const roomData = insertRoomSchema.partial().parse(req.body);
-      
+
       // Check if user has permission for the room's branch
       const existingRoom = await storage.getRoom(roomId);
-      if (!existingRoom || !checkBranchPermissions(user.role, user.branchId, existingRoom.branchId)) {
-        return res.status(403).json({ message: "Insufficient permissions for this room" });
+      if (
+        !existingRoom ||
+        !checkBranchPermissions(user.role, user.branchId, existingRoom.branchId)
+      ) {
+        return res
+          .status(403)
+          .json({ message: "Insufficient permissions for this room" });
       }
 
       const room = await storage.updateRoom(roomId, roomData);
@@ -247,11 +260,16 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
 
       const roomId = parseInt(req.params.id);
-      
+
       // Check if user has permission for the room's branch
       const existingRoom = await storage.getRoom(roomId);
-      if (!existingRoom || !checkBranchPermissions(user.role, user.branchId, existingRoom.branchId)) {
-        return res.status(403).json({ message: "Insufficient permissions for this room" });
+      if (
+        !existingRoom ||
+        !checkBranchPermissions(user.role, user.branchId, existingRoom.branchId)
+      ) {
+        return res
+          .status(403)
+          .json({ message: "Insufficient permissions for this room" });
       }
 
       await storage.updateRoom(roomId, { isActive: false });
@@ -262,20 +280,24 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-      app.patch("/api/rooms/:id", isAuthenticated, async (req: any, res) => {
+  app.patch("/api/rooms/:id", isAuthenticated, async (req: any, res) => {
     try {
       const user = await storage.getUser(req.user.claims.sub);
       if (!user) return res.status(401).json({ message: "User not found" });
 
       const roomId = parseInt(req.params.id);
       const existingRoom = await storage.getRoom(roomId);
-      
+
       if (!existingRoom) {
         return res.status(404).json({ message: "Room not found" });
       }
 
-      if (!checkBranchPermissions(user.role, user.branchId, existingRoom.branchId)) {
-        return res.status(403).json({ message: "Insufficient permissions for this branch" });
+      if (
+        !checkBranchPermissions(user.role, user.branchId, existingRoom.branchId)
+      ) {
+        return res
+          .status(403)
+          .json({ message: "Insufficient permissions for this branch" });
       }
 
       const roomData = insertRoomSchema.partial().parse(req.body);
@@ -310,9 +332,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
 
       const roomTypeData = insertRoomTypeSchema.parse(req.body);
-      
-      if (!checkBranchPermissions(user.role, user.branchId, roomTypeData.branchId)) {
-        return res.status(403).json({ message: "Insufficient permissions for this branch" });
+
+      if (
+        !checkBranchPermissions(user.role, user.branchId, roomTypeData.branchId)
+      ) {
+        return res
+          .status(403)
+          .json({ message: "Insufficient permissions for this branch" });
       }
 
       const roomType = await storage.createRoomType(roomTypeData);
@@ -361,9 +387,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
       if (!user) return res.status(401).json({ message: "User not found" });
 
       const guestData = insertGuestSchema.parse(req.body);
-      
-      if (!checkBranchPermissions(user.role, user.branchId, guestData.branchId)) {
-        return res.status(403).json({ message: "Insufficient permissions for this branch" });
+
+      if (
+        !checkBranchPermissions(user.role, user.branchId, guestData.branchId)
+      ) {
+        return res
+          .status(403)
+          .json({ message: "Insufficient permissions for this branch" });
       }
 
       const guest = await storage.createGuest(guestData);
@@ -395,13 +425,17 @@ export async function registerRoutes(app: Express): Promise<Server> {
       if (!user) return res.status(401).json({ message: "User not found" });
 
       const reservation = await storage.getReservation(req.params.id);
-      
+
       if (!reservation) {
         return res.status(404).json({ message: "Reservation not found" });
       }
 
-      if (!checkBranchPermissions(user.role, user.branchId, reservation.branchId)) {
-        return res.status(403).json({ message: "Insufficient permissions for this branch" });
+      if (
+        !checkBranchPermissions(user.role, user.branchId, reservation.branchId)
+      ) {
+        return res
+          .status(403)
+          .json({ message: "Insufficient permissions for this branch" });
       }
 
       res.json(reservation);
@@ -421,10 +455,19 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const user = await storage.getUser(req.user.claims.sub);
       if (!user) return res.status(401).json({ message: "User not found" });
 
-      const { reservation: reservationData, rooms: roomsData } = createReservationSchema.parse(req.body);
-      
-      if (!checkBranchPermissions(user.role, user.branchId, reservationData.branchId)) {
-        return res.status(403).json({ message: "Insufficient permissions for this branch" });
+      const { reservation: reservationData, rooms: roomsData } =
+        createReservationSchema.parse(req.body);
+
+      if (
+        !checkBranchPermissions(
+          user.role,
+          user.branchId,
+          reservationData.branchId,
+        )
+      ) {
+        return res
+          .status(403)
+          .json({ message: "Insufficient permissions for this branch" });
       }
 
       // Generate confirmation number
@@ -435,7 +478,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
         createdById: user.id,
       };
 
-      const reservation = await storage.createReservation(reservationWithConfirmation, roomsData);
+      const reservation = await storage.createReservation(
+        reservationWithConfirmation,
+        roomsData,
+      );
       res.status(201).json(reservation);
     } catch (error) {
       console.error("Error creating reservation:", error);
@@ -450,17 +496,28 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       const reservationId = req.params.id;
       const existingReservation = await storage.getReservation(reservationId);
-      
+
       if (!existingReservation) {
         return res.status(404).json({ message: "Reservation not found" });
       }
 
-      if (!checkBranchPermissions(user.role, user.branchId, existingReservation.branchId)) {
-        return res.status(403).json({ message: "Insufficient permissions for this branch" });
+      if (
+        !checkBranchPermissions(
+          user.role,
+          user.branchId,
+          existingReservation.branchId,
+        )
+      ) {
+        return res
+          .status(403)
+          .json({ message: "Insufficient permissions for this branch" });
       }
 
       const reservationData = insertReservationSchema.partial().parse(req.body);
-      const reservation = await storage.updateReservation(reservationId, reservationData);
+      const reservation = await storage.updateReservation(
+        reservationId,
+        reservationData,
+      );
       res.json(reservation);
     } catch (error) {
       console.error("Error updating reservation:", error);
@@ -490,21 +547,23 @@ export async function registerRoutes(app: Express): Promise<Server> {
       if (!user) return res.status(401).json({ message: "User not found" });
 
       const { branchId, checkIn, checkOut } = req.query;
-      
+
       if (!branchId || !checkIn || !checkOut) {
         return res.status(400).json({ message: "Missing required parameters" });
       }
 
       const targetBranchId = parseInt(branchId as string);
-      
+
       if (!checkBranchPermissions(user.role, user.branchId, targetBranchId)) {
-        return res.status(403).json({ message: "Insufficient permissions for this branch" });
+        return res
+          .status(403)
+          .json({ message: "Insufficient permissions for this branch" });
       }
 
       const availableRooms = await storage.getAvailableRooms(
         targetBranchId,
         checkIn as string,
-        checkOut as string
+        checkOut as string,
       );
       res.json(availableRooms);
     } catch (error) {
