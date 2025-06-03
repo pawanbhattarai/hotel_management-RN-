@@ -49,14 +49,16 @@ export default function MultiRoomModal({ isOpen, onClose }: MultiRoomModalProps)
   const { toast } = useToast();
   const queryClient = useQueryClient();
 
-  const [guestData, setGuestData] = useState<GuestData>({
+  const [guestData, setGuestData] = useState({
     firstName: "",
     lastName: "",
     email: "",
     phone: "",
-    idType: "passport",
+    idType: "passport" as const,
     idNumber: "",
   });
+  const [existingGuest, setExistingGuest] = useState<any>(null);
+  const [isSearchingGuest, setIsSearchingGuest] = useState(false);
 
   const [rooms, setRooms] = useState<RoomData[]>([
     {

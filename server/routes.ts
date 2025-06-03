@@ -455,6 +455,23 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  app.get("/api/guests/search-by-phone", isAuthenticated, async (req: any, res) => {
+    try {
+      const user = await storage.getUser(req.session.user.id);
+      if (!user) return res.status(401).json({ message: "User not found" });
+
+      const phone = req.query.phone as string;
+      if (!phone) return res.json(null);
+
+      const branchId = user.role === "superadmin" ? undefined : user.branchId!;
+      const guest = await storage.getGuestByPhone(phone, branchId);
+      res.json(guest);
+    } catch (error) {
+      console.error("Error searching guest by phone:", error);
+      res.status(500).json({ message: "Failed to search guest by phone" });
+    }
+  });
+
   app.post("/api/guests", isAuthenticated, async (req: any, res) => {
     try {
       const user = await storage.getUser(req.session.user.id);
