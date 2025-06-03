@@ -1,33 +1,40 @@
-
 import { storage } from "./storage";
 
 export async function seedDefaultUsers() {
   try {
     // Check if any users exist
     const existingUsers = await storage.getAllUsers();
-    
+
     if (existingUsers.length === 0) {
-      // Create a default superadmin user
+      console.log("No users found, creating default admin user...");
+
+      // Create default admin user
       const defaultUser = {
-        id: "admin001",
+        id: "admin-001",
         email: "admin@hotel.com",
-        password: "admin123", // Change this in production!
-        firstName: "System",
-        lastName: "Administrator",
+        firstName: "Admin",
+        lastName: "User",
         role: "superadmin" as const,
-        branchId: null, // Superadmin can access all branches
+        password: "admin123",
         isActive: true,
+        branchId: null,
       };
 
       await storage.upsertUser(defaultUser);
-      console.log("✅ Default admin user created:");
-      console.log("Email: admin@hotel.com");
-      console.log("Password: admin123");
-      console.log("Role: superadmin");
+      console.log("✅ Default admin user created successfully");
+      console.log("📧 Login with: admin@hotel.com");
+      console.log("🔑 Password: admin123");
     } else {
-      console.log("Users already exist in the database");
+      console.log(`✅ Found ${existingUsers.length} existing users`);
     }
   } catch (error) {
-    console.error("Error seeding users:", error);
+    console.error("❌ Error seeding users:", error);
+    console.log("🔄 Retrying database schema push...");
+
+    // If the error is about missing password column, the schema push might not have worked
+    if (error.message && error.message.includes('column "password" does not exist')) {
+      console.log("💡 Database schema appears to be missing the password column");
+      console.log("Please run: npm run db:push");
+    }
   }
 }
