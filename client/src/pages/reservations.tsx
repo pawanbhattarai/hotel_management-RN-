@@ -8,7 +8,14 @@ import Header from "@/components/layout/header";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table";
 import { Plus, Eye, Edit } from "lucide-react";
 import MultiRoomModal from "@/components/reservations/multi-room-modal";
 
@@ -40,13 +47,20 @@ export default function Reservations() {
     const statusConfig = {
       confirmed: { label: "Confirmed", className: "reservation-confirmed" },
       pending: { label: "Pending", className: "reservation-pending" },
-      "checked-in": { label: "Checked In", className: "reservation-checked-in" },
-      "checked-out": { label: "Checked Out", className: "reservation-checked-out" },
+      "checked-in": {
+        label: "Checked In",
+        className: "reservation-checked-in",
+      },
+      "checked-out": {
+        label: "Checked Out",
+        className: "reservation-checked-out",
+      },
       cancelled: { label: "Cancelled", className: "reservation-cancelled" },
       "no-show": { label: "No Show", className: "reservation-no-show" },
     };
 
-    const config = statusConfig[status as keyof typeof statusConfig] || statusConfig.pending;
+    const config =
+      statusConfig[status as keyof typeof statusConfig] || statusConfig.pending;
     return (
       <Badge variant="outline" className={config.className}>
         {config.label}
@@ -90,7 +104,10 @@ export default function Reservations() {
           title="Reservations"
           subtitle="Manage bookings and availability"
           action={
-            <Button onClick={() => setIsModalOpen(true)} className="bg-primary hover:bg-primary/90">
+            <Button
+              onClick={() => setIsModalOpen(true)}
+              className="bg-primary hover:bg-primary/90"
+            >
               <Plus className="h-4 w-4 mr-2" />
               New Reservation
             </Button>
@@ -127,7 +144,8 @@ export default function Reservations() {
                           <TableCell>
                             <div>
                               <div className="font-medium">
-                                {reservation.guest.firstName} {reservation.guest.lastName}
+                                {reservation.guest.firstName}{" "}
+                                {reservation.guest.lastName}
                               </div>
                               <div className="text-sm text-gray-500">
                                 {reservation.guest.email}
@@ -140,20 +158,30 @@ export default function Reservations() {
                           <TableCell>
                             <div>
                               <div className="font-medium">
-                                {reservation.reservationRooms.length} Room{reservation.reservationRooms.length > 1 ? 's' : ''}
+                                {reservation.reservationRooms.length} Room
+                                {reservation.reservationRooms.length > 1
+                                  ? "s"
+                                  : ""}
                               </div>
                               <div className="text-sm text-gray-500">
-                                {reservation.reservationRooms.map((rr: any) => rr.room.roomType.name).join(", ")}
+                                {reservation.reservationRooms
+                                  .map((rr: any) => rr.room.roomType.name)
+                                  .join(", ")}
                               </div>
                             </div>
                           </TableCell>
                           <TableCell>
                             {reservation.reservationRooms.length > 0 && (
                               <div>
-                                <div>{formatDate(reservation.reservationRooms[0].checkInDate)}</div>
+                                <div>
+                                  {formatDate(
+                                    reservation.reservationRooms[0].checkInDate,
+                                  )}
+                                </div>
                                 {reservation.reservationRooms.length > 1 && (
                                   <div className="text-sm text-gray-500">
-                                    +{reservation.reservationRooms.length - 1} more
+                                    +{reservation.reservationRooms.length - 1}{" "}
+                                    more
                                   </div>
                                 )}
                               </div>
@@ -162,9 +190,19 @@ export default function Reservations() {
                           <TableCell>
                             {reservation.reservationRooms.length > 0 && (
                               <div>
-                                <div>{formatDate(reservation.reservationRooms[0].checkOutDate)}</div>
+                                <div>
+                                  {formatDate(
+                                    reservation.reservationRooms[0]
+                                      .checkOutDate,
+                                  )}
+                                </div>
                                 <div className="text-sm text-gray-500">
-                                  {calculateNights(reservation.reservationRooms[0].checkInDate, reservation.reservationRooms[0].checkOutDate)} nights
+                                  {calculateNights(
+                                    reservation.reservationRooms[0].checkInDate,
+                                    reservation.reservationRooms[0]
+                                      .checkOutDate,
+                                  )}{" "}
+                                  nights
                                 </div>
                               </div>
                             )}
@@ -173,7 +211,7 @@ export default function Reservations() {
                             {getStatusBadge(reservation.status)}
                           </TableCell>
                           <TableCell className="font-medium">
-                            ${parseFloat(reservation.totalAmount).toFixed(2)}
+                            Rs.{parseFloat(reservation.totalAmount).toFixed(2)}
                           </TableCell>
                           <TableCell>
                             <div className="flex space-x-2">
@@ -189,8 +227,12 @@ export default function Reservations() {
                       ))
                     ) : (
                       <TableRow>
-                        <TableCell colSpan={8} className="text-center py-8 text-gray-500">
-                          No reservations found. Create your first reservation to get started.
+                        <TableCell
+                          colSpan={8}
+                          className="text-center py-8 text-gray-500"
+                        >
+                          No reservations found. Create your first reservation
+                          to get started.
                         </TableCell>
                       </TableRow>
                     )}
@@ -201,7 +243,7 @@ export default function Reservations() {
           </Card>
         </main>
       </div>
-      
+
       <MultiRoomModal
         isOpen={isModalOpen}
         onClose={() => setIsModalOpen(false)}

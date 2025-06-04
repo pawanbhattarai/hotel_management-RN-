@@ -42,7 +42,7 @@ export default function MetricsCards() {
     },
     {
       title: "Revenue Today",
-      value: `$${(metrics?.revenueToday || 0).toLocaleString()}`,
+      value: `Rs.${(metrics?.revenueToday || 0).toLocaleString()}`,
       change: "-2.1%",
       changeType: "negative" as const,
       icon: DollarSign,
@@ -63,25 +63,40 @@ export default function MetricsCards() {
   return (
     <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
       {metricsData.map((metric, index) => (
-        <Card key={index} className="bg-white rounded-xl shadow-sm border border-gray-200">
+        <Card
+          key={index}
+          className="bg-white rounded-xl shadow-sm border border-gray-200"
+        >
           <CardContent className="p-6">
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-sm font-medium text-gray-600">{metric.title}</p>
-                <p className="text-3xl font-bold text-gray-900 mt-1">{metric.value}</p>
+                <p className="text-sm font-medium text-gray-600">
+                  {metric.title}
+                </p>
+                <p className="text-3xl font-bold text-gray-900 mt-1">
+                  {metric.value}
+                </p>
                 <div className="flex items-center mt-2">
-                  <span 
+                  <span
                     className={`text-sm font-medium ${
-                      metric.changeType === "positive" ? "text-success" : "text-warning"
+                      metric.changeType === "positive"
+                        ? "text-success"
+                        : "text-warning"
                     }`}
                   >
                     {metric.change}
                   </span>
-                  <span className="text-xs text-gray-500 ml-1">vs last month</span>
+                  <span className="text-xs text-gray-500 ml-1">
+                    vs last month
+                  </span>
                 </div>
               </div>
-              <div className={`w-12 h-12 ${metric.iconBg} rounded-xl flex items-center justify-center`}>
-                <metric.icon className={`${metric.iconColor} text-xl h-6 w-6`} />
+              <div
+                className={`w-12 h-12 ${metric.iconBg} rounded-xl flex items-center justify-center`}
+              >
+                <metric.icon
+                  className={`${metric.iconColor} text-xl h-6 w-6`}
+                />
               </div>
             </div>
           </CardContent>

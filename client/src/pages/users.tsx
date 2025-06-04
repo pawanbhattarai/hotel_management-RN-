@@ -1,4 +1,3 @@
-
 import { useEffect, useState } from "react";
 import { useAuth } from "@/hooks/useAuth";
 import { useToast } from "@/hooks/use-toast";
@@ -10,9 +9,28 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+} from "@/components/ui/dialog";
 import { Plus, Edit2, Trash2 } from "lucide-react";
 
 export default function Users() {
@@ -28,6 +46,7 @@ export default function Users() {
     lastName: "",
     role: "front-desk",
     branchId: "",
+    password: "",
   });
 
   const { data: users, isLoading: usersLoading } = useQuery({
@@ -57,7 +76,11 @@ export default function Users() {
       toast({ title: "Success", description: "User created successfully" });
     },
     onError: () => {
-      toast({ title: "Error", description: "Failed to create user", variant: "destructive" });
+      toast({
+        title: "Error",
+        description: "Failed to create user",
+        variant: "destructive",
+      });
     },
   });
 
@@ -78,13 +101,19 @@ export default function Users() {
       toast({ title: "Success", description: "User updated successfully" });
     },
     onError: () => {
-      toast({ title: "Error", description: "Failed to update user", variant: "destructive" });
+      toast({
+        title: "Error",
+        description: "Failed to update user",
+        variant: "destructive",
+      });
     },
   });
 
   const deleteUserMutation = useMutation({
     mutationFn: async (userId: string) => {
-      const response = await fetch(`/api/users/${userId}`, { method: "DELETE" });
+      const response = await fetch(`/api/users/${userId}`, {
+        method: "DELETE",
+      });
       if (!response.ok) throw new Error("Failed to delete user");
     },
     onSuccess: () => {
@@ -92,7 +121,11 @@ export default function Users() {
       toast({ title: "Success", description: "User deleted successfully" });
     },
     onError: () => {
-      toast({ title: "Error", description: "Failed to delete user", variant: "destructive" });
+      toast({
+        title: "Error",
+        description: "Failed to delete user",
+        variant: "destructive",
+      });
     },
   });
 
@@ -104,16 +137,26 @@ export default function Users() {
       lastName: "",
       role: "front-desk",
       branchId: "",
+      password: "",
     });
     setEditingUser(null);
   };
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
+    // Convert branchId to number or null for unassigned
+    const submitData = {
+      ...formData,
+      branchId:
+        formData.branchId === "unassigned" || formData.branchId === ""
+          ? null
+          : parseInt(formData.branchId, 10),
+    };
+
     if (editingUser) {
-      updateUserMutation.mutate(formData);
+      updateUserMutation.mutate(submitData);
     } else {
-      createUserMutation.mutate(formData);
+      createUserMutation.mutate(submitData);
     }
   };
 
@@ -125,7 +168,8 @@ export default function Users() {
       firstName: user.firstName || "",
       lastName: user.lastName || "",
       role: user.role,
-      branchId: user.branchId?.toString() || "",
+      branchId: user.branchId?.toString() || "unassigned",
+      password: "",
     });
     setIsDialogOpen(true);
   };
@@ -143,11 +187,21 @@ export default function Users() {
 
   const getRoleBadge = (role: string) => {
     const roleConfig = {
-      superadmin: { label: "Super Admin", className: "bg-red-100 text-red-800" },
-      "branch-admin": { label: "Branch Admin", className: "bg-blue-100 text-blue-800" },
-      "front-desk": { label: "Front Desk", className: "bg-green-100 text-green-800" },
+      superadmin: {
+        label: "Super Admin",
+        className: "bg-red-100 text-red-800",
+      },
+      "branch-admin": {
+        label: "Branch Admin",
+        className: "bg-blue-100 text-blue-800",
+      },
+      "front-desk": {
+        label: "Front Desk",
+        className: "bg-green-100 text-green-800",
+      },
     };
-    const config = roleConfig[role as keyof typeof roleConfig] || roleConfig["front-desk"];
+    const config =
+      roleConfig[role as keyof typeof roleConfig] || roleConfig["front-desk"];
     return <Badge className={config.className}>{config.label}</Badge>;
   };
 
@@ -170,15 +224,14 @@ export default function Users() {
       <div className="flex h-screen bg-gray-50">
         <Sidebar />
         <div className="flex-1 flex flex-col overflow-hidden">
-          <Header
-            title="User Management"
-            subtitle="Access Denied"
-          />
+          <Header title="User Management" subtitle="Access Denied" />
           <main className="flex-1 overflow-y-auto p-6">
             <Card>
               <CardContent className="pt-6">
                 <div className="text-center py-8">
-                  <p className="text-gray-500">You don't have permission to view this page.</p>
+                  <p className="text-gray-500">
+                    You don't have permission to view this page.
+                  </p>
                 </div>
               </CardContent>
             </Card>
@@ -221,7 +274,9 @@ export default function Users() {
                 </DialogTrigger>
                 <DialogContent>
                   <DialogHeader>
-                    <DialogTitle>{editingUser ? "Edit User" : "Add New User"}</DialogTitle>
+                    <DialogTitle>
+                      {editingUser ? "Edit User" : "Add New User"}
+                    </DialogTitle>
                   </DialogHeader>
                   <form onSubmit={handleSubmit} className="space-y-4">
                     <div>
@@ -229,7 +284,9 @@ export default function Users() {
                       <Input
                         id="id"
                         value={formData.id}
-                        onChange={(e) => setFormData({ ...formData, id: e.target.value })}
+                        onChange={(e) =>
+                          setFormData({ ...formData, id: e.target.value })
+                        }
                         required
                         disabled={!!editingUser}
                       />
@@ -240,7 +297,9 @@ export default function Users() {
                         id="email"
                         type="email"
                         value={formData.email}
-                        onChange={(e) => setFormData({ ...formData, email: e.target.value })}
+                        onChange={(e) =>
+                          setFormData({ ...formData, email: e.target.value })
+                        }
                         required
                       />
                     </div>
@@ -249,19 +308,16 @@ export default function Users() {
                       <Input
                         id="password"
                         type="password"
-                        value={formData.password || ""}
-                        onChange={(e) => setFormData({ ...formData, password: e.target.value })}
+                        value={formData.password}
+                        onChange={(e) =>
+                          setFormData({ ...formData, password: e.target.value })
+                        }
                         required={!editingUser}
-                        placeholder={editingUser ? "Leave blank to keep current password" : "Enter password"}
-                      />
-                    </div>
-                    <div>
-                      <Label htmlFor="firstName">First Name</Label>
-                      <Input
-                        id="email"
-                        type="email"
-                        value={formData.email}
-                        onChange={(e) => setFormData({ ...formData, email: e.target.value })}
+                        placeholder={
+                          editingUser
+                            ? "Leave blank to keep current password"
+                            : "Enter password"
+                        }
                       />
                     </div>
                     <div>
@@ -269,7 +325,12 @@ export default function Users() {
                       <Input
                         id="firstName"
                         value={formData.firstName}
-                        onChange={(e) => setFormData({ ...formData, firstName: e.target.value })}
+                        onChange={(e) =>
+                          setFormData({
+                            ...formData,
+                            firstName: e.target.value,
+                          })
+                        }
                       />
                     </div>
                     <div>
@@ -277,32 +338,51 @@ export default function Users() {
                       <Input
                         id="lastName"
                         value={formData.lastName}
-                        onChange={(e) => setFormData({ ...formData, lastName: e.target.value })}
+                        onChange={(e) =>
+                          setFormData({ ...formData, lastName: e.target.value })
+                        }
                       />
                     </div>
                     <div>
                       <Label htmlFor="role">Role</Label>
-                      <Select value={formData.role} onValueChange={(value) => setFormData({ ...formData, role: value })}>
+                      <Select
+                        value={formData.role}
+                        onValueChange={(value) =>
+                          setFormData({ ...formData, role: value })
+                        }
+                      >
                         <SelectTrigger>
                           <SelectValue />
                         </SelectTrigger>
                         <SelectContent>
                           <SelectItem value="front-desk">Front Desk</SelectItem>
-                          <SelectItem value="branch-admin">Branch Admin</SelectItem>
-                          <SelectItem value="superadmin">Super Admin</SelectItem>
+                          <SelectItem value="branch-admin">
+                            Branch Admin
+                          </SelectItem>
+                          <SelectItem value="superadmin">
+                            Super Admin
+                          </SelectItem>
                         </SelectContent>
                       </Select>
                     </div>
                     <div>
                       <Label htmlFor="branchId">Branch</Label>
-                      <Select value={formData.branchId} onValueChange={(value) => setFormData({ ...formData, branchId: value })}>
+                      <Select
+                        value={formData.branchId}
+                        onValueChange={(value) =>
+                          setFormData({ ...formData, branchId: value })
+                        }
+                      >
                         <SelectTrigger>
                           <SelectValue placeholder="Select a branch" />
                         </SelectTrigger>
                         <SelectContent>
-                          <SelectItem value="">Unassigned</SelectItem>
+                          <SelectItem value="unassigned">Unassigned</SelectItem>
                           {branches?.map((branch: any) => (
-                            <SelectItem key={branch.id} value={branch.id.toString()}>
+                            <SelectItem
+                              key={branch.id}
+                              value={branch.id.toString()}
+                            >
                               {branch.name}
                             </SelectItem>
                           ))}
@@ -344,10 +424,9 @@ export default function Users() {
                           <TableCell>{getRoleBadge(user.role)}</TableCell>
                           <TableCell>{getBranchName(user.branchId)}</TableCell>
                           <TableCell>
-                            {user.lastLogin 
+                            {user.lastLogin
                               ? new Date(user.lastLogin).toLocaleDateString()
-                              : "Never"
-                            }
+                              : "Never"}
                           </TableCell>
                           <TableCell>
                             <div className="flex space-x-2">
@@ -371,7 +450,10 @@ export default function Users() {
                       ))
                     ) : (
                       <TableRow>
-                        <TableCell colSpan={6} className="text-center py-8 text-gray-500">
+                        <TableCell
+                          colSpan={6}
+                          className="text-center py-8 text-gray-500"
+                        >
                           No users found. Create your first user to get started.
                         </TableCell>
                       </TableRow>
