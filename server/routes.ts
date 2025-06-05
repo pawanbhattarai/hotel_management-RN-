@@ -263,8 +263,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const user = await storage.getUser(req.session.user.id);
       if (!user) return res.status(401).json({ message: "User not found" });
 
-      const branchId = user.role === "superadmin" ? undefined : user.branchId!;
-      const rooms = await storage.getRooms(branchId);
+      const { branchId: queryBranchId, status } = req.query;
+      let branchId = user.role === "superadmin" ? 
+        (queryBranchId ? parseInt(queryBranchId as string) : undefined) : 
+        user.branchId!;
+
+      const rooms = await storage.getRooms(branchId, status as string);
       res.json(rooms);
     } catch (error) {
       console.error("Error fetching rooms:", error);
@@ -580,6 +584,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
         reservationWithConfirmation,
         roomsData,
       );
+
+      // Update room status to occupied
+      for (const roomData of roomsData) {
+        await storage.updateRoom(roomData.roomId, { status: "occupied" });
+      }
+
       res.status(201).json(reservation);
     } catch (error) {
       console.error("Error creating reservation:", error);

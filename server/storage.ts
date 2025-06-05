@@ -38,7 +38,7 @@ export interface IStorage {
   updateBranch(id: number, branch: Partial<InsertBranch>): Promise<Branch>;
 
   // Room operations
-  getRooms(branchId?: number): Promise<Room[]>;
+  getRooms(branchId?: number, status?: string): Promise<(Room & { roomType: RoomType; branch: Branch })[]>;
   getRoom(id: number): Promise<Room | undefined>;
   createRoom(room: InsertRoom): Promise<Room>;
   updateRoom(id: number, room: Partial<InsertRoom>): Promise<Room>;
@@ -143,12 +143,27 @@ export class DatabaseStorage implements IStorage {
   }
 
   // Room operations
-  async getRooms(branchId?: number): Promise<Room[]> {
-    let query = db.select().from(rooms).where(eq(rooms.isActive, true));
+  async getRooms(branchId?: number, status?: string): Promise<(Room & { roomType: RoomType; branch: Branch })[]> {
+    const conditions = [eq(rooms.isActive, true)];
+
     if (branchId) {
-      query = db.select().from(rooms).where(and(eq(rooms.isActive, true), eq(rooms.branchId, branchId)));
+      conditions.push(eq(rooms.branchId, branchId));
     }
-    return await query.orderBy(rooms.number);
+
+    if (status) {
+      conditions.push(eq(rooms.status, status));
+    }
+
+    const query = db.query.rooms.findMany({
+      with: {
+        roomType: true,
+        branch: true,
+      },
+      where: conditions.length > 1 ? and(...conditions) : conditions[0],
+      orderBy: rooms.number,
+    });
+
+    return await query;
   }
 
   async getRoom(id: number): Promise<Room | undefined> {

@@ -67,6 +67,7 @@ export default function MultiRoomModal({
     idNumber: "",
   });
 
+  const [selectedBranchId, setSelectedBranchId] = useState<string>("");
   const [rooms, setRooms] = useState<RoomData[]>([
     {
       roomTypeId: "",
@@ -85,6 +86,23 @@ export default function MultiRoomModal({
     enabled: isOpen && !!user,
   });
 
+  const { data: branches } = useQuery({
+    queryKey: ["/api/branches"],
+    enabled: isOpen && !!user && user?.role === "superadmin",
+  });
+
+  const { data: availableRooms } = useQuery({
+    queryKey: ["/api/rooms/availability", selectedBranchId || user?.branchId],
+    queryFn: async () => {
+      const branchId = user?.role === "superadmin" ? selectedBranchId : user?.branchId;
+      if (!branchId) return [];
+      
+      const response = await apiRequest("GET", `/api/rooms?branchId=${branchId}&status=available`);
+      return await response.json();
+    },
+    enabled: isOpen && !!user && !!(selectedBranchId || user?.branchId),
+  });
+
   const createReservationMutation = useMutation({
     mutationFn: async (data: any) => {
       return await apiRequest("POST", "/api/reservations", data);
@@ -95,6 +113,8 @@ export default function MultiRoomModal({
         description: "Reservation created successfully!",
       });
       queryClient.invalidateQueries({ queryKey: ["/api/reservations"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/rooms"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/rooms/availability"] });
       onClose();
       resetForm();
     },
@@ -127,6 +147,7 @@ export default function MultiRoomModal({
       idType: "passport",
       idNumber: "",
     });
+    setSelectedBranchId("");
     setRooms([
       {
         roomTypeId: "",
@@ -173,11 +194,11 @@ export default function MultiRoomModal({
       field === "checkInDate" ||
       field === "checkOutDate"
     ) {
-      const roomType = roomTypes?.find(
-        (rt: any) => rt.id === parseInt(updatedRooms[index].roomTypeId),
+      const selectedRoom = availableRooms?.find(
+        (room: any) => room.id === parseInt(updatedRooms[index].roomTypeId),
       );
       if (
-        roomType &&
+        selectedRoom &&
         updatedRooms[index].checkInDate &&
         updatedRooms[index].checkOutDate
       ) {
@@ -186,7 +207,7 @@ export default function MultiRoomModal({
         const nights = Math.ceil(
           (checkOut.getTime() - checkIn.getTime()) / (1000 * 60 * 60 * 24),
         );
-        const ratePerNight = parseFloat(roomType.basePrice);
+        const ratePerNight = parseFloat(selectedRoom.roomType.basePrice);
         updatedRooms[index].ratePerNight = ratePerNight;
         updatedRooms[index].totalAmount = ratePerNight * nights;
       }
@@ -220,10 +241,12 @@ export default function MultiRoomModal({
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
 
-    if (!user?.branchId) {
+    const branchId = user?.role === "superadmin" ? parseInt(selectedBranchId) : user?.branchId;
+    
+    if (!branchId) {
       toast({
         title: "Error",
-        description: "Branch information is required.",
+        description: user?.role === "superadmin" ? "Please select a branch." : "Branch information is required.",
         variant: "destructive",
       });
       return;
@@ -257,7 +280,7 @@ export default function MultiRoomModal({
       // First create guest, then create reservation
       const guestResponse = await apiRequest("POST", "/api/guests", {
         ...guestData,
-        branchId: user.branchId,
+        branchId: branchId,
       });
 
       const guest = await guestResponse.json();
@@ -265,14 +288,14 @@ export default function MultiRoomModal({
       const reservationData = {
         reservation: {
           guestId: guest.id,
-          branchId: user.branchId,
+          branchId: branchId,
           status: "confirmed",
           totalAmount: summary.total.toString(),
           paidAmount: "0",
           notes: "",
         },
         rooms: rooms.map((room) => ({
-          roomId: parseInt(room.roomTypeId), // This would need to be actual room ID in production
+          roomId: parseInt(room.roomTypeId),
           checkInDate: room.checkInDate,
           checkOutDate: room.checkOutDate,
           adults: room.adults,
@@ -303,6 +326,33 @@ export default function MultiRoomModal({
         </DialogHeader>
 
         <form onSubmit={handleSubmit} className="space-y-6">
+          {/* Branch Selection for Superadmin */}
+          {user?.role === "superadmin" && (
+            <div>
+              <h3 className="text-lg font-semibold text-gray-900 mb-4">
+                Branch Selection
+              </h3>
+              <div>
+                <Label htmlFor="branchId">Select Branch *</Label>
+                <Select
+                  value={selectedBranchId}
+                  onValueChange={(value) => setSelectedBranchId(value)}
+                >
+                  <SelectTrigger>
+                    <SelectValue placeholder="Select a branch" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {branches?.map((branch: any) => (
+                      <SelectItem key={branch.id} value={branch.id.toString()}>
+                        {branch.name}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+            </div>
+          )}
+          
           {/* Guest Information */}
           <div>
             <h3 className="text-lg font-semibold text-gray-900 mb-4">
@@ -426,7 +476,7 @@ export default function MultiRoomModal({
                 <CardContent className="space-y-4">
                   <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                     <div>
-                      <Label>Room Type *</Label>
+                      <Label>Available Room *</Label>
                       <Select
                         value={room.roomTypeId}
                         onValueChange={(value) =>
@@ -434,16 +484,16 @@ export default function MultiRoomModal({
                         }
                       >
                         <SelectTrigger>
-                          <SelectValue placeholder="Select room type" />
+                          <SelectValue placeholder="Select available room" />
                         </SelectTrigger>
                         <SelectContent>
-                          {roomTypes?.map((roomType: any) => (
+                          {availableRooms?.map((availableRoom: any) => (
                             <SelectItem
-                              key={roomType.id}
-                              value={roomType.id.toString()}
+                              key={availableRoom.id}
+                              value={availableRoom.id.toString()}
                             >
-                              {roomType.name} - $
-                              {parseFloat(roomType.basePrice).toFixed(2)}/night
+                              Room {availableRoom.number} - {availableRoom.roomType.name} - Rs.
+                              {parseFloat(availableRoom.roomType.basePrice).toFixed(2)}/night
                             </SelectItem>
                           ))}
                         </SelectContent>
