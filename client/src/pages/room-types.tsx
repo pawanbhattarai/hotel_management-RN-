@@ -180,16 +180,19 @@ export default function RoomTypes() {
     });
   };
 
-  const handleCloseDialog = () => {
-    setIsCreateOpen(false);
-    setEditingRoomType(null);
-    form.reset({
-      name: "",
-      description: "",
-      basePrice: "",
-      maxOccupancy: 1,
-      branchId: null,
-    });
+  const handleCloseDialog = (open: boolean) => {
+    console.log("Dialog open state changing to:", open);
+    if (!open) {
+      setIsCreateOpen(false);
+      setEditingRoomType(null);
+      form.reset({
+        name: "",
+        description: "",
+        basePrice: "",
+        maxOccupancy: 1,
+        branchId: null,
+      });
+    }
   };
 
   const handleDelete = (roomType: RoomType) => {
@@ -269,7 +272,12 @@ export default function RoomTypes() {
           action={
             <Dialog open={isCreateOpen || !!editingRoomType} onOpenChange={handleCloseDialog}>
               <DialogTrigger asChild>
-                <Button onClick={() => setIsCreateOpen(true)}>
+                <Button 
+                  onClick={() => {
+                    console.log("Add Room Type button clicked");
+                    setIsCreateOpen(true);
+                  }}
+                >
                   <Plus className="h-4 w-4 mr-2" />
                   Add Room Type
                 </Button>
@@ -382,7 +390,7 @@ export default function RoomTypes() {
                       )}
                     />
                     <div className="flex justify-end space-x-2 pt-4">
-                      <Button type="button" variant="outline" onClick={handleCloseDialog}>
+                      <Button type="button" variant="outline" onClick={() => handleCloseDialog(false)}>
                         Cancel
                       </Button>
                       <Button
@@ -408,7 +416,12 @@ export default function RoomTypes() {
                 <p className="text-gray-600 text-center mb-4">
                   Create your first room type to start managing rooms
                 </p>
-                <Button onClick={() => setIsCreateOpen(true)}>
+                <Button 
+                  onClick={() => {
+                    console.log("Create Room Type button clicked (empty state)");
+                    setIsCreateOpen(true);
+                  }}
+                >
                   <Plus className="h-4 w-4 mr-2" />
                   Create Room Type
                 </Button>
