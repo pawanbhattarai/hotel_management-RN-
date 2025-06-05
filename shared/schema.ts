@@ -67,6 +67,7 @@ export const roomTypes = pgTable("room_types", {
   branchId: integer("branch_id"),
   isActive: boolean("is_active").default(true),
   createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
 });
 
 // Rooms table
@@ -221,6 +222,7 @@ export const insertBranchSchema = createInsertSchema(branches).omit({
 export const insertRoomTypeSchema = createInsertSchema(roomTypes).omit({
   id: true,
   createdAt: true,
+  updatedAt: true,
 });
 
 export const insertRoomSchema = createInsertSchema(rooms).omit({

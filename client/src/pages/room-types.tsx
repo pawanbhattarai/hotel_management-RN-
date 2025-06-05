@@ -21,9 +21,6 @@ import { useAuth } from "@/hooks/useAuth";
 
 const roomTypeFormSchema = insertRoomTypeSchema.extend({
   basePrice: z.string().min(1, "Base price is required"),
-}).omit({
-  branchId: true,
-}).extend({
   branchId: z.number().nullable().optional(),
 });
 
@@ -106,8 +103,10 @@ export default function RoomTypes() {
     console.log("Form submitted with data:", data);
     
     const submitData = {
-      ...data,
+      name: data.name,
+      description: data.description || null,
       basePrice: parseFloat(data.basePrice),
+      maxOccupancy: data.maxOccupancy,
       branchId: data.branchId || null,
     };
     
@@ -127,7 +126,7 @@ export default function RoomTypes() {
       description: roomType.description || "",
       basePrice: roomType.basePrice.toString(),
       maxOccupancy: roomType.maxOccupancy,
-      branchId: roomType.branchId || null,
+      branchId: roomType.branchId,
     });
   };
 

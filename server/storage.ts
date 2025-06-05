@@ -212,7 +212,10 @@ export class DatabaseStorage implements IStorage {
   async updateRoomType(id: number, roomType: Partial<InsertRoomType>): Promise<RoomType> {
     const [updatedRoomType] = await db
       .update(roomTypes)
-      .set(roomType)
+      .set({
+        ...roomType,
+        updatedAt: new Date(),
+      })
       .where(eq(roomTypes.id, id))
       .returning();
     return updatedRoomType;
