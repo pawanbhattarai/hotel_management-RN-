@@ -91,7 +91,7 @@ export default function MultiRoomModal({
     enabled: isOpen && !!user && user?.role === "superadmin",
   });
 
-  const { data: availableRooms } = useQuery({
+  const { data: availableRooms, error: roomsError, isLoading: roomsLoading } = useQuery({
     queryKey: ["/api/rooms", selectedBranchId || user?.branchId, "available"],
     queryFn: async () => {
       const branchId = user?.role === "superadmin" ? selectedBranchId : user?.branchId;
@@ -101,10 +101,24 @@ export default function MultiRoomModal({
       }
       
       console.log("Fetching available rooms for branch:", branchId);
-      const response = await apiRequest("GET", `/api/rooms?branchId=${branchId}&status=available`);
-      const rooms = await response.json();
-      console.log("Available rooms fetched:", rooms);
-      return rooms;
+      console.log("User role:", user?.role);
+      console.log("Selected branch ID:", selectedBranchId);
+      console.log("User branch ID:", user?.branchId);
+      
+      try {
+        const response = await apiRequest("GET", `/api/rooms?branchId=${branchId}&status=available`);
+        if (!response.ok) {
+          console.error("Room fetch failed with status:", response.status);
+          throw new Error(`Failed to fetch rooms: ${response.status}`);
+        }
+        const rooms = await response.json();
+        console.log("Available rooms fetched:", rooms);
+        console.log("Number of rooms:", rooms?.length || 0);
+        return rooms;
+      } catch (error) {
+        console.error("Error fetching rooms:", error);
+        throw error;
+      }
     },
     enabled: isOpen && !!user && !!(selectedBranchId || user?.branchId),
   });
@@ -483,17 +497,35 @@ export default function MultiRoomModal({
                   <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                     <div>
                       <Label>Available Room *</Label>
+                      {roomsError && (
+                        <div className="text-red-500 text-sm mb-2">
+                          Error loading rooms: {roomsError.message}
+                        </div>
+                      )}
                       <Select
                         value={room.roomTypeId}
                         onValueChange={(value) =>
                           updateRoom(index, "roomTypeId", value)
                         }
+                        disabled={roomsLoading}
                       >
                         <SelectTrigger>
-                          <SelectValue placeholder="Select available room" />
+                          <SelectValue placeholder={
+                            roomsLoading ? "Loading rooms..." : 
+                            roomsError ? "Error loading rooms" :
+                            "Select available room"
+                          } />
                         </SelectTrigger>
                         <SelectContent>
-                          {availableRooms && availableRooms.length > 0 ? (
+                          {roomsLoading ? (
+                            <SelectItem value="" disabled>
+                              Loading available rooms...
+                            </SelectItem>
+                          ) : roomsError ? (
+                            <SelectItem value="" disabled>
+                              Error loading rooms
+                            </SelectItem>
+                          ) : availableRooms && availableRooms.length > 0 ? (
                             availableRooms.map((availableRoom: any) => (
                               <SelectItem
                                 key={availableRoom.id}
@@ -510,6 +542,11 @@ export default function MultiRoomModal({
                           )}
                         </SelectContent>
                       </Select>
+                      {availableRooms && (
+                        <div className="text-xs text-gray-500 mt-1">
+                          {availableRooms.length} room(s) available
+                        </div>
+                      )}
                     </div>
                     <div>
                       <Label>Check-In Date *</Label>
