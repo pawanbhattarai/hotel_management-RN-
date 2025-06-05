@@ -92,13 +92,19 @@ export default function MultiRoomModal({
   });
 
   const { data: availableRooms } = useQuery({
-    queryKey: ["/api/rooms/availability", selectedBranchId || user?.branchId],
+    queryKey: ["/api/rooms", selectedBranchId || user?.branchId, "available"],
     queryFn: async () => {
       const branchId = user?.role === "superadmin" ? selectedBranchId : user?.branchId;
-      if (!branchId) return [];
+      if (!branchId) {
+        console.log("No branchId available for fetching rooms");
+        return [];
+      }
       
+      console.log("Fetching available rooms for branch:", branchId);
       const response = await apiRequest("GET", `/api/rooms?branchId=${branchId}&status=available`);
-      return await response.json();
+      const rooms = await response.json();
+      console.log("Available rooms fetched:", rooms);
+      return rooms;
     },
     enabled: isOpen && !!user && !!(selectedBranchId || user?.branchId),
   });
@@ -114,7 +120,7 @@ export default function MultiRoomModal({
       });
       queryClient.invalidateQueries({ queryKey: ["/api/reservations"] });
       queryClient.invalidateQueries({ queryKey: ["/api/rooms"] });
-      queryClient.invalidateQueries({ queryKey: ["/api/rooms/availability"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/dashboard/metrics"] });
       onClose();
       resetForm();
     },
@@ -487,15 +493,21 @@ export default function MultiRoomModal({
                           <SelectValue placeholder="Select available room" />
                         </SelectTrigger>
                         <SelectContent>
-                          {availableRooms?.map((availableRoom: any) => (
-                            <SelectItem
-                              key={availableRoom.id}
-                              value={availableRoom.id.toString()}
-                            >
-                              Room {availableRoom.number} - {availableRoom.roomType.name} - Rs.
-                              {parseFloat(availableRoom.roomType.basePrice).toFixed(2)}/night
+                          {availableRooms && availableRooms.length > 0 ? (
+                            availableRooms.map((availableRoom: any) => (
+                              <SelectItem
+                                key={availableRoom.id}
+                                value={availableRoom.id.toString()}
+                              >
+                                Room {availableRoom.number} - {availableRoom.roomType.name} - Rs.
+                                {parseFloat(availableRoom.roomType.basePrice).toFixed(2)}/night
+                              </SelectItem>
+                            ))
+                          ) : (
+                            <SelectItem value="" disabled>
+                              No available rooms found
                             </SelectItem>
-                          ))}
+                          )}
                         </SelectContent>
                       </Select>
                     </div>
