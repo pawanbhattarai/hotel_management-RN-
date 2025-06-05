@@ -1,3 +1,4 @@
+
 import { useState, useEffect } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { Plus, Edit, SquareStack, Trash2 } from "lucide-react";
@@ -13,7 +14,7 @@ import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 import { useToast } from "@/hooks/use-toast";
-import { apiRequest, queryClient } from "@/lib/queryClient";
+import { queryClient } from "@/lib/queryClient";
 import { insertRoomTypeSchema, type RoomType, type Branch } from "@shared/schema";
 import Header from "@/components/layout/header";
 import Sidebar from "@/components/layout/sidebar";
@@ -43,8 +44,23 @@ export default function RoomTypes() {
   });
 
   const createMutation = useMutation({
-    mutationFn: (data: any) =>
-      apiRequest("/api/room-types", "POST", data),
+    mutationFn: async (data: any) => {
+      const response = await fetch("/api/room-types", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify(data),
+        credentials: "include",
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.message || "Failed to create room type");
+      }
+
+      return response.json();
+    },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/room-types"] });
       setIsCreateOpen(false);
@@ -59,8 +75,23 @@ export default function RoomTypes() {
   });
 
   const updateMutation = useMutation({
-    mutationFn: ({ id, data }: { id: number; data: any }) =>
-      apiRequest(`/api/room-types/${id}`, "PATCH", data),
+    mutationFn: async ({ id, data }: { id: number; data: any }) => {
+      const response = await fetch(`/api/room-types/${id}`, {
+        method: "PATCH",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify(data),
+        credentials: "include",
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.message || "Failed to update room type");
+      }
+
+      return response.json();
+    },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/room-types"] });
       setEditingRoomType(null);
@@ -75,8 +106,22 @@ export default function RoomTypes() {
   });
 
   const deleteMutation = useMutation({
-    mutationFn: (id: number) =>
-      apiRequest(`/api/room-types/${id}`, "DELETE"),
+    mutationFn: async (id: number) => {
+      const response = await fetch(`/api/room-types/${id}`, {
+        method: "DELETE",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        credentials: "include",
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.message || "Failed to delete room type");
+      }
+
+      return response.status === 204 ? null : response.json();
+    },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/room-types"] });
       toast({ title: "Room type deleted successfully" });
@@ -339,7 +384,7 @@ export default function RoomTypes() {
                         type="submit"
                         disabled={createMutation.isPending || updateMutation.isPending}
                       >
-                        {editingRoomType ? "Update" : "Create"}
+                        {createMutation.isPending || updateMutation.isPending ? "Saving..." : (editingRoomType ? "Update" : "Create")}
                       </Button>
                     </div>
                   </form>
