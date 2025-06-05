@@ -9,7 +9,8 @@ import {
   UserCheck, 
   TrendingUp,
   LogOut,
-  Hotel
+  Hotel,
+  SquareStack
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 
@@ -48,6 +49,12 @@ export default function Sidebar() {
       icon: Bed,
       path: "/rooms",
       roles: ["superadmin", "branch-admin", "front-desk"],
+    },
+    {
+      title: "Room Types",
+      icon: SquareStack,
+      path: "/room-types",
+      roles: ["superadmin", "branch-admin"],
     },
     {
       title: "Guest Management",

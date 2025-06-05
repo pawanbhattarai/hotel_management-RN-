@@ -12,6 +12,7 @@ import Rooms from "@/pages/rooms";
 import Guests from "@/pages/guests";
 import Branches from "@/pages/branches";
 import Users from "@/pages/users";
+import RoomTypes from "@/pages/room-types";
 
 function Router() {
   const { isAuthenticated, isLoading } = useAuth();
@@ -25,6 +26,7 @@ function Router() {
           <Route path="/" component={Dashboard} />
           <Route path="/reservations" component={Reservations} />
           <Route path="/rooms" component={Rooms} />
+          <Route path="/room-types" component={RoomTypes} />
           <Route path="/guests" component={Guests} />
           <Route path="/branches" component={Branches} />
           <Route path="/users" component={Users} />
