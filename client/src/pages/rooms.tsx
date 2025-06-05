@@ -49,7 +49,11 @@ export default function Rooms() {
       const response = await fetch("/api/rooms", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(roomData),
+        body: JSON.stringify({
+          ...roomData,
+          roomTypeId: parseInt(roomData.roomTypeId),
+          branchId: parseInt(roomData.branchId),
+        }),
       });
       if (!response.ok) throw new Error("Failed to create room");
       return response.json();
