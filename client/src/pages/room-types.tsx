@@ -20,8 +20,13 @@ import Header from "@/components/layout/header";
 import Sidebar from "@/components/layout/sidebar";
 import { useAuth } from "@/hooks/useAuth";
 
-const roomTypeFormSchema = insertRoomTypeSchema.extend({
-  basePrice: z.string().min(1, "Base price is required"),
+const roomTypeFormSchema = z.object({
+  name: z.string().min(1, "Name is required"),
+  description: z.string().optional(),
+  basePrice: z.string().min(1, "Base price is required").refine((val) => !isNaN(parseFloat(val)), {
+    message: "Base price must be a valid number",
+  }),
+  maxOccupancy: z.number().min(1, "Max occupancy must be at least 1"),
   branchId: z.number().nullable().optional(),
 });
 
