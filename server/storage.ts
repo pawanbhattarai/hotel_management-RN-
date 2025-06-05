@@ -180,11 +180,23 @@ export class DatabaseStorage implements IStorage {
 
   // Room type operations
   async getRoomTypes(branchId?: number): Promise<RoomType[]> {
-    let query = db.select().from(roomTypes).where(eq(roomTypes.isActive, true));
     if (branchId) {
-      query = db.select().from(roomTypes).where(and(eq(roomTypes.isActive, true), eq(roomTypes.branchId, branchId)));
+      // For specific branch, return both branch-specific and unassigned room types
+      return await db.select().from(roomTypes)
+        .where(and(
+          eq(roomTypes.isActive, true),
+          or(
+            eq(roomTypes.branchId, branchId),
+            sql`${roomTypes.branchId} IS NULL`
+          )
+        ))
+        .orderBy(roomTypes.name);
+    } else {
+      // For superadmin, return all active room types
+      return await db.select().from(roomTypes)
+        .where(eq(roomTypes.isActive, true))
+        .orderBy(roomTypes.name);
     }
-    return await query.orderBy(roomTypes.name);
   }
 
   async getRoomType(id: number): Promise<RoomType | undefined> {

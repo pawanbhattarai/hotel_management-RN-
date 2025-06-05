@@ -21,7 +21,7 @@ import { useAuth } from "@/hooks/useAuth";
 
 const roomTypeFormSchema = insertRoomTypeSchema.extend({
   basePrice: z.string().min(1, "Base price is required"),
-  branchId: z.number().optional(),
+  branchId: z.number().nullable().optional(),
 });
 
 type RoomTypeFormData = z.infer<typeof roomTypeFormSchema>;
@@ -47,6 +47,7 @@ export default function RoomTypes() {
       apiRequest("/api/room-types", "POST", {
         ...data,
         basePrice: parseFloat(data.basePrice),
+        branchId: data.branchId || null,
       }),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/room-types"] });
@@ -54,9 +55,10 @@ export default function RoomTypes() {
       form.reset();
       toast({ title: "Room type created successfully" });
     },
-    onError: (error) => {
+    onError: (error: any) => {
       console.error("Create room type error:", error);
-      toast({ title: "Failed to create room type", variant: "destructive" });
+      const errorMessage = error?.message || "Failed to create room type";
+      toast({ title: errorMessage, variant: "destructive" });
     },
   });
 
@@ -65,6 +67,7 @@ export default function RoomTypes() {
       apiRequest(`/api/room-types/${id}`, "PATCH", {
         ...data,
         basePrice: parseFloat(data.basePrice),
+        branchId: data.branchId || null,
       }),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/room-types"] });
@@ -72,9 +75,10 @@ export default function RoomTypes() {
       form.reset();
       toast({ title: "Room type updated successfully" });
     },
-    onError: (error) => {
+    onError: (error: any) => {
       console.error("Update room type error:", error);
-      toast({ title: "Failed to update room type", variant: "destructive" });
+      const errorMessage = error?.message || "Failed to update room type";
+      toast({ title: errorMessage, variant: "destructive" });
     },
   });
 
@@ -85,14 +89,17 @@ export default function RoomTypes() {
       description: "",
       basePrice: "",
       maxOccupancy: 1,
-      branchId: undefined,
+      branchId: null,
     },
   });
 
   const onSubmit = (data: RoomTypeFormData) => {
+    console.log("Form submitted with data:", data);
     if (editingRoomType) {
+      console.log("Updating room type:", editingRoomType.id);
       updateMutation.mutate({ id: editingRoomType.id, data });
     } else {
+      console.log("Creating new room type");
       createMutation.mutate(data);
     }
   };
@@ -104,7 +111,7 @@ export default function RoomTypes() {
       description: roomType.description || "",
       basePrice: roomType.basePrice.toString(),
       maxOccupancy: roomType.maxOccupancy,
-      branchId: roomType.branchId,
+      branchId: roomType.branchId || null,
     });
   };
 
@@ -116,7 +123,7 @@ export default function RoomTypes() {
       description: "",
       basePrice: "",
       maxOccupancy: 1,
-      branchId: undefined,
+      branchId: null,
     });
   };
 
@@ -280,7 +287,7 @@ export default function RoomTypes() {
                         <FormItem>
                           <FormLabel>Branch</FormLabel>
                           <Select
-                            onValueChange={(value) => field.onChange(value === "unassigned" ? undefined : parseInt(value))}
+                            onValueChange={(value) => field.onChange(value === "unassigned" ? null : parseInt(value))}
                             value={field.value ? field.value.toString() : "unassigned"}
                           >
                             <FormControl>
