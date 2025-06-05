@@ -54,7 +54,7 @@ export default function Sidebar() {
       title: "Room Types",
       icon: SquareStack,
       path: "/room-types",
-      roles: ["superadmin", "branch-admin"],
+      roles: ["superadmin"],
     },
     {
       title: "Guest Management",

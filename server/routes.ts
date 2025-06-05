@@ -401,25 +401,33 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.post("/api/room-types", isAuthenticated, async (req: any, res) => {
     try {
       const user = await storage.getUser(req.session.user.id);
-      if (!user || !["superadmin", "branch-admin"].includes(user.role)) {
-        return res.status(403).json({ message: "Insufficient permissions" });
+      if (!user || user.role !== "superadmin") {
+        return res.status(403).json({ message: "Insufficient permissions. Only superadmin can create room types." });
       }
 
       const roomTypeData = insertRoomTypeSchema.parse(req.body);
-
-      if (
-        !checkBranchPermissions(user.role, user.branchId, roomTypeData.branchId)
-      ) {
-        return res
-          .status(403)
-          .json({ message: "Insufficient permissions for this branch" });
-      }
-
       const roomType = await storage.createRoomType(roomTypeData);
       res.status(201).json(roomType);
     } catch (error) {
       console.error("Error creating room type:", error);
       res.status(500).json({ message: "Failed to create room type" });
+    }
+  });
+
+  app.patch("/api/room-types/:id", isAuthenticated, async (req: any, res) => {
+    try {
+      const user = await storage.getUser(req.session.user.id);
+      if (!user || user.role !== "superadmin") {
+        return res.status(403).json({ message: "Insufficient permissions. Only superadmin can update room types." });
+      }
+
+      const roomTypeId = parseInt(req.params.id);
+      const roomTypeData = insertRoomTypeSchema.partial().parse(req.body);
+      const roomType = await storage.updateRoomType(roomTypeId, roomTypeData);
+      res.json(roomType);
+    } catch (error) {
+      console.error("Error updating room type:", error);
+      res.status(500).json({ message: "Failed to update room type" });
     }
   });
 

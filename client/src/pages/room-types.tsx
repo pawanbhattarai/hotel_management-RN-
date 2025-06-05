@@ -135,7 +135,19 @@ export default function RoomTypes() {
       }, 500);
       return;
     }
-  }, [isAuthenticated, authLoading, toast]);
+    
+    if (!authLoading && isAuthenticated && user && user.role !== "superadmin") {
+      toast({
+        title: "Access Denied",
+        description: "Only superadmin can access room types management.",
+        variant: "destructive",
+      });
+      setTimeout(() => {
+        window.location.href = "/";
+      }, 500);
+      return;
+    }
+  }, [isAuthenticated, authLoading, user, toast]);
 
   if (authLoading) {
     return (
