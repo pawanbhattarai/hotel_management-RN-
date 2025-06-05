@@ -64,7 +64,7 @@ export const roomTypes = pgTable("room_types", {
   basePrice: decimal("base_price", { precision: 10, scale: 2 }).notNull(),
   maxOccupancy: integer("max_occupancy").notNull(),
   amenities: jsonb("amenities"),
-  branchId: integer("branch_id").notNull(),
+  branchId: integer("branch_id"),
   isActive: boolean("is_active").default(true),
   createdAt: timestamp("created_at").defaultNow(),
 });

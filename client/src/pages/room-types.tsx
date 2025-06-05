@@ -21,6 +21,7 @@ import { useAuth } from "@/hooks/useAuth";
 
 const roomTypeFormSchema = insertRoomTypeSchema.extend({
   basePrice: z.string().min(1, "Base price is required"),
+  branchId: z.number().optional(),
 });
 
 type RoomTypeFormData = z.infer<typeof roomTypeFormSchema>;
@@ -119,7 +120,8 @@ export default function RoomTypes() {
     });
   };
 
-  const getBranchName = (branchId: number) => {
+  const getBranchName = (branchId: number | null) => {
+    if (!branchId) return "All Branches";
     return branches?.find(b => b.id === branchId)?.name || "Unknown Branch";
   };
 
@@ -278,8 +280,8 @@ export default function RoomTypes() {
                         <FormItem>
                           <FormLabel>Branch</FormLabel>
                           <Select
-                            onValueChange={(value) => field.onChange(parseInt(value))}
-                            value={field.value?.toString()}
+                            onValueChange={(value) => field.onChange(value === "unassigned" ? undefined : parseInt(value))}
+                            value={field.value ? field.value.toString() : "unassigned"}
                           >
                             <FormControl>
                               <SelectTrigger>
@@ -287,6 +289,9 @@ export default function RoomTypes() {
                               </SelectTrigger>
                             </FormControl>
                             <SelectContent>
+                              <SelectItem value="unassigned">
+                                All Branches (Unassigned)
+                              </SelectItem>
                               {branches?.map((branch) => (
                                 <SelectItem key={branch.id} value={branch.id.toString()}>
                                   {branch.name}
