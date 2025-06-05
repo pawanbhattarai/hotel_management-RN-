@@ -431,6 +431,22 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  app.delete("/api/room-types/:id", isAuthenticated, async (req: any, res) => {
+    try {
+      const user = await storage.getUser(req.session.user.id);
+      if (!user || user.role !== "superadmin") {
+        return res.status(403).json({ message: "Insufficient permissions. Only superadmin can delete room types." });
+      }
+
+      const roomTypeId = parseInt(req.params.id);
+      await storage.updateRoomType(roomTypeId, { isActive: false });
+      res.status(204).send();
+    } catch (error) {
+      console.error("Error deleting room type:", error);
+      res.status(500).json({ message: "Failed to delete room type" });
+    }
+  });
+
   // Guest routes
   app.get("/api/guests", isAuthenticated, async (req: any, res) => {
     try {
