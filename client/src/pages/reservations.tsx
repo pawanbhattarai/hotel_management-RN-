@@ -114,7 +114,7 @@ export default function Reservations() {
               <Plus className="h-4 w-4 mr-2" />
               New Reservation
             </Button>
-          </div></main>
+          </div>
           <Card>
             <CardHeader>
               <CardTitle>All Reservations</CardTitle>
