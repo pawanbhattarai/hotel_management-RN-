@@ -188,56 +188,56 @@ export default function Sidebar() {
         </div>
 
         {/* Navigation */}
-      <nav className="flex-1 p-4">
-        <div className="space-y-2">
-          {menuItems.map(renderMenuItem)}
+        <nav className="flex-1 p-4">
+          <div className="space-y-2">
+            {menuItems.map(renderMenuItem)}
 
-          {/* Admin Section */}
-          {user && (user.role === "superadmin") && (
-            <div className="border-t border-gray-200 pt-4 mt-4">
-              <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-2 px-4">
-                ADMIN
-              </p>
-              {adminMenuItems.map(renderMenuItem)}
-            </div>
-          )}
+            {/* Admin Section */}
+            {user && (user as any).role === "superadmin" && (
+              <div className="border-t border-gray-200 pt-4 mt-4">
+                <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-2 px-4">
+                  ADMIN
+                </p>
+                {adminMenuItems.map(renderMenuItem)}
+              </div>
+            )}
 
-          {/* Reports Section */}
-          {user && ["superadmin", "branch-admin"].includes(user.role) && (
-            <div className="border-t border-gray-200 pt-4 mt-4">
-              <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-2 px-4">
-                REPORTS
-              </p>
-              {reportsMenuItems.map(renderMenuItem)}
-            </div>
-          )}
-        </div>
-      </nav>
-
-      {/* Footer */}
-      <div className="p-4 border-t border-gray-200">
-        <div className="flex items-center">
-          <div className="w-8 h-8 bg-gray-300 rounded-full flex items-center justify-center">
-            <Users className="h-4 w-4 text-gray-600" />
+            {/* Reports Section */}
+            {user && ["superadmin", "branch-admin"].includes((user as any).role) && (
+              <div className="border-t border-gray-200 pt-4 mt-4">
+                <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-2 px-4">
+                  REPORTS
+                </p>
+                {reportsMenuItems.map(renderMenuItem)}
+              </div>
+            )}
           </div>
-          <div className="ml-3 flex-1">
-            <p className="text-sm font-medium text-gray-900">
-              {user ? `${user.firstName || "User"} ${user.lastName || ""}`.trim() : "Loading..."}
-            </p>
-            <p className="text-xs text-gray-600">
-              {user?.email || "Loading..."}
-            </p>
+        </nav>
+
+        {/* Footer */}
+        <div className="p-4 border-t border-gray-200">
+          <div className="flex items-center">
+            <div className="w-8 h-8 bg-gray-300 rounded-full flex items-center justify-center">
+              <Users className="h-4 w-4 text-gray-600" />
+            </div>
+            <div className="ml-3 flex-1">
+              <p className="text-sm font-medium text-gray-900">
+                {user ? `${(user as any).firstName || "User"} ${(user as any).lastName || ""}`.trim() : "Loading..."}
+              </p>
+              <p className="text-xs text-gray-600">
+                {(user as any)?.email || "Loading..."}
+              </p>
+            </div>
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={handleLogout}
+              className="text-gray-400 hover:text-gray-600"
+            >
+              <LogOut className="h-4 w-4" />
+            </Button>
           </div>
-          <Button
-            variant="ghost"
-            size="sm"
-            onClick={handleLogout}
-            className="text-gray-400 hover:text-gray-600"
-          >
-            <LogOut className="h-4 w-4" />
-          </Button>
         </div>
-      </div>
       </div>
     </>
   );
