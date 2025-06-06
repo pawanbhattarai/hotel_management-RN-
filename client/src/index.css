@@ -7,12 +7,12 @@
   .mobile-optimized {
     padding: 0.5rem;
   }
-  
+
   .mobile-compact {
     font-size: 0.875rem;
     line-height: 1.25rem;
   }
-  
+
   /* Ensure tables are horizontally scrollable on mobile */
   .table-container {
     overflow-x: auto;
@@ -25,11 +25,11 @@
   .main-content {
     padding-left: 0;
   }
-  
+
   .main-content.with-mobile-button {
     padding-top: 1rem;
   }
-  
+
   /* Add left margin to main content on mobile to accommodate menu button */
   main {
     margin-left: 0;
@@ -97,7 +97,7 @@ body {
   --destructive-foreground: 60 9.1% 97.8%;
   --ring: 20 14.3% 4.1%;
   --radius: 0.5rem;
-  
+
   /* Custom colors for hotel PMS */
   --success: 123 46% 34%; /* #4CAF50 */
   --success-foreground: 0 0% 100%;
@@ -128,7 +128,7 @@ body {
   --destructive-foreground: 0 0% 98%;
   --ring: 240 4.9% 83.9%;
   --radius: 0.5rem;
-  
+
   /* Dark mode custom colors */
   --success: 123 46% 34%;
   --success-foreground: 0 0% 100%;
@@ -154,53 +154,68 @@ body {
   .text-success {
     color: hsl(var(--success));
   }
-  
+
   .text-success-foreground {
     color: hsl(var(--success-foreground));
   }
-  
+
   .bg-success {
     background-color: hsl(var(--success));
   }
-  
+
   .bg-success-50 {
     background-color: hsl(123 46% 94%);
   }
-  
+
   .text-warning {
     color: hsl(var(--warning));
   }
-  
+
   .text-warning-foreground {
     color: hsl(var(--warning-foreground));
   }
-  
+
   .bg-warning {
     background-color: hsl(var(--warning));
   }
-  
+
   .bg-warning-50 {
     background-color: hsl(36 100% 95%);
   }
-  
+
   .text-error {
     color: hsl(var(--error));
   }
-  
+
   .text-error-foreground {
     color: hsl(var(--error-foreground));
   }
-  
+
   .bg-error {
     background-color: hsl(var(--error));
   }
-  
+
   .bg-error-50 {
     background-color: hsl(4 90% 96%);
   }
-  
+
   .w-280 {
     width: 280px;
+  }
+
+  .bg-sidebar {
+    background: rgb(9, 9, 11);
+  }
+
+  .text-sidebar-foreground {
+    color: rgb(250, 250, 250);
+  }
+
+  .line-clamp-2 {
+    overflow: hidden;
+    display: -webkit-box;
+    -webkit-box-orient: vertical;
+    -webkit-line-clamp: 2;
   }
 }
 

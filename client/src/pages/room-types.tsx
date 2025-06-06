@@ -265,26 +265,29 @@ export default function RoomTypes() {
   return (
     <div className="flex h-screen bg-gray-50">
       <Sidebar />
-      <div className="flex-1 p-8">
-        <Header
-          title="Room Types"
-          subtitle="Manage room categories and pricing"
-          action={
-            <Dialog open={isCreateOpen || !!editingRoomType} onOpenChange={handleCloseDialog}>
-              <DialogTrigger asChild>
-                <Button 
-                  onClick={() => {
-                    console.log("Add Room Type button clicked");
-                    setIsCreateOpen(true);
-                  }}
-                >
-                  <Plus className="h-4 w-4 mr-2" />
-                  Add Room Type
-                </Button>
-              </DialogTrigger>
-              <DialogContent className="sm:max-w-[425px]">
+      <div className="flex-1 flex flex-col min-w-0">
+        <div className="flex-1 overflow-auto p-4 md:p-8">
+          <Header
+            title="Room Types"
+            subtitle="Manage room categories and pricing"
+            action={
+              <Dialog open={isCreateOpen || !!editingRoomType} onOpenChange={handleCloseDialog}>
+                <DialogTrigger asChild>
+                  <Button 
+                    onClick={() => {
+                      console.log("Add Room Type button clicked");
+                      setIsCreateOpen(true);
+                    }}
+                    className="w-full sm:w-auto"
+                  >
+                    <Plus className="h-4 w-4 mr-2" />
+                    <span className="hidden sm:inline">Add Room Type</span>
+                    <span className="sm:hidden">Add</span>
+                  </Button>
+                </DialogTrigger>
+              <DialogContent className="sm:max-w-[425px] mx-4 max-h-[90vh] overflow-y-auto">
                 <DialogHeader>
-                  <DialogTitle>
+                  <DialogTitle className="text-lg">
                     {editingRoomType ? "Edit Room Type" : "Create Room Type"}
                   </DialogTitle>
                 </DialogHeader>
@@ -389,7 +392,7 @@ export default function RoomTypes() {
                         </FormItem>
                       )}
                     />
-                    <div className="flex justify-end space-x-2 pt-4">
+                    <div className="flex flex-col sm:flex-row justify-end gap-2 pt-4">
                       <Button type="button" variant="outline" onClick={() => handleCloseDialog(false)}>
                         Cancel
                       </Button>
@@ -407,13 +410,13 @@ export default function RoomTypes() {
           }
         />
 
-        <div className="mt-8">
+        <div className="mt-6 md:mt-8">
           {!roomTypes || roomTypes.length === 0 ? (
             <Card>
-              <CardContent className="flex flex-col items-center justify-center py-12">
-                <SquareStack className="h-12 w-12 text-gray-400 mb-4" />
-                <h3 className="text-lg font-medium text-gray-900 mb-2">No room types found</h3>
-                <p className="text-gray-600 text-center mb-4">
+              <CardContent className="flex flex-col items-center justify-center py-8 md:py-12 px-4">
+                <SquareStack className="h-10 w-10 md:h-12 md:w-12 text-gray-400 mb-4" />
+                <h3 className="text-base md:text-lg font-medium text-gray-900 mb-2 text-center">No room types found</h3>
+                <p className="text-sm md:text-base text-gray-600 text-center mb-4 max-w-sm">
                   Create your first room type to start managing rooms
                 </p>
                 <Button 
@@ -421,6 +424,7 @@ export default function RoomTypes() {
                     console.log("Create Room Type button clicked (empty state)");
                     setIsCreateOpen(true);
                   }}
+                  className="w-full sm:w-auto"
                 >
                   <Plus className="h-4 w-4 mr-2" />
                   Create Room Type
@@ -428,32 +432,35 @@ export default function RoomTypes() {
               </CardContent>
             </Card>
           ) : (
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4 md:gap-6">
               {roomTypes.map((roomType) => (
                 <Card key={roomType.id} className="hover:shadow-lg transition-shadow">
                   <CardHeader className="pb-3">
-                    <div className="flex items-start justify-between">
-                      <div>
-                        <CardTitle className="text-lg">{roomType.name}</CardTitle>
-                        <Badge variant="secondary" className="mt-1">
+                    <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-2">
+                      <div className="flex-1 min-w-0">
+                        <CardTitle className="text-base md:text-lg truncate">{roomType.name}</CardTitle>
+                        <Badge variant="secondary" className="mt-1 text-xs">
                           {getBranchName(roomType.branchId)}
                         </Badge>
                       </div>
-                      <div className="flex gap-1">
+                      <div className="flex gap-1 shrink-0">
                         <Button
                           variant="ghost"
                           size="sm"
                           onClick={() => handleEdit(roomType)}
+                          className="p-2"
                         >
                           <Edit className="h-4 w-4" />
+                          <span className="sr-only">Edit</span>
                         </Button>
                         <Button
                           variant="ghost"
                           size="sm"
                           onClick={() => handleDelete(roomType)}
-                          className="text-red-600 hover:text-red-700 hover:bg-red-50"
+                          className="text-red-600 hover:text-red-700 hover:bg-red-50 p-2"
                         >
                           <Trash2 className="h-4 w-4" />
+                          <span className="sr-only">Delete</span>
                         </Button>
                       </div>
                     </div>
@@ -461,15 +468,15 @@ export default function RoomTypes() {
                   <CardContent>
                     <div className="space-y-3">
                       {roomType.description && (
-                        <p className="text-sm text-gray-600">{roomType.description}</p>
+                        <p className="text-sm text-gray-600 line-clamp-2">{roomType.description}</p>
                       )}
-                      <div className="flex justify-between items-center">
+                      <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-2">
                         <span className="text-sm font-medium">Base Price:</span>
                         <span className="text-lg font-bold text-primary">
                           ${roomType.basePrice}/night
                         </span>
                       </div>
-                      <div className="flex justify-between items-center">
+                      <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-2">
                         <span className="text-sm font-medium">Max Occupancy:</span>
                         <span className="text-sm">{roomType.maxOccupancy} guests</span>
                       </div>
@@ -479,6 +486,7 @@ export default function RoomTypes() {
               ))}
             </div>
           )}
+        </div>
         </div>
       </div>
     </div>
