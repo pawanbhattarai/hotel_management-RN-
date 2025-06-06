@@ -330,6 +330,14 @@ export class DatabaseStorage implements IStorage {
 
       await tx.insert(reservationRooms).values(roomsWithReservationId);
 
+      // Update guest reservation count
+      await tx
+        .update(guests)
+        .set({ 
+          reservationCount: sql`${guests.reservationCount} + 1`
+        })
+        .where(eq(guests.id, reservation.guestId));
+
       return newReservation;
     });
   }

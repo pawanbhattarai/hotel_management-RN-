@@ -558,7 +558,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   const createReservationSchema = z.object({
-    reservation: insertReservationSchema,
+    guest: insertGuestSchema,
+    reservation: insertReservationSchema.omit({ guestId: true }),
     rooms: z.array(insertReservationRoomSchema),
   });
 
@@ -567,7 +568,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const user = await storage.getUser(req.session.user.id);
       if (!user) return res.status(401).json({ message: "User not found" });
 
-      const { reservation: reservationData, rooms: roomsData } =
+      const { guest: guestData, reservation: reservationData, rooms: roomsData } =
         createReservationSchema.parse(req.body);
 
       if (
@@ -582,10 +583,28 @@ export async function registerRoutes(app: Express): Promise<Server> {
           .json({ message: "Insufficient permissions for this branch" });
       }
 
+      // Check if guest already exists by phone number
+      let guest;
+      if (guestData.phone) {
+        const existingGuests = await storage.searchGuests(guestData.phone);
+        if (existingGuests.length > 0) {
+          guest = existingGuests[0];
+        }
+      }
+
+      // Create new guest if not found
+      if (!guest) {
+        guest = await storage.createGuest({
+          ...guestData,
+          branchId: reservationData.branchId,
+        });
+      }
+
       // Generate confirmation number
       const confirmationNumber = `RES${Date.now().toString().slice(-8)}`;
       const reservationWithConfirmation = {
         ...reservationData,
+        guestId: guest.id,
         confirmationNumber,
         createdById: user.id,
       };
@@ -595,9 +614,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
         roomsData,
       );
 
-      // Update room status to occupied
+      // Update room status to reserved
       for (const roomData of roomsData) {
-        await storage.updateRoom(roomData.roomId, { status: "occupied" });
+        await storage.updateRoom(roomData.roomId, { status: "reserved" });
       }
 
       res.status(201).json(reservation);

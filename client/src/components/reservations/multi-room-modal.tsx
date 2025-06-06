@@ -31,7 +31,7 @@ interface MultiRoomModalProps {
 }
 
 interface RoomData {
-  roomTypeId: string;
+  roomId: string;
   checkInDate: string;
   checkOutDate: string;
   adults: number;
@@ -351,44 +351,31 @@ export default function MultiRoomModal({
 
     const summary = calculateSummary();
 
-    try {
-      // First create guest, then create reservation
-      const guestResponse = await apiRequest("POST", "/api/guests", {
+    const reservationData = {
+      guest: {
         ...guestData,
         branchId: branchId,
-      });
+      },
+      reservation: {
+        branchId: branchId,
+        status: "confirmed",
+        totalAmount: summary.total.toString(),
+        paidAmount: "0",
+        notes: "",
+      },
+      rooms: rooms.map((room) => ({
+        roomId: parseInt(room.roomTypeId),
+        checkInDate: room.checkInDate,
+        checkOutDate: room.checkOutDate,
+        adults: room.adults,
+        children: room.children,
+        ratePerNight: room.ratePerNight.toString(),
+        totalAmount: room.totalAmount.toString(),
+        specialRequests: room.specialRequests,
+      })),
+    };
 
-      const guest = await guestResponse.json();
-
-      const reservationData = {
-        reservation: {
-          guestId: guest.id,
-          branchId: branchId,
-          status: "confirmed",
-          totalAmount: summary.total.toString(),
-          paidAmount: "0",
-          notes: "",
-        },
-        rooms: rooms.map((room) => ({
-          roomId: parseInt(room.roomTypeId),
-          checkInDate: room.checkInDate,
-          checkOutDate: room.checkOutDate,
-          adults: room.adults,
-          children: room.children,
-          ratePerNight: room.ratePerNight.toString(),
-          totalAmount: room.totalAmount.toString(),
-          specialRequests: room.specialRequests,
-        })),
-      };
-
-      createReservationMutation.mutate(reservationData);
-    } catch (error) {
-      toast({
-        title: "Error",
-        description: "Failed to create guest. Please try again.",
-        variant: "destructive",
-      });
-    }
+    createReservationMutation.mutate(reservationData);
   };
 
   const summary = calculateSummary();
@@ -481,8 +468,8 @@ export default function MultiRoomModal({
                       const phone = e.target.value;
                       setGuestData({ ...guestData, phone });
                       // Search for existing guest after user stops typing
-                      clearTimeout(window.guestSearchTimeout);
-                      window.guestSearchTimeout = setTimeout(() => {
+                      clearTimeout((window as any).guestSearchTimeout);
+                      (window as any).guestSearchTimeout = setTimeout(() => {
                         searchGuestByPhone(phone);
                       }, 500);
                     }}
