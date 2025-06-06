@@ -34,7 +34,7 @@ function checkBranchPermissions(
 export async function registerRoutes(app: Express): Promise<Server> {
   // Import session with ES6 syntax
   const session = (await import('express-session')).default;
-  
+
   // Auth middleware for session handling
   app.use(session({
     secret: process.env.SESSION_SECRET || 'your-secret-key',
@@ -59,14 +59,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.post("/api/auth/login", async (req: any, res) => {
     try {
       const { email, password } = req.body;
-      
+
       if (!email || !password) {
         return res.status(400).json({ message: "Email and password are required" });
       }
 
       // Get user by email
       const user = await storage.getUserByEmail(email);
-      
+
       if (!user || !user.isActive) {
         return res.status(401).json({ message: "Invalid credentials" });
       }
@@ -458,7 +458,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       if (!user) return res.status(401).json({ message: "User not found" });
 
       const { phone } = req.query;
-      
+
       if (phone) {
         // Search guest by phone number
         const branchId = user.role === "superadmin" ? undefined : user.branchId!;
@@ -713,17 +713,22 @@ export async function registerRoutes(app: Express): Promise<Server> {
           .json({ message: "Insufficient permissions for this branch" });
       }
 
-      const reservationData = insertReservationSchema.partial().parse(req.body);
+      const bodyData = req.body;
+      // Convert paidAmount to string if it's a number
+      if (bodyData.paidAmount && typeof bodyData.paidAmount === 'number') {
+        bodyData.paidAmount = bodyData.paidAmount.toString();
+      }
+      const validatedData = insertReservationSchema.partial().parse(bodyData);
       const reservation = await storage.updateReservation(
         reservationId,
-        reservationData,
+        validatedData,
       );
 
       // Update room status based on reservation status
-      if (reservationData.status) {
+      if (validatedData.status) {
         for (const roomReservation of existingReservation.reservationRooms) {
           let newRoomStatus;
-          switch (reservationData.status) {
+          switch (validatedData.status) {
             case 'checked-in':
               newRoomStatus = 'occupied';
               break;

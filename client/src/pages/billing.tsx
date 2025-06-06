@@ -168,6 +168,7 @@ export default function Billing() {
     const discount = billData.discount || 0;
     const tax = billData.tax || 0;
     const finalTotal = subtotal + additionalCharges - discount + tax;
+    const isPaid = selectedReservation.status === 'checked-out';
 
     return `
       <!DOCTYPE html>
@@ -228,6 +229,9 @@ export default function Billing() {
           ${tax > 0 ? `<p>Tax: Rs.${tax.toFixed(2)}</p>` : ''}
           <p class="total-row">Total: Rs.${finalTotal.toFixed(2)}</p>
           <p><strong>Payment Method:</strong> ${billData.paymentMethod.toUpperCase()}</p>
+          <p style="color: ${isPaid ? 'green' : 'red'}; font-weight: bold; font-size: 1.2em;">
+            Payment Status: ${isPaid ? 'PAID' : 'NOT PAID'}
+          </p>
         </div>
 
         ${billData.notes ? `<div><p><strong>Notes:</strong> ${billData.notes}</p></div>` : ''}
@@ -388,7 +392,7 @@ export default function Billing() {
                                 variant="ghost" 
                                 size="sm"
                                 onClick={() => handleCreateBill(reservation)}
-                                disabled={reservation.status === 'checked-out'}
+                                title={reservation.status === 'checked-out' ? 'View paid bill' : 'Create bill'}
                               >
                                 <Receipt className="h-4 w-4" />
                               </Button>
@@ -418,7 +422,9 @@ export default function Billing() {
       <Dialog open={isBillModalOpen} onOpenChange={setIsBillModalOpen}>
         <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
           <DialogHeader>
-            <DialogTitle>Create Bill - {selectedReservation?.confirmationNumber}</DialogTitle>
+            <DialogTitle>
+              {selectedReservation?.status === 'checked-out' ? 'View Bill' : 'Create Bill'} - {selectedReservation?.confirmationNumber}
+            </DialogTitle>
           </DialogHeader>
           {selectedReservation && (
             <div className="space-y-6">
@@ -550,10 +556,17 @@ export default function Billing() {
                   <Printer className="h-4 w-4 mr-2" />
                   Print Bill
                 </Button>
-                <Button onClick={handleCheckout} disabled={checkoutMutation.isPending}>
-                  <CreditCard className="h-4 w-4 mr-2" />
-                  {checkoutMutation.isPending ? "Processing..." : "Checkout & Pay"}
-                </Button>
+                {selectedReservation?.status !== 'checked-out' && (
+                  <Button onClick={handleCheckout} disabled={checkoutMutation.isPending}>
+                    <CreditCard className="h-4 w-4 mr-2" />
+                    {checkoutMutation.isPending ? "Processing..." : "Checkout & Pay"}
+                  </Button>
+                )}
+                {selectedReservation?.status === 'checked-out' && (
+                  <div className="text-green-600 font-medium">
+                    ✓ Payment Completed
+                  </div>
+                )}
               </div>
             </div>
           )}
