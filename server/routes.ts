@@ -718,6 +718,28 @@ export async function registerRoutes(app: Express): Promise<Server> {
         reservationId,
         reservationData,
       );
+
+      // Update room status based on reservation status
+      if (reservationData.status) {
+        for (const roomReservation of existingReservation.reservationRooms) {
+          let newRoomStatus;
+          switch (reservationData.status) {
+            case 'checked-in':
+              newRoomStatus = 'occupied';
+              break;
+            case 'checked-out':
+              newRoomStatus = 'available';
+              break;
+            case 'cancelled':
+              newRoomStatus = 'available';
+              break;
+            default:
+              newRoomStatus = 'reserved';
+          }
+          await storage.updateRoom(roomReservation.roomId, { status: newRoomStatus });
+        }
+      }
+
       res.json(reservation);
     } catch (error) {
       console.error("Error updating reservation:", error);

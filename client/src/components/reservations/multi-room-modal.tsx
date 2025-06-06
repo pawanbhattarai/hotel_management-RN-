@@ -28,32 +28,11 @@ import { z } from "zod";
 interface MultiRoomModalProps {
   isOpen: boolean;
   onClose: () => void;
+  editData?: any;
+  isEdit?: boolean;
 }
 
-interface RoomData {
-  roomId: string;
-  checkInDate: string;
-  checkOutDate: string;
-  adults: number;
-  children: number;
-  specialRequests: string;
-  ratePerNight: number;
-  totalAmount: number;
-}
-
-interface GuestData {
-  firstName: string;
-  lastName: string;
-  email: string;
-  phone: string;
-  idType: string;
-  idNumber: string;
-}
-
-export default function MultiRoomModal({
-  isOpen,
-  onClose,
-}: MultiRoomModalProps) {
+export default function MultiRoomModal({ isOpen, onClose, editData, isEdit = false }: MultiRoomModalProps) {
   const { user } = useAuth();
   const { toast } = useToast();
   const queryClient = useQueryClient();
@@ -379,6 +358,52 @@ export default function MultiRoomModal({
   };
 
   const summary = calculateSummary();
+
+    // Initialize form with edit data
+    useEffect(() => {
+      if (isEdit && editData && isOpen) {
+        setGuestData({
+          firstName: editData.guest.firstName || "",
+          lastName: editData.guest.lastName || "",
+          email: editData.guest.email || "",
+          phone: editData.guest.phone || "",
+          idType: editData.guest.idType || "passport",
+          idNumber: editData.guest.idNumber || "",
+        });
+  
+      
+        setRooms(editData.reservationRooms.map((rr: any) => ({
+          roomTypeId: rr.room.id.toString(),
+          checkInDate: rr.checkInDate,
+          checkOutDate: rr.checkOutDate,
+          adults: rr.adults,
+          children: rr.children,
+          ratePerNight: parseFloat(rr.ratePerNight),
+          totalAmount: parseFloat(rr.totalAmount),
+          specialRequests: rr.specialRequests || "",
+        })));
+      } else if (!isEdit) {
+        // Reset form for new reservation
+        setGuestData({
+          firstName: "",
+          lastName: "",
+          email: "",
+          phone: "",
+          idType: "passport",
+          idNumber: "",
+        });
+        setRooms([{
+          roomTypeId: "",
+          checkInDate: "",
+          checkOutDate: "",
+          adults: 1,
+          children: 0,
+          ratePerNight: 0,
+          totalAmount: 0,
+          specialRequests: "",
+        }]);
+      }
+    }, [isEdit, editData, isOpen]);
 
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>

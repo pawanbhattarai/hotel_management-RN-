@@ -33,6 +33,7 @@ export default function Reservations() {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [isViewModalOpen, setIsViewModalOpen] = useState(false);
   const [isEditStatusModalOpen, setIsEditStatusModalOpen] = useState(false);
+  const [isEditModalOpen, setIsEditModalOpen] = useState(false);
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
   const [selectedReservation, setSelectedReservation] = useState<any>(null);
   const [newStatus, setNewStatus] = useState("");
@@ -185,6 +186,11 @@ export default function Reservations() {
     setSelectedReservation(reservation);
     setNewStatus(reservation.status);
     setIsEditStatusModalOpen(true);
+  };
+
+  const handleEditReservation = (reservation: any) => {
+    setSelectedReservation(reservation);
+    setIsEditModalOpen(true);
   };
 
   const handleDeleteReservation = (reservation: any) => {
@@ -349,7 +355,8 @@ export default function Reservations() {
                               <Button 
                                 variant="ghost" 
                                 size="sm"
-                                onClick={() => handleEditStatus(reservation)}
+                                onClick={() => handleEditReservation(reservation)}
+                                title="Edit Reservation"
                               >
                                 <Edit className="h-4 w-4" />
                               </Button>
@@ -387,6 +394,13 @@ export default function Reservations() {
       <MultiRoomModal
         isOpen={isModalOpen}
         onClose={() => setIsModalOpen(false)}
+      />
+
+      <MultiRoomModal
+        isOpen={isEditModalOpen}
+        onClose={() => setIsEditModalOpen(false)}
+        editData={selectedReservation}
+        isEdit={true}
       />
 
       {/* View Reservation Modal */}

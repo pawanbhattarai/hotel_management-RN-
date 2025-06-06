@@ -13,6 +13,7 @@ import Guests from "@/pages/guests";
 import Branches from "@/pages/branches";
 import Users from "@/pages/users";
 import RoomTypes from "@/pages/room-types";
+import Billing from "@/pages/billing";
 
 function Router() {
   const { isAuthenticated, isLoading } = useAuth();
@@ -30,6 +31,7 @@ function Router() {
           <Route path="/guests" component={Guests} />
           <Route path="/branches" component={Branches} />
           <Route path="/users" component={Users} />
+          <Route path="/billing" component={Billing} />
         </>
       )}
       <Route component={NotFound} />

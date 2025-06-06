@@ -13,7 +13,8 @@ import {
   Hotel,
   SquareStack,
   Menu,
-  X
+  X,
+  CreditCard
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 
@@ -64,6 +65,12 @@ export default function Sidebar() {
       title: "Guest Management",
       icon: Users,
       path: "/guests",
+      roles: ["superadmin", "branch-admin", "front-desk"],
+    },
+    {
+      title: "Billing",
+      icon: CreditCard,
+      path: "/billing",
       roles: ["superadmin", "branch-admin", "front-desk"],
     },
   ];
@@ -227,7 +234,7 @@ export default function Sidebar() {
                 {reportsMenuItems.map(renderMenuItem)}
               </div>
             )}
-          
+
         </nav>
 
         {/* Footer */}
