@@ -155,7 +155,7 @@ export default function RoomTypes() {
     const submitData = {
       name: data.name,
       description: data.description || null,
-      basePrice: parseFloat(data.basePrice),
+      basePrice: data.basePrice, // Keep as string for decimal field
       maxOccupancy: data.maxOccupancy,
       branchId: data.branchId || null,
     };

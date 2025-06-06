@@ -225,8 +225,9 @@ export const insertRoomTypeSchema = createInsertSchema(roomTypes).omit({
   updatedAt: true,
 }).extend({
   basePrice: z.union([z.string(), z.number()]).transform((val) => 
-    typeof val === 'string' ? parseFloat(val) : val
+    typeof val === 'number' ? val.toString() : val
   ),
+  branchId: z.union([z.number(), z.null()]).optional(),
 });
 
 export const insertRoomSchema = createInsertSchema(rooms).omit({
