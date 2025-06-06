@@ -146,10 +146,10 @@ export default function Sidebar() {
       <Button
         variant="ghost"
         size="sm"
-        className="lg:hidden fixed top-2 left-2 z-50 bg-white shadow-md h-8 w-8 p-0"
+        className="lg:hidden fixed top-4 left-4 z-50 bg-white shadow-lg border h-10 w-10 p-0 rounded-md"
         onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
       >
-        <Menu className="h-4 w-4" />
+        <Menu className="h-5 w-5" />
       </Button>
 
       {/* Sidebar */}

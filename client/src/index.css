@@ -27,7 +27,12 @@
   }
   
   .main-content.with-mobile-button {
-    padding-top: 3rem;
+    padding-top: 1rem;
+  }
+  
+  /* Add left margin to main content on mobile to accommodate menu button */
+  main {
+    margin-left: 0;
   }
 }
 
