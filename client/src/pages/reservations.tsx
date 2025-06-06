@@ -103,17 +103,18 @@ export default function Reservations() {
         <Header
           title="Reservations"
           subtitle="Manage bookings and availability"
-          action={
+        />
+        <main className="flex-1 overflow-y-auto p-6">
+          {/* Add Button Section */}
+          <div className="mb-6">
             <Button
               onClick={() => setIsModalOpen(true)}
-              className="bg-primary hover:bg-primary/90"
+              className="w-full sm:w-auto bg-primary hover:bg-primary/90"
             >
               <Plus className="h-4 w-4 mr-2" />
               New Reservation
             </Button>
-          }
-        />
-        <main className="flex-1 overflow-y-auto p-6">
+          </div></main>
           <Card>
             <CardHeader>
               <CardTitle>All Reservations</CardTitle>
