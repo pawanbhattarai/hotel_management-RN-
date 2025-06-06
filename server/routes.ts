@@ -559,8 +559,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   const createReservationSchema = z.object({
     guest: insertGuestSchema,
-    reservation: insertReservationSchema.omit({ guestId: true }),
-    rooms: z.array(insertReservationRoomSchema),
+    reservation: insertReservationSchema.omit({ 
+      guestId: true, 
+      confirmationNumber: true, 
+      createdById: true 
+    }),
+    rooms: z.array(insertReservationRoomSchema.omit({ 
+      reservationId: true 
+    })),
   });
 
   app.post("/api/reservations", isAuthenticated, async (req: any, res) => {
@@ -568,8 +574,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const user = await storage.getUser(req.session.user.id);
       if (!user) return res.status(401).json({ message: "User not found" });
 
-      const { guest: guestData, reservation: reservationData, rooms: roomsData } =
-        createReservationSchema.parse(req.body);
+      // Parse the request body first without validation that requires generated fields
+      const requestData = req.body;
+      const guestData = requestData.guest;
+      const reservationData = requestData.reservation;
+      const roomsData = requestData.rooms;
 
       if (
         !checkBranchPermissions(
