@@ -1,3 +1,4 @@
+import { useState } from "react";
 import { useAuth } from "@/hooks/useAuth";
 import { useLocation } from "wouter";
 import { 
@@ -10,13 +11,16 @@ import {
   TrendingUp,
   LogOut,
   Hotel,
-  SquareStack
+  SquareStack,
+  Menu,
+  X
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 
 export default function Sidebar() {
   const { user } = useAuth();
   const [location, navigate] = useLocation();
+  const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
 
   const handleLogout = async () => {
     try {
@@ -129,23 +133,61 @@ export default function Sidebar() {
   };
 
   return (
-    <div className="w-280 bg-white shadow-lg border-r border-gray-200 flex flex-col">
-      {/* Header */}
-      <div className="p-6 border-b border-gray-200">
-        <div className="flex items-center">
-          <div className="w-10 h-10 bg-primary rounded-lg flex items-center justify-center">
-            <Hotel className="h-6 w-6 text-white" />
-          </div>
-          <div className="ml-3">
-            <h1 className="text-lg font-bold text-gray-900">HotelPro</h1>
-            <p className="text-sm text-gray-600">
-              {user ? getRoleDisplayName(user.role) : "Loading..."}
-            </p>
-          </div>
-        </div>
+    <>
+      {/* Mobile menu button */}
+      <div className="lg:hidden fixed top-4 left-4 z-50">
+        <Button
+          variant="outline"
+          size="sm"
+          onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
+          className="bg-white shadow-md"
+        >
+          {isMobileMenuOpen ? <X className="h-4 w-4" /> : <Menu className="h-4 w-4" />}
+        </Button>
       </div>
 
-      {/* Navigation */}
+      {/* Mobile overlay */}
+      {isMobileMenuOpen && (
+        <div
+          className="lg:hidden fixed inset-0 bg-black bg-opacity-50 z-40"
+          onClick={() => setIsMobileMenuOpen(false)}
+        />
+      )}
+
+      {/* Sidebar */}
+      <div className={`
+        bg-white shadow-lg border-r border-gray-200 flex flex-col transition-transform duration-300 ease-in-out
+        lg:w-280 lg:translate-x-0 lg:static lg:z-auto
+        ${isMobileMenuOpen ? 'translate-x-0' : '-translate-x-full lg:translate-x-0'}
+        fixed inset-y-0 left-0 z-50 w-280
+      `}>
+        {/* Header */}
+        <div className="p-4 lg:p-6 border-b border-gray-200">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center">
+              <div className="w-8 h-8 lg:w-10 lg:h-10 bg-primary rounded-lg flex items-center justify-center">
+                <Hotel className="h-4 w-4 lg:h-6 lg:w-6 text-white" />
+              </div>
+              <div className="ml-2 lg:ml-3">
+                <h1 className="text-base lg:text-lg font-bold text-gray-900">HotelPro</h1>
+                <p className="text-xs lg:text-sm text-gray-600">
+                  {user ? getRoleDisplayName(user.role) : "Loading..."}
+                </p>
+              </div>
+            </div>
+            {/* Close button for mobile */}
+            <Button
+              variant="ghost"
+              size="sm"
+              className="lg:hidden"
+              onClick={() => setIsMobileMenuOpen(false)}
+            >
+              <X className="h-4 w-4" />
+            </Button>
+          </div>
+        </div>
+
+        {/* Navigation */}
       <nav className="flex-1 p-4">
         <div className="space-y-2">
           {menuItems.map(renderMenuItem)}
@@ -196,6 +238,7 @@ export default function Sidebar() {
           </Button>
         </div>
       </div>
-    </div>
+      </div>
+    </>
   );
 }
