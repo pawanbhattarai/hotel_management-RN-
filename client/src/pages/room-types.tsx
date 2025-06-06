@@ -270,21 +270,23 @@ export default function RoomTypes() {
           <Header
             title="Room Types"
             subtitle="Manage room categories and pricing"
-            action={
-              <Dialog open={isCreateOpen || !!editingRoomType} onOpenChange={handleCloseDialog}>
-                <DialogTrigger asChild>
-                  <Button 
-                    onClick={() => {
-                      console.log("Add Room Type button clicked");
-                      setIsCreateOpen(true);
-                    }}
-                    className="w-full sm:w-auto"
-                  >
-                    <Plus className="h-4 w-4 mr-2" />
-                    <span className="hidden sm:inline">Add Room Type</span>
-                    <span className="sm:hidden">Add</span>
-                  </Button>
-                </DialogTrigger>
+          />
+
+          {/* Add Button Section */}
+          <div className="mt-4 mb-6">
+            <Dialog open={isCreateOpen || !!editingRoomType} onOpenChange={handleCloseDialog}>
+              <DialogTrigger asChild>
+                <Button 
+                  onClick={() => {
+                    console.log("Add Room Type button clicked");
+                    setIsCreateOpen(true);
+                  }}
+                  className="w-full sm:w-auto"
+                >
+                  <Plus className="h-4 w-4 mr-2" />
+                  Add Room Type
+                </Button>
+              </DialogTrigger>
               <DialogContent className="sm:max-w-[425px] mx-4 max-h-[90vh] overflow-y-auto">
                 <DialogHeader>
                   <DialogTitle className="text-lg">
@@ -407,10 +409,9 @@ export default function RoomTypes() {
                 </Form>
               </DialogContent>
             </Dialog>
-          }
-        />
+          </div>
 
-        <div className="mt-6 md:mt-8">
+          <div>
           {!roomTypes || roomTypes.length === 0 ? (
             <Card>
               <CardContent className="flex flex-col items-center justify-center py-8 md:py-12 px-4">
