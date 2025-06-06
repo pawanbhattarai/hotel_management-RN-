@@ -264,6 +264,15 @@ export class DatabaseStorage implements IStorage {
     return updatedGuest;
   }
 
+  async updateGuest(id: number, guest: Partial<InsertGuest>): Promise<Guest> {
+    const [updatedGuest] = await db
+      .update(guests)
+      .set({ ...guest, updatedAt: new Date() })
+      .where(eq(guests.id, id))
+      .returning();
+    return updatedGuest;
+  }
+
   async searchGuests(query: string, branchId?: number): Promise<Guest[]> {
     const searchCondition = or(
       ilike(guests.firstName, `%${query}%`),

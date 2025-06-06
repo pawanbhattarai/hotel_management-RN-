@@ -516,6 +516,60 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  app.put("/api/guests/:id", isAuthenticated, async (req: any, res) => {
+    try {
+      const user = await storage.getUser(req.session.user.id);
+      if (!user) return res.status(401).json({ message: "User not found" });
+
+      const guestId = parseInt(req.params.id);
+      const guestData = insertGuestSchema.partial().parse(req.body);
+
+      // Check if user has permission for the guest's branch
+      const existingGuest = await storage.getGuest(guestId);
+      if (
+        !existingGuest ||
+        !checkBranchPermissions(user.role, user.branchId, existingGuest.branchId)
+      ) {
+        return res
+          .status(403)
+          .json({ message: "Insufficient permissions for this guest" });
+      }
+
+      const guest = await storage.updateGuest(guestId, guestData);
+      res.json(guest);
+    } catch (error) {
+      console.error("Error updating guest:", error);
+      res.status(500).json({ message: "Failed to update guest" });
+    }
+  });
+
+  app.delete("/api/guests/:id", isAuthenticated, async (req: any, res) => {
+    try {
+      const user = await storage.getUser(req.session.user.id);
+      if (!user) return res.status(401).json({ message: "User not found" });
+
+      const guestId = parseInt(req.params.id);
+
+      // Check if user has permission for the guest's branch
+      const existingGuest = await storage.getGuest(guestId);
+      if (
+        !existingGuest ||
+        !checkBranchPermissions(user.role, user.branchId, existingGuest.branchId)
+      ) {
+        return res
+          .status(403)
+          .json({ message: "Insufficient permissions for this guest" });
+      }
+
+      // Instead of hard delete, we'll mark as inactive
+      await storage.updateGuest(guestId, { isActive: false });
+      res.status(204).send();
+    } catch (error) {
+      console.error("Error deleting guest:", error);
+      res.status(500).json({ message: "Failed to delete guest" });
+    }
+  });
+
   // Reservation routes
   app.get("/api/reservations", isAuthenticated, async (req: any, res) => {
     try {
@@ -668,6 +722,45 @@ export async function registerRoutes(app: Express): Promise<Server> {
     } catch (error) {
       console.error("Error updating reservation:", error);
       res.status(500).json({ message: "Failed to update reservation" });
+    }
+  });
+
+  app.delete("/api/reservations/:id", isAuthenticated, async (req: any, res) => {
+    try {
+      const user = await storage.getUser(req.session.user.id);
+      if (!user) return res.status(401).json({ message: "User not found" });
+
+      const reservationId = req.params.id;
+      const existingReservation = await storage.getReservation(reservationId);
+
+      if (!existingReservation) {
+        return res.status(404).json({ message: "Reservation not found" });
+      }
+
+      if (
+        !checkBranchPermissions(
+          user.role,
+          user.branchId,
+          existingReservation.branchId,
+        )
+      ) {
+        return res
+          .status(403)
+          .json({ message: "Insufficient permissions for this branch" });
+      }
+
+      // Cancel the reservation and free up rooms
+      await storage.updateReservation(reservationId, { status: "cancelled" });
+
+      // Update room status back to available
+      for (const roomReservation of existingReservation.reservationRooms) {
+        await storage.updateRoom(roomReservation.roomId, { status: "available" });
+      }
+
+      res.status(204).send();
+    } catch (error) {
+      console.error("Error cancelling reservation:", error);
+      res.status(500).json({ message: "Failed to cancel reservation" });
     }
   });
 

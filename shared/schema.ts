@@ -99,6 +99,7 @@ export const guests = pgTable("guests", {
   nationality: varchar("nationality", { length: 100 }),
   reservationCount: integer("reservation_count").notNull().default(0),
   branchId: integer("branch_id").notNull(),
+  isActive: boolean("is_active").default(true),
   createdAt: timestamp("created_at").defaultNow(),
   updatedAt: timestamp("updated_at").defaultNow(),
 });
