@@ -2,6 +2,35 @@
 @tailwind components;
 @tailwind utilities;
 
+/* Mobile-first responsive improvements */
+@media (max-width: 768px) {
+  .mobile-optimized {
+    padding: 0.5rem;
+  }
+  
+  .mobile-compact {
+    font-size: 0.875rem;
+    line-height: 1.25rem;
+  }
+  
+  /* Ensure tables are horizontally scrollable on mobile */
+  .table-container {
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+  }
+}
+
+/* Ensure content doesn't get hidden behind mobile menu button */
+@media (max-width: 1024px) {
+  .main-content {
+    padding-left: 0;
+  }
+  
+  .main-content.with-mobile-button {
+    padding-top: 3rem;
+  }
+}
+
 /* Performance optimizations */
 * {
   box-sizing: border-box;

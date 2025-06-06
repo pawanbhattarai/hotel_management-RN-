@@ -1,5 +1,6 @@
 import { Button } from "@/components/ui/button";
 import { ReactNode } from "react";
+import { useIsMobile } from "@/hooks/use-mobile";
 
 interface HeaderProps {
   title: string;
@@ -8,27 +9,38 @@ interface HeaderProps {
 }
 
 export default function Header({ title, subtitle, action }: HeaderProps) {
+  const isMobile = useIsMobile();
   const currentDate = new Date().toLocaleDateString("en-US", {
-    weekday: "long",
+    weekday: isMobile ? "short" : "long",
     year: "numeric",
-    month: "long",
+    month: isMobile ? "short" : "long",
     day: "numeric",
   });
 
   return (
-    <header className="bg-white border-b border-gray-200 px-6 py-4">
+    <header className="bg-white border-b border-gray-200 px-3 sm:px-6 py-3 sm:py-4">
       <div className="flex items-center justify-between">
-        <div>
-          <h2 className="text-2xl font-bold text-gray-900">{title}</h2>
-          <p className="text-gray-600">{subtitle}</p>
+        <div className="min-w-0 flex-1">
+          <h2 className="text-lg sm:text-2xl font-bold text-gray-900 truncate">{title}</h2>
+          <p className="text-sm sm:text-base text-gray-600 truncate">{subtitle}</p>
         </div>
         
-        <div className="flex items-center space-x-4">
-          <div className="text-right">
-            <p className="text-sm font-medium text-gray-900">Today: {currentDate}</p>
-          </div>
+        <div className="flex items-center space-x-2 sm:space-x-4 ml-2">
+          {!isMobile && (
+            <div className="text-right hidden sm:block">
+              <p className="text-sm font-medium text-gray-900 whitespace-nowrap">Today: {currentDate}</p>
+            </div>
+          )}
           
-          {action}
+          {isMobile && (
+            <div className="text-right text-xs">
+              <p className="font-medium text-gray-900">{currentDate}</p>
+            </div>
+          )}
+          
+          <div className="flex-shrink-0">
+            {action}
+          </div>
         </div>
       </div>
     </header>

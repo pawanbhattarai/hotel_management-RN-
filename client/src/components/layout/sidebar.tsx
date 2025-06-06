@@ -133,33 +133,31 @@ export default function Sidebar() {
   };
 
   return (
-    <>
-      {/* Mobile menu button */}
-      <div className="lg:hidden fixed top-4 left-4 z-50">
-        <Button
-          variant="outline"
-          size="sm"
-          onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
-          className="bg-white shadow-md"
-        >
-          {isMobileMenuOpen ? <X className="h-4 w-4" /> : <Menu className="h-4 w-4" />}
-        </Button>
-      </div>
-
+    <div className="relative">
       {/* Mobile overlay */}
       {isMobileMenuOpen && (
-        <div
-          className="lg:hidden fixed inset-0 bg-black bg-opacity-50 z-40"
+        <div 
+          className="fixed inset-0 bg-black bg-opacity-50 z-40 lg:hidden"
           onClick={() => setIsMobileMenuOpen(false)}
         />
       )}
 
+      {/* Mobile menu button */}
+      <Button
+        variant="ghost"
+        size="sm"
+        className="lg:hidden fixed top-2 left-2 z-50 bg-white shadow-md h-8 w-8 p-0"
+        onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
+      >
+        <Menu className="h-4 w-4" />
+      </Button>
+
       {/* Sidebar */}
       <div className={`
         bg-white shadow-lg border-r border-gray-200 flex flex-col transition-transform duration-300 ease-in-out
-        lg:w-280 lg:translate-x-0 lg:static lg:z-auto
+        lg:w-64 lg:translate-x-0 lg:static lg:z-auto
         ${isMobileMenuOpen ? 'translate-x-0' : '-translate-x-full lg:translate-x-0'}
-        fixed inset-y-0 left-0 z-50 w-280
+        fixed inset-y-0 left-0 z-50 w-64 sm:w-72
       `}>
         {/* Header */}
         <div className="p-4 lg:p-6 border-b border-gray-200">
@@ -188,9 +186,27 @@ export default function Sidebar() {
         </div>
 
         {/* Navigation */}
-        <nav className="flex-1 p-4">
-          <div className="space-y-2">
-            {menuItems.map(renderMenuItem)}
+        <nav className="flex-1 p-3 lg:p-4 space-y-1">
+          {menuItems.map((item) => (
+            <button
+              key={item.path}
+              onClick={() => {
+                navigate(item.path);
+                setIsMobileMenuOpen(false);
+              }}
+              className={`
+                w-full flex items-center px-3 py-2 lg:py-2.5 text-left rounded-lg transition-colors
+                ${
+                  isActiveRoute(item.path)
+                    ? "bg-primary text-white"
+                    : "text-gray-700 hover:bg-gray-100"
+                }
+              `}
+            >
+              <item.icon className="mr-3 h-4 w-4 flex-shrink-0" />
+              <span className="text-sm font-medium truncate">{item.title}</span>
+            </button>
+          ))}
 
             {/* Admin Section */}
             {user && (user as any).role === "superadmin" && (
@@ -211,11 +227,11 @@ export default function Sidebar() {
                 {reportsMenuItems.map(renderMenuItem)}
               </div>
             )}
-          </div>
+          
         </nav>
 
         {/* Footer */}
-        <div className="p-4 border-t border-gray-200">
+        <div className="p-3 lg:p-4 border-t border-gray-200">
           <div className="flex items-center">
             <div className="w-8 h-8 bg-gray-300 rounded-full flex items-center justify-center">
               <Users className="h-4 w-4 text-gray-600" />
@@ -239,6 +255,6 @@ export default function Sidebar() {
           </div>
         </div>
       </div>
-    </>
+    </div>
   );
 }
