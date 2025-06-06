@@ -67,6 +67,9 @@ export default function MultiRoomModal({
     idNumber: "",
   });
 
+  const [existingGuest, setExistingGuest] = useState<any>(null);
+  const [isSearchingGuest, setIsSearchingGuest] = useState(false);
+
   const [selectedBranchId, setSelectedBranchId] = useState<string>("");
   const [rooms, setRooms] = useState<RoomData[]>([
     {
@@ -166,6 +169,45 @@ export default function MultiRoomModal({
     },
   });
 
+  const searchGuestByPhone = async (phone: string) => {
+    if (!phone || phone.length < 5) {
+      setExistingGuest(null);
+      return;
+    }
+
+    setIsSearchingGuest(true);
+    try {
+      const response = await apiRequest("GET", `/api/guests?phone=${encodeURIComponent(phone)}`);
+      if (response.ok) {
+        const guests = await response.json();
+        if (guests && guests.length > 0) {
+          const guest = guests[0];
+          setExistingGuest(guest);
+          // Auto-fill guest data from existing guest
+          setGuestData({
+            firstName: guest.firstName || "",
+            lastName: guest.lastName || "",
+            email: guest.email || "",
+            phone: guest.phone || "",
+            idType: guest.idType || "passport",
+            idNumber: guest.idNumber || "",
+          });
+          toast({
+            title: "Guest Found",
+            description: `Found existing guest: ${guest.firstName} ${guest.lastName} (${guest.reservationCount || 0} previous reservations)`,
+          });
+        } else {
+          setExistingGuest(null);
+        }
+      }
+    } catch (error) {
+      console.error("Error searching guest:", error);
+      setExistingGuest(null);
+    } finally {
+      setIsSearchingGuest(false);
+    }
+  };
+
   const resetForm = () => {
     setGuestData({
       firstName: "",
@@ -175,6 +217,7 @@ export default function MultiRoomModal({
       idType: "passport",
       idNumber: "",
     });
+    setExistingGuest(null);
     setSelectedBranchId("");
     setRooms([
       {
@@ -429,15 +472,35 @@ export default function MultiRoomModal({
                 />
               </div>
               <div>
-                <Label htmlFor="phone">Phone</Label>
-                <Input
-                  id="phone"
-                  value={guestData.phone}
-                  onChange={(e) =>
-                    setGuestData({ ...guestData, phone: e.target.value })
-                  }
-                  placeholder="+1 (555) 123-4567"
-                />
+                <Label htmlFor="phone">Phone Number *</Label>
+                <div className="relative">
+                  <Input
+                    id="phone"
+                    value={guestData.phone}
+                    onChange={(e) => {
+                      const phone = e.target.value;
+                      setGuestData({ ...guestData, phone });
+                      // Search for existing guest after user stops typing
+                      clearTimeout(window.guestSearchTimeout);
+                      window.guestSearchTimeout = setTimeout(() => {
+                        searchGuestByPhone(phone);
+                      }, 500);
+                    }}
+                    placeholder="+1 (555) 123-4567"
+                    required
+                  />
+                  {isSearchingGuest && (
+                    <div className="absolute right-3 top-3">
+                      <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-primary"></div>
+                    </div>
+                  )}
+                </div>
+                {existingGuest && (
+                  <div className="mt-2 p-2 bg-green-50 border border-green-200 rounded text-sm text-green-800">
+                    Found existing guest: {existingGuest.firstName} {existingGuest.lastName} 
+                    ({existingGuest.reservationCount || 0} previous reservations)
+                  </div>
+                )}
               </div>
               <div>
                 <Label htmlFor="idType">ID Type</Label>

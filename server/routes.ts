@@ -457,9 +457,19 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const user = await storage.getUser(req.session.user.id);
       if (!user) return res.status(401).json({ message: "User not found" });
 
-      const branchId = user.role === "superadmin" ? undefined : user.branchId!;
-      const guests = await storage.getGuests(branchId);
-      res.json(guests);
+      const { phone } = req.query;
+      
+      if (phone) {
+        // Search guest by phone number
+        const branchId = user.role === "superadmin" ? undefined : user.branchId!;
+        const guests = await storage.searchGuests(phone as string, branchId);
+        res.json(guests);
+      } else {
+        // Get all guests
+        const branchId = user.role === "superadmin" ? undefined : user.branchId!;
+        const guests = await storage.getGuests(branchId);
+        res.json(guests);
+      }
     } catch (error) {
       console.error("Error fetching guests:", error);
       res.status(500).json({ message: "Failed to fetch guests" });

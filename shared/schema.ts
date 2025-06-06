@@ -97,6 +97,7 @@ export const guests = pgTable("guests", {
   address: text("address"),
   dateOfBirth: date("date_of_birth"),
   nationality: varchar("nationality", { length: 100 }),
+  reservationCount: integer("reservation_count").notNull().default(0),
   branchId: integer("branch_id").notNull(),
   createdAt: timestamp("created_at").defaultNow(),
   updatedAt: timestamp("updated_at").defaultNow(),
