@@ -91,22 +91,30 @@ export default function MultiRoomModal({
     enabled: isOpen && !!user && user?.role === "superadmin",
   });
 
-  const { data: availableRooms, error: roomsError, isLoading: roomsLoading } = useQuery({
+  const {
+    data: availableRooms,
+    error: roomsError,
+    isLoading: roomsLoading,
+  } = useQuery({
     queryKey: ["/api/rooms", selectedBranchId || user?.branchId, "available"],
     queryFn: async () => {
-      const branchId = user?.role === "superadmin" ? selectedBranchId : user?.branchId;
+      const branchId =
+        user?.role === "superadmin" ? selectedBranchId : user?.branchId;
       if (!branchId) {
         console.log("No branchId available for fetching rooms");
         return [];
       }
-      
+
       console.log("Fetching available rooms for branch:", branchId);
       console.log("User role:", user?.role);
       console.log("Selected branch ID:", selectedBranchId);
       console.log("User branch ID:", user?.branchId);
-      
+
       try {
-        const response = await apiRequest("GET", `/api/rooms?branchId=${branchId}&status=available`);
+        const response = await apiRequest(
+          "GET",
+          `/api/rooms?branchId=${branchId}&status=available`,
+        );
         if (!response.ok) {
           console.error("Room fetch failed with status:", response.status);
           throw new Error(`Failed to fetch rooms: ${response.status}`);
@@ -261,12 +269,16 @@ export default function MultiRoomModal({
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
 
-    const branchId = user?.role === "superadmin" ? parseInt(selectedBranchId) : user?.branchId;
-    
+    const branchId =
+      user?.role === "superadmin" ? parseInt(selectedBranchId) : user?.branchId;
+
     if (!branchId) {
       toast({
         title: "Error",
-        description: user?.role === "superadmin" ? "Please select a branch." : "Branch information is required.",
+        description:
+          user?.role === "superadmin"
+            ? "Please select a branch."
+            : "Branch information is required.",
         variant: "destructive",
       });
       return;
@@ -372,7 +384,7 @@ export default function MultiRoomModal({
               </div>
             </div>
           )}
-          
+
           {/* Guest Information */}
           <div>
             <h3 className="text-lg font-semibold text-gray-900 mb-4">
@@ -510,19 +522,23 @@ export default function MultiRoomModal({
                         disabled={roomsLoading}
                       >
                         <SelectTrigger>
-                          <SelectValue placeholder={
-                            roomsLoading ? "Loading rooms..." : 
-                            roomsError ? "Error loading rooms" :
-                            "Select available room"
-                          } />
+                          <SelectValue
+                            placeholder={
+                              roomsLoading
+                                ? "Loading rooms..."
+                                : roomsError
+                                  ? "Error loading rooms"
+                                  : "Select available room"
+                            }
+                          />
                         </SelectTrigger>
                         <SelectContent>
                           {roomsLoading ? (
-                            <SelectItem value="" disabled>
+                            <SelectItem value="loading" disabled>
                               Loading available rooms...
                             </SelectItem>
                           ) : roomsError ? (
-                            <SelectItem value="" disabled>
+                            <SelectItem value="error" disabled>
                               Error loading rooms
                             </SelectItem>
                           ) : availableRooms && availableRooms.length > 0 ? (
@@ -531,12 +547,16 @@ export default function MultiRoomModal({
                                 key={availableRoom.id}
                                 value={availableRoom.id.toString()}
                               >
-                                Room {availableRoom.number} - {availableRoom.roomType.name} - Rs.
-                                {parseFloat(availableRoom.roomType.basePrice).toFixed(2)}/night
+                                Room {availableRoom.number} -{" "}
+                                {availableRoom.roomType.name} - Rs.
+                                {parseFloat(
+                                  availableRoom.roomType.basePrice,
+                                ).toFixed(2)}
+                                /night
                               </SelectItem>
                             ))
                           ) : (
-                            <SelectItem value="" disabled>
+                            <SelectItem value="no-rooms" disabled>
                               No available rooms found
                             </SelectItem>
                           )}
