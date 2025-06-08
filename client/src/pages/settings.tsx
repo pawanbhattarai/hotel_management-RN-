@@ -180,9 +180,11 @@ export default function Settings() {
 
   return (
     <div className="flex h-screen bg-gray-100">
-      <Sidebar />
+      <div className="hidden lg:block">
+        <Sidebar />
+      </div>
       
-      <div className="flex-1 flex flex-col overflow-hidden">
+      <div className="flex-1 flex flex-col overflow-hidden lg:ml-0">
         <Header 
           title="Hotel Settings" 
           subtitle="Configure hotel information, policies, and operational settings"
@@ -191,15 +193,25 @@ export default function Settings() {
             <Button 
               onClick={handleSaveClick}
               disabled={saveSettingsMutation.isPending}
-              className="flex items-center gap-2"
+              className="flex items-center gap-1 lg:gap-2 text-xs px-2 py-1 lg:text-sm lg:px-3 lg:py-2"
+              size="sm"
             >
-              <Save className="h-4 w-4" />
-              {saveSettingsMutation.isPending ? "Saving..." : "Save Settings"}
+              <Save className="h-3 w-3 lg:h-4 lg:w-4" />
+              <span className="hidden sm:inline">{saveSettingsMutation.isPending ? "Saving..." : "Save Settings"}</span>
+              <span className="sm:hidden">Save</span>
             </Button>
           }
         />
         
-        <main className="flex-1 overflow-y-auto p-4 lg:p-6 space-y-6">
+        {/* Mobile Sidebar */}
+        <div className="lg:hidden">
+          <Sidebar 
+            isMobileMenuOpen={isMobileSidebarOpen} 
+            setIsMobileMenuOpen={setIsMobileSidebarOpen} 
+          />
+        </div>
+        
+        <main className="flex-1 overflow-y-auto p-3 sm:p-4 lg:p-6 space-y-4 lg:space-y-6">
 
       <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-6">
         <TabsList className="grid w-full grid-cols-4">
