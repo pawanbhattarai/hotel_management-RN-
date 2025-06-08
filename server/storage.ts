@@ -408,20 +408,19 @@ export class DatabaseStorage implements IStorage {
     const totalRooms = Object.values(roomStatusCounts).reduce((sum, count) => sum + count, 0);
     const occupancyRate = totalRooms > 0 ? ((totalRooms - availableRooms) / totalRooms) * 100 : 0;
 
-    // Revenue today
-    const revenueQuery = db
-      .select({ total: sql`sum(${reservations.totalAmount})`.as('total') })
+    // Revenue today - sum of paid amounts for reservations checked in today
+    const revenueTodayQuery = db
+      .select({ total: sql`COALESCE(SUM(CAST(${reservations.paidAmount} AS DECIMAL)), 0)`.as('total') })
       .from(reservations)
       .innerJoin(reservationRooms, eq(reservations.id, reservationRooms.reservationId))
       .where(
         and(
-          sql`DATE(${reservationRooms.checkInDate}) <= ${today}`,
-          sql`DATE(${reservationRooms.checkOutDate}) >= ${today}`,
+          sql`DATE(${reservationRooms.checkInDate}) = ${today}`,
           branchId ? eq(reservations.branchId, branchId) : sql`1=1`
         )
       );
       
-    const [{ total: revenueToday }] = await revenueQuery;
+    const [{ total: revenueToday }] = await revenueTodayQuery;
 
     return {
       totalReservations: Number(totalReservations),
@@ -455,9 +454,12 @@ export class DatabaseStorage implements IStorage {
       .select({ count: sql`count(*)`.as('count') })
       .from(reservations);
       
+    const today = new Date().toISOString().split('T')[0];
     const [{ total: totalRevenue }] = await db
-      .select({ total: sql`coalesce(sum(${reservations.totalAmount}), 0)`.as('total') })
-      .from(reservations);
+      .select({ total: sql`COALESCE(SUM(CAST(${reservations.paidAmount} AS DECIMAL)), 0)`.as('total') })
+      .from(reservations)
+      .innerJoin(reservationRooms, eq(reservations.id, reservationRooms.reservationId))
+      .where(sql`DATE(${reservationRooms.checkInDate}) = ${today}`);
       
     const [{ count: totalRooms }] = await db
       .select({ count: sql`count(*)`.as('count') })
@@ -468,12 +470,28 @@ export class DatabaseStorage implements IStorage {
     const branchMetrics = await Promise.all(
       branchesData.map(async (branch) => {
         const metrics = await this.getDashboardMetrics(branch.id);
+        
+        // Calculate today's revenue for this branch specifically
+        const today = new Date().toISOString().split('T')[0];
+        const branchRevenueQuery = db
+          .select({ total: sql`COALESCE(SUM(CAST(${reservations.paidAmount} AS DECIMAL)), 0)`.as('total') })
+          .from(reservations)
+          .innerJoin(reservationRooms, eq(reservations.id, reservationRooms.reservationId))
+          .where(
+            and(
+              sql`DATE(${reservationRooms.checkInDate}) = ${today}`,
+              eq(reservations.branchId, branch.id)
+            )
+          );
+        
+        const [{ total: branchRevenue }] = await branchRevenueQuery;
+        
         return {
           branchId: branch.id,
           branchName: branch.name,
           totalReservations: metrics.totalReservations,
           occupancyRate: metrics.occupancyRate,
-          revenue: metrics.revenueToday,
+          revenue: Number(branchRevenue || 0),
           availableRooms: metrics.availableRooms,
         };
       })

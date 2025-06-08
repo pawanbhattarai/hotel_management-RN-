@@ -115,7 +115,7 @@ export default function BranchMetrics() {
                       </Badge>
                     </TableCell>
                     <TableCell className="font-medium">
-                      ${branch.revenue.toLocaleString()}
+                      Rs.{(branch.revenue || 0).toLocaleString()}
                     </TableCell>
                   </TableRow>
                 );
