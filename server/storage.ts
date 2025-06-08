@@ -374,28 +374,30 @@ export class DatabaseStorage implements IStorage {
   }> {
     const today = new Date().toISOString().split('T')[0];
     
-    // Total reservations
-    const totalReservationsQuery = db
+    // Total reservations (active reservations only)
+    let totalReservationsQuery = db
       .select({ count: sql`count(*)`.as('count') })
-      .from(reservations);
+      .from(reservations)
+      .where(sql`${reservations.status} != 'cancelled'`);
     
     if (branchId) {
-      totalReservationsQuery.where(eq(reservations.branchId, branchId));
+      totalReservationsQuery = totalReservationsQuery.where(eq(reservations.branchId, branchId));
     }
     
     const [{ count: totalReservations }] = await totalReservationsQuery;
 
-    // Room status counts
-    const roomStatusQuery = db
+    // Room status counts with proper filtering
+    let roomStatusQuery = db
       .select({
         status: rooms.status,
         count: sql`count(*)`.as('count'),
       })
       .from(rooms)
+      .where(eq(rooms.isActive, true))
       .groupBy(rooms.status);
       
     if (branchId) {
-      roomStatusQuery.where(eq(rooms.branchId, branchId));
+      roomStatusQuery = roomStatusQuery.where(eq(rooms.branchId, branchId));
     }
     
     const statusResults = await roomStatusQuery;
@@ -405,20 +407,27 @@ export class DatabaseStorage implements IStorage {
     }, {} as Record<string, number>);
 
     const availableRooms = roomStatusCounts['available'] || 0;
-    const totalRooms = Object.values(roomStatusCounts).reduce((sum, count) => sum + count, 0);
-    const occupancyRate = totalRooms > 0 ? ((totalRooms - availableRooms) / totalRooms) * 100 : 0;
+    const occupiedRooms = roomStatusCounts['occupied'] || 0;
+    const maintenanceRooms = roomStatusCounts['maintenance'] || 0;
+    const totalRooms = availableRooms + occupiedRooms + maintenanceRooms;
+    const occupancyRate = totalRooms > 0 ? (occupiedRooms / totalRooms) * 100 : 0;
 
-    // Revenue today - sum of paid amounts for reservations checked in today
-    const revenueTodayQuery = db
+    // Revenue today - sum of paid amounts for today's reservations (check-ins today or active today)
+    let revenueTodayQuery = db
       .select({ total: sql`COALESCE(SUM(CAST(${reservations.paidAmount} AS DECIMAL)), 0)`.as('total') })
       .from(reservations)
       .innerJoin(reservationRooms, eq(reservations.id, reservationRooms.reservationId))
       .where(
         and(
-          sql`DATE(${reservationRooms.checkInDate}) = ${today}`,
-          branchId ? eq(reservations.branchId, branchId) : sql`1=1`
+          sql`DATE(${reservationRooms.checkInDate}) <= ${today}`,
+          sql`DATE(${reservationRooms.checkOutDate}) >= ${today}`,
+          sql`${reservations.status} != 'cancelled'`
         )
       );
+      
+    if (branchId) {
+      revenueTodayQuery = revenueTodayQuery.where(eq(reservations.branchId, branchId));
+    }
       
     const [{ total: revenueToday }] = await revenueTodayQuery;
 
@@ -449,17 +458,25 @@ export class DatabaseStorage implements IStorage {
     // Get all branches
     const branchesData = await db.select().from(branches).where(eq(branches.isActive, true));
     
-    // Get global metrics
+    // Get global metrics - total active reservations
     const [{ count: totalReservations }] = await db
       .select({ count: sql`count(*)`.as('count') })
-      .from(reservations);
+      .from(reservations)
+      .where(sql`${reservations.status} != 'cancelled'`);
       
+    // Total revenue from all active reservations today
     const today = new Date().toISOString().split('T')[0];
     const [{ total: totalRevenue }] = await db
       .select({ total: sql`COALESCE(SUM(CAST(${reservations.paidAmount} AS DECIMAL)), 0)`.as('total') })
       .from(reservations)
       .innerJoin(reservationRooms, eq(reservations.id, reservationRooms.reservationId))
-      .where(sql`DATE(${reservationRooms.checkInDate}) = ${today}`);
+      .where(
+        and(
+          sql`DATE(${reservationRooms.checkInDate}) <= ${today}`,
+          sql`DATE(${reservationRooms.checkOutDate}) >= ${today}`,
+          sql`${reservations.status} != 'cancelled'`
+        )
+      );
       
     const [{ count: totalRooms }] = await db
       .select({ count: sql`count(*)`.as('count') })
@@ -471,27 +488,12 @@ export class DatabaseStorage implements IStorage {
       branchesData.map(async (branch) => {
         const metrics = await this.getDashboardMetrics(branch.id);
         
-        // Calculate today's revenue for this branch specifically
-        const today = new Date().toISOString().split('T')[0];
-        const branchRevenueQuery = db
-          .select({ total: sql`COALESCE(SUM(CAST(${reservations.paidAmount} AS DECIMAL)), 0)`.as('total') })
-          .from(reservations)
-          .innerJoin(reservationRooms, eq(reservations.id, reservationRooms.reservationId))
-          .where(
-            and(
-              sql`DATE(${reservationRooms.checkInDate}) = ${today}`,
-              eq(reservations.branchId, branch.id)
-            )
-          );
-        
-        const [{ total: branchRevenue }] = await branchRevenueQuery;
-        
         return {
           branchId: branch.id,
           branchName: branch.name,
           totalReservations: metrics.totalReservations,
           occupancyRate: metrics.occupancyRate,
-          revenue: Number(branchRevenue || 0),
+          revenue: metrics.revenueToday,
           availableRooms: metrics.availableRooms,
         };
       })

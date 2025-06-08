@@ -102,7 +102,7 @@ export default function Dashboard() {
                     <DollarSign className="h-4 w-4 text-muted-foreground" />
                   </CardHeader>
                   <CardContent>
-                    <div className="text-2xl font-bold">${superAdminMetrics.totalRevenue}</div>
+                    <div className="text-2xl font-bold">Rs.{(superAdminMetrics.totalRevenue || 0).toLocaleString()}</div>
                   </CardContent>
                 </Card>
                 
@@ -156,7 +156,7 @@ export default function Dashboard() {
                             </div>
                             <div className="col-span-2">
                               <div className="text-muted-foreground">Today's Revenue</div>
-                              <div className="font-medium text-green-600">${branch.revenue}</div>
+                              <div className="font-medium text-green-600">Rs.{(branch.revenue || 0).toLocaleString()}</div>
                             </div>
                           </div>
                         </CardContent>

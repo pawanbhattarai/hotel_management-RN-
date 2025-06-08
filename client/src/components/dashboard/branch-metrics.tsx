@@ -49,7 +49,7 @@ export default function BranchMetrics() {
             <div>
               <p className="text-sm font-medium text-gray-600">Total Revenue (All Branches)</p>
               <p className="text-3xl font-bold text-gray-900 mt-1">
-                ${(metrics.totalRevenue || 0).toLocaleString()}
+                Rs.{(metrics.totalRevenue || 0).toLocaleString()}
               </p>
               <p className="text-sm text-gray-500 mt-1">Revenue from today's check-ins</p>
             </div>

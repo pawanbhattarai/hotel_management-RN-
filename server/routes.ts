@@ -935,6 +935,137 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Create a new reservation
+  app.post("/api/reservations", isAuthenticated, async (req: any, res) => {
+    try {
+      const user = await storage.getUser(req.session.user.id);
+      if (!user) return res.status(401).json({ message: "User not found" });
+
+      // Parse the request body first without validation that requires generated fields
+      const requestData = req.body;
+      const guestData = requestData.guest;
+      const reservationData = requestData.reservation;
+      const roomsData = requestData.rooms;
+
+      if (
+        !checkBranchPermissions(
+          user.role,
+          user.branchId,
+          reservationData.branchId,
+        )
+      ) {
+        return res
+          .status(403)
+          .json({ message: "Insufficient permissions for this branch" });
+      }
+
+      // Check if guest already exists by phone number
+      let guest;
+      if (guestData.phone) {
+        const existingGuests = await storage.searchGuests(guestData.phone);
+        if (existingGuests.length > 0) {
+          guest = existingGuests[0];
+        }
+      }
+
+      // Create new guest if not found
+      if (!guest) {
+        guest = await storage.createGuest({
+          ...guestData,
+          branchId: reservationData.branchId,
+        });
+      }
+
+      // Generate confirmation number
+      const confirmationNumber = `RES${Date.now().toString().slice(-8)}`;
+      const reservationWithConfirmation = {
+        ...reservationData,
+        guestId: guest.id,
+        confirmationNumber,
+        createdById: user.id,
+      };
+
+      const reservation = await storage.createReservation(
+        reservationWithConfirmation,
+        roomsData,
+      );
+
+      // Update room status to reserved
+      for (const roomData of roomsData) {
+        await storage.updateRoom(roomData.roomId, { status: "reserved" });
+      }
+
+      res.status(201).json(reservation);
+    } catch (error) {
+      console.error("Error creating reservation:", error);
+      res.status(500).json({ message: "Failed to create reservation" });
+    }
+  });
+
+  // Update a reservation
+  app.patch("/api/reservations/:id", isAuthenticated, async (req: any, res) => {
+    try {
+      const user = await storage.getUser(req.session.user.id);
+      if (!user) return res.status(401).json({ message: "User not found" });
+
+      const reservationId = req.params.id;
+      const existingReservation = await storage.getReservation(reservationId);
+
+      if (!existingReservation) {
+        return res.status(404).json({ message: "Reservation not found" });
+      }
+
+      if (
+        !checkBranchPermissions(
+          user.role,
+          user.branchId,
+          existingReservation.branchId,
+        )
+      ) {
+        return res
+          .status(403)
+          .json({ message: "Insufficient permissions for this branch" });
+      }
+
+      const bodyData = req.body;
+      // Convert paidAmount to string if it's a number
+      if (bodyData.paidAmount && typeof bodyData.paidAmount === 'number') {
+        bodyData.paidAmount = bodyData.paidAmount.toString();
+      }
+      const validatedData = insertReservationSchema.partial().parse(bodyData);
+      const reservation = await storage.updateReservation(
+        reservationId,
+        validatedData,
+      );
+
+      // Update room status based on reservation status
+      if (validatedData.status) {
+        for (const roomReservation of existingReservation.reservationRooms) {
+          let newRoomStatus;
+          switch (validatedData.status) {
+            case 'checked-in':
+              newRoomStatus = 'occupied';
+              break;
+            case 'checked-out':
+              newRoomStatus = 'available';
+              break;
+            case 'cancelled':
+              newRoomStatus = 'available';
+              break;
+            default:
+              newRoomStatus = 'reserved';
+          }
+          await storage.updateRoom(roomReservation.roomId, { status: newRoomStatus as any });
+        }
+      }
+
+      res.json(reservation);
+    } catch (error) {
+      console.error("Error updating reservation:", error);
+      res.status(500).json({ message: "Failed to update reservation" });
+    }
+  });
+
   const httpServer = createServer(app);
   return httpServer;
 }
