@@ -3,7 +3,7 @@ import { useQuery } from "@tanstack/react-query";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
-import { Building2, DollarSign } from "lucide-react";
+import { Building2, TrendingUp } from "lucide-react";
 
 export default function BranchMetrics() {
   const { data: metrics, isLoading, error } = useQuery({
@@ -54,7 +54,7 @@ export default function BranchMetrics() {
               <p className="text-sm text-gray-500 mt-1">Cumulative revenue from all branches</p>
             </div>
             <div className="w-12 h-12 bg-green-50 rounded-xl flex items-center justify-center">
-              <DollarSign className="text-green-600 h-6 w-6" />
+              <TrendingUp className="text-green-600 h-6 w-6" />
             </div>
           </div>
         </CardContent>

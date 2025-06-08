@@ -1,6 +1,6 @@
 import { useQuery } from "@tanstack/react-query";
 import { Card, CardContent } from "@/components/ui/card";
-import { Calendar, Bed, DollarSign, DoorOpen } from "lucide-react";
+import { Calendar, Bed, TrendingUp, DoorOpen } from "lucide-react";
 
 export default function MetricsCards() {
   const { data: metrics, isLoading } = useQuery({
@@ -45,7 +45,7 @@ export default function MetricsCards() {
       value: `Rs.${(metrics?.revenueToday || 0).toLocaleString()}`,
       change: "-2.1%",
       changeType: "negative" as const,
-      icon: DollarSign,
+      icon: TrendingUp,
       iconBg: "bg-warning-50",
       iconColor: "text-warning",
     },
