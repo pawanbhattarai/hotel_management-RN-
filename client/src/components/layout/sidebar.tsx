@@ -20,7 +20,8 @@ import {
   LogOut,
   X,
   ChevronDown,
-  ChevronRight
+  ChevronRight,
+  Hotel
 } from "lucide-react";
 
 interface SidebarProps {
