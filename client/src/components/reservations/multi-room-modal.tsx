@@ -37,7 +37,7 @@ export default function MultiRoomModal({ isOpen, onClose, editData, isEdit = fal
   const { toast } = useToast();
   const queryClient = useQueryClient();
 
-  const [guestData, setGuestData] = useState<GuestData>({
+  const [guestData, setGuestData>({
     firstName: "",
     lastName: "",
     email: "",
@@ -46,11 +46,11 @@ export default function MultiRoomModal({ isOpen, onClose, editData, isEdit = fal
     idNumber: "",
   });
 
-  const [existingGuest, setExistingGuest] = useState<any>(null);
-  const [isSearchingGuest, setIsSearchingGuest] = useState(false);
+  const [existingGuest, setExistingGuest>(null);
+  const [isSearchingGuest, setIsSearchingGuest>(false);
 
-  const [selectedBranchId, setSelectedBranchId] = useState<string>("");
-  const [rooms, setRooms] = useState<RoomData[]>([
+  const [selectedBranchId, setSelectedBranchId>("");
+  const [rooms, setRooms>([
     {
       roomTypeId: "",
       checkInDate: "",
@@ -370,8 +370,8 @@ export default function MultiRoomModal({ isOpen, onClose, editData, isEdit = fal
           idType: editData.guest.idType || "passport",
           idNumber: editData.guest.idNumber || "",
         });
-  
-      
+
+
         setRooms(editData.reservationRooms.map((rr: any) => ({
           roomTypeId: rr.room.id.toString(),
           checkInDate: rr.checkInDate,
@@ -723,10 +723,10 @@ export default function MultiRoomModal({ isOpen, onClose, editData, isEdit = fal
                   {room.totalAmount > 0 && (
                     <div className="text-right">
                       <p className="text-sm text-gray-600">
-                        Rate: ${room.ratePerNight.toFixed(2)}/night
+                        Rate: Rs.{room.ratePerNight.toFixed(2)}/night
                       </p>
                       <p className="font-medium">
-                        Room Total: ${room.totalAmount.toFixed(2)}
+                        Room Total: Rs.{room.totalAmount.toFixed(2)}
                       </p>
                     </div>
                   )}
@@ -752,19 +752,19 @@ export default function MultiRoomModal({ isOpen, onClose, editData, isEdit = fal
               <div className="flex justify-between">
                 <span className="text-gray-600">Subtotal:</span>
                 <span className="font-medium">
-                  ${summary.subtotal.toFixed(2)}
+                  Rs.{summary.subtotal.toFixed(2)}
                 </span>
               </div>
               <div className="flex justify-between">
                 <span className="text-gray-600">Taxes & Fees (15%):</span>
-                <span className="font-medium">${summary.taxes.toFixed(2)}</span>
+                <span className="font-medium">Rs.{summary.taxes.toFixed(2)}</span>
               </div>
               <div className="flex justify-between border-t border-gray-300 pt-2">
                 <span className="font-semibold text-gray-900">
                   Total Amount:
                 </span>
                 <span className="font-bold text-lg text-primary">
-                  ${summary.total.toFixed(2)}
+                  Rs.{summary.total.toFixed(2)}
                 </span>
               </div>
             </CardContent>
