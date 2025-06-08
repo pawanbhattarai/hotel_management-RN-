@@ -14,7 +14,9 @@ import {
   SquareStack,
   Menu,
   X,
-  CreditCard
+  CreditCard,
+  User,
+  Settings
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 
@@ -96,6 +98,21 @@ export default function Sidebar() {
       icon: TrendingUp,
       path: "/analytics",
       roles: ["superadmin", "branch-admin"],
+    },
+  ];
+
+  const profileMenuItems = [
+    {
+      title: "Profile",
+      icon: User,
+      path: "/profile",
+      roles: ["superadmin", "branch-admin", "front-desk"],
+    },
+    {
+      title: "Settings",
+      icon: Settings,
+      path: "/settings",
+      roles: ["superadmin"],
     },
   ];
 
@@ -234,6 +251,14 @@ export default function Sidebar() {
                 {reportsMenuItems.map(renderMenuItem)}
               </div>
             )}
+
+            {/* Profile Section */}
+            <div className="border-t border-gray-200 pt-4 mt-4">
+              <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-2 px-4">
+                PROFILE
+              </p>
+              {profileMenuItems.map(renderMenuItem)}
+            </div>
 
         </nav>
 

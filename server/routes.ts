@@ -742,7 +742,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
             default:
               newRoomStatus = 'reserved';
           }
-          await storage.updateRoom(roomReservation.roomId, { status: newRoomStatus });
+          await storage.updateRoom(roomReservation.roomId, { status: newRoomStatus as any });
         }
       }
 
@@ -820,6 +820,86 @@ export async function registerRoutes(app: Express): Promise<Server> {
     } catch (error) {
       console.error("Error fetching super admin metrics:", error);
       res.status(500).json({ message: "Failed to fetch super admin metrics" });
+    }
+  });
+
+  // Hotel settings
+  app.get("/api/hotel-settings", isAuthenticated, async (req: any, res) => {
+    try {
+      const user = await storage.getUser(req.session.user.id);
+      if (!user) return res.status(401).json({ message: "User not found" });
+
+      const { branchId } = req.query;
+      const targetBranchId = branchId ? parseInt(branchId as string) : undefined;
+
+      if (targetBranchId && !checkBranchPermissions(user.role, user.branchId, targetBranchId)) {
+        return res.status(403).json({ message: "Insufficient permissions for this branch" });
+      }
+
+      const settings = await storage.getHotelSettings(targetBranchId);
+      res.json(settings || {});
+    } catch (error) {
+      console.error("Error fetching hotel settings:", error);
+      res.status(500).json({ message: "Failed to fetch hotel settings" });
+    }
+  });
+
+  app.post("/api/hotel-settings", isAuthenticated, async (req: any, res) => {
+    try {
+      const user = await storage.getUser(req.session.user.id);
+      if (!user || user.role !== "superadmin") {
+        return res.status(403).json({ message: "Insufficient permissions" });
+      }
+
+      const settingsData = insertHotelSettingsSchema.parse(req.body);
+      const settings = await storage.upsertHotelSettings(settingsData);
+      res.json(settings);
+    } catch (error) {
+      console.error("Error saving hotel settings:", error);
+      res.status(500).json({ message: "Failed to save hotel settings" });
+    }
+  });
+
+  app.put("/api/hotel-settings/:id", isAuthenticated, async (req: any, res) => {
+    try {
+      const user = await storage.getUser(req.session.user.id);
+      if (!user || user.role !== "superadmin") {
+        return res.status(403).json({ message: "Insufficient permissions" });
+      }
+
+      const settingsData = insertHotelSettingsSchema.parse(req.body);
+      const settings = await storage.upsertHotelSettings(settingsData);
+      res.json(settings);
+    } catch (error) {
+      console.error("Error updating hotel settings:", error);
+      res.status(500).json({ message: "Failed to update hotel settings" });
+    }
+  });
+
+  // Profile management
+  app.get("/api/profile", isAuthenticated, async (req: any, res) => {
+    try {
+      const user = await storage.getUser(req.session.user.id);
+      if (!user) return res.status(401).json({ message: "User not found" });
+
+      res.json(user);
+    } catch (error) {
+      console.error("Error fetching profile:", error);
+      res.status(500).json({ message: "Failed to fetch profile" });
+    }
+  });
+
+  app.put("/api/profile", isAuthenticated, async (req: any, res) => {
+    try {
+      const user = await storage.getUser(req.session.user.id);
+      if (!user) return res.status(401).json({ message: "User not found" });
+
+      const updateData = insertUserSchema.partial().parse(req.body);
+      const updatedUser = await storage.updateUser(user.id, updateData);
+      res.json(updatedUser);
+    } catch (error) {
+      console.error("Error updating profile:", error);
+      res.status(500).json({ message: "Failed to update profile" });
     }
   });
 
