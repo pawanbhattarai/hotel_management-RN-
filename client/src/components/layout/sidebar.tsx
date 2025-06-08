@@ -1,28 +1,32 @@
-import { useState } from "react";
+import React, { useState } from "react";
+import { useLocation, useRouter } from "wouter";
 import { useAuth } from "@/hooks/useAuth";
-import { useLocation } from "wouter";
+import { cn } from "@/lib/utils";
+import { Button } from "@/components/ui/button";
+import { ScrollArea } from "@/components/ui/scroll-area";
+import { Separator } from "@/components/ui/separator";
 import { 
   BarChart3, 
   Calendar, 
   Bed, 
   Users, 
+  CreditCard, 
   Building2, 
   UserCheck, 
   TrendingUp,
-  LogOut,
-  Hotel,
   SquareStack,
-  Menu,
-  X,
-  CreditCard,
   User,
-  Settings
+  Settings,
+  LogOut,
+  X,
+  ChevronDown,
+  ChevronRight
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 
 export default function Sidebar() {
   const { user } = useAuth();
-  const [location, navigate] = useLocation();
+  const [location, navigate] = useRouter();
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
 
   const handleLogout = async () => {
