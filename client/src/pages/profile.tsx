@@ -145,34 +145,29 @@ export default function Profile() {
 
   return (
     <div className="flex h-screen bg-gray-100">
-      {/* Desktop Sidebar */}
-      <div className="hidden lg:block lg:w-64 lg:flex-shrink-0">
-        <Sidebar />
-      </div>
+      <Sidebar />
       
       <div className="flex-1 flex flex-col overflow-hidden">
         <Header 
           title="Profile Management" 
           subtitle="Manage your account information and preferences"
-          onMobileMenuToggle={() => setIsMobileSidebarOpen(true)}
+          onMobileMenuToggle={() => setIsMobileSidebarOpen(!isMobileSidebarOpen)}
           action={
             <div className="flex gap-2">
               {isEditing ? (
                 <>
-                  <Button variant="outline" onClick={handleCancel} size="sm" className="text-xs px-2 py-1 lg:text-sm lg:px-3 lg:py-2">
+                  <Button variant="outline" onClick={handleCancel}>
                     Cancel
                   </Button>
                   <Button 
                     onClick={handleSaveClick}
                     disabled={updateProfileMutation.isPending}
-                    size="sm" 
-                    className="text-xs px-2 py-1 lg:text-sm lg:px-3 lg:py-2"
                   >
-                    {updateProfileMutation.isPending ? "Saving..." : "Save"}
+                    {updateProfileMutation.isPending ? "Saving..." : "Save Changes"}
                   </Button>
                 </>
               ) : (
-                <Button onClick={() => setIsEditing(true)} size="sm" className="text-xs px-2 py-1 lg:text-sm lg:px-3 lg:py-2">
+                <Button onClick={() => setIsEditing(true)}>
                   Edit Profile
                 </Button>
               )}
@@ -180,13 +175,7 @@ export default function Profile() {
           }
         />
         
-        {/* Mobile Sidebar */}
-        <Sidebar 
-          isMobileMenuOpen={isMobileSidebarOpen} 
-          setIsMobileMenuOpen={setIsMobileSidebarOpen} 
-        />
-        
-        <main className="flex-1 overflow-y-auto p-3 sm:p-4 lg:p-6 space-y-4 lg:space-y-6">
+        <main className="flex-1 overflow-y-auto p-4 lg:p-6 space-y-6">
 
       <div className="grid gap-6 lg:grid-cols-3">
         {/* Profile Overview */}

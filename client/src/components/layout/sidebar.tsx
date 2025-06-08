@@ -20,19 +20,10 @@ import {
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 
-interface SidebarProps {
-  isMobileMenuOpen?: boolean;
-  setIsMobileMenuOpen?: (open: boolean) => void;
-}
-
-export default function Sidebar({ isMobileMenuOpen = false, setIsMobileMenuOpen }: SidebarProps = {}) {
+export default function Sidebar() {
   const { user } = useAuth();
   const [location, navigate] = useLocation();
-  const [internalMobileMenuOpen, setInternalMobileMenuOpen] = useState(false);
-  
-  // Use external state if provided, otherwise use internal state
-  const isOpen = setIsMobileMenuOpen ? isMobileMenuOpen : internalMobileMenuOpen;
-  const setIsOpen = setIsMobileMenuOpen || setInternalMobileMenuOpen;
+  const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
 
   const handleLogout = async () => {
     try {
@@ -139,18 +130,15 @@ export default function Sidebar({ isMobileMenuOpen = false, setIsMobileMenuOpen 
     return (
       <button
         key={item.path}
-        onClick={() => {
-          navigate(item.path);
-          setIsOpen(false);
-        }}
-        className={`w-full flex items-center px-3 py-2.5 rounded-lg text-left transition-colors text-sm font-medium ${
+        onClick={() => navigate(item.path)}
+        className={`w-full flex items-center px-4 py-3 rounded-lg text-left transition-colors ${
           isActiveRoute(item.path)
-            ? "bg-primary text-white"
+            ? "text-primary bg-primary/10 font-medium"
             : "text-gray-700 hover:bg-gray-100"
         }`}
       >
-        <item.icon className="h-4 w-4 mr-3 flex-shrink-0" />
-        <span className="truncate">{item.title}</span>
+        <item.icon className="h-5 w-5 mr-3" />
+        {item.title}
       </button>
     );
   };
@@ -169,34 +157,32 @@ export default function Sidebar({ isMobileMenuOpen = false, setIsMobileMenuOpen 
   };
 
   return (
-    <>
+    <div className="relative">
       {/* Mobile overlay */}
-      {isOpen && (
+      {isMobileMenuOpen && (
         <div 
           className="fixed inset-0 bg-black bg-opacity-50 z-40 lg:hidden"
-          onClick={() => setIsOpen(false)}
+          onClick={() => setIsMobileMenuOpen(false)}
         />
       )}
 
       {/* Sidebar */}
       <div className={`
-        bg-white shadow-lg border-r border-gray-200 flex flex-col h-full
-        transition-transform duration-300 ease-in-out
-        lg:relative lg:translate-x-0 lg:z-auto lg:w-64
-        ${isOpen ? 'translate-x-0' : '-translate-x-full lg:translate-x-0'}
-        fixed inset-y-0 left-0 z-50 w-64 sm:w-72 md:w-80 lg:w-64
+        bg-white shadow-lg border-r border-gray-200 flex flex-col transition-transform duration-300 ease-in-out
+        lg:w-64 lg:translate-x-0 lg:static lg:z-auto
+        ${isMobileMenuOpen ? 'translate-x-0' : '-translate-x-full lg:translate-x-0'}
+        fixed inset-y-0 left-0 z-50 w-64 sm:w-72
       `}>
-        
-        {/* Header - Fixed at top */}
-        <div className="flex-shrink-0 p-3 sm:p-4 lg:p-4 border-b border-gray-200 bg-white">
+        {/* Header */}
+        <div className="p-4 lg:p-6 border-b border-gray-200">
           <div className="flex items-center justify-between">
-            <div className="flex items-center min-w-0 flex-1">
-              <div className="w-8 h-8 sm:w-9 sm:h-9 lg:w-10 lg:h-10 bg-primary rounded-lg flex items-center justify-center flex-shrink-0">
-                <Hotel className="h-4 w-4 sm:h-5 sm:w-5 lg:h-6 lg:w-6 text-white" />
+            <div className="flex items-center">
+              <div className="w-8 h-8 lg:w-10 lg:h-10 bg-primary rounded-lg flex items-center justify-center">
+                <Hotel className="h-4 w-4 lg:h-6 lg:w-6 text-white" />
               </div>
-              <div className="ml-2 sm:ml-3 min-w-0 flex-1">
-                <h1 className="text-sm sm:text-base lg:text-lg font-bold text-gray-900 truncate">HotelPro</h1>
-                <p className="text-xs sm:text-sm text-gray-600 truncate">
+              <div className="ml-2 lg:ml-3">
+                <h1 className="text-base lg:text-lg font-bold text-gray-900">HotelPro</h1>
+                <p className="text-xs lg:text-sm text-gray-600">
                   {user ? getRoleDisplayName(user.role) : "Loading..."}
                 </p>
               </div>
@@ -205,89 +191,78 @@ export default function Sidebar({ isMobileMenuOpen = false, setIsMobileMenuOpen 
             <Button
               variant="ghost"
               size="sm"
-              className="lg:hidden flex-shrink-0 h-8 w-8 p-0"
-              onClick={() => setIsOpen(false)}
+              className="lg:hidden"
+              onClick={() => setIsMobileMenuOpen(false)}
             >
               <X className="h-4 w-4" />
             </Button>
           </div>
         </div>
 
-        {/* Navigation - Scrollable */}
-        <nav className="flex-1 overflow-y-auto overflow-x-hidden p-2 sm:p-3 lg:p-3 space-y-1">
-          <div className="space-y-1">
-            {menuItems.map((item) => {
-              if (!hasAccess(item.roles)) return null;
-              
-              return (
-                <button
-                  key={item.path}
-                  onClick={() => {
-                    navigate(item.path);
-                    setIsOpen(false);
-                  }}
-                  className={`
-                    w-full flex items-center px-3 py-2.5 text-left rounded-lg transition-colors text-sm font-medium
-                    ${
-                      isActiveRoute(item.path)
-                        ? "bg-primary text-white"
-                        : "text-gray-700 hover:bg-gray-100"
-                    }
-                  `}
-                >
-                  <item.icon className="mr-3 h-4 w-4 flex-shrink-0" />
-                  <span className="truncate">{item.title}</span>
-                </button>
-              );
-            })}
-          </div>
+        {/* Navigation */}
+        <nav className="flex-1 p-3 lg:p-4 space-y-1">
+          {menuItems.map((item) => (
+            <button
+              key={item.path}
+              onClick={() => {
+                navigate(item.path);
+                setIsMobileMenuOpen(false);
+              }}
+              className={`
+                w-full flex items-center px-3 py-2 lg:py-2.5 text-left rounded-lg transition-colors
+                ${
+                  isActiveRoute(item.path)
+                    ? "bg-primary text-white"
+                    : "text-gray-700 hover:bg-gray-100"
+                }
+              `}
+            >
+              <item.icon className="mr-3 h-4 w-4 flex-shrink-0" />
+              <span className="text-sm font-medium truncate">{item.title}</span>
+            </button>
+          ))}
 
-          {/* Admin Section */}
-          {user && (user as any).role === "superadmin" && (
-            <div className="border-t border-gray-200 pt-3 mt-3">
-              <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-2 px-3">
-                ADMIN
-              </p>
-              <div className="space-y-1">
+            {/* Admin Section */}
+            {user && (user as any).role === "superadmin" && (
+              <div className="border-t border-gray-200 pt-4 mt-4">
+                <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-2 px-4">
+                  ADMIN
+                </p>
                 {adminMenuItems.map(renderMenuItem)}
               </div>
-            </div>
-          )}
+            )}
 
-          {/* Reports Section */}
-          {user && ["superadmin", "branch-admin"].includes((user as any).role) && (
-            <div className="border-t border-gray-200 pt-3 mt-3">
-              <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-2 px-3">
-                REPORTS
-              </p>
-              <div className="space-y-1">
+            {/* Reports Section */}
+            {user && ["superadmin", "branch-admin"].includes((user as any).role) && (
+              <div className="border-t border-gray-200 pt-4 mt-4">
+                <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-2 px-4">
+                  REPORTS
+                </p>
                 {reportsMenuItems.map(renderMenuItem)}
               </div>
-            </div>
-          )}
+            )}
 
-          {/* Profile Section */}
-          <div className="border-t border-gray-200 pt-3 mt-3">
-            <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-2 px-3">
-              PROFILE
-            </p>
-            <div className="space-y-1">
+            {/* Profile Section */}
+            <div className="border-t border-gray-200 pt-4 mt-4">
+              <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-2 px-4">
+                PROFILE
+              </p>
               {profileMenuItems.map(renderMenuItem)}
             </div>
-          </div>
+
         </nav>
 
-        {/* Footer - Fixed at bottom */}
-        <div className="flex-shrink-0 p-3 sm:p-4 lg:p-4 border-t border-gray-200 bg-white">
-          <div className="flex items-center min-w-0">
-            <div className="w-8 h-8 bg-gray-300 rounded-full flex items-center justify-center flex-shrink-0">
+        {/* Footer */}
+        <div className="p-3 lg:p-4 border-t border-gray-200">
+          <div className="flex items-center">
+            <div className="w-8 h-8 bg-gray-300 rounded-full flex items-center justify-center">
               <Users className="h-4 w-4 text-gray-600" />
             </div>
-            <div className="ml-3 flex-1 min-w-0">
-              <p className="text-sm font-medium text-gray-900 truncate">
+            <div className="ml-3 flex-1">
+              <p className="text-sm font-medium text-gray-900">
                 {user ? `${(user as any).firstName || "User"} ${(user as any).lastName || ""}`.trim() : "Loading..."}
               </p>
-              <p className="text-xs text-gray-600 truncate">
+              <p className="text-xs text-gray-600">
                 {(user as any)?.email || "Loading..."}
               </p>
             </div>
@@ -295,13 +270,13 @@ export default function Sidebar({ isMobileMenuOpen = false, setIsMobileMenuOpen 
               variant="ghost"
               size="sm"
               onClick={handleLogout}
-              className="text-gray-400 hover:text-gray-600 flex-shrink-0 h-8 w-8 p-0"
+              className="text-gray-400 hover:text-gray-600"
             >
               <LogOut className="h-4 w-4" />
             </Button>
           </div>
         </div>
       </div>
-    </>
+    </div>
   );
 }
