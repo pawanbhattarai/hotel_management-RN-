@@ -98,11 +98,12 @@ export default function Dashboard() {
                 
                 <Card>
                   <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                    <CardTitle className="text-sm font-medium">Total Revenue</CardTitle>
+                    <CardTitle className="text-sm font-medium">Total Revenue (All Time)</CardTitle>
                     <DollarSign className="h-4 w-4 text-muted-foreground" />
                   </CardHeader>
                   <CardContent>
                     <div className="text-2xl font-bold">Rs.{(superAdminMetrics.totalRevenue || 0).toLocaleString()}</div>
+                    <p className="text-xs text-muted-foreground mt-1">Cumulative revenue from all branches</p>
                   </CardContent>
                 </Card>
                 

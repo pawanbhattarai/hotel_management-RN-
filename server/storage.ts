@@ -464,19 +464,11 @@ export class DatabaseStorage implements IStorage {
       .from(reservations)
       .where(sql`${reservations.status} != 'cancelled'`);
       
-    // Total revenue from all active reservations today
-    const today = new Date().toISOString().split('T')[0];
+    // Total revenue from all paid amounts across all time and branches
     const [{ total: totalRevenue }] = await db
       .select({ total: sql`COALESCE(SUM(CAST(${reservations.paidAmount} AS DECIMAL)), 0)`.as('total') })
       .from(reservations)
-      .innerJoin(reservationRooms, eq(reservations.id, reservationRooms.reservationId))
-      .where(
-        and(
-          sql`DATE(${reservationRooms.checkInDate}) <= ${today}`,
-          sql`DATE(${reservationRooms.checkOutDate}) >= ${today}`,
-          sql`${reservations.status} != 'cancelled'`
-        )
-      );
+      .where(sql`${reservations.status} != 'cancelled'`);
       
     const [{ count: totalRooms }] = await db
       .select({ count: sql`count(*)`.as('count') })

@@ -47,11 +47,11 @@ export default function BranchMetrics() {
         <CardContent className="p-6">
           <div className="flex items-center justify-between">
             <div>
-              <p className="text-sm font-medium text-gray-600">Total Revenue (All Branches)</p>
+              <p className="text-sm font-medium text-gray-600">Total Revenue (All Branches, All Time)</p>
               <p className="text-3xl font-bold text-gray-900 mt-1">
                 Rs.{(metrics.totalRevenue || 0).toLocaleString()}
               </p>
-              <p className="text-sm text-gray-500 mt-1">Revenue from today's check-ins</p>
+              <p className="text-sm text-gray-500 mt-1">Cumulative revenue from all branches</p>
             </div>
             <div className="w-12 h-12 bg-green-50 rounded-xl flex items-center justify-center">
               <DollarSign className="text-green-600 h-6 w-6" />
