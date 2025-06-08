@@ -1,5 +1,5 @@
 import React, { useState } from "react";
-import { useLocation, useRouter } from "wouter";
+import { useLocation } from "wouter";
 import { useAuth } from "@/hooks/useAuth";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
@@ -23,10 +23,19 @@ import {
   ChevronRight
 } from "lucide-react";
 
-export default function Sidebar() {
+interface SidebarProps {
+  isMobileMenuOpen?: boolean;
+  setIsMobileMenuOpen?: (open: boolean) => void;
+}
+
+export default function Sidebar({ isMobileMenuOpen = false, setIsMobileMenuOpen }: SidebarProps = {}) {
   const { user } = useAuth();
-  const [location, navigate] = useRouter();
-  const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
+  const [location, navigate] = useLocation();
+  const [internalMobileMenuOpen, setInternalMobileMenuOpen] = useState(false);
+
+  // Use props if provided, otherwise use internal state
+  const isMenuOpen = setIsMobileMenuOpen ? isMobileMenuOpen : internalMobileMenuOpen;
+  const setMenuOpen = setIsMobileMenuOpen || setInternalMobileMenuOpen;
 
   const handleLogout = async () => {
     try {
@@ -162,10 +171,10 @@ export default function Sidebar() {
   return (
     <div className="relative">
       {/* Mobile overlay */}
-      {isMobileMenuOpen && (
+      {isMenuOpen && (
         <div 
           className="fixed inset-0 bg-black bg-opacity-50 z-40 lg:hidden"
-          onClick={() => setIsMobileMenuOpen(false)}
+          onClick={() => setMenuOpen(false)}
         />
       )}
 
@@ -173,7 +182,7 @@ export default function Sidebar() {
       <div className={`
         bg-white shadow-lg border-r border-gray-200 flex flex-col transition-transform duration-300 ease-in-out
         lg:w-64 lg:translate-x-0 lg:static lg:z-auto
-        ${isMobileMenuOpen ? 'translate-x-0' : '-translate-x-full lg:translate-x-0'}
+        ${isMenuOpen ? 'translate-x-0' : '-translate-x-full lg:translate-x-0'}
         fixed inset-y-0 left-0 z-50 w-64 sm:w-72
       `}>
         {/* Header */}
@@ -195,7 +204,7 @@ export default function Sidebar() {
               variant="ghost"
               size="sm"
               className="lg:hidden"
-              onClick={() => setIsMobileMenuOpen(false)}
+              onClick={() => setMenuOpen(false)}
             >
               <X className="h-4 w-4" />
             </Button>
@@ -209,7 +218,7 @@ export default function Sidebar() {
               key={item.path}
               onClick={() => {
                 navigate(item.path);
-                setIsMobileMenuOpen(false);
+                setMenuOpen(false);
               }}
               className={`
                 w-full flex items-center px-3 py-2 lg:py-2.5 text-left rounded-lg transition-colors
