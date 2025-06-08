@@ -184,7 +184,7 @@ export default function Sidebar({ isMobileMenuOpen = false, setIsMobileMenuOpen 
         bg-white shadow-lg border-r border-gray-200 flex flex-col transition-transform duration-300 ease-in-out
         lg:w-64 lg:translate-x-0 lg:static lg:z-auto
         ${isMenuOpen ? 'translate-x-0' : '-translate-x-full lg:translate-x-0'}
-        fixed inset-y-0 left-0 z-50 w-64 sm:w-72
+        fixed inset-y-0 left-0 z-50 w-64 sm:w-72 h-full
       `}>
         {/* Header */}
         <div className="p-4 lg:p-6 border-b border-gray-200">
@@ -196,7 +196,7 @@ export default function Sidebar({ isMobileMenuOpen = false, setIsMobileMenuOpen 
               <div className="ml-2 lg:ml-3">
                 <h1 className="text-base lg:text-lg font-bold text-gray-900">HotelPro</h1>
                 <p className="text-xs lg:text-sm text-gray-600">
-                  {user ? getRoleDisplayName(user.role) : "Loading..."}
+                  {user ? getRoleDisplayName((user as any).role) : "Loading..."}
                 </p>
               </div>
             </div>

@@ -54,11 +54,11 @@ export default function Profile() {
   useEffect(() => {
     if (profile) {
       reset({
-        firstName: profile.firstName || "",
-        lastName: profile.lastName || "",
-        email: profile.email || "",
-        phone: profile.phone || "",
-        profileImageUrl: profile.profileImageUrl || "",
+        firstName: (profile as any).firstName || "",
+        lastName: (profile as any).lastName || "",
+        email: (profile as any).email || "",
+        phone: (profile as any).phone || "",
+        profileImageUrl: (profile as any).profileImageUrl || "",
       });
     }
   }, [profile, reset]);
@@ -149,8 +149,8 @@ export default function Profile() {
     );
   }
 
-  const initials = profile?.firstName && profile?.lastName 
-    ? `${profile.firstName[0]}${profile.lastName[0]}`.toUpperCase()
+  const initials = (profile as any)?.firstName && (profile as any)?.lastName 
+    ? `${(profile as any).firstName[0]}${(profile as any).lastName[0]}`.toUpperCase()
     : "U";
 
   return (
@@ -193,22 +193,22 @@ export default function Profile() {
           <CardHeader className="text-center">
             <div className="flex justify-center mb-4">
               <Avatar className="h-24 w-24">
-                <AvatarImage src={profile?.profileImageUrl} />
+                <AvatarImage src={(profile as any)?.profileImageUrl} />
                 <AvatarFallback className="text-2xl bg-primary text-white">
                   {initials}
                 </AvatarFallback>
               </Avatar>
             </div>
             <CardTitle className="text-xl">
-              {profile?.firstName} {profile?.lastName}
+              {(profile as any)?.firstName} {(profile as any)?.lastName}
             </CardTitle>
             <CardDescription className="space-y-2">
-              <Badge variant={getRoleBadgeVariant(profile?.role)}>
-                {getRoleDisplayName(profile?.role)}
+              <Badge variant={getRoleBadgeVariant((profile as any)?.role)}>
+                {getRoleDisplayName((profile as any)?.role)}
               </Badge>
               <div className="flex items-center justify-center text-sm text-muted-foreground">
                 <Mail className="h-4 w-4 mr-2" />
-                {profile?.email}
+                {(profile as any)?.email}
               </div>
             </CardDescription>
           </CardHeader>
@@ -219,36 +219,36 @@ export default function Profile() {
                 <Calendar className="h-4 w-4 mr-2 text-muted-foreground" />
                 <span className="text-muted-foreground">Joined:</span>
                 <span className="ml-auto">
-                  {profile?.createdAt ? new Date(profile.createdAt).toLocaleDateString() : "N/A"}
+                  {(profile as any)?.createdAt ? new Date((profile as any).createdAt).toLocaleDateString() : "N/A"}
                 </span>
               </div>
-              {profile?.phone && (
+              {(profile as any)?.phone && (
                 <div className="flex items-center text-sm">
                   <Phone className="h-4 w-4 mr-2 text-muted-foreground" />
                   <span className="text-muted-foreground">Phone:</span>
-                  <span className="ml-auto">{profile.phone}</span>
+                  <span className="ml-auto">{(profile as any).phone}</span>
                 </div>
               )}
               <div className="flex items-center text-sm">
                 <Shield className="h-4 w-4 mr-2 text-muted-foreground" />
                 <span className="text-muted-foreground">Status:</span>
-                <Badge variant={profile?.isActive ? "default" : "secondary"} className="ml-auto">
-                  {profile?.isActive ? "Active" : "Inactive"}
+                <Badge variant={(profile as any)?.isActive ? "default" : "secondary"} className="ml-auto">
+                  {(profile as any)?.isActive ? "Active" : "Inactive"}
                 </Badge>
               </div>
-              {profile?.branchId && (
+              {(profile as any)?.branchId && (
                 <div className="flex items-center text-sm">
                   <MapPin className="h-4 w-4 mr-2 text-muted-foreground" />
                   <span className="text-muted-foreground">Branch ID:</span>
-                  <span className="ml-auto">{profile.branchId}</span>
+                  <span className="ml-auto">{(profile as any).branchId}</span>
                 </div>
               )}
-              {profile?.lastLogin && (
+              {(profile as any)?.lastLogin && (
                 <div className="flex items-center text-sm">
                   <User className="h-4 w-4 mr-2 text-muted-foreground" />
                   <span className="text-muted-foreground">Last Login:</span>
                   <span className="ml-auto text-xs">
-                    {new Date(profile.lastLogin).toLocaleDateString()}
+                    {new Date((profile as any).lastLogin).toLocaleDateString()}
                   </span>
                 </div>
               )}
