@@ -207,7 +207,7 @@ export default function Settings() {
         <Sidebar 
           isMobileMenuOpen={isMobileSidebarOpen} 
           setIsMobileMenuOpen={setIsMobileSidebarOpen} 
-        /></Sidebar>
+        />
         
         <main className="flex-1 overflow-y-auto p-3 sm:p-4 lg:p-6 space-y-4 lg:space-y-6">
 
