@@ -71,12 +71,6 @@ export default function Sidebar({ isMobileMenuOpen = false, setIsMobileMenuOpen 
       roles: ["superadmin", "branch-admin", "front-desk"],
     },
     {
-      title: "Room Types",
-      icon: SquareStack,
-      path: "/room-types",
-      roles: ["superadmin"],
-    },
-    {
       title: "Guest Management",
       icon: Users,
       path: "/guests",
@@ -91,6 +85,12 @@ export default function Sidebar({ isMobileMenuOpen = false, setIsMobileMenuOpen 
   ];
 
   const adminMenuItems = [
+    {
+      title: "Room Types",
+      icon: SquareStack,
+      path: "/room-types",
+      roles: ["superadmin"],
+    },
     {
       title: "Branch Management",
       icon: Building2,
