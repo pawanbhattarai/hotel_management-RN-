@@ -188,7 +188,7 @@ export default function Settings() {
         <Header 
           title="Hotel Settings" 
           subtitle="Configure hotel information, policies, and operational settings"
-          onMobileMenuToggle={() => setIsMobileSidebarOpen(!isMobileSidebarOpen)}
+          onMobileMenuToggle={() => setIsMobileSidebarOpen(true)}
           action={
             <Button 
               onClick={handleSaveClick}
@@ -204,12 +204,10 @@ export default function Settings() {
         />
         
         {/* Mobile Sidebar */}
-        <div className="lg:hidden">
-          <Sidebar 
-            isMobileMenuOpen={isMobileSidebarOpen} 
-            setIsMobileMenuOpen={setIsMobileSidebarOpen} 
-          />
-        </div>
+        <Sidebar 
+          isMobileMenuOpen={isMobileSidebarOpen} 
+          setIsMobileMenuOpen={setIsMobileSidebarOpen} 
+        /></Sidebar>
         
         <main className="flex-1 overflow-y-auto p-3 sm:p-4 lg:p-6 space-y-4 lg:space-y-6">
 

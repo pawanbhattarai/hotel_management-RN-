@@ -153,7 +153,7 @@ export default function Profile() {
         <Header 
           title="Profile Management" 
           subtitle="Manage your account information and preferences"
-          onMobileMenuToggle={() => setIsMobileSidebarOpen(!isMobileSidebarOpen)}
+          onMobileMenuToggle={() => setIsMobileSidebarOpen(true)}
           action={
             <div className="flex gap-2">
               {isEditing ? (
@@ -180,12 +180,10 @@ export default function Profile() {
         />
         
         {/* Mobile Sidebar */}
-        <div className="lg:hidden">
-          <Sidebar 
-            isMobileMenuOpen={isMobileSidebarOpen} 
-            setIsMobileMenuOpen={setIsMobileSidebarOpen} 
-          />
-        </div>
+        <Sidebar 
+          isMobileMenuOpen={isMobileSidebarOpen} 
+          setIsMobileMenuOpen={setIsMobileSidebarOpen} 
+        />
         
         <main className="flex-1 overflow-y-auto p-3 sm:p-4 lg:p-6 space-y-4 lg:space-y-6">
 
