@@ -166,16 +166,6 @@ export default function Sidebar() {
         />
       )}
 
-      {/* Mobile menu button */}
-      <Button
-        variant="ghost"
-        size="sm"
-        className="lg:hidden fixed top-4 left-4 z-50 bg-white shadow-lg border h-10 w-10 p-0 rounded-md"
-        onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
-      >
-        <Menu className="h-5 w-5" />
-      </Button>
-
       {/* Sidebar */}
       <div className={`
         bg-white shadow-lg border-r border-gray-200 flex flex-col transition-transform duration-300 ease-in-out

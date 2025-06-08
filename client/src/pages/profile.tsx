@@ -4,6 +4,7 @@ import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 import Header from "@/components/layout/header";
+import Sidebar from "@/components/layout/sidebar";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -30,6 +31,7 @@ export default function Profile() {
   const { toast } = useToast();
   const queryClient = useQueryClient();
   const [isEditing, setIsEditing] = useState(false);
+  const [isMobileSidebarOpen, setIsMobileSidebarOpen] = useState(false);
 
   const { data: profile, isLoading } = useQuery({
     queryKey: ["/api/profile"],
@@ -65,6 +67,9 @@ export default function Profile() {
     mutationFn: (data: ProfileUpdateForm) =>
       apiRequest("/api/profile", {
         method: "PUT",
+        headers: {
+          "Content-Type": "application/json",
+        },
         body: JSON.stringify(data),
       }),
     onSuccess: () => {
@@ -86,6 +91,10 @@ export default function Profile() {
 
   const onSubmit = (data: ProfileUpdateForm) => {
     updateProfileMutation.mutate(data);
+  };
+
+  const handleSaveClick = () => {
+    form.handleSubmit(onSubmit)();
   };
 
   const handleCancel = () => {
@@ -135,32 +144,38 @@ export default function Profile() {
     : "U";
 
   return (
-    <div className="p-4 lg:p-6 space-y-6">
-      <Header 
-        title="Profile Management" 
-        subtitle="Manage your account information and preferences"
-        action={
-          <div className="flex gap-2">
-            {isEditing ? (
-              <>
-                <Button variant="outline" onClick={handleCancel}>
-                  Cancel
+    <div className="flex h-screen bg-gray-100">
+      <Sidebar />
+      
+      <div className="flex-1 flex flex-col overflow-hidden">
+        <Header 
+          title="Profile Management" 
+          subtitle="Manage your account information and preferences"
+          onMobileMenuToggle={() => setIsMobileSidebarOpen(!isMobileSidebarOpen)}
+          action={
+            <div className="flex gap-2">
+              {isEditing ? (
+                <>
+                  <Button variant="outline" onClick={handleCancel}>
+                    Cancel
+                  </Button>
+                  <Button 
+                    onClick={handleSaveClick}
+                    disabled={updateProfileMutation.isPending}
+                  >
+                    {updateProfileMutation.isPending ? "Saving..." : "Save Changes"}
+                  </Button>
+                </>
+              ) : (
+                <Button onClick={() => setIsEditing(true)}>
+                  Edit Profile
                 </Button>
-                <Button 
-                  onClick={form.handleSubmit(onSubmit)}
-                  disabled={updateProfileMutation.isPending}
-                >
-                  {updateProfileMutation.isPending ? "Saving..." : "Save Changes"}
-                </Button>
-              </>
-            ) : (
-              <Button onClick={() => setIsEditing(true)}>
-                Edit Profile
-              </Button>
-            )}
-          </div>
-        }
-      />
+              )}
+            </div>
+          }
+        />
+        
+        <main className="flex-1 overflow-y-auto p-4 lg:p-6 space-y-6">
 
       <div className="grid gap-6 lg:grid-cols-3">
         {/* Profile Overview */}
@@ -331,6 +346,8 @@ export default function Profile() {
             </form>
           </CardContent>
         </Card>
+      </div>
+        </main>
       </div>
     </div>
   );

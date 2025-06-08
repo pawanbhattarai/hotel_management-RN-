@@ -1,14 +1,16 @@
 import { Button } from "@/components/ui/button";
-import { ReactNode } from "react";
+import { ReactNode, useState } from "react";
 import { useIsMobile } from "@/hooks/use-mobile";
+import { Menu } from "lucide-react";
 
 interface HeaderProps {
   title: string;
   subtitle: string;
   action?: ReactNode;
+  onMobileMenuToggle?: () => void;
 }
 
-export default function Header({ title, subtitle, action }: HeaderProps) {
+export default function Header({ title, subtitle, action, onMobileMenuToggle }: HeaderProps) {
   const isMobile = useIsMobile();
   const currentDate = new Date().toLocaleDateString("en-US", {
     weekday: isMobile ? "short" : "long",
@@ -18,8 +20,18 @@ export default function Header({ title, subtitle, action }: HeaderProps) {
   });
 
   return (
-    <header className="bg-white border-b border-gray-200 px-3 sm:px-6 py-3 sm:py-4 lg:ml-0 ml-16">
+    <header className="bg-white border-b border-gray-200 px-3 sm:px-6 py-3 sm:py-4 lg:ml-0 ml-0">
       <div className="flex items-center justify-between">
+        {/* Mobile menu button */}
+        <Button
+          variant="ghost"
+          size="sm"
+          className="lg:hidden h-10 w-10 p-0 rounded-md mr-3"
+          onClick={onMobileMenuToggle}
+        >
+          <Menu className="h-5 w-5" />
+        </Button>
+
         <div className="min-w-0 flex-1">
           <h2 className="text-lg sm:text-2xl font-bold text-gray-900 truncate">{title}</h2>
           <p className="text-sm sm:text-base text-gray-600 truncate">{subtitle}</p>

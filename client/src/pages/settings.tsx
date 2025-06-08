@@ -4,6 +4,7 @@ import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 import Header from "@/components/layout/header";
+import Sidebar from "@/components/layout/sidebar";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -72,6 +73,7 @@ export default function Settings() {
   const { toast } = useToast();
   const queryClient = useQueryClient();
   const [activeTab, setActiveTab] = useState("general");
+  const [isMobileSidebarOpen, setIsMobileSidebarOpen] = useState(false);
 
   const { data: settings, isLoading } = useQuery({
     queryKey: ["/api/hotel-settings"],
@@ -161,6 +163,10 @@ export default function Settings() {
     saveSettingsMutation.mutate(data);
   };
 
+  const handleSaveClick = () => {
+    form.handleSubmit(onSubmit)();
+  };
+
   if (isLoading) {
     return (
       <div className="p-4 lg:p-6">
@@ -173,21 +179,27 @@ export default function Settings() {
   }
 
   return (
-    <div className="p-4 lg:p-6 space-y-6">
-      <Header 
-        title="Hotel Settings" 
-        subtitle="Configure hotel information, policies, and operational settings"
-        action={
-          <Button 
-            onClick={form.handleSubmit(onSubmit)}
-            disabled={saveSettingsMutation.isPending}
-            className="flex items-center gap-2"
-          >
-            <Save className="h-4 w-4" />
-            {saveSettingsMutation.isPending ? "Saving..." : "Save Settings"}
-          </Button>
-        }
-      />
+    <div className="flex h-screen bg-gray-100">
+      <Sidebar />
+      
+      <div className="flex-1 flex flex-col overflow-hidden">
+        <Header 
+          title="Hotel Settings" 
+          subtitle="Configure hotel information, policies, and operational settings"
+          onMobileMenuToggle={() => setIsMobileSidebarOpen(!isMobileSidebarOpen)}
+          action={
+            <Button 
+              onClick={handleSaveClick}
+              disabled={saveSettingsMutation.isPending}
+              className="flex items-center gap-2"
+            >
+              <Save className="h-4 w-4" />
+              {saveSettingsMutation.isPending ? "Saving..." : "Save Settings"}
+            </Button>
+          }
+        />
+        
+        <main className="flex-1 overflow-y-auto p-4 lg:p-6 space-y-6">
 
       <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-6">
         <TabsList className="grid w-full grid-cols-4">
@@ -555,6 +567,8 @@ export default function Settings() {
           </TabsContent>
         </form>
       </Tabs>
+        </main>
+      </div>
     </div>
   );
 }
