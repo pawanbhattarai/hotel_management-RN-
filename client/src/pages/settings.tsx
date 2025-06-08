@@ -180,11 +180,12 @@ export default function Settings() {
 
   return (
     <div className="flex h-screen bg-gray-100">
-      <div className="hidden lg:block">
+      {/* Desktop Sidebar */}
+      <div className="hidden lg:block lg:w-64 lg:flex-shrink-0">
         <Sidebar />
       </div>
       
-      <div className="flex-1 flex flex-col overflow-hidden lg:ml-0">
+      <div className="flex-1 flex flex-col overflow-hidden">
         <Header 
           title="Hotel Settings" 
           subtitle="Configure hotel information, policies, and operational settings"
