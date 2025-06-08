@@ -22,7 +22,6 @@ import {
   ChevronDown,
   ChevronRight
 } from "lucide-react";
-import { Button } from "@/components/ui/button";
 
 export default function Sidebar() {
   const { user } = useAuth();
