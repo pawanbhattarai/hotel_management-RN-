@@ -180,7 +180,10 @@ export default function Settings() {
 
   return (
     <div className="flex h-screen bg-gray-100">
-      <Sidebar />
+      <Sidebar 
+        isMobileMenuOpen={isMobileSidebarOpen}
+        setIsMobileMenuOpen={setIsMobileSidebarOpen}
+      />
       
       <div className="flex-1 flex flex-col overflow-hidden">
         <Header 

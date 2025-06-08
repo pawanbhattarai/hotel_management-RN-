@@ -1,4 +1,4 @@
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import { useAuth } from "@/hooks/useAuth";
 import { useToast } from "@/hooks/use-toast";
 import { isUnauthorizedError } from "@/lib/authUtils";
@@ -18,6 +18,7 @@ import { Building2, TrendingUp, Users, DollarSign, Bed } from "lucide-react";
 export default function Dashboard() {
   const { toast } = useToast();
   const { isAuthenticated, isLoading } = useAuth();
+  const [isMobileSidebarOpen, setIsMobileSidebarOpen] = useState(false);
   
   const { data: user } = useQuery({
     queryKey: ["/api/auth/user"],
@@ -60,11 +61,15 @@ export default function Dashboard() {
 
   return (
     <div className="flex h-screen bg-gray-50">
-      <Sidebar />
+      <Sidebar 
+        isMobileMenuOpen={isMobileSidebarOpen}
+        setIsMobileMenuOpen={setIsMobileSidebarOpen}
+      />
       <div className="flex-1 flex flex-col overflow-hidden">
         <Header
           title="Dashboard"
           subtitle={isSuperAdmin ? "Super Admin - All Branches Overview" : "Overview of hotel operations"}
+          onMobileMenuToggle={() => setIsMobileSidebarOpen(!isMobileSidebarOpen)}
         />
         <main className="flex-1 overflow-y-auto p-4 lg:p-6">
           {/* Super Admin Global Overview */}

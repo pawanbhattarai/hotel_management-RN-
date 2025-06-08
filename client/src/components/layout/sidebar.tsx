@@ -213,7 +213,7 @@ export default function Sidebar({ isMobileMenuOpen = false, setIsMobileMenuOpen 
         </div>
 
         {/* Navigation */}
-        <ScrollArea className="flex-1">
+        <ScrollArea className="flex-1 h-0">
           <nav className="p-3 lg:p-4 space-y-1">
             {menuItems.map((item) => (
               <button
