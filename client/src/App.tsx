@@ -14,6 +14,8 @@ import Branches from "@/pages/branches";
 import Users from "@/pages/users";
 import RoomTypes from "@/pages/room-types";
 import Billing from "@/pages/billing";
+import Profile from "@/pages/profile";
+import Settings from "@/pages/settings";
 
 function Router() {
   const { isAuthenticated, isLoading } = useAuth();
@@ -32,6 +34,8 @@ function Router() {
           <Route path="/branches" component={Branches} />
           <Route path="/users" component={Users} />
           <Route path="/billing" component={Billing} />
+          <Route path="/profile" component={Profile} />
+          <Route path="/settings" component={Settings} />
         </>
       )}
       <Route component={NotFound} />
