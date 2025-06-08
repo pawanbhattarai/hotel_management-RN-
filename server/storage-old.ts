@@ -25,7 +25,7 @@ import {
   type InsertHotelSettings,
 } from "@shared/schema";
 import { db } from "./db";
-import { eq, and, or, desc, between, sql, ilike, notInArray } from "drizzle-orm";
+import { eq, and, or, desc, between, sql, ilike } from "drizzle-orm";
 
 export interface IStorage {
   // User operations - mandatory for Replit Auth
@@ -174,7 +174,7 @@ export class DatabaseStorage implements IStorage {
     }
 
     if (status) {
-      conditions.push(sql`${rooms.status} = ${status}`);
+      conditions.push(eq(rooms.status, status));
     }
 
     const query = db.query.rooms.findMany({
@@ -182,8 +182,8 @@ export class DatabaseStorage implements IStorage {
         roomType: true,
         branch: true,
       },
-      where: and(...conditions),
-      orderBy: [rooms.branchId, rooms.number],
+      where: conditions.length > 1 ? and(...conditions) : conditions[0],
+      orderBy: rooms.number,
     });
 
     return await query;
@@ -209,20 +209,32 @@ export class DatabaseStorage implements IStorage {
   }
 
   async getRoomsByBranch(branchId: number): Promise<Room[]> {
-    return await db.select().from(rooms)
+    return await db
+      .select()
+      .from(rooms)
       .where(and(eq(rooms.branchId, branchId), eq(rooms.isActive, true)))
       .orderBy(rooms.number);
   }
 
   // Room type operations
   async getRoomTypes(branchId?: number): Promise<RoomType[]> {
-    let conditions = [eq(roomTypes.isActive, true)];
     if (branchId) {
-      conditions.push(eq(roomTypes.branchId, branchId));
+      // For specific branch, return both branch-specific and unassigned room types
+      return await db.select().from(roomTypes)
+        .where(and(
+          eq(roomTypes.isActive, true),
+          or(
+            eq(roomTypes.branchId, branchId),
+            sql`${roomTypes.branchId} IS NULL`
+          )
+        ))
+        .orderBy(roomTypes.name);
+    } else {
+      // For superadmin, return all active room types
+      return await db.select().from(roomTypes)
+        .where(eq(roomTypes.isActive, true))
+        .orderBy(roomTypes.name);
     }
-    return await db.select().from(roomTypes)
-      .where(and(...conditions))
-      .orderBy(roomTypes.name);
   }
 
   async getRoomType(id: number): Promise<RoomType | undefined> {
@@ -249,13 +261,11 @@ export class DatabaseStorage implements IStorage {
 
   // Guest operations
   async getGuests(branchId?: number): Promise<Guest[]> {
-    let conditions = [eq(guests.isActive, true)];
+    const query = db.select().from(guests);
     if (branchId) {
-      conditions.push(eq(guests.branchId, branchId));
+      query.where(eq(guests.branchId, branchId));
     }
-    return await db.select().from(guests)
-      .where(and(...conditions))
-      .orderBy(desc(guests.createdAt));
+    return await query.orderBy(desc(guests.createdAt));
   }
 
   async getGuest(id: number): Promise<Guest | undefined> {
@@ -346,8 +356,8 @@ export class DatabaseStorage implements IStorage {
       // Update guest reservation count
       await tx
         .update(guests)
-        .set({
-          reservationCount: sql`${guests.reservationCount} + 1`,
+        .set({ 
+          reservationCount: sql`${guests.reservationCount} + 1`
         })
         .where(eq(guests.id, reservation.guestId));
 
@@ -373,192 +383,113 @@ export class DatabaseStorage implements IStorage {
     roomStatusCounts: Record<string, number>;
   }> {
     const today = new Date().toISOString().split('T')[0];
-    
+
     // Total reservations
-    const totalReservationsQuery = db
-      .select({ count: sql`count(*)`.as('count') })
+    let totalReservationsQuery = db
+      .select({ count: sql<number>`count(*)` })
       .from(reservations);
-    
+
     if (branchId) {
-      totalReservationsQuery.where(eq(reservations.branchId, branchId));
+      totalReservationsQuery = db
+        .select({ count: sql<number>`count(*)` })
+        .from(reservations)
+        .where(eq(reservations.branchId, branchId));
     }
-    
+
     const [{ count: totalReservations }] = await totalReservationsQuery;
 
     // Room status counts
-    const roomStatusQuery = db
+    let roomStatusQuery = db
       .select({
         status: rooms.status,
-        count: sql`count(*)`.as('count'),
+        count: sql<number>`count(*)`,
       })
       .from(rooms)
+      .where(eq(rooms.isActive, true))
       .groupBy(rooms.status);
-      
+
     if (branchId) {
-      roomStatusQuery.where(eq(rooms.branchId, branchId));
+      roomStatusQuery = db
+        .select({
+          status: rooms.status,
+          count: sql<number>`count(*)`,
+        })
+        .from(rooms)
+        .where(and(eq(rooms.isActive, true), eq(rooms.branchId, branchId)))
+        .groupBy(rooms.status);
     }
-    
-    const statusResults = await roomStatusQuery;
-    const roomStatusCounts = statusResults.reduce((acc, { status, count }) => {
-      acc[status] = Number(count);
+
+    const roomStatusResults = await roomStatusQuery;
+    const roomStatusCounts = roomStatusResults.reduce((acc, row) => {
+      acc[row.status] = row.count;
       return acc;
     }, {} as Record<string, number>);
 
-    const availableRooms = roomStatusCounts['available'] || 0;
+    // Calculate occupancy rate
     const totalRooms = Object.values(roomStatusCounts).reduce((sum, count) => sum + count, 0);
-    const occupancyRate = totalRooms > 0 ? ((totalRooms - availableRooms) / totalRooms) * 100 : 0;
+    const occupiedRooms = roomStatusCounts.occupied || 0;
+    const occupancyRate = totalRooms > 0 ? (occupiedRooms / totalRooms) * 100 : 0;
 
-    // Revenue today
-    const revenueQuery = db
-      .select({ total: sql`sum(${reservations.totalAmount})`.as('total') })
+    // Revenue today (simplified - sum of paid amounts for today's check-ins)
+    let revenueTodayQuery = db
+      .select({ sum: sql<number>`COALESCE(SUM(${reservations.paidAmount}), 0)` })
       .from(reservations)
       .innerJoin(reservationRooms, eq(reservations.id, reservationRooms.reservationId))
-      .where(
-        and(
-          sql`DATE(${reservationRooms.checkInDate}) <= ${today}`,
-          sql`DATE(${reservationRooms.checkOutDate}) >= ${today}`,
-          branchId ? eq(reservations.branchId, branchId) : sql`1=1`
-        )
-      );
-      
-    const [{ total: revenueToday }] = await revenueQuery;
+      .where(eq(reservationRooms.checkInDate, today));
+
+    if (branchId) {
+      revenueTodayQuery = db
+        .select({ sum: sql<number>`COALESCE(SUM(${reservations.paidAmount}), 0)` })
+        .from(reservations)
+        .innerJoin(reservationRooms, eq(reservations.id, reservationRooms.reservationId))
+        .where(and(
+          eq(reservationRooms.checkInDate, today),
+          eq(reservations.branchId, branchId)
+        ));
+    }
+
+    const [{ sum: revenueToday }] = await revenueTodayQuery;
 
     return {
-      totalReservations: Number(totalReservations),
-      occupancyRate: Math.round(occupancyRate * 100) / 100,
-      revenueToday: Number(revenueToday || 0),
-      availableRooms,
+      totalReservations,
+      occupancyRate: Math.round(occupancyRate),
+      revenueToday: revenueToday || 0,
+      availableRooms: roomStatusCounts.available || 0,
       roomStatusCounts,
-    };
-  }
-
-  // Super admin dashboard metrics
-  async getSuperAdminDashboardMetrics(): Promise<{
-    totalBranches: number;
-    totalReservations: number;
-    totalRevenue: number;
-    totalRooms: number;
-    branchMetrics: Array<{
-      branchId: number;
-      branchName: string;
-      totalReservations: number;
-      occupancyRate: number;
-      revenue: number;
-      availableRooms: number;
-    }>;
-  }> {
-    // Get all branches
-    const branchesData = await db.select().from(branches).where(eq(branches.isActive, true));
-    
-    // Get global metrics
-    const [{ count: totalReservations }] = await db
-      .select({ count: sql`count(*)`.as('count') })
-      .from(reservations);
-      
-    const [{ total: totalRevenue }] = await db
-      .select({ total: sql`coalesce(sum(${reservations.totalAmount}), 0)`.as('total') })
-      .from(reservations);
-      
-    const [{ count: totalRooms }] = await db
-      .select({ count: sql`count(*)`.as('count') })
-      .from(rooms)
-      .where(eq(rooms.isActive, true));
-
-    // Get metrics per branch
-    const branchMetrics = await Promise.all(
-      branchesData.map(async (branch) => {
-        const metrics = await this.getDashboardMetrics(branch.id);
-        return {
-          branchId: branch.id,
-          branchName: branch.name,
-          totalReservations: metrics.totalReservations,
-          occupancyRate: metrics.occupancyRate,
-          revenue: metrics.revenueToday,
-          availableRooms: metrics.availableRooms,
-        };
-      })
-    );
-
-    return {
-      totalBranches: branchesData.length,
-      totalReservations: Number(totalReservations),
-      totalRevenue: Number(totalRevenue),
-      totalRooms: Number(totalRooms),
-      branchMetrics,
     };
   }
 
   // Room availability
   async getAvailableRooms(branchId: number, checkIn: string, checkOut: string): Promise<Room[]> {
-    const reservedRoomIds = await db
+    // Get rooms that are not reserved for the given date range
+    const reservedRoomIds = db
       .select({ roomId: reservationRooms.roomId })
       .from(reservationRooms)
       .where(
-        or(
-          and(
-            sql`${reservationRooms.checkInDate} <= ${checkIn}`,
-            sql`${reservationRooms.checkOutDate} > ${checkIn}`
-          ),
-          and(
-            sql`${reservationRooms.checkInDate} < ${checkOut}`,
-            sql`${reservationRooms.checkOutDate} >= ${checkOut}`
-          ),
-          and(
-            sql`${reservationRooms.checkInDate} >= ${checkIn}`,
-            sql`${reservationRooms.checkOutDate} <= ${checkOut}`
+        and(
+          or(
+            between(reservationRooms.checkInDate, checkIn, checkOut),
+            between(reservationRooms.checkOutDate, checkIn, checkOut),
+            and(
+              sql`${reservationRooms.checkInDate} <= ${checkIn}`,
+              sql`${reservationRooms.checkOutDate} >= ${checkOut}`
+            )
           )
         )
       );
 
-    const reservedIds = reservedRoomIds.map(r => r.roomId);
-
-    const availableRoomsQuery = db
+    return await db
       .select()
       .from(rooms)
       .where(
         and(
           eq(rooms.branchId, branchId),
           eq(rooms.isActive, true),
-          sql`${rooms.status} = 'available'`,
-          reservedIds.length > 0 ? notInArray(rooms.id, reservedIds) : sql`1=1`
+          eq(rooms.status, 'available'),
+          sql`${rooms.id} NOT IN ${reservedRoomIds}`
         )
-      );
-
-    return await availableRoomsQuery;
-  }
-
-  // Hotel settings operations
-  async getHotelSettings(branchId?: number): Promise<HotelSettings | undefined> {
-    const [settings] = await db
-      .select()
-      .from(hotelSettings)
-      .where(
-        branchId
-          ? eq(hotelSettings.branchId, branchId)
-          : sql`${hotelSettings.branchId} IS NULL`
       )
-      .orderBy(desc(hotelSettings.createdAt))
-      .limit(1);
-    return settings;
-  }
-
-  async upsertHotelSettings(settings: InsertHotelSettings): Promise<HotelSettings> {
-    const existingSettings = await this.getHotelSettings(settings.branchId || undefined);
-    
-    if (existingSettings) {
-      const [updatedSettings] = await db
-        .update(hotelSettings)
-        .set({ ...settings, updatedAt: new Date() })
-        .where(eq(hotelSettings.id, existingSettings.id))
-        .returning();
-      return updatedSettings;
-    } else {
-      const [newSettings] = await db
-        .insert(hotelSettings)
-        .values(settings)
-        .returning();
-      return newSettings;
-    }
+      .orderBy(rooms.number);
   }
 }
 

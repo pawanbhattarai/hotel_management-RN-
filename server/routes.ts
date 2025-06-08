@@ -9,6 +9,7 @@ import {
   insertReservationSchema,
   insertReservationRoomSchema,
   insertUserSchema,
+  insertHotelSettingsSchema,
 } from "@shared/schema";
 import { z } from "zod";
 
@@ -803,6 +804,22 @@ export async function registerRoutes(app: Express): Promise<Server> {
     } catch (error) {
       console.error("Error fetching dashboard metrics:", error);
       res.status(500).json({ message: "Failed to fetch dashboard metrics" });
+    }
+  });
+
+  // Super admin dashboard metrics
+  app.get("/api/dashboard/super-admin-metrics", isAuthenticated, async (req: any, res) => {
+    try {
+      const user = await storage.getUser(req.session.user.id);
+      if (!user || user.role !== "superadmin") {
+        return res.status(403).json({ message: "Insufficient permissions" });
+      }
+
+      const metrics = await storage.getSuperAdminDashboardMetrics();
+      res.json(metrics);
+    } catch (error) {
+      console.error("Error fetching super admin metrics:", error);
+      res.status(500).json({ message: "Failed to fetch super admin metrics" });
     }
   });
 
