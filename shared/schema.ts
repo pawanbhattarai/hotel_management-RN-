@@ -209,6 +209,42 @@ export const reservationRoomsRelations = relations(reservationRooms, ({ one }) =
   }),
 }));
 
+// Hotel settings table - for hotel information and billing details
+export const hotelSettings = pgTable("hotel_settings", {
+  id: serial("id").primaryKey(),
+  branchId: integer("branch_id"), // null for global settings
+  hotelName: varchar("hotel_name", { length: 255 }),
+  hotelChain: varchar("hotel_chain", { length: 255 }),
+  logo: text("logo"), // URL or base64
+  address: text("address"),
+  city: varchar("city", { length: 100 }),
+  state: varchar("state", { length: 100 }),
+  country: varchar("country", { length: 100 }),
+  postalCode: varchar("postal_code", { length: 20 }),
+  phone: varchar("phone", { length: 50 }),
+  email: varchar("email", { length: 255 }),
+  website: varchar("website", { length: 255 }),
+  taxNumber: varchar("tax_number", { length: 100 }),
+  registrationNumber: varchar("registration_number", { length: 100 }),
+  checkInTime: varchar("check_in_time", { length: 10 }).default("15:00"),
+  checkOutTime: varchar("check_out_time", { length: 10 }).default("11:00"),
+  currency: varchar("currency", { length: 10 }).default("USD"),
+  timeZone: varchar("time_zone", { length: 50 }).default("UTC"),
+  billingFooter: text("billing_footer"),
+  termsAndConditions: text("terms_and_conditions"),
+  cancellationPolicy: text("cancellation_policy"),
+  isActive: boolean("is_active").default(true),
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+});
+
+export const hotelSettingsRelations = relations(hotelSettings, ({ one }) => ({
+  branch: one(branches, {
+    fields: [hotelSettings.branchId],
+    references: [branches.id],
+  }),
+}));
+
 // Insert schemas
 export const insertUserSchema = createInsertSchema(users).omit({
   createdAt: true,
@@ -255,6 +291,12 @@ export const insertReservationRoomSchema = createInsertSchema(reservationRooms).
   createdAt: true,
 });
 
+export const insertHotelSettingsSchema = createInsertSchema(hotelSettings).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
+
 // Types
 export type UpsertUser = typeof users.$inferInsert;
 export type User = typeof users.$inferSelect;
@@ -270,3 +312,5 @@ export type Reservation = typeof reservations.$inferSelect;
 export type InsertReservation = z.infer<typeof insertReservationSchema>;
 export type ReservationRoom = typeof reservationRooms.$inferSelect;
 export type InsertReservationRoom = z.infer<typeof insertReservationRoomSchema>;
+export type HotelSettings = typeof hotelSettings.$inferSelect;
+export type InsertHotelSettings = z.infer<typeof insertHotelSettingsSchema>;

@@ -6,6 +6,7 @@ import {
   guests,
   reservations,
   reservationRooms,
+  hotelSettings,
   type User,
   type UpsertUser,
   type Branch,
@@ -20,6 +21,8 @@ import {
   type InsertReservation,
   type ReservationRoom,
   type InsertReservationRoom,
+  type HotelSettings,
+  type InsertHotelSettings,
 } from "@shared/schema";
 import { db } from "./db";
 import { eq, and, or, desc, between, sql, ilike } from "drizzle-orm";
@@ -72,10 +75,30 @@ export interface IStorage {
     roomStatusCounts: Record<string, number>;
   }>;
 
+  // Super admin dashboard metrics (all branches)
+  getSuperAdminDashboardMetrics(): Promise<{
+    totalBranches: number;
+    totalReservations: number;
+    totalRevenue: number;
+    totalRooms: number;
+    branchMetrics: Array<{
+      branchId: number;
+      branchName: string;
+      totalReservations: number;
+      occupancyRate: number;
+      revenue: number;
+      availableRooms: number;
+    }>;
+  }>;
+
   // Room availability
   getAvailableRooms(branchId: number, checkIn: string, checkOut: string): Promise<Room[]>;
 
-    getUserByEmail(email: string): Promise<User | undefined>;
+  // Hotel settings operations
+  getHotelSettings(branchId?: number): Promise<HotelSettings | undefined>;
+  upsertHotelSettings(settings: InsertHotelSettings): Promise<HotelSettings>;
+
+  getUserByEmail(email: string): Promise<User | undefined>;
 }
 
 export class DatabaseStorage implements IStorage {
@@ -253,15 +276,6 @@ export class DatabaseStorage implements IStorage {
   async createGuest(guest: InsertGuest): Promise<Guest> {
     const [newGuest] = await db.insert(guests).values(guest).returning();
     return newGuest;
-  }
-
-  async updateGuest(id: number, guest: Partial<InsertGuest>): Promise<Guest> {
-    const [updatedGuest] = await db
-      .update(guests)
-      .set({ ...guest, updatedAt: new Date() })
-      .where(eq(guests.id, id))
-      .returning();
-    return updatedGuest;
   }
 
   async updateGuest(id: number, guest: Partial<InsertGuest>): Promise<Guest> {
