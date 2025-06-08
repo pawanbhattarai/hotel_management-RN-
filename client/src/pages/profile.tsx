@@ -40,11 +40,11 @@ export default function Profile() {
   const form = useForm<ProfileUpdateForm>({
     resolver: zodResolver(profileUpdateSchema),
     defaultValues: {
-      firstName: profile?.firstName || "",
-      lastName: profile?.lastName || "",
-      email: profile?.email || "",
-      phone: profile?.phone || "",
-      profileImageUrl: profile?.profileImageUrl || "",
+      firstName: "",
+      lastName: "",
+      email: "",
+      phone: "",
+      profileImageUrl: "",
     },
   });
 
@@ -64,14 +64,20 @@ export default function Profile() {
   }, [profile, reset]);
 
   const updateProfileMutation = useMutation({
-    mutationFn: (data: ProfileUpdateForm) =>
-      apiRequest("/api/profile", {
+    mutationFn: async (data: ProfileUpdateForm) => {
+      const response = await fetch("/api/profile", {
         method: "PUT",
         headers: {
           "Content-Type": "application/json",
         },
         body: JSON.stringify(data),
-      }),
+        credentials: "include",
+      });
+      if (!response.ok) {
+        throw new Error("Failed to update profile");
+      }
+      return response.json();
+    },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/profile"] });
       toast({
@@ -93,8 +99,12 @@ export default function Profile() {
     updateProfileMutation.mutate(data);
   };
 
-  const handleSaveClick = () => {
-    form.handleSubmit(onSubmit)();
+  const handleSaveClick = async () => {
+    const isValid = await form.trigger();
+    if (isValid) {
+      const formData = form.getValues();
+      onSubmit(formData);
+    }
   };
 
   const handleCancel = () => {

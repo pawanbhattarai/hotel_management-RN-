@@ -134,7 +134,7 @@ export default function Sidebar({ isMobileMenuOpen = false, setIsMobileMenuOpen 
   };
 
   const hasAccess = (roles: string[]) => {
-    return user && roles.includes(user.role);
+    return user && roles.includes((user as any).role);
   };
 
   const renderMenuItem = (item: any) => {
@@ -213,57 +213,122 @@ export default function Sidebar({ isMobileMenuOpen = false, setIsMobileMenuOpen 
         </div>
 
         {/* Navigation */}
-        <nav className="flex-1 p-3 lg:p-4 space-y-1">
-          {menuItems.map((item) => (
-            <button
-              key={item.path}
-              onClick={() => {
-                navigate(item.path);
-                setMenuOpen(false);
-              }}
-              className={`
-                w-full flex items-center px-3 py-2 lg:py-2.5 text-left rounded-lg transition-colors
-                ${
-                  isActiveRoute(item.path)
-                    ? "bg-primary text-white"
-                    : "text-gray-700 hover:bg-gray-100"
-                }
-              `}
-            >
-              <item.icon className="mr-3 h-4 w-4 flex-shrink-0" />
-              <span className="text-sm font-medium truncate">{item.title}</span>
-            </button>
-          ))}
+        <ScrollArea className="flex-1">
+          <nav className="p-3 lg:p-4 space-y-1">
+            {menuItems.map((item) => (
+              <button
+                key={item.path}
+                onClick={() => {
+                  navigate(item.path);
+                  setMenuOpen(false);
+                }}
+                className={`
+                  w-full flex items-center px-3 py-2 lg:py-2.5 text-left rounded-lg transition-colors
+                  ${
+                    isActiveRoute(item.path)
+                      ? "bg-primary text-white"
+                      : "text-gray-700 hover:bg-gray-100"
+                  }
+                `}
+              >
+                <item.icon className="mr-3 h-4 w-4 flex-shrink-0" />
+                <span className="text-sm font-medium truncate">{item.title}</span>
+              </button>
+            ))}
 
-            {/* Admin Section */}
-            {user && (user as any).role === "superadmin" && (
+              {/* Admin Section */}
+              {user && (user as any).role === "superadmin" && (
+                <div className="border-t border-gray-200 pt-4 mt-4">
+                  <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-2 px-3">
+                    ADMIN
+                  </p>
+                  <div className="space-y-1">
+                    {adminMenuItems.map((item) => {
+                      if (!hasAccess(item.roles)) return null;
+                      return (
+                        <button
+                          key={item.path}
+                          onClick={() => {
+                            navigate(item.path);
+                            setMenuOpen(false);
+                          }}
+                          className={`w-full flex items-center px-3 py-2 lg:py-2.5 text-left rounded-lg transition-colors ${
+                            isActiveRoute(item.path)
+                              ? "bg-primary text-white"
+                              : "text-gray-700 hover:bg-gray-100"
+                          }`}
+                        >
+                          <item.icon className="h-4 w-4 mr-3 flex-shrink-0" />
+                          <span className="text-sm font-medium truncate">{item.title}</span>
+                        </button>
+                      );
+                    })}
+                  </div>
+                </div>
+              )}
+
+              {/* Reports Section */}
+              {user && ["superadmin", "branch-admin"].includes((user as any).role) && (
+                <div className="border-t border-gray-200 pt-4 mt-4">
+                  <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-2 px-3">
+                    REPORTS
+                  </p>
+                  <div className="space-y-1">
+                    {reportsMenuItems.map((item) => {
+                      if (!hasAccess(item.roles)) return null;
+                      return (
+                        <button
+                          key={item.path}
+                          onClick={() => {
+                            navigate(item.path);
+                            setMenuOpen(false);
+                          }}
+                          className={`w-full flex items-center px-3 py-2 lg:py-2.5 text-left rounded-lg transition-colors ${
+                            isActiveRoute(item.path)
+                              ? "bg-primary text-white"
+                              : "text-gray-700 hover:bg-gray-100"
+                          }`}
+                        >
+                          <item.icon className="h-4 w-4 mr-3 flex-shrink-0" />
+                          <span className="text-sm font-medium truncate">{item.title}</span>
+                        </button>
+                      );
+                    })}
+                  </div>
+                </div>
+              )}
+
+              {/* Profile Section */}
               <div className="border-t border-gray-200 pt-4 mt-4">
-                <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-2 px-4">
-                  ADMIN
+                <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-2 px-3">
+                  PROFILE
                 </p>
-                {adminMenuItems.map(renderMenuItem)}
+                <div className="space-y-1">
+                  {profileMenuItems.map((item) => {
+                    if (!hasAccess(item.roles)) return null;
+                    return (
+                      <button
+                        key={item.path}
+                        onClick={() => {
+                          navigate(item.path);
+                          setMenuOpen(false);
+                        }}
+                        className={`w-full flex items-center px-3 py-2 lg:py-2.5 text-left rounded-lg transition-colors ${
+                          isActiveRoute(item.path)
+                            ? "bg-primary text-white"
+                            : "text-gray-700 hover:bg-gray-100"
+                        }`}
+                      >
+                        <item.icon className="h-4 w-4 mr-3 flex-shrink-0" />
+                        <span className="text-sm font-medium truncate">{item.title}</span>
+                      </button>
+                    );
+                  })}
+                </div>
               </div>
-            )}
 
-            {/* Reports Section */}
-            {user && ["superadmin", "branch-admin"].includes((user as any).role) && (
-              <div className="border-t border-gray-200 pt-4 mt-4">
-                <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-2 px-4">
-                  REPORTS
-                </p>
-                {reportsMenuItems.map(renderMenuItem)}
-              </div>
-            )}
-
-            {/* Profile Section */}
-            <div className="border-t border-gray-200 pt-4 mt-4">
-              <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-2 px-4">
-                PROFILE
-              </p>
-              {profileMenuItems.map(renderMenuItem)}
-            </div>
-
-        </nav>
+          </nav>
+        </ScrollArea>
 
         {/* Footer */}
         <div className="p-3 lg:p-4 border-t border-gray-200">
