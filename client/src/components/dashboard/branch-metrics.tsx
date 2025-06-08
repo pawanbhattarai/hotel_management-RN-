@@ -49,7 +49,7 @@ export default function BranchMetrics() {
             <div>
               <p className="text-sm font-medium text-gray-600">Total Revenue (All Branches, All Time)</p>
               <p className="text-3xl font-bold text-gray-900 mt-1">
-                Rs.{(metrics.totalRevenue || 0).toLocaleString()}
+                ₨{(metrics.totalRevenue || 0).toLocaleString()}
               </p>
               <p className="text-sm text-gray-500 mt-1">Cumulative revenue from all branches</p>
             </div>
@@ -115,7 +115,7 @@ export default function BranchMetrics() {
                       </Badge>
                     </TableCell>
                     <TableCell className="font-medium">
-                      Rs.{(branch.revenue || 0).toLocaleString()}
+                      ₨{(branch.revenue || 0).toLocaleString()}
                     </TableCell>
                   </TableRow>
                 );

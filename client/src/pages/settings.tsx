@@ -35,8 +35,8 @@ const hotelSettingsSchema = z.object({
   registrationNumber: z.string().optional(),
   checkInTime: z.string().default("15:00"),
   checkOutTime: z.string().default("11:00"),
-  currency: z.string().default("USD"),
-  timeZone: z.string().default("UTC"),
+  currency: z.string().default("NPR"),
+  timeZone: z.string().default("Asia/Kathmandu"),
   billingFooter: z.string().optional(),
   termsAndConditions: z.string().optional(),
   cancellationPolicy: z.string().optional(),
@@ -45,6 +45,7 @@ const hotelSettingsSchema = z.object({
 type HotelSettingsForm = z.infer<typeof hotelSettingsSchema>;
 
 const currencies = [
+  { value: "NPR", label: "NPR - Nepalese Rupee" },
   { value: "USD", label: "USD - US Dollar" },
   { value: "EUR", label: "EUR - Euro" },
   { value: "GBP", label: "GBP - British Pound" },
@@ -274,6 +275,27 @@ export default function Settings() {
                       {...form.register("hotelChain")}
                       placeholder="Luxury Hotels International"
                     />
+                  </div>
+                  
+                  <div className="space-y-2">
+                    <Label htmlFor="timeZone">Time Zone</Label>
+                    <Select
+                      value={watch("timeZone")}
+                      onValueChange={(value) => setValue("timeZone", value)}
+                    >
+                      <SelectTrigger>
+                        <SelectValue placeholder="Select timezone" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="Asia/Kathmandu">Asia/Kathmandu (Nepal Time)</SelectItem>
+                        <SelectItem value="UTC">UTC</SelectItem>
+                        <SelectItem value="America/New_York">America/New_York (EST)</SelectItem>
+                        <SelectItem value="Europe/London">Europe/London (GMT)</SelectItem>
+                        <SelectItem value="Asia/Tokyo">Asia/Tokyo (JST)</SelectItem>
+                        <SelectItem value="Asia/Dubai">Asia/Dubai (GST)</SelectItem>
+                        <SelectItem value="Asia/Kolkata">Asia/Kolkata (IST)</SelectItem>
+                      </SelectContent>
+                    </Select>
                   </div>
                 </div>
 

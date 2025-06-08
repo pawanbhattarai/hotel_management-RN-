@@ -1,4 +1,3 @@
-
 import { useEffect, useState } from "react";
 import { useAuth } from "@/hooks/useAuth";
 import { useToast } from "@/hooks/use-toast";
@@ -191,7 +190,7 @@ export default function Billing() {
           <h1>Hotel Bill</h1>
           <p>Confirmation Number: ${selectedReservation.confirmationNumber}</p>
         </div>
-        
+
         <div class="bill-details">
           <p><strong>Guest:</strong> ${selectedReservation.guest.firstName} ${selectedReservation.guest.lastName}</p>
           <p><strong>Email:</strong> ${selectedReservation.guest.email || "N/A"}</p>
@@ -235,7 +234,7 @@ export default function Billing() {
         </div>
 
         ${billData.notes ? `<div><p><strong>Notes:</strong> ${billData.notes}</p></div>` : ''}
-        
+
         <div style="margin-top: 30px; text-align: center;">
           <p>Thank you for staying with us!</p>
         </div>
@@ -537,7 +536,7 @@ export default function Billing() {
                     <div>Tax: Rs.{billData.tax.toFixed(2)}</div>
                   )}
                   <div className="text-lg font-bold">
-                    Total: Rs.{(
+                    Total: ₨{(
                       parseFloat(selectedReservation.totalAmount) + 
                       billData.additionalCharges - 
                       billData.discount + 

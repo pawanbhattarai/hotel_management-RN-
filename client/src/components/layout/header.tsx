@@ -17,6 +17,7 @@ export default function Header({ title, subtitle, action, onMobileMenuToggle }: 
     year: "numeric",
     month: isMobile ? "short" : "long",
     day: "numeric",
+    timeZone: "Asia/Kathmandu",
   });
 
   return (
