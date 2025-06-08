@@ -111,38 +111,49 @@ export default function Settings() {
   useEffect(() => {
     if (settings) {
       reset({
-        branchId: settings.branchId || undefined,
-        hotelName: settings.hotelName || "",
-        hotelChain: settings.hotelChain || "",
-        logo: settings.logo || "",
-        address: settings.address || "",
-        city: settings.city || "",
-        state: settings.state || "",
-        country: settings.country || "",
-        postalCode: settings.postalCode || "",
-        phone: settings.phone || "",
-        email: settings.email || "",
-        website: settings.website || "",
-        taxNumber: settings.taxNumber || "",
-        registrationNumber: settings.registrationNumber || "",
-        checkInTime: settings.checkInTime || "15:00",
-        checkOutTime: settings.checkOutTime || "11:00",
-        currency: settings.currency || "USD",
-        timeZone: settings.timeZone || "UTC",
-        billingFooter: settings.billingFooter || "",
-        termsAndConditions: settings.termsAndConditions || "",
-        cancellationPolicy: settings.cancellationPolicy || "",
+        branchId: (settings as any).branchId || undefined,
+        hotelName: (settings as any).hotelName || "",
+        hotelChain: (settings as any).hotelChain || "",
+        logo: (settings as any).logo || "",
+        address: (settings as any).address || "",
+        city: (settings as any).city || "",
+        state: (settings as any).state || "",
+        country: (settings as any).country || "",
+        postalCode: (settings as any).postalCode || "",
+        phone: (settings as any).phone || "",
+        email: (settings as any).email || "",
+        website: (settings as any).website || "",
+        taxNumber: (settings as any).taxNumber || "",
+        registrationNumber: (settings as any).registrationNumber || "",
+        checkInTime: (settings as any).checkInTime || "15:00",
+        checkOutTime: (settings as any).checkOutTime || "11:00",
+        currency: (settings as any).currency || "USD",
+        timeZone: (settings as any).timeZone || "UTC",
+        billingFooter: (settings as any).billingFooter || "",
+        termsAndConditions: (settings as any).termsAndConditions || "",
+        cancellationPolicy: (settings as any).cancellationPolicy || "",
       });
     }
   }, [settings, reset]);
 
   const saveSettingsMutation = useMutation({
-    mutationFn: (data: HotelSettingsForm) =>
-      apiRequest("/api/hotel-settings", {
+    mutationFn: async (data: HotelSettingsForm) => {
+      const response = await fetch("/api/hotel-settings", {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: { 
+          "Content-Type": "application/json" 
+        },
         body: JSON.stringify(data),
-      }),
+        credentials: "include",
+      });
+      
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({}));
+        throw new Error(errorData.message || "Failed to save settings");
+      }
+      
+      return response.json();
+    },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/hotel-settings"] });
       toast({
@@ -163,8 +174,12 @@ export default function Settings() {
     saveSettingsMutation.mutate(data);
   };
 
-  const handleSaveClick = () => {
-    form.handleSubmit(onSubmit)();
+  const handleSaveClick = async () => {
+    const isValid = await form.trigger();
+    if (isValid) {
+      const formData = form.getValues();
+      onSubmit(formData);
+    }
   };
 
   if (isLoading) {
