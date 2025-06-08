@@ -162,7 +162,9 @@ export default function Billing() {
   const generateBillHTML = () => {
     if (!selectedReservation) return "";
 
-    const subtotal = parseFloat(selectedReservation.totalAmount);
+    const subtotal = selectedReservation.reservationRooms.reduce((sum: number, room: any) => 
+      sum + parseFloat(room.totalAmount), 0
+    );
     const additionalCharges = billData.additionalCharges || 0;
     const discount = billData.discount || 0;
     const tax = billData.tax || 0;
@@ -246,11 +248,13 @@ export default function Billing() {
   const handleCheckout = () => {
     if (!selectedReservation) return;
 
-    const subtotal = parseFloat(selectedReservation.totalAmount);
+    const roomSubtotal = selectedReservation.reservationRooms.reduce((sum: number, room: any) => 
+      sum + parseFloat(room.totalAmount), 0
+    );
     const additionalCharges = billData.additionalCharges || 0;
     const discount = billData.discount || 0;
     const tax = billData.tax || 0;
-    const finalTotal = subtotal + additionalCharges - discount + tax;
+    const finalTotal = roomSubtotal + additionalCharges - discount + tax;
 
     checkoutMutation.mutate({
       reservationId: selectedReservation.id,
@@ -525,24 +529,30 @@ export default function Billing() {
               {/* Total Calculation */}
               <div className="border-t pt-4">
                 <div className="text-right space-y-2">
-                  <div>Subtotal: Rs.{parseFloat(selectedReservation.totalAmount).toFixed(2)}</div>
-                  {billData.additionalCharges > 0 && (
-                    <div>Additional Charges: Rs.{billData.additionalCharges.toFixed(2)}</div>
-                  )}
-                  {billData.discount > 0 && (
-                    <div>Discount: -Rs.{billData.discount.toFixed(2)}</div>
-                  )}
-                  {billData.tax > 0 && (
-                    <div>Tax: Rs.{billData.tax.toFixed(2)}</div>
-                  )}
-                  <div className="text-lg font-bold">
-                    Total: ₨{(
-                      parseFloat(selectedReservation.totalAmount) + 
-                      billData.additionalCharges - 
-                      billData.discount + 
-                      billData.tax
-                    ).toFixed(2)}
-                  </div>
+                  {(() => {
+                    const roomSubtotal = selectedReservation.reservationRooms.reduce((sum: number, room: any) => 
+                      sum + parseFloat(room.totalAmount), 0
+                    );
+                    const finalTotal = roomSubtotal + billData.additionalCharges - billData.discount + billData.tax;
+                    
+                    return (
+                      <>
+                        <div>Subtotal: Rs.{roomSubtotal.toFixed(2)}</div>
+                        {billData.additionalCharges > 0 && (
+                          <div>Additional Charges: Rs.{billData.additionalCharges.toFixed(2)}</div>
+                        )}
+                        {billData.discount > 0 && (
+                          <div>Discount: -Rs.{billData.discount.toFixed(2)}</div>
+                        )}
+                        {billData.tax > 0 && (
+                          <div>Tax: Rs.{billData.tax.toFixed(2)}</div>
+                        )}
+                        <div className="text-lg font-bold">
+                          Total: ₨{finalTotal.toFixed(2)}
+                        </div>
+                      </>
+                    );
+                  })()}
                 </div>
               </div>
 
