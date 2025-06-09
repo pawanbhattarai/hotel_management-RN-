@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { useAuth } from '@/hooks/useAuth';
-import { notificationService } from '@/lib/notifications';
+import { NotificationManager as NotificationManagerService } from '@/lib/notifications';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Bell, BellOff, Settings } from 'lucide-react';
@@ -39,10 +39,16 @@ export function NotificationManager() {
       setAutoSubscribeAttempted(true);
 
       try {
-        const registration = await navigator.serviceWorker.ready;
-        const subscription = await registration.pushManager.getSubscription();
+        // Initialize the notification manager first
+        const initialized = await NotificationManagerService.initialize();
+        if (!initialized) {
+          console.warn('❌ Failed to initialize notification manager');
+          return;
+        }
 
-        if (!subscription) {
+        const isAlreadySubscribed = await NotificationManagerService.isSubscribed();
+
+        if (!isAlreadySubscribed) {
           console.log('🔔 Auto-subscribing admin user to notifications...');
 
           // Check if permission is already granted
@@ -80,9 +86,8 @@ export function NotificationManager() {
 
   const checkSubscriptionStatus = async () => {
     try {
-      const registration = await navigator.serviceWorker.ready;
-      const subscription = await registration.pushManager.getSubscription();
-      setIsSubscribed(!!subscription);
+      const isSubscribed = await NotificationManagerService.isSubscribed();
+      setIsSubscribed(isSubscribed);
     } catch (error) {
       console.error('Error checking subscription status:', error);
     }
@@ -119,7 +124,7 @@ export function NotificationManager() {
         return;
       }
 
-      const success = await notificationService.subscribe();
+      const success = await NotificationManagerService.subscribe();
 
       if (success) {
         setIsSubscribed(true);
@@ -159,7 +164,7 @@ export function NotificationManager() {
 
     setLoading(true);
     try {
-      const success = await notificationService.unsubscribe();
+      const success = await NotificationManagerService.unsubscribe();
 
       if (success) {
         setIsSubscribed(false);

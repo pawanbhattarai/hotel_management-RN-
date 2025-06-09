@@ -469,3 +469,10 @@ class NotificationService {
     return window.btoa(binary);
   }
 }
+
+// Create a default instance for backward compatibility
+export const notificationService = new NotificationService();
+
+// Export NotificationManager as default
+export { NotificationManager };
+export default NotificationManager;
