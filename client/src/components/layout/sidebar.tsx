@@ -305,7 +305,7 @@ export default function Sidebar({ isMobileMenuOpen = false, setIsMobileMenuOpen 
                   <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-2 px-3">
                     NOTIFICATIONS
                   </p>
-                  <div className="px-3">
+                  <div className="px-3 py-1">
                     <NotificationToggle />
                   </div>
                 </div>

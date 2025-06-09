@@ -93,14 +93,16 @@ export function NotificationToggle() {
       size="sm"
       onClick={handleToggleNotifications}
       disabled={isLoading || !isSupported}
-      className="flex items-center gap-2"
+      className="flex items-center gap-2 w-full justify-start text-sm font-medium cursor-pointer"
     >
       {isSubscribed ? (
-        <Bell className="h-4 w-4" />
+        <Bell className="h-4 w-4 flex-shrink-0" />
       ) : (
-        <BellOff className="h-4 w-4" />
+        <BellOff className="h-4 w-4 flex-shrink-0" />
       )}
-      {isLoading ? 'Loading...' : isSubscribed ? 'Notifications On' : 'Enable Notifications'}
+      <span className="truncate">
+        {isLoading ? 'Loading...' : isSubscribed ? 'Notifications On' : 'Enable Notifications'}
+      </span>
     </Button>
   );
 }
