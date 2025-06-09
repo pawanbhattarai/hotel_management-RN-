@@ -7,6 +7,7 @@ import {
   reservations,
   reservationRooms,
   hotelSettings,
+  pushSubscriptions,
   type User,
   type UpsertUser,
   type Branch,
@@ -23,6 +24,8 @@ import {
   type InsertReservationRoom,
   type HotelSettings,
   type InsertHotelSettings,
+  type PushSubscription,
+  type InsertPushSubscription,
 } from "@shared/schema";
 import { db } from "./db";
 import { eq, and, or, desc, between, sql, ilike, notInArray } from "drizzle-orm";
@@ -99,6 +102,12 @@ export interface IStorage {
   upsertHotelSettings(settings: InsertHotelSettings): Promise<HotelSettings>;
 
   getUserByEmail(email: string): Promise<User | undefined>;
+
+  // Push subscription operations
+  getPushSubscriptions(userId: string): Promise<PushSubscription[]>;
+  createPushSubscription(subscription: InsertPushSubscription): Promise<PushSubscription>;
+  deletePushSubscription(userId: string, endpoint: string): Promise<void>;
+  getAllAdminSubscriptions(): Promise<(PushSubscription & { user: User })[]>;
 }
 
 export class DatabaseStorage implements IStorage {
@@ -571,6 +580,49 @@ export class DatabaseStorage implements IStorage {
         .returning();
       return newSettings;
     }
+  }
+
+  // Push subscription operations
+  async getPushSubscriptions(userId: string): Promise<PushSubscription[]> {
+    return await db
+      .select()
+      .from(pushSubscriptions)
+      .where(eq(pushSubscriptions.userId, userId));
+  }
+
+  async createPushSubscription(subscription: InsertPushSubscription): Promise<PushSubscription> {
+    const [newSubscription] = await db
+      .insert(pushSubscriptions)
+      .values(subscription)
+      .returning();
+    return newSubscription;
+  }
+
+  async deletePushSubscription(userId: string, endpoint: string): Promise<void> {
+    await db
+      .delete(pushSubscriptions)
+      .where(
+        and(
+          eq(pushSubscriptions.userId, userId),
+          eq(pushSubscriptions.endpoint, endpoint)
+        )
+      );
+  }
+
+  async getAllAdminSubscriptions(): Promise<(PushSubscription & { user: User })[]> {
+    return await db
+      .select({
+        id: pushSubscriptions.id,
+        userId: pushSubscriptions.userId,
+        endpoint: pushSubscriptions.endpoint,
+        p256dh: pushSubscriptions.p256dh,
+        auth: pushSubscriptions.auth,
+        createdAt: pushSubscriptions.createdAt,
+        user: users,
+      })
+      .from(pushSubscriptions)
+      .innerJoin(users, eq(pushSubscriptions.userId, users.id))
+      .where(sql`${users.role} IN ('superadmin', 'branch-admin')`);
   }
 }
 
