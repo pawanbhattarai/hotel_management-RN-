@@ -2,9 +2,23 @@ import webpush from 'web-push';
 import { storage } from './storage';
 import type { Branch, Room, Guest } from '@shared/schema';
 
-// VAPID keys for web push (you'll need to generate these)
-const VAPID_PUBLIC_KEY = process.env.VAPID_PUBLIC_KEY || 'BEl62iUYgUivxIkv69yViEuiBIa40HcCWLWa7zH5FrZTVVhqyPHcMLUNzVq6P2FBhWAKgUhVhJGBUDbWOD7B2MM';
-const VAPID_PRIVATE_KEY = process.env.VAPID_PRIVATE_KEY || 'ZJROCPGKjFWqhbGNJmwFJZgRjdAhQtOxZWWhPXz3w6s';
+// Generate VAPID keys if not provided
+let VAPID_PUBLIC_KEY: string;
+let VAPID_PRIVATE_KEY: string;
+
+if (!process.env.VAPID_PUBLIC_KEY || !process.env.VAPID_PRIVATE_KEY) {
+  console.log('🔑 Generating new VAPID keys...');
+  const vapidKeys = webpush.generateVAPIDKeys();
+  VAPID_PUBLIC_KEY = vapidKeys.publicKey;
+  VAPID_PRIVATE_KEY = vapidKeys.privateKey;
+  console.log('📋 New VAPID Public Key:', VAPID_PUBLIC_KEY);
+  console.log('🔐 New VAPID Private Key:', VAPID_PRIVATE_KEY);
+  console.log('💡 Consider setting these as environment variables for production');
+} else {
+  VAPID_PUBLIC_KEY = process.env.VAPID_PUBLIC_KEY;
+  VAPID_PRIVATE_KEY = process.env.VAPID_PRIVATE_KEY;
+}
+
 const VAPID_SUBJECT = process.env.VAPID_SUBJECT || 'mailto:admin@hotel.com';
 
 // Configure web-push
@@ -44,8 +58,13 @@ export class NotificationService {
         ]
       });
 
+      console.log(`📤 Attempting to send notifications to ${subscriptions.length} subscribers`);
+
       const sendPromises = subscriptions.map(async (sub) => {
         try {
+          console.log(`📞 Sending notification to user ${sub.userId}...`);
+          console.log(`🔗 Endpoint: ${sub.endpoint.substring(0, 50)}...`);
+          
           const pushConfig = {
             endpoint: sub.endpoint,
             keys: {
@@ -54,26 +73,29 @@ export class NotificationService {
             },
           };
 
-          await webpush.sendNotification(pushConfig, payload, {
-            vapidDetails: {
-              subject: VAPID_SUBJECT,
-              publicKey: VAPID_PUBLIC_KEY,
-              privateKey: VAPID_PRIVATE_KEY,
-            },
-            TTL: 86400, // 24 hours
-          });
-          
-          console.log(`✅ Notification sent to user ${sub.userId}`);
+          const result = await webpush.sendNotification(pushConfig, payload);
+          console.log(`✅ Notification sent to user ${sub.userId}`, result.statusCode || 'OK');
+          return { success: true, userId: sub.userId };
         } catch (error: any) {
-          console.error(`❌ Failed to send notification to user ${sub.userId}:`, error.message);
+          console.error(`❌ Failed to send notification to user ${sub.userId}:`, {
+            message: error.message,
+            statusCode: error.statusCode,
+            body: error.body,
+            headers: error.headers
+          });
           
           // If subscription is invalid, remove it
           if (error.statusCode === 410 || error.statusCode === 404) {
             await storage.deletePushSubscription(sub.userId, sub.endpoint);
             console.log(`🗑️ Removed invalid subscription for user ${sub.userId}`);
           }
+          
+          return { success: false, userId: sub.userId, error: error.message };
         }
       });
+
+      const results = await Promise.allSettled(sendPromises);
+      console.log(`📊 Notification results: ${results.filter(r => r.status === 'fulfilled').length}/${results.length} sent successfully`);
 
       await Promise.allSettled(sendPromises);
     } catch (error) {

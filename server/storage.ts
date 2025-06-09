@@ -108,22 +108,27 @@ export interface IStorage {
   createPushSubscription(subscription: InsertPushSubscription): Promise<PushSubscription>;
   deletePushSubscription(userId: string, endpoint: string): Promise<void>;
   getAllAdminSubscriptions(): Promise<(PushSubscription & { user: User })[]>;
+  clearAllPushSubscriptions(): Promise<void>;
 }
 
 export class DatabaseStorage implements IStorage {
   // User operations - mandatory for Replit Auth
+  db: any;
+  constructor() {
+    this.db = db;
+  }
   async getUser(id: string): Promise<User | undefined> {
-    const [user] = await db.select().from(users).where(eq(users.id, id));
+    const [user] = await this.db.select().from(users).where(eq(users.id, id));
     return user;
   }
 
   async getUserByEmail(email: string): Promise<User | undefined> {
-    const [user] = await db.select().from(users).where(eq(users.email, email));
+    const [user] = await this.db.select().from(users).where(eq(users.email, email));
     return user;
   }
 
   async upsertUser(userData: UpsertUser): Promise<User> {
-    const [user] = await db
+    const [user] = await this.db
       .insert(users)
       .values(userData)
       .onConflictDoUpdate({
@@ -138,11 +143,11 @@ export class DatabaseStorage implements IStorage {
   }
 
   async getAllUsers(): Promise<User[]> {
-    return await db.select().from(users).where(eq(users.isActive, true)).orderBy(users.firstName, users.lastName);
+    return await this.db.select().from(users).where(eq(users.isActive, true)).orderBy(users.firstName, users.lastName);
   }
 
   async updateUser(id: string, userData: Partial<UpsertUser>): Promise<User> {
-    const [updatedUser] = await db
+    const [updatedUser] = await this.db
       .update(users)
       .set({ ...userData, updatedAt: new Date() })
       .where(eq(users.id, id))
@@ -152,21 +157,21 @@ export class DatabaseStorage implements IStorage {
 
   // Branch operations
   async getBranches(): Promise<Branch[]> {
-    return await db.select().from(branches).where(eq(branches.isActive, true)).orderBy(branches.name);
+    return await this.db.select().from(branches).where(eq(branches.isActive, true)).orderBy(branches.name);
   }
 
   async getBranch(id: number): Promise<Branch | undefined> {
-    const [branch] = await db.select().from(branches).where(eq(branches.id, id));
+    const [branch] = await this.db.select().from(branches).where(eq(branches.id, id));
     return branch;
   }
 
   async createBranch(branch: InsertBranch): Promise<Branch> {
-    const [newBranch] = await db.insert(branches).values(branch).returning();
+    const [newBranch] = await this.db.insert(branches).values(branch).returning();
     return newBranch;
   }
 
   async updateBranch(id: number, branch: Partial<InsertBranch>): Promise<Branch> {
-    const [updatedBranch] = await db
+    const [updatedBranch] = await this.db
       .update(branches)
       .set({ ...branch, updatedAt: new Date() })
       .where(eq(branches.id, id))
@@ -186,7 +191,7 @@ export class DatabaseStorage implements IStorage {
       conditions.push(sql`${rooms.status} = ${status}`);
     }
 
-    const query = db.query.rooms.findMany({
+    const query = this.db.query.rooms.findMany({
       with: {
         roomType: true,
         branch: true,
@@ -199,17 +204,17 @@ export class DatabaseStorage implements IStorage {
   }
 
   async getRoom(id: number): Promise<Room | undefined> {
-    const [room] = await db.select().from(rooms).where(eq(rooms.id, id));
+    const [room] = await this.db.select().from(rooms).where(eq(rooms.id, id));
     return room;
   }
 
   async createRoom(room: InsertRoom): Promise<Room> {
-    const [newRoom] = await db.insert(rooms).values(room).returning();
+    const [newRoom] = await this.db.insert(rooms).values(room).returning();
     return newRoom;
   }
 
   async updateRoom(id: number, room: Partial<InsertRoom>): Promise<Room> {
-    const [updatedRoom] = await db
+    const [updatedRoom] = await this.db
       .update(rooms)
       .set({ ...room, updatedAt: new Date() })
       .where(eq(rooms.id, id))
@@ -218,7 +223,7 @@ export class DatabaseStorage implements IStorage {
   }
 
   async getRoomsByBranch(branchId: number): Promise<Room[]> {
-    return await db.select().from(rooms)
+    return await this.db.select().from(rooms)
       .where(and(eq(rooms.branchId, branchId), eq(rooms.isActive, true)))
       .orderBy(rooms.number);
   }
@@ -229,23 +234,23 @@ export class DatabaseStorage implements IStorage {
     if (branchId) {
       conditions.push(eq(roomTypes.branchId, branchId));
     }
-    return await db.select().from(roomTypes)
+    return await this.db.select().from(roomTypes)
       .where(and(...conditions))
       .orderBy(roomTypes.name);
   }
 
   async getRoomType(id: number): Promise<RoomType | undefined> {
-    const [roomType] = await db.select().from(roomTypes).where(eq(roomTypes.id, id));
+    const [roomType] = await this.db.select().from(roomTypes).where(eq(roomTypes.id, id));
     return roomType;
   }
 
   async createRoomType(roomType: InsertRoomType): Promise<RoomType> {
-    const [newRoomType] = await db.insert(roomTypes).values(roomType).returning();
+    const [newRoomType] = await this.db.insert(roomTypes).values(roomType).returning();
     return newRoomType;
   }
 
   async updateRoomType(id: number, roomType: Partial<InsertRoomType>): Promise<RoomType> {
-    const [updatedRoomType] = await db
+    const [updatedRoomType] = await this.db
       .update(roomTypes)
       .set({
         ...roomType,
@@ -262,23 +267,23 @@ export class DatabaseStorage implements IStorage {
     if (branchId) {
       conditions.push(eq(guests.branchId, branchId));
     }
-    return await db.select().from(guests)
+    return await this.db.select().from(guests)
       .where(and(...conditions))
       .orderBy(desc(guests.createdAt));
   }
 
   async getGuest(id: number): Promise<Guest | undefined> {
-    const [guest] = await db.select().from(guests).where(eq(guests.id, id));
+    const [guest] = await this.db.select().from(guests).where(eq(guests.id, id));
     return guest;
   }
 
   async createGuest(guest: InsertGuest): Promise<Guest> {
-    const [newGuest] = await db.insert(guests).values(guest).returning();
+    const [newGuest] = await this.db.insert(guests).values(guest).returning();
     return newGuest;
   }
 
   async updateGuest(id: number, guest: Partial<InsertGuest>): Promise<Guest> {
-    const [updatedGuest] = await db
+    const [updatedGuest] = await this.db
       .update(guests)
       .set({ ...guest, updatedAt: new Date() })
       .where(eq(guests.id, id))
@@ -294,16 +299,16 @@ export class DatabaseStorage implements IStorage {
       ilike(guests.phone, `%${query}%`)
     );
 
-    const conditions = branchId 
+    const conditions = branchId
       ? and(searchCondition, eq(guests.branchId, branchId))
       : searchCondition;
 
-    return await db.select().from(guests).where(conditions).limit(10);
+    return await this.db.select().from(guests).where(conditions).limit(10);
   }
 
   // Reservation operations
   async getReservations(branchId?: number): Promise<(Reservation & { guest: Guest; reservationRooms: (ReservationRoom & { room: Room & { roomType: RoomType } })[] })[]> {
-    const query = db.query.reservations.findMany({
+    const query = this.db.query.reservations.findMany({
       with: {
         guest: true,
         reservationRooms: {
@@ -324,7 +329,7 @@ export class DatabaseStorage implements IStorage {
   }
 
   async getReservation(id: string): Promise<(Reservation & { guest: Guest; reservationRooms: (ReservationRoom & { room: Room & { roomType: RoomType } })[] }) | undefined> {
-    return await db.query.reservations.findFirst({
+    return await this.db.query.reservations.findFirst({
       with: {
         guest: true,
         reservationRooms: {
@@ -342,7 +347,7 @@ export class DatabaseStorage implements IStorage {
   }
 
   async createReservation(reservation: InsertReservation, roomsData: InsertReservationRoom[]): Promise<Reservation> {
-    return await db.transaction(async (tx) => {
+    return await this.db.transaction(async (tx) => {
       const [newReservation] = await tx.insert(reservations).values(reservation).returning();
 
       const roomsWithReservationId = roomsData.map(room => ({
@@ -365,7 +370,7 @@ export class DatabaseStorage implements IStorage {
   }
 
   async updateReservation(id: string, reservation: Partial<InsertReservation>): Promise<Reservation> {
-    const [updatedReservation] = await db
+    const [updatedReservation] = await this.db
       .update(reservations)
       .set({ ...reservation, updatedAt: new Date() })
       .where(eq(reservations.id, id))
@@ -384,7 +389,7 @@ export class DatabaseStorage implements IStorage {
     const today = new Date().toISOString().split('T')[0];
 
     // Total reservations (active reservations only)
-    let totalReservationsQuery = db
+    let totalReservationsQuery = this.db
       .select({ count: sql`count(*)`.as('count') })
       .from(reservations)
       .where(sql`${reservations.status} != 'cancelled'`);
@@ -396,7 +401,7 @@ export class DatabaseStorage implements IStorage {
     const [{ count: totalReservations }] = await totalReservationsQuery;
 
     // Room status counts with proper filtering
-    let roomStatusQuery = db
+    let roomStatusQuery = this.db
       .select({
         status: rooms.status,
         count: sql`count(*)`.as('count'),
@@ -422,7 +427,7 @@ export class DatabaseStorage implements IStorage {
     const occupancyRate = totalRooms > 0 ? (occupiedRooms / totalRooms) * 100 : 0;
 
     // Revenue today - sum of paid amounts for today's reservations (check-ins today or active today)
-    let revenueTodayQuery = db
+    let revenueTodayQuery = this.db
       .select({ total: sql`COALESCE(SUM(CAST(${reservations.paidAmount} AS DECIMAL)), 0)`.as('total') })
       .from(reservations)
       .innerJoin(reservationRooms, eq(reservations.id, reservationRooms.reservationId))
@@ -465,21 +470,21 @@ export class DatabaseStorage implements IStorage {
     }>;
   }> {
     // Get all branches
-    const branchesData = await db.select().from(branches).where(eq(branches.isActive, true));
+    const branchesData = await this.db.select().from(branches).where(eq(branches.isActive, true));
 
     // Get global metrics - total active reservations
-    const [{ count: totalReservations }] = await db
+    const [{ count: totalReservations }] = await this.db
       .select({ count: sql`count(*)`.as('count') })
       .from(reservations)
       .where(sql`${reservations.status} != 'cancelled'`);
 
     // Total revenue from all paid amounts across all time and branches
-    const [{ total: totalRevenue }] = await db
+    const [{ total: totalRevenue }] = await this.db
       .select({ total: sql`COALESCE(SUM(CAST(${reservations.paidAmount} AS DECIMAL)), 0)`.as('total') })
       .from(reservations)
       .where(sql`${reservations.status} != 'cancelled'`);
 
-    const [{ count: totalRooms }] = await db
+    const [{ count: totalRooms }] = await this.db
       .select({ count: sql`count(*)`.as('count') })
       .from(rooms)
       .where(eq(rooms.isActive, true));
@@ -511,7 +516,7 @@ export class DatabaseStorage implements IStorage {
 
   // Room availability
   async getAvailableRooms(branchId: number, checkIn: string, checkOut: string): Promise<Room[]> {
-    const reservedRoomIds = await db
+    const reservedRoomIds = await this.db
       .select({ roomId: reservationRooms.roomId })
       .from(reservationRooms)
       .where(
@@ -533,7 +538,7 @@ export class DatabaseStorage implements IStorage {
 
     const reservedIds = reservedRoomIds.map(r => r.roomId);
 
-    const availableRoomsQuery = db
+    const availableRoomsQuery = this.db
       .select()
       .from(rooms)
       .where(
@@ -550,7 +555,7 @@ export class DatabaseStorage implements IStorage {
 
   // Hotel settings operations
   async getHotelSettings(branchId?: number): Promise<HotelSettings | undefined> {
-    const [settings] = await db
+    const [settings] = await this.db
       .select()
       .from(hotelSettings)
       .where(
@@ -567,14 +572,14 @@ export class DatabaseStorage implements IStorage {
     const existingSettings = await this.getHotelSettings(settings.branchId || undefined);
 
     if (existingSettings) {
-      const [updatedSettings] = await db
+      const [updatedSettings] = await this.db
         .update(hotelSettings)
         .set({ ...settings, updatedAt: new Date() })
         .where(eq(hotelSettings.id, existingSettings.id))
         .returning();
       return updatedSettings;
     } else {
-      const [newSettings] = await db
+      const [newSettings] = await this.db
         .insert(hotelSettings)
         .values(settings)
         .returning();
@@ -584,14 +589,14 @@ export class DatabaseStorage implements IStorage {
 
   // Push subscription operations
   async getPushSubscriptions(userId: string): Promise<PushSubscription[]> {
-    return await db
+    return await this.db
       .select()
       .from(pushSubscriptions)
       .where(eq(pushSubscriptions.userId, userId));
   }
 
   async createPushSubscription(subscription: InsertPushSubscription): Promise<PushSubscription> {
-    const [newSubscription] = await db
+    const [newSubscription] = await this.db
       .insert(pushSubscriptions)
       .values(subscription)
       .returning();
@@ -599,18 +604,34 @@ export class DatabaseStorage implements IStorage {
   }
 
   async deletePushSubscription(userId: string, endpoint: string): Promise<void> {
-    await db
-      .delete(pushSubscriptions)
-      .where(
-        and(
-          eq(pushSubscriptions.userId, userId),
-          eq(pushSubscriptions.endpoint, endpoint)
-        )
-      );
+    await this.db.delete(pushSubscriptions)
+      .where(and(
+        eq(pushSubscriptions.userId, userId),
+        eq(pushSubscriptions.endpoint, endpoint)
+      ));
   }
 
+  async clearAllPushSubscriptions(): Promise<void> {
+    await this.db.delete(pushSubscriptions);
+  }
+
+  // async getAllAdminSubscriptions(): Promise<(PushSubscription & { user: User })[]> {
+  //   return await this.db
+  //     .select({
+  //       id: pushSubscriptions.id,
+  //       userId: pushSubscriptions.userId,
+  //       endpoint: pushSubscriptions.endpoint,
+  //       p256dh: pushSubscriptions.p256dh,
+  //       auth: pushSubscriptions.auth,
+  //       createdAt: pushSubscriptions.createdAt,
+  //       user: users,
+  //     })
+  //     .from(pushSubscriptions)
+  //     .innerJoin(users, eq(pushSubscriptions.userId, users.id))
+  //     .where(sql`${users.role} IN ('superadmin', 'branch-admin')`);
+  // }
   async getAllAdminSubscriptions(): Promise<(PushSubscription & { user: User })[]> {
-    return await db
+    return await this.db
       .select({
         id: pushSubscriptions.id,
         userId: pushSubscriptions.userId,
@@ -622,7 +643,7 @@ export class DatabaseStorage implements IStorage {
       })
       .from(pushSubscriptions)
       .innerJoin(users, eq(pushSubscriptions.userId, users.id))
-      .where(sql`${users.role} IN ('superadmin', 'branch-admin')`);
+      .where(or(eq(users.role, 'superadmin'), eq(users.role, 'branch-admin')));
   }
 }
 

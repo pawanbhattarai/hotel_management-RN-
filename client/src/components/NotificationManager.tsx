@@ -25,7 +25,7 @@ export function NotificationToggle() {
       const supported = await NotificationManager.initialize();
       console.log('🔧 Notification support:', supported);
       setIsSupported(supported);
-      
+
       if (supported) {
         const subscribed = await NotificationManager.isSubscribed();
         console.log('📊 Current subscription status:', subscribed);
@@ -44,9 +44,9 @@ export function NotificationToggle() {
   const handleToggleNotifications = async (e: React.MouseEvent) => {
     e.preventDefault();
     e.stopPropagation();
-    
+
     console.log('🔔 Notification toggle clicked!', { isSupported, isSubscribed, isLoading });
-    
+
     if (!isSupported) {
       console.warn('❌ Browser not supported');
       toast({
@@ -80,17 +80,43 @@ export function NotificationToggle() {
           throw new Error('Failed to unsubscribe');
         }
       } else {
-        console.log('🔔 Attempting to subscribe...');
+        console.log("🔔 Attempting to subscribe...");
+
+        // Check notification permission first
+        const permission = await NotificationManager.requestPermission();
+        console.log("🔐 Notification permission:", permission);
+
+        if (permission !== 'granted') {
+          throw new Error(`Notification permission ${permission}. Please enable notifications in your browser settings.`);
+        }
+
         const success = await NotificationManager.subscribe();
         if (success) {
+          console.log("✅ Successfully subscribed to notifications");
           setIsSubscribed(true);
-          console.log('✅ Successfully subscribed');
           toast({
-            title: 'Notifications Enabled',
-            description: 'You will now receive push notifications for hotel events.',
+            title: "Notifications Enabled",
+            description: "You will now receive push notifications for hotel events.",
           });
+
+          // Send a test notification to verify it works
+          console.log("🧪 Sending test notification...");
+          try {
+            const response = await fetch('/api/notifications/test', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+            });
+
+            if (response.ok) {
+              console.log("✅ Test notification sent");
+            } else {
+              console.warn("⚠️ Failed to send test notification");
+            }
+          } catch (testError) {
+            console.warn("⚠️ Error sending test notification:", testError);
+          }
         } else {
-          throw new Error('Failed to subscribe');
+          throw new Error("Failed to subscribe");
         }
       }
     } catch (error) {
@@ -109,7 +135,7 @@ export function NotificationToggle() {
   const handleTestNotification = async (e: React.MouseEvent) => {
     e.preventDefault();
     e.stopPropagation();
-    
+
     if (!isSubscribed) {
       toast({
         title: 'Not Subscribed',
@@ -170,7 +196,7 @@ export function NotificationToggle() {
           {isLoading ? 'Loading...' : isSubscribed ? 'Notifications On' : 'Enable Notifications'}
         </span>
       </button>
-      
+
       {isSubscribed && (
         <button
           type="button"
@@ -181,6 +207,41 @@ export function NotificationToggle() {
           <TestTube className="h-4 w-4 flex-shrink-0" />
           <span className="truncate">Test Notification</span>
         </button>
+      )}
+      {user?.role === "superadmin" && (
+        <div className="mt-2 space-x-2">
+          <button
+            onClick={handleTestNotification}
+            disabled={isLoading}
+            className="px-3 py-1 text-xs bg-blue-500 text-white rounded hover:bg-blue-600 disabled:opacity-50"
+          >
+            Send Test Notification
+          </button>
+          <button
+            onClick={async () => {
+              try {
+                const response = await fetch('/api/notifications/debug/clear', {
+                  method: 'POST',
+                  headers: { 'Content-Type': 'application/json' },
+                });
+
+                if (response.ok) {
+                  setIsSubscribed(false);
+                  toast({
+                    title: "Debug",
+                    description: "All push subscriptions cleared",
+                  });
+                }
+              } catch (error) {
+                console.error("Failed to clear subscriptions:", error);
+              }
+            }}
+            disabled={isLoading}
+            className="px-3 py-1 text-xs bg-red-500 text-white rounded hover:bg-red-600 disabled:opacity-50"
+          >
+            Clear All Subscriptions
+          </button>
+        </div>
       )}
     </div>
   );

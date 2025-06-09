@@ -1245,6 +1245,25 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  app.post("/api/notifications/debug/clear", isAuthenticated, async (req: any, res) => {
+    try {
+      const user = await storage.getUser(req.session.user.id);
+      if (!user) return res.status(401).json({ message: "User not found" });
+
+      // Only allow superadmin to clear subscriptions
+      if (user.role !== 'superadmin') {
+        return res.status(403).json({ message: "Only superadmin can clear subscriptions" });
+      }
+
+      await storage.clearAllPushSubscriptions();
+      console.log(`🗑️ All push subscriptions cleared by user ${user.id}`);
+      res.json({ message: "All push subscriptions cleared successfully" });
+    } catch (error) {
+      console.error("Error clearing push subscriptions:", error);
+      res.status(500).json({ message: "Failed to clear push subscriptions" });
+    }
+  });
+
   app.post("/api/notifications/subscribe", isAuthenticated, async (req: any, res) => {
     try {
       const user = await storage.getUser(req.session.user.id);
