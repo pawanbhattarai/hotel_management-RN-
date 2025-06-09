@@ -8,6 +8,7 @@ import {
   reservationRooms,
   hotelSettings,
   pushSubscriptions,
+  notificationHistory,
   type User,
   type UpsertUser,
   type Branch,
@@ -26,6 +27,8 @@ import {
   type InsertHotelSettings,
   type PushSubscription,
   type InsertPushSubscription,
+  type NotificationHistory,
+  type InsertNotificationHistory,
 } from "@shared/schema";
 import { db } from "./db";
 import { eq, and, or, desc, between, sql, ilike, notInArray } from "drizzle-orm";

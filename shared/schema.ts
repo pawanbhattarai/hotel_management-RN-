@@ -262,6 +262,43 @@ export const pushSubscriptionsRelations = relations(pushSubscriptions, ({ one })
   }),
 }));
 
+// Notification history table
+export const notificationHistory = pgTable("notification_history", {
+  id: serial("id").primaryKey(),
+  userId: text("user_id").notNull().references(() => users.id, { onDelete: "cascade" }),
+  type: varchar("type", { 
+    enum: ["new-reservation", "check-in", "check-out", "maintenance"] 
+  }).notNull(),
+  title: varchar("title", { length: 255 }).notNull(),
+  body: text("body").notNull(),
+  data: jsonb("data"), // Additional context data
+  isRead: boolean("is_read").default(false),
+  reservationId: uuid("reservation_id").references(() => reservations.id),
+  roomId: integer("room_id").references(() => rooms.id),
+  branchId: integer("branch_id").references(() => branches.id),
+  sentAt: timestamp("sent_at").defaultNow().notNull(),
+  readAt: timestamp("read_at"),
+});
+
+export const notificationHistoryRelations = relations(notificationHistory, ({ one }) => ({
+  user: one(users, {
+    fields: [notificationHistory.userId],
+    references: [users.id],
+  }),
+  reservation: one(reservations, {
+    fields: [notificationHistory.reservationId],
+    references: [reservations.id],
+  }),
+  room: one(rooms, {
+    fields: [notificationHistory.roomId],
+    references: [rooms.id],
+  }),
+  branch: one(branches, {
+    fields: [notificationHistory.branchId],
+    references: [branches.id],
+  }),
+}));
+
 // Insert schemas
 export const insertUserSchema = createInsertSchema(users).omit({
   createdAt: true,
@@ -319,6 +356,11 @@ export const insertPushSubscriptionSchema = createInsertSchema(pushSubscriptions
   createdAt: true,
 });
 
+export const insertNotificationHistorySchema = createInsertSchema(notificationHistory).omit({
+  id: true,
+  sentAt: true,
+});
+
 // Types
 export type UpsertUser = typeof users.$inferInsert;
 export type User = typeof users.$inferSelect;
@@ -338,3 +380,5 @@ export type HotelSettings = typeof hotelSettings.$inferSelect;
 export type InsertHotelSettings = z.infer<typeof insertHotelSettingsSchema>;
 export type PushSubscription = typeof pushSubscriptions.$inferSelect;
 export type InsertPushSubscription = z.infer<typeof insertPushSubscriptionSchema>;
+export type NotificationHistory = typeof notificationHistory.$inferSelect;
+export type InsertNotificationHistory = z.infer<typeof insertNotificationHistorySchema>;
