@@ -58,7 +58,7 @@ export class NotificationManager {
       });
 
       // Send subscription to server
-      await apiRequest('/api/notifications/subscribe', 'POST', {
+      await apiRequest('POST', '/api/notifications/subscribe', {
         endpoint: subscription.endpoint,
         p256dh: this.arrayBufferToBase64(subscription.getKey('p256dh')),
         auth: this.arrayBufferToBase64(subscription.getKey('auth')),
@@ -83,7 +83,7 @@ export class NotificationManager {
         await subscription.unsubscribe();
         
         // Remove subscription from server
-        await apiRequest('/api/notifications/unsubscribe', 'DELETE', {
+        await apiRequest('DELETE', '/api/notifications/unsubscribe', {
           endpoint: subscription.endpoint,
         });
         
