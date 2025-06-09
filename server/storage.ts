@@ -112,6 +112,13 @@ export interface IStorage {
   deletePushSubscription(userId: string, endpoint: string): Promise<void>;
   getAllAdminSubscriptions(): Promise<(PushSubscription & { user: User })[]>;
   clearAllPushSubscriptions(): Promise<void>;
+
+  // Notification history operations
+  getNotificationHistory(userId: string, limit?: number): Promise<NotificationHistory[]>;
+  createNotificationHistory(notification: InsertNotificationHistory): Promise<NotificationHistory>;
+  markNotificationAsRead(notificationId: number, userId: string): Promise<void>;
+  markAllNotificationsAsRead(userId: string): Promise<void>;
+  getUnreadNotificationCount(userId: string): Promise<number>;
 }
 
 export class DatabaseStorage implements IStorage {
@@ -655,6 +662,46 @@ export class DatabaseStorage implements IStorage {
       .from(pushSubscriptions)
       .innerJoin(users, eq(pushSubscriptions.userId, users.id))
       .where(or(eq(users.role, 'superadmin'), eq(users.role, 'branch-admin')));
+  }
+
+  // Notification history operations
+  async getNotificationHistory(userId: string, limit: number = 50): Promise<NotificationHistory[]> {
+    return await this.db
+      .select()
+      .from(notificationHistory)
+      .where(eq(notificationHistory.userId, userId))
+      .orderBy(desc(notificationHistory.sentAt))
+      .limit(limit);
+  }
+
+  async createNotificationHistory(notification: InsertNotificationHistory): Promise<NotificationHistory> {
+    const [newNotification] = await this.db
+      .insert(notificationHistory)
+      .values(notification)
+      .returning();
+    return newNotification;
+  }
+
+  async markNotificationAsRead(notificationId: number, userId: string): Promise<void> {
+    await this.db
+      .update(notificationHistory)
+      .set({ isRead: true, readAt: new Date() })
+      .where(and(eq(notificationHistory.id, notificationId), eq(notificationHistory.userId, userId)));
+  }
+
+  async markAllNotificationsAsRead(userId: string): Promise<void> {
+    await this.db
+      .update(notificationHistory)
+      .set({ isRead: true, readAt: new Date() })
+      .where(and(eq(notificationHistory.userId, userId), eq(notificationHistory.isRead, false)));
+  }
+
+  async getUnreadNotificationCount(userId: string): Promise<number> {
+    const result = await this.db
+      .select({ count: sql<number>`count(*)` })
+      .from(notificationHistory)
+      .where(and(eq(notificationHistory.userId, userId), eq(notificationHistory.isRead, false)));
+    return result[0]?.count || 0;
   }
 }
 

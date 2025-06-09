@@ -1,6 +1,6 @@
 import webpush from 'web-push';
 import { storage } from './storage';
-import type { Branch, Room, Guest } from '@shared/schema';
+import type { Branch, Room, Guest, User, InsertNotificationHistory } from '@shared/schema';
 
 // Generate VAPID keys if not provided
 let VAPID_PUBLIC_KEY: string;
@@ -17,13 +17,15 @@ if (!process.env.VAPID_PUBLIC_KEY || !process.env.VAPID_PRIVATE_KEY) {
   console.log('⚠️ All existing push subscriptions will be cleared due to key change');
   
   // Clear all existing subscriptions since VAPID keys changed
-  try {
-    const { storage } = await import('./storage');
-    await storage.clearAllPushSubscriptions();
-    console.log('🗑️ Cleared all existing push subscriptions due to VAPID key change');
-  } catch (error) {
-    console.warn('⚠️ Could not clear existing subscriptions:', error);
-  }
+  setTimeout(async () => {
+    try {
+      const { storage } = await import('./storage');
+      await storage.clearAllPushSubscriptions();
+      console.log('🗑️ Cleared all existing push subscriptions due to VAPID key change');
+    } catch (error) {
+      console.warn('⚠️ Could not clear existing subscriptions:', error);
+    }
+  }, 100);
 } else {
   VAPID_PUBLIC_KEY = process.env.VAPID_PUBLIC_KEY;
   VAPID_PRIVATE_KEY = process.env.VAPID_PRIVATE_KEY;
@@ -49,9 +51,28 @@ export interface NotificationData {
 }
 
 export class NotificationService {
-  static async sendToAllAdmins(notification: NotificationData) {
+  static async sendToAllAdmins(notification: NotificationData, notificationType?: string, additionalData?: any) {
     try {
       const subscriptions = await storage.getAllAdminSubscriptions();
+      
+      // Save notification to history for each admin user
+      const savePromises = subscriptions.map(async (sub) => {
+        try {
+          const historyData: InsertNotificationHistory = {
+            userId: sub.userId,
+            type: notificationType as any || 'new-reservation',
+            title: notification.title,
+            body: notification.body,
+            data: notification.data,
+            ...additionalData
+          };
+          await storage.createNotificationHistory(historyData);
+        } catch (error) {
+          console.error(`Failed to save notification history for user ${sub.userId}:`, error);
+        }
+      });
+      
+      await Promise.allSettled(savePromises);
       
       const payload = JSON.stringify({
         title: notification.title,
@@ -69,13 +90,10 @@ export class NotificationService {
         ]
       });
 
-      console.log(`📤 Attempting to send notifications to ${subscriptions.length} subscribers`);
+      console.log(`Attempting to send notifications to ${subscriptions.length} subscribers`);
 
       const sendPromises = subscriptions.map(async (sub) => {
         try {
-          console.log(`📞 Sending notification to user ${sub.userId}...`);
-          console.log(`🔗 Endpoint: ${sub.endpoint.substring(0, 50)}...`);
-          
           const pushConfig = {
             endpoint: sub.endpoint,
             keys: {
@@ -85,19 +103,14 @@ export class NotificationService {
           };
 
           const result = await webpush.sendNotification(pushConfig, payload);
-          console.log(`✅ Notification sent to user ${sub.userId}`, result.statusCode || 'OK');
+          console.log(`Notification sent to user ${sub.userId}`);
           return { success: true, userId: sub.userId };
         } catch (error: any) {
-          console.error(`❌ Failed to send notification to user ${sub.userId}:`, {
-            message: error.message,
-            statusCode: error.statusCode,
-            body: error.body,
-            headers: error.headers
-          });
+          console.error(`Failed to send notification to user ${sub.userId}:`, error.message);
           
           // If subscription is invalid or VAPID mismatch, remove it
           if (error.statusCode === 410 || error.statusCode === 404 || error.statusCode === 403) {
-            console.log(`🗑️ Removing invalid/expired subscription for user ${sub.userId}`);
+            console.log(`Removing invalid subscription for user ${sub.userId}`);
             await storage.deletePushSubscription(sub.userId, sub.endpoint);
           }
           
@@ -106,9 +119,7 @@ export class NotificationService {
       });
 
       const results = await Promise.allSettled(sendPromises);
-      console.log(`📊 Notification results: ${results.filter(r => r.status === 'fulfilled').length}/${results.length} sent successfully`);
-
-      await Promise.allSettled(sendPromises);
+      console.log(`Notification results: ${results.filter(r => r.status === 'fulfilled').length}/${results.length} sent successfully`);
     } catch (error) {
       console.error('Failed to send notifications:', error);
     }
@@ -146,7 +157,11 @@ export class NotificationService {
       }
     };
 
-    await this.sendToAllAdmins(notification);
+    await this.sendToAllAdmins(notification, 'new-reservation', {
+      reservationId,
+      roomId: room.id,
+      branchId: branch.id
+    });
   }
 
   static async sendCheckInNotification(
