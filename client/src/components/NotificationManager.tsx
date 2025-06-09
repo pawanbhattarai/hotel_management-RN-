@@ -192,43 +192,37 @@ export function NotificationManager() {
     return null;
   }
 
-  return (
-    <div className="flex items-center space-x-2">
-      <div className="flex items-center space-x-2">
-        {isSubscribed ? (
-          <Badge variant="secondary" className="flex items-center space-x-1">
-            <Bell className="h-3 w-3" />
-            <span>Notifications On</span>
-          </Badge>
-        ) : (
-          <Badge variant="outline" className="flex items-center space-x-1">
-            <BellOff className="h-3 w-3" />
-            <span>Notifications Off</span>
-          </Badge>
-        )}
-      </div>
+  const handleToggle = async () => {
+    if (loading) return;
+    
+    if (isSubscribed) {
+      await unsubscribe();
+    } else {
+      await subscribe(true);
+    }
+  };
 
-      <div className="flex space-x-1">
-        {!isSubscribed ? (
-          <Button
-            onClick={() => subscribe(true)}
-            disabled={loading}
-            size="sm"
-            variant="outline"
-          >
-            Enable Notifications
-          </Button>
-        ) : (
-          <Button
-            onClick={unsubscribe}
-            disabled={loading}
-            size="sm"
-            variant="outline"
-          >
-            Disable
-          </Button>
-        )}
-      </div>
+  return (
+    <div className="flex items-center">
+      {isSubscribed ? (
+        <Badge 
+          variant="secondary" 
+          className="flex items-center space-x-1 cursor-pointer hover:bg-secondary/80 transition-colors" 
+          onClick={handleToggle}
+        >
+          <Bell className="h-3 w-3" />
+          <span>{loading ? 'Processing...' : 'Notifications On'}</span>
+        </Badge>
+      ) : (
+        <Badge 
+          variant="outline" 
+          className="flex items-center space-x-1 cursor-pointer hover:bg-accent hover:text-accent-foreground transition-colors" 
+          onClick={handleToggle}
+        >
+          <BellOff className="h-3 w-3" />
+          <span>{loading ? 'Processing...' : 'Notifications Off'}</span>
+        </Badge>
+      )}
     </div>
   );
 }
