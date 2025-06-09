@@ -1264,46 +1264,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.post("/api/notifications/subscribe", isAuthenticated, async (req: any, res) => {
-    try {
-      const user = await storage.getUser(req.session.user.id);
-      if (!user) return res.status(401).json({ message: "User not found" });
-
-      // Only allow admin users to subscribe
-      if (user.role !== "superadmin" && user.role !== "branch-admin") {
-        return res.status(403).json({ message: "Only admin users can subscribe to notifications" });
-      }
-
-      const validatedData = insertPushSubscriptionSchema.parse({
-        ...req.body,
-        userId: user.id,
-      });
-
-      const subscription = await storage.createPushSubscription(validatedData);
-      res.json(subscription);
-    } catch (error) {
-      console.error("Error creating push subscription:", error);
-      res.status(500).json({ message: "Failed to create push subscription" });
-    }
-  });
-
-  app.delete("/api/notifications/unsubscribe", isAuthenticated, async (req: any, res) => {
-    try {
-      const user = await storage.getUser(req.session.user.id);
-      if (!user) return res.status(401).json({ message: "User not found" });
-
-      const { endpoint } = req.body;
-      if (!endpoint) {
-        return res.status(400).json({ message: "Endpoint is required" });
-      }
-
-      await storage.deletePushSubscription(user.id, endpoint);
-      res.json({ message: "Unsubscribed successfully" });
-    } catch (error) {
-      console.error("Error removing push subscription:", error);
-      res.status(500).json({ message: "Failed to remove push subscription" });
-    }
-  });
+  
 
   const httpServer = createServer(app);
   return httpServer;

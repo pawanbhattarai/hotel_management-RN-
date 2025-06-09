@@ -595,6 +595,16 @@ export class DatabaseStorage implements IStorage {
       .where(eq(pushSubscriptions.userId, userId));
   }
 
+  // Push subscription methods
+  async getPushSubscription(userId: string, endpoint: string): Promise<PushSubscription | null> {
+    const result = await this.db
+      .select()
+      .from(pushSubscriptions)
+      .where(and(eq(pushSubscriptions.userId, userId), eq(pushSubscriptions.endpoint, endpoint)))
+      .limit(1);
+    return result[0] || null;
+  }
+
   async createPushSubscription(subscription: InsertPushSubscription): Promise<PushSubscription> {
     const [newSubscription] = await this.db
       .insert(pushSubscriptions)
@@ -604,11 +614,9 @@ export class DatabaseStorage implements IStorage {
   }
 
   async deletePushSubscription(userId: string, endpoint: string): Promise<void> {
-    await this.db.delete(pushSubscriptions)
-      .where(and(
-        eq(pushSubscriptions.userId, userId),
-        eq(pushSubscriptions.endpoint, endpoint)
-      ));
+    await this.db
+      .delete(pushSubscriptions)
+      .where(and(eq(pushSubscriptions.userId, userId), eq(pushSubscriptions.endpoint, endpoint)));
   }
 
   async clearAllPushSubscriptions(): Promise<void> {

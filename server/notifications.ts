@@ -14,9 +14,20 @@ if (!process.env.VAPID_PUBLIC_KEY || !process.env.VAPID_PRIVATE_KEY) {
   console.log('📋 New VAPID Public Key:', VAPID_PUBLIC_KEY);
   console.log('🔐 New VAPID Private Key:', VAPID_PRIVATE_KEY);
   console.log('💡 Consider setting these as environment variables for production');
+  console.log('⚠️ All existing push subscriptions will be cleared due to key change');
+  
+  // Clear all existing subscriptions since VAPID keys changed
+  try {
+    const { storage } = await import('./storage');
+    await storage.clearAllPushSubscriptions();
+    console.log('🗑️ Cleared all existing push subscriptions due to VAPID key change');
+  } catch (error) {
+    console.warn('⚠️ Could not clear existing subscriptions:', error);
+  }
 } else {
   VAPID_PUBLIC_KEY = process.env.VAPID_PUBLIC_KEY;
   VAPID_PRIVATE_KEY = process.env.VAPID_PRIVATE_KEY;
+  console.log('✅ Using existing VAPID keys from environment variables');
 }
 
 const VAPID_SUBJECT = process.env.VAPID_SUBJECT || 'mailto:admin@hotel.com';
@@ -84,10 +95,10 @@ export class NotificationService {
             headers: error.headers
           });
           
-          // If subscription is invalid, remove it
-          if (error.statusCode === 410 || error.statusCode === 404) {
+          // If subscription is invalid or VAPID mismatch, remove it
+          if (error.statusCode === 410 || error.statusCode === 404 || error.statusCode === 403) {
+            console.log(`🗑️ Removing invalid/expired subscription for user ${sub.userId}`);
             await storage.deletePushSubscription(sub.userId, sub.endpoint);
-            console.log(`🗑️ Removed invalid subscription for user ${sub.userId}`);
           }
           
           return { success: false, userId: sub.userId, error: error.message };
