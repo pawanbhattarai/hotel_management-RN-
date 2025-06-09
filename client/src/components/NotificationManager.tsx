@@ -85,6 +85,12 @@ export function NotificationToggle() {
       } else {
         console.log("🔔 Attempting to subscribe...");
 
+        // Re-initialize the notification manager first
+        const initialized = await NotificationManager.initialize();
+        if (!initialized) {
+          throw new Error('Failed to initialize notification manager');
+        }
+
         // Check notification permission first
         const permission = await NotificationManager.requestPermission();
         console.log("🔐 Notification permission:", permission);
@@ -102,7 +108,18 @@ export function NotificationToggle() {
             description: "You will now receive push notifications for hotel events.",
           });
 
-
+          // Send a test notification to verify it's working
+          try {
+            await new Promise(resolve => setTimeout(resolve, 1000));
+            if ('serviceWorker' in navigator && 'Notification' in window) {
+              new Notification('🎉 Notifications Enabled!', {
+                body: 'You will now receive hotel management notifications.',
+                icon: '/favicon.ico'
+              });
+            }
+          } catch (testError) {
+            console.log('Test notification failed:', testError);
+          }
         } else {
           throw new Error("Failed to subscribe");
         }
@@ -111,7 +128,7 @@ export function NotificationToggle() {
       console.error('❌ Notification toggle error:', error);
       toast({
         title: 'Error',
-        description: 'Failed to update notification settings. Please try again.',
+        description: error instanceof Error ? error.message : 'Failed to update notification settings. Please try again.',
         variant: 'destructive',
       });
     } finally {

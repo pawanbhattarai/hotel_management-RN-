@@ -1182,6 +1182,1628 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  app.delete("/api/reservations/:id", isAuthenticated, async (req: any, res) => {
+    try {
+      const user = await storage.getUser(req.session.user.id);
+      if (!user) return res.status(401).json({ message: "User not found" });
+
+      const reservationId = req.params.id;
+      const existingReservation = await storage.getReservation(reservationId);
+
+      if (!existingReservation) {
+        return res.status(404).json({ message: "Reservation not found" });
+      }
+
+      if (
+        !checkBranchPermissions(
+          user.role,
+          user.branchId,
+          existingReservation.branchId,
+        )
+      ) {
+        return res
+          .status(403)
+          .json({ message: "Insufficient permissions for this branch" });
+      }
+
+      // Cancel the reservation and free up rooms
+      await storage.updateReservation(reservationId, { status: "cancelled" });
+
+      // Update room status back to available
+      for (const roomReservation of existingReservation.reservationRooms) {
+        await storage.updateRoom(roomReservation.roomId, { status: "available" });
+      }
+
+      res.status(204).send();
+    } catch (error) {
+      console.error("Error cancelling reservation:", error);
+      res.status(500).json({ message: "Failed to cancel reservation" });
+    }
+  });
+
+  // Dashboard metrics
+  app.get("/api/dashboard/metrics", isAuthenticated, async (req: any, res) => {
+    try {
+      const user = await storage.getUser(req.session.user.id);
+      if (!user) return res.status(401).json({ message: "User not found" });
+
+      const branchId = user.role === "superadmin" ? undefined : user.branchId!;
+      const metrics = await storage.getDashboardMetrics(branchId);
+      res.json(metrics);
+    } catch (error) {
+      console.error("Error fetching dashboard metrics:", error);
+      res.status(500).json({ message: "Failed to fetch dashboard metrics" });
+    }
+  });
+
+  // Super admin dashboard metrics
+  app.get("/api/dashboard/super-admin-metrics", isAuthenticated, async (req: any, res) => {
+    try {
+      const user = await storage.getUser(req.session.user.id);
+      if (!user || user.role !== "superadmin") {
+        return res.status(403).json({ message: "Insufficient permissions" });
+      }
+
+      const metrics = await storage.getSuperAdminDashboardMetrics();
+      res.json(metrics);
+    } catch (error) {
+      console.error("Error fetching super admin metrics:", error);
+      res.status(500).json({ message: "Failed to fetch super admin metrics" });
+    }
+  });
+
+  // Hotel settings
+  app.get("/api/hotel-settings", isAuthenticated, async (req: any, res) => {
+    try {
+      const user = await storage.getUser(req.session.user.id);
+      if (!user) return res.status(401).json({ message: "User not found" });
+
+      const { branchId } = req.query;
+      const targetBranchId = branchId ? parseInt(branchId as string) : undefined;
+
+      if (targetBranchId && !checkBranchPermissions(user.role, user.branchId, targetBranchId)) {
+        return res.status(403).json({ message: "Insufficient permissions for this branch" });
+      }
+
+      const settings = await storage.getHotelSettings(targetBranchId);
+      res.json(settings || {});
+    } catch (error) {
+      console.error("Error fetching hotel settings:", error);
+      res.status(500).json({ message: "Failed to fetch hotel settings" });
+    }
+  });
+
+  app.post("/api/hotel-settings", isAuthenticated, async (req: any, res) => {
+    try {
+      const user = await storage.getUser(req.session.user.id);
+      if (!user || user.role !== "superadmin") {
+        return res.status(403).json({ message: "Insufficient permissions" });
+      }
+
+      const settingsData = insertHotelSettingsSchema.parse(req.body);
+      const settings = await storage.upsertHotelSettings(settingsData);
+      res.json(settings);
+    } catch (error) {
+      console.error("Error saving hotel settings:", error);
+      res.status(500).json({ message: "Failed to save hotel settings" });
+    }
+  });
+
+  app.put("/api/hotel-settings/:id", isAuthenticated, async (req: any, res) => {
+    try {
+      const user = await storage.getUser(req.session.user.id);
+      if (!user || user.role !== "superadmin") {
+        return res.status(403).json({ message: "Insufficient permissions" });
+      }
+
+      const settingsData = insertHotelSettingsSchema.parse(req.body);
+      const settings = await storage.upsertHotelSettings(settingsData);
+      res.json(settings);
+    } catch (error) {
+      console.error("Error updating hotel settings:", error);
+      res.status(500).json({ message: "Failed to update hotel settings" });
+    }
+  });
+
+  // Profile management
+  app.get("/api/profile", isAuthenticated, async (req: any, res) => {
+    try {
+      const user = await storage.getUser(req.session.user.id);
+      if (!user) return res.status(401).json({ message: "User not found" });
+
+      res.json(user);
+    } catch (error) {
+      console.error("Error fetching profile:", error);
+      res.status(500).json({ message: "Failed to fetch profile" });
+    }
+  });
+
+  app.put("/api/profile", isAuthenticated, async (req: any, res) => {
+    try {
+      const user = await storage.getUser(req.session.user.id);
+      if (!user) return res.status(401).json({ message: "User not found" });
+
+      const updateData = insertUserSchema.partial().parse(req.body);
+      const updatedUser = await storage.updateUser(user.id, updateData);
+      res.json(updatedUser);
+    } catch (error) {
+      console.error("Error updating profile:", error);
+      res.status(500).json({ message: "Failed to update profile" });
+    }
+  });
+
+  // Room availability
+  app.get("/api/rooms/availability", isAuthenticated, async (req: any, res) => {
+    try {
+      const user = await storage.getUser(req.session.user.id);
+      if (!user) return res.status(401).json({ message: "User not found" });
+
+      const { branchId, checkIn, checkOut } = req.query;
+
+      if (!branchId || !checkIn || !checkOut) {
+        return res.status(400).json({ message: "Missing required parameters" });
+      }
+
+      const targetBranchId = parseInt(branchId as string);
+
+      if (!checkBranchPermissions(user.role, user.branchId, targetBranchId)) {
+        return res
+          .status(403)
+          .json({ message: "Insufficient permissions for this branch" });
+      }
+
+      const availableRooms = await storage.getAvailableRooms(
+        targetBranchId,
+        checkIn as string,
+        checkOut as string,
+      );
+      res.json(availableRooms);
+    } catch (error) {
+      console.error("Error fetching room availability:", error);
+      res.status(500).json({ message: "Failed to fetch room availability" });
+    }
+  });
+
+  // Create a new reservation
+  app.post("/api/reservations", isAuthenticated, async (req: any, res) => {
+    try {
+      const user = await storage.getUser(req.session.user.id);
+      if (!user) return res.status(401).json({ message: "User not found" });
+
+      // Parse the request body first without validation that requires generated fields
+      const requestData = req.body;
+      const guestData = requestData.guest;
+      const reservationData = requestData.reservation;
+      const roomsData = requestData.rooms;
+
+      if (
+        !checkBranchPermissions(
+          user.role,
+          user.branchId,
+          reservationData.branchId,
+        )
+      ) {
+        return res
+          .status(403)
+          .json({ message: "Insufficient permissions for this branch" });
+      }
+
+      // Check if guest already exists by phone number
+      let guest;
+      if (guestData.phone) {
+        const existingGuests = await storage.searchGuests(guestData.phone);
+        if (existingGuests.length > 0) {
+          guest = existingGuests[0];
+        }
+      }
+
+      // Create new guest if not found
+      if (!guest) {
+        guest = await storage.createGuest({
+          ...guestData,
+          branchId: reservationData.branchId,
+        });
+      }
+
+      // Generate confirmation number
+      const confirmationNumber = `RES${Date.now().toString().slice(-8)}`;
+      const reservationWithConfirmation = {
+        ...reservationData,
+        guestId: guest.id,
+        confirmationNumber,
+        createdById: user.id,
+      };
+
+      const reservation = await storage.createReservation(
+        reservationWithConfirmation,
+        roomsData,
+      );
+
+      // Update room status to reserved
+      for (const roomData of roomsData) {
+        await storage.updateRoom(roomData.roomId, { status: "reserved" });
+      }
+
+      // Send new reservation notification
+      try {
+        const branch = await storage.getBranch(reservationData.branchId);
+        const room = await storage.getRoom(roomsData[0].roomId);
+        const roomType = await storage.getRoomType(room?.roomTypeId || 0);
+
+        if (branch && room && roomType) {
+          await NotificationService.sendNewReservationNotification(
+            guest,
+            { ...room, roomType },
+            branch,
+            reservation.id,
+            roomsData[0].checkInDate,
+            roomsData[0].checkOutDate
+          );
+          console.log(`📧 New reservation notification sent for reservation ${reservation.id}`);
+        }
+      } catch (notificationError) {
+        console.error("Failed to send new reservation notification:", notificationError);
+      }
+
+      res.status(201).json(reservation);
+    } catch (error) {
+      console.error("Error creating reservation:", error);
+      res.status(500).json({ message: "Failed to create reservation" });
+    }
+  });
+
+  // Update a reservation
+  app.patch("/api/reservations/:id", isAuthenticated, async (req: any, res) => {
+    try {
+      const user = await storage.getUser(req.session.user.id);
+      if (!user) return res.status(401).json({ message: "User not found" });
+
+      const reservationId = req.params.id;
+      const existingReservation = await storage.getReservation(reservationId);
+
+      if (!existingReservation) {
+        return res.status(404).json({ message: "Reservation not found" });
+      }
+
+      if (
+        !checkBranchPermissions(
+          user.role,
+          user.branchId,
+          existingReservation.branchId,
+        )
+      ) {
+        return res
+          .status(403)
+          .json({ message: "Insufficient permissions for this branch" });
+      }
+
+      const bodyData = req.body;
+      // Convert paidAmount to string if it's a number
+      if (bodyData.paidAmount && typeof bodyData.paidAmount === 'number') {
+        bodyData.paidAmount = bodyData.paidAmount.toString();
+      }
+      const validatedData = insertReservationSchema.partial().parse(bodyData);
+      const reservation = await storage.updateReservation(
+        reservationId,
+        validatedData,
+      );
+
+      // Update room status based on reservation status
+      if (validatedData.status) {
+        for (const roomReservation of existingReservation.reservationRooms) {
+          let newRoomStatus;
+          switch (validatedData.status) {
+            case 'checked-in':
+              newRoomStatus = 'occupied';
+              break;
+            case 'checked-out':
+              newRoomStatus = 'available';
+              break;
+            case 'cancelled':
+              newRoomStatus = 'available';
+              break;
+            default:
+              newRoomStatus = 'reserved';
+          }
+          await storage.updateRoom(roomReservation.roomId, { status: newRoomStatus as any });
+        }
+
+        // Send notifications for status changes
+        try {
+          const branch = await storage.getBranch(existingReservation.branchId);
+          const firstRoom = existingReservation.reservationRooms[0];
+
+          if (branch && firstRoom) {
+            if (validatedData.status === 'checked-in') {
+              await NotificationService.sendCheckInNotification(
+                existingReservation.guest,
+                firstRoom.room,
+                branch,
+                reservationId
+              );
+            } else if (validatedData.status === 'checked-out') {
+              await NotificationService.sendCheckOutNotification(
+                existingReservation.guest,
+                firstRoom.room,
+                branch,
+                reservationId
+              );
+            }
+          }
+        } catch (notificationError) {
+          console.error("Failed to send status change notification:", notificationError);
+        }
+      }
+
+      res.json(reservation);
+    } catch (error) {
+      console.error("Error updating reservation:", error);
+      res.status(500).json({ message: "Failed to update reservation" });
+    }
+  });
+
+  app.delete("/api/reservations/:id", isAuthenticated, async (req: any, res) => {
+    try {
+      const user = await storage.getUser(req.session.user.id);
+      if (!user) return res.status(401).json({ message: "User not found" });
+
+      const reservationId = req.params.id;
+      const existingReservation = await storage.getReservation(reservationId);
+
+      if (!existingReservation) {
+        return res.status(404).json({ message: "Reservation not found" });
+      }
+
+      if (
+        !checkBranchPermissions(
+          user.role,
+          user.branchId,
+          existingReservation.branchId,
+        )
+      ) {
+        return res
+          .status(403)
+          .json({ message: "Insufficient permissions for this branch" });
+      }
+
+      // Cancel the reservation and free up rooms
+      await storage.updateReservation(reservationId, { status: "cancelled" });
+
+      // Update room status back to available
+      for (const roomReservation of existingReservation.reservationRooms) {
+        await storage.updateRoom(roomReservation.roomId, { status: "available" });
+      }
+
+      res.status(204).send();
+    } catch (error) {
+      console.error("Error cancelling reservation:", error);
+      res.status(500).json({ message: "Failed to cancel reservation" });
+    }
+  });
+
+  // Dashboard metrics
+  app.get("/api/dashboard/metrics", isAuthenticated, async (req: any, res) => {
+    try {
+      const user = await storage.getUser(req.session.user.id);
+      if (!user) return res.status(401).json({ message: "User not found" });
+
+      const branchId = user.role === "superadmin" ? undefined : user.branchId!;
+      const metrics = await storage.getDashboardMetrics(branchId);
+      res.json(metrics);
+    } catch (error) {
+      console.error("Error fetching dashboard metrics:", error);
+      res.status(500).json({ message: "Failed to fetch dashboard metrics" });
+    }
+  });
+
+  // Super admin dashboard metrics
+  app.get("/api/dashboard/super-admin-metrics", isAuthenticated, async (req: any, res) => {
+    try {
+      const user = await storage.getUser(req.session.user.id);
+      if (!user || user.role !== "superadmin") {
+        return res.status(403).json({ message: "Insufficient permissions" });
+      }
+
+      const metrics = await storage.getSuperAdminDashboardMetrics();
+      res.json(metrics);
+    } catch (error) {
+      console.error("Error fetching super admin metrics:", error);
+      res.status(500).json({ message: "Failed to fetch super admin metrics" });
+    }
+  });
+
+  // Hotel settings
+  app.get("/api/hotel-settings", isAuthenticated, async (req: any, res) => {
+    try {
+      const user = await storage.getUser(req.session.user.id);
+      if (!user) return res.status(401).json({ message: "User not found" });
+
+      const { branchId } = req.query;
+      const targetBranchId = branchId ? parseInt(branchId as string) : undefined;
+
+      if (targetBranchId && !checkBranchPermissions(user.role, user.branchId, targetBranchId)) {
+        return res.status(403).json({ message: "Insufficient permissions for this branch" });
+      }
+
+      const settings = await storage.getHotelSettings(targetBranchId);
+      res.json(settings || {});
+    } catch (error) {
+      console.error("Error fetching hotel settings:", error);
+      res.status(500).json({ message: "Failed to fetch hotel settings" });
+    }
+  });
+
+  app.post("/api/hotel-settings", isAuthenticated, async (req: any, res) => {
+    try {
+      const user = await storage.getUser(req.session.user.id);
+      if (!user || user.role !== "superadmin") {
+        return res.status(403).json({ message: "Insufficient permissions" });
+      }
+
+      const settingsData = insertHotelSettingsSchema.parse(req.body);
+      const settings = await storage.upsertHotelSettings(settingsData);
+      res.json(settings);
+    } catch (error) {
+      console.error("Error saving hotel settings:", error);
+      res.status(500).json({ message: "Failed to save hotel settings" });
+    }
+  });
+
+  app.put("/api/hotel-settings/:id", isAuthenticated, async (req: any, res) => {
+    try {
+      const user = await storage.getUser(req.session.user.id);
+      if (!user || user.role !== "superadmin") {
+        return res.status(403).json({ message: "Insufficient permissions" });
+      }
+
+      const settingsData = insertHotelSettingsSchema.parse(req.body);
+      const settings = await storage.upsertHotelSettings(settingsData);
+      res.json(settings);
+    } catch (error) {
+      console.error("Error updating hotel settings:", error);
+      res.status(500).json({ message: "Failed to update hotel settings" });
+    }
+  });
+
+  // Profile management
+  app.get("/api/profile", isAuthenticated, async (req: any, res) => {
+    try {
+      const user = await storage.getUser(req.session.user.id);
+      if (!user) return res.status(401).json({ message: "User not found" });
+
+      res.json(user);
+    } catch (error) {
+      console.error("Error fetching profile:", error);
+      res.status(500).json({ message: "Failed to fetch profile" });
+    }
+  });
+
+  app.put("/api/profile", isAuthenticated, async (req: any, res) => {
+    try {
+      const user = await storage.getUser(req.session.user.id);
+      if (!user) return res.status(401).json({ message: "User not found" });
+
+      const updateData = insertUserSchema.partial().parse(req.body);
+      const updatedUser = await storage.updateUser(user.id, updateData);
+      res.json(updatedUser);
+    } catch (error) {
+      console.error("Error updating profile:", error);
+      res.status(500).json({ message: "Failed to update profile" });
+    }
+  });
+
+  // Room availability
+  app.get("/api/rooms/availability", isAuthenticated, async (req: any, res) => {
+    try {
+      const user = await storage.getUser(req.session.user.id);
+      if (!user) return res.status(401).json({ message: "User not found" });
+
+      const { branchId, checkIn, checkOut } = req.query;
+
+      if (!branchId || !checkIn || !checkOut) {
+        return res.status(400).json({ message: "Missing required parameters" });
+      }
+
+      const targetBranchId = parseInt(branchId as string);
+
+      if (!checkBranchPermissions(user.role, user.branchId, targetBranchId)) {
+        return res
+          .status(403)
+          .json({ message: "Insufficient permissions for this branch" });
+      }
+
+      const availableRooms = await storage.getAvailableRooms(
+        targetBranchId,
+        checkIn as string,
+        checkOut as string,
+      );
+      res.json(availableRooms);
+    } catch (error) {
+      console.error("Error fetching room availability:", error);
+      res.status(500).json({ message: "Failed to fetch room availability" });
+    }
+  });
+
+  // Create a new reservation
+  app.post("/api/reservations", isAuthenticated, async (req: any, res) => {
+    try {
+      const user = await storage.getUser(req.session.user.id);
+      if (!user) return res.status(401).json({ message: "User not found" });
+
+      // Parse the request body first without validation that requires generated fields
+      const requestData = req.body;
+      const guestData = requestData.guest;
+      const reservationData = requestData.reservation;
+      const roomsData = requestData.rooms;
+
+      if (
+        !checkBranchPermissions(
+          user.role,
+          user.branchId,
+          reservationData.branchId,
+        )
+      ) {
+        return res
+          .status(403)
+          .json({ message: "Insufficient permissions for this branch" });
+      }
+
+      // Check if guest already exists by phone number
+      let guest;
+      if (guestData.phone) {
+        const existingGuests = await storage.searchGuests(guestData.phone);
+        if (existingGuests.length > 0) {
+          guest = existingGuests[0];
+        }
+      }
+
+      // Create new guest if not found
+      if (!guest) {
+        guest = await storage.createGuest({
+          ...guestData,
+          branchId: reservationData.branchId,
+        });
+      }
+
+      // Generate confirmation number
+      const confirmationNumber = `RES${Date.now().toString().slice(-8)}`;
+      const reservationWithConfirmation = {
+        ...reservationData,
+        guestId: guest.id,
+        confirmationNumber,
+        createdById: user.id,
+      };
+
+      const reservation = await storage.createReservation(
+        reservationWithConfirmation,
+        roomsData,
+      );
+
+      // Update room status to reserved
+      for (const roomData of roomsData) {
+        await storage.updateRoom(roomData.roomId, { status: "reserved" });
+      }
+
+      // Send new reservation notification
+      try {
+        const branch = await storage.getBranch(reservationData.branchId);
+        const room = await storage.getRoom(roomsData[0].roomId);
+        const roomType = await storage.getRoomType(room?.roomTypeId || 0);
+
+        if (branch && room && roomType) {
+          await NotificationService.sendNewReservationNotification(
+            guest,
+            { ...room, roomType },
+            branch,
+            reservation.id,
+            roomsData[0].checkInDate,
+            roomsData[0].checkOutDate
+          );
+          console.log(`📧 New reservation notification sent for reservation ${reservation.id}`);
+        }
+      } catch (notificationError) {
+        console.error("Failed to send new reservation notification:", notificationError);
+      }
+
+      res.status(201).json(reservation);
+    } catch (error) {
+      console.error("Error creating reservation:", error);
+      res.status(500).json({ message: "Failed to create reservation" });
+    }
+  });
+
+  // Update a reservation
+  app.patch("/api/reservations/:id", isAuthenticated, async (req: any, res) => {
+    try {
+      const user = await storage.getUser(req.session.user.id);
+      if (!user) return res.status(401).json({ message: "User not found" });
+
+      const reservationId = req.params.id;
+      const existingReservation = await storage.getReservation(reservationId);
+
+      if (!existingReservation) {
+        return res.status(404).json({ message: "Reservation not found" });
+      }
+
+      if (
+        !checkBranchPermissions(
+          user.role,
+          user.branchId,
+          existingReservation.branchId,
+        )
+      ) {
+        return res
+          .status(403)
+          .json({ message: "Insufficient permissions for this branch" });
+      }
+
+      const bodyData = req.body;
+      // Convert paidAmount to string if it's a number
+      if (bodyData.paidAmount && typeof bodyData.paidAmount === 'number') {
+        bodyData.paidAmount = bodyData.paidAmount.toString();
+      }
+      const validatedData = insertReservationSchema.partial().parse(bodyData);
+      const reservation = await storage.updateReservation(
+        reservationId,
+        validatedData,
+      );
+
+      // Update room status based on reservation status
+      if (validatedData.status) {
+        for (const roomReservation of existingReservation.reservationRooms) {
+          let newRoomStatus;
+          switch (validatedData.status) {
+            case 'checked-in':
+              newRoomStatus = 'occupied';
+              break;
+            case 'checked-out':
+              newRoomStatus = 'available';
+              break;
+            case 'cancelled':
+              newRoomStatus = 'available';
+              break;
+            default:
+              newRoomStatus = 'reserved';
+          }
+          await storage.updateRoom(roomReservation.roomId, { status: newRoomStatus as any });
+        }
+
+        // Send notifications for status changes
+        try {
+          const branch = await storage.getBranch(existingReservation.branchId);
+          const firstRoom = existingReservation.reservationRooms[0];
+
+          if (branch && firstRoom) {
+            if (validatedData.status === 'checked-in') {
+              await NotificationService.sendCheckInNotification(
+                existingReservation.guest,
+                firstRoom.room,
+                branch,
+                reservationId
+              );
+            } else if (validatedData.status === 'checked-out') {
+              await NotificationService.sendCheckOutNotification(
+                existingReservation.guest,
+                firstRoom.room,
+                branch,
+                reservationId
+              );
+            }
+          }
+        } catch (notificationError) {
+          console.error("Failed to send status change notification:", notificationError);
+        }
+      }
+
+      res.json(reservation);
+    } catch (error) {
+      console.error("Error updating reservation:", error);
+      res.status(500).json({ message: "Failed to update reservation" });
+    }
+  });
+
+  app.delete("/api/reservations/:id", isAuthenticated, async (req: any, res) => {
+    try {
+      const user = await storage.getUser(req.session.user.id);
+      if (!user) return res.status(401).json({ message: "User not found" });
+
+      const reservationId = req.params.id;
+      const existingReservation = await storage.getReservation(reservationId);
+
+      if (!existingReservation) {
+        return res.status(404).json({ message: "Reservation not found" });
+      }
+
+      if (
+        !checkBranchPermissions(
+          user.role,
+          user.branchId,
+          existingReservation.branchId,
+        )
+      ) {
+        return res
+          .status(403)
+          .json({ message: "Insufficient permissions for this branch" });
+      }
+
+      // Cancel the reservation and free up rooms
+      await storage.updateReservation(reservationId, { status: "cancelled" });
+
+      // Update room status back to available
+      for (const roomReservation of existingReservation.reservationRooms) {
+        await storage.updateRoom(roomReservation.roomId, { status: "available" });
+      }
+
+      res.status(204).send();
+    } catch (error) {
+      console.error("Error cancelling reservation:", error);
+      res.status(500).json({ message: "Failed to cancel reservation" });
+    }
+  });
+
+  // Dashboard metrics
+  app.get("/api/dashboard/metrics", isAuthenticated, async (req: any, res) => {
+    try {
+      const user = await storage.getUser(req.session.user.id);
+      if (!user) return res.status(401).json({ message: "User not found" });
+
+      const branchId = user.role === "superadmin" ? undefined : user.branchId!;
+      const metrics = await storage.getDashboardMetrics(branchId);
+      res.json(metrics);
+    } catch (error) {
+      console.error("Error fetching dashboard metrics:", error);
+      res.status(500).json({ message: "Failed to fetch dashboard metrics" });
+    }
+  });
+
+  // Super admin dashboard metrics
+  app.get("/api/dashboard/super-admin-metrics", isAuthenticated, async (req: any, res) => {
+    try {
+      const user = await storage.getUser(req.session.user.id);
+      if (!user || user.role !== "superadmin") {
+        return res.status(403).json({ message: "Insufficient permissions" });
+      }
+
+      const metrics = await storage.getSuperAdminDashboardMetrics();
+      res.json(metrics);
+    } catch (error) {
+      console.error("Error fetching super admin metrics:", error);
+      res.status(500).json({ message: "Failed to fetch super admin metrics" });
+    }
+  });
+
+  // Hotel settings
+  app.get("/api/hotel-settings", isAuthenticated, async (req: any, res) => {
+    try {
+      const user = await storage.getUser(req.session.user.id);
+      if (!user) return res.status(401).json({ message: "User not found" });
+
+      const { branchId } = req.query;
+      const targetBranchId = branchId ? parseInt(branchId as string) : undefined;
+
+      if (targetBranchId && !checkBranchPermissions(user.role, user.branchId, targetBranchId)) {
+        return res.status(403).json({ message: "Insufficient permissions for this branch" });
+      }
+
+      const settings = await storage.getHotelSettings(targetBranchId);
+      res.json(settings || {});
+    } catch (error) {
+      console.error("Error fetching hotel settings:", error);
+      res.status(500).json({ message: "Failed to fetch hotel settings" });
+    }
+  });
+
+  app.post("/api/hotel-settings", isAuthenticated, async (req: any, res) => {
+    try {
+      const user = await storage.getUser(req.session.user.id);
+      if (!user || user.role !== "superadmin") {
+        return res.status(403).json({ message: "Insufficient permissions" });
+      }
+
+      const settingsData = insertHotelSettingsSchema.parse(req.body);
+      const settings = await storage.upsertHotelSettings(settingsData);
+      res.json(settings);
+    } catch (error) {
+      console.error("Error saving hotel settings:", error);
+      res.status(500).json({ message: "Failed to save hotel settings" });
+    }
+  });
+
+  app.put("/api/hotel-settings/:id", isAuthenticated, async (req: any, res) => {
+    try {
+      const user = await storage.getUser(req.session.user.id);
+      if (!user || user.role !== "superadmin") {
+        return res.status(403).json({ message: "Insufficient permissions" });
+      }
+
+      const settingsData = insertHotelSettingsSchema.parse(req.body);
+      const settings = await storage.upsertHotelSettings(settingsData);
+      res.json(settings);
+    } catch (error) {
+      console.error("Error updating hotel settings:", error);
+      res.status(500).json({ message: "Failed to update hotel settings" });
+    }
+  });
+
+  // Profile management
+  app.get("/api/profile", isAuthenticated, async (req: any, res) => {
+    try {
+      const user = await storage.getUser(req.session.user.id);
+      if (!user) return res.status(401).json({ message: "User not found" });
+
+      res.json(user);
+    } catch (error) {
+      console.error("Error fetching profile:", error);
+      res.status(500).json({ message: "Failed to fetch profile" });
+    }
+  });
+
+  app.put("/api/profile", isAuthenticated, async (req: any, res) => {
+    try {
+      const user = await storage.getUser(req.session.user.id);
+      if (!user) return res.status(401).json({ message: "User not found" });
+
+      const updateData = insertUserSchema.partial().parse(req.body);
+      const updatedUser = await storage.updateUser(user.id, updateData);
+      res.json(updatedUser);
+    } catch (error) {
+      console.error("Error updating profile:", error);
+      res.status(500).json({ message: "Failed to update profile" });
+    }
+  });
+
+  // Room availability
+  app.get("/api/rooms/availability", isAuthenticated, async (req: any, res) => {
+    try {
+      const user = await storage.getUser(req.session.user.id);
+      if (!user) return res.status(401).json({ message: "User not found" });
+
+      const { branchId, checkIn, checkOut } = req.query;
+
+      if (!branchId || !checkIn || !checkOut) {
+        return res.status(400).json({ message: "Missing required parameters" });
+      }
+
+      const targetBranchId = parseInt(branchId as string);
+
+      if (!checkBranchPermissions(user.role, user.branchId, targetBranchId)) {
+        return res
+          .status(403)
+          .json({ message: "Insufficient permissions for this branch" });
+      }
+
+      const availableRooms = await storage.getAvailableRooms(
+        targetBranchId,
+        checkIn as string,
+        checkOut as string,
+      );
+      res.json(availableRooms);
+    } catch (error) {
+      console.error("Error fetching room availability:", error);
+      res.status(500).json({ message: "Failed to fetch room availability" });
+    }
+  });
+
+  // Create a new reservation
+  app.post("/api/reservations", isAuthenticated, async (req: any, res) => {
+    try {
+      const user = await storage.getUser(req.session.user.id);
+      if (!user) return res.status(401).json({ message: "User not found" });
+
+      // Parse the request body first without validation that requires generated fields
+      const requestData = req.body;
+      const guestData = requestData.guest;
+      const reservationData = requestData.reservation;
+      const roomsData = requestData.rooms;
+
+      if (
+        !checkBranchPermissions(
+          user.role,
+          user.branchId,
+          reservationData.branchId,
+        )
+      ) {
+        return res
+          .status(403)
+          .json({ message: "Insufficient permissions for this branch" });
+      }
+
+      // Check if guest already exists by phone number
+      let guest;
+      if (guestData.phone) {
+        const existingGuests = await storage.searchGuests(guestData.phone);
+        if (existingGuests.length > 0) {
+          guest = existingGuests[0];
+        }
+      }
+
+      // Create new guest if not found
+      if (!guest) {
+        guest = await storage.createGuest({
+          ...guestData,
+          branchId: reservationData.branchId,
+        });
+      }
+
+      // Generate confirmation number
+      const confirmationNumber = `RES${Date.now().toString().slice(-8)}`;
+      const reservationWithConfirmation = {
+        ...reservationData,
+        guestId: guest.id,
+        confirmationNumber,
+        createdById: user.id,
+      };
+
+      const reservation = await storage.createReservation(
+        reservationWithConfirmation,
+        roomsData,
+      );
+
+      // Update room status to reserved
+      for (const roomData of roomsData) {
+        await storage.updateRoom(roomData.roomId, { status: "reserved" });
+      }
+
+      // Send new reservation notification
+      try {
+        const branch = await storage.getBranch(reservationData.branchId);
+        const room = await storage.getRoom(roomsData[0].roomId);
+        const roomType = await storage.getRoomType(room?.roomTypeId || 0);
+
+        if (branch && room && roomType) {
+          await NotificationService.sendNewReservationNotification(
+            guest,
+            { ...room, roomType },
+            branch,
+            reservation.id,
+            roomsData[0].checkInDate,
+            roomsData[0].checkOutDate
+          );
+          console.log(`📧 New reservation notification sent for reservation ${reservation.id}`);
+        }
+      } catch (notificationError) {
+        console.error("Failed to send new reservation notification:", notificationError);
+      }
+
+      res.status(201).json(reservation);
+    } catch (error) {
+      console.error("Error creating reservation:", error);
+      res.status(500).json({ message: "Failed to create reservation" });
+    }
+  });
+
+  // Update a reservation
+  app.patch("/api/reservations/:id", isAuthenticated, async (req: any, res) => {
+    try {
+      const user = await storage.getUser(req.session.user.id);
+      if (!user) return res.status(401).json({ message: "User not found" });
+
+      const reservationId = req.params.id;
+      const existingReservation = await storage.getReservation(reservationId);
+
+      if (!existingReservation) {
+        return res.status(404).json({ message: "Reservation not found" });
+      }
+
+      if (
+        !checkBranchPermissions(
+          user.role,
+          user.branchId,
+          existingReservation.branchId,
+        )
+      ) {
+        return res
+          .status(403)
+          .json({ message: "Insufficient permissions for this branch" });
+      }
+
+      const bodyData = req.body;
+      // Convert paidAmount to string if it's a number
+      if (bodyData.paidAmount && typeof bodyData.paidAmount === 'number') {
+        bodyData.paidAmount = bodyData.paidAmount.toString();
+      }
+      const validatedData = insertReservationSchema.partial().parse(bodyData);
+      const reservation = await storage.updateReservation(
+        reservationId,
+        validatedData,
+      );
+
+      // Update room status based on reservation status
+      if (validatedData.status) {
+        for (const roomReservation of existingReservation.reservationRooms) {
+          let newRoomStatus;
+          switch (validatedData.status) {
+            case 'checked-in':
+              newRoomStatus = 'occupied';
+              break;
+            case 'checked-out':
+              newRoomStatus = 'available';
+              break;
+            case 'cancelled':
+              newRoomStatus = 'available';
+              break;
+            default:
+              newRoomStatus = 'reserved';
+          }
+          await storage.updateRoom(roomReservation.roomId, { status: newRoomStatus as any });
+        }
+
+        // Send notifications for status changes
+        try {
+          const branch = await storage.getBranch(existingReservation.branchId);
+          const firstRoom = existingReservation.reservationRooms[0];
+
+          if (branch && firstRoom) {
+            if (validatedData.status === 'checked-in') {
+              await NotificationService.sendCheckInNotification(
+                existingReservation.guest,
+                firstRoom.room,
+                branch,
+                reservationId
+              );
+            } else if (validatedData.status === 'checked-out') {
+              await NotificationService.sendCheckOutNotification(
+                existingReservation.guest,
+                firstRoom.room,
+                branch,
+                reservationId
+              );
+            }
+          }
+        } catch (notificationError) {
+          console.error("Failed to send status change notification:", notificationError);
+        }
+      }
+
+      res.json(reservation);
+    } catch (error) {
+      console.error("Error updating reservation:", error);
+      res.status(500).json({ message: "Failed to update reservation" });
+    }
+  });
+
+  app.delete("/api/reservations/:id", isAuthenticated, async (req: any, res) => {
+    try {
+      const user = await storage.getUser(req.session.user.id);
+      if (!user) return res.status(401).json({ message: "User not found" });
+
+      const reservationId = req.params.id;
+      const existingReservation = await storage.getReservation(reservationId);
+
+      if (!existingReservation) {
+        return res.status(404).json({ message: "Reservation not found" });
+      }
+
+      if (
+        !checkBranchPermissions(
+          user.role,
+          user.branchId,
+          existingReservation.branchId,
+        )
+      ) {
+        return res
+          .status(403)
+          .json({ message: "Insufficient permissions for this branch" });
+      }
+
+      // Cancel the reservation and free up rooms
+      await storage.updateReservation(reservationId, { status: "cancelled" });
+
+      // Update room status back to available
+      for (const roomReservation of existingReservation.reservationRooms) {
+        await storage.updateRoom(roomReservation.roomId, { status: "available" });
+      }
+
+      res.status(204).send();
+    } catch (error) {
+      console.error("Error cancelling reservation:", error);
+      res.status(500).json({ message: "Failed to cancel reservation" });
+    }
+  });
+
+  // Dashboard metrics
+  app.get("/api/dashboard/metrics", isAuthenticated, async (req: any, res) => {
+    try {
+      const user = await storage.getUser(req.session.user.id);
+      if (!user) return res.status(401).json({ message: "User not found" });
+
+      const branchId = user.role === "superadmin" ? undefined : user.branchId!;
+      const metrics = await storage.getDashboardMetrics(branchId);
+      res.json(metrics);
+    } catch (error) {
+      console.error("Error fetching dashboard metrics:", error);
+      res.status(500).json({ message: "Failed to fetch dashboard metrics" });
+    }
+  });
+
+  // Super admin dashboard metrics
+  app.get("/api/dashboard/super-admin-metrics", isAuthenticated, async (req: any, res) => {
+    try {
+      const user = await storage.getUser(req.session.user.id);
+      if (!user || user.role !== "superadmin") {
+        return res.status(403).json({ message: "Insufficient permissions" });
+      }
+
+      const metrics = await storage.getSuperAdminDashboardMetrics();
+      res.json(metrics);
+    } catch (error) {
+      console.error("Error fetching super admin metrics:", error);
+      res.status(500).json({ message: "Failed to fetch super admin metrics" });
+    }
+  });
+
+  // Hotel settings
+  app.get("/api/hotel-settings", isAuthenticated, async (req: any, res) => {
+    try {
+      const user = await storage.getUser(req.session.user.id);
+      if (!user) return res.status(401).json({ message: "User not found" });
+
+      const { branchId } = req.query;
+      const targetBranchId = branchId ? parseInt(branchId as string) : undefined;
+
+      if (targetBranchId && !checkBranchPermissions(user.role, user.branchId, targetBranchId)) {
+        return res.status(403).json({ message: "Insufficient permissions for this branch" });
+      }
+
+      const settings = await storage.getHotelSettings(targetBranchId);
+      res.json(settings || {});
+    } catch (error) {
+      console.error("Error fetching hotel settings:", error);
+      res.status(500).json({ message: "Failed to fetch hotel settings" });
+    }
+  });
+
+  app.post("/api/hotel-settings", isAuthenticated, async (req: any, res) => {
+    try {
+      const user = await storage.getUser(req.session.user.id);
+      if (!user || user.role !== "superadmin") {
+        return res.status(403).json({ message: "Insufficient permissions" });
+      }
+
+      const settingsData = insertHotelSettingsSchema.parse(req.body);
+      const settings = await storage.upsertHotelSettings(settingsData);
+      res.json(settings);
+    } catch (error) {
+      console.error("Error saving hotel settings:", error);
+      res.status(500).json({ message: "Failed to save hotel settings" });
+    }
+  });
+
+  app.put("/api/hotel-settings/:id", isAuthenticated, async (req: any, res) => {
+    try {
+      const user = await storage.getUser(req.session.user.id);
+      if (!user || user.role !== "superadmin") {
+        return res.status(403).json({ message: "Insufficient permissions" });
+      }
+
+      const settingsData = insertHotelSettingsSchema.parse(req.body);
+      const settings = await storage.upsertHotelSettings(settingsData);
+      res.json(settings);
+    } catch (error) {
+      console.error("Error updating hotel settings:", error);
+      res.status(500).json({ message: "Failed to update hotel settings" });
+    }
+  });
+
+  // Profile management
+  app.get("/api/profile", isAuthenticated, async (req: any, res) => {
+    try {
+      const user = await storage.getUser(req.session.user.id);
+      if (!user) return res.status(401).json({ message: "User not found" });
+
+      res.json(user);
+    } catch (error) {
+      console.error("Error fetching profile:", error);
+      res.status(500).json({ message: "Failed to fetch profile" });
+    }
+  });
+
+  app.put("/api/profile", isAuthenticated, async (req: any, res) => {
+    try {
+      const user = await storage.getUser(req.session.user.id);
+      if (!user) return res.status(401).json({ message: "User not found" });
+
+      const updateData = insertUserSchema.partial().parse(req.body);
+      const updatedUser = await storage.updateUser(user.id, updateData);
+      res.json(updatedUser);
+    } catch (error) {
+      console.error("Error updating profile:", error);
+      res.status(500).json({ message: "Failed to update profile" });
+    }
+  });
+
+  // Room availability
+  app.get("/api/rooms/availability", isAuthenticated, async (req: any, res) => {
+    try {
+      const user = await storage.getUser(req.session.user.id);
+      if (!user) return res.status(401).json({ message: "User not found" });
+
+      const { branchId, checkIn, checkOut } = req.query;
+
+      if (!branchId || !checkIn || !checkOut) {
+        return res.status(400).json({ message: "Missing required parameters" });
+      }
+
+      const targetBranchId = parseInt(branchId as string);
+
+      if (!checkBranchPermissions(user.role, user.branchId, targetBranchId)) {
+        return res
+          .status(403)
+          .json({ message: "Insufficient permissions for this branch" });
+      }
+
+      const availableRooms = await storage.getAvailableRooms(
+        targetBranchId,
+        checkIn as string,
+        checkOut as string,
+      );
+      res.json(availableRooms);
+    } catch (error) {
+      console.error("Error fetching room availability:", error);
+      res.status(500).json({ message: "Failed to fetch room availability" });
+    }
+  });
+
+  // Create a new reservation
+  app.post("/api/reservations", isAuthenticated, async (req: any, res) => {
+    try {
+      const user = await storage.getUser(req.session.user.id);
+      if (!user) return res.status(401).json({ message: "User not found" });
+
+      // Parse the request body first without validation that requires generated fields
+      const requestData = req.body;
+      const guestData = requestData.guest;
+      const reservationData = requestData.reservation;
+      const roomsData = requestData.rooms;
+
+      if (
+        !checkBranchPermissions(
+          user.role,
+          user.branchId,
+          reservationData.branchId,
+        )
+      ) {
+        return res
+          .status(403)
+          .json({ message: "Insufficient permissions for this branch" });
+      }
+
+      // Check if guest already exists by phone number
+      let guest;
+      if (guestData.phone) {
+        const existingGuests = await storage.searchGuests(guestData.phone);
+        if (existingGuests.length > 0) {
+          guest = existingGuests[0];
+        }
+      }
+
+      // Create new guest if not found
+      if (!guest) {
+        guest = await storage.createGuest({
+          ...guestData,
+          branchId: reservationData.branchId,
+        });
+      }
+
+      // Generate confirmation number
+      const confirmationNumber = `RES${Date.now().toString().slice(-8)}`;
+      const reservationWithConfirmation = {
+        ...reservationData,
+        guestId: guest.id,
+        confirmationNumber,
+        createdById: user.id,
+      };
+
+      const reservation = await storage.createReservation(
+        reservationWithConfirmation,
+        roomsData,
+      );
+
+      // Update room status to reserved
+      for (const roomData of roomsData) {
+        await storage.updateRoom(roomData.roomId, { status: "reserved" });
+      }
+
+      // Send new reservation notification
+      try {
+        const branch = await storage.getBranch(reservationData.branchId);
+        const room = await storage.getRoom(roomsData[0].roomId);
+        const roomType = await storage.getRoomType(room?.roomTypeId || 0);
+
+        if (branch && room && roomType) {
+          await NotificationService.sendNewReservationNotification(
+            guest,
+            { ...room, roomType },
+            branch,
+            reservation.id,
+            roomsData[0].checkInDate,
+            roomsData[0].checkOutDate
+          );
+          console.log(`📧 New reservation notification sent for reservation ${reservation.id}`);
+        }
+      } catch (notificationError) {
+        console.error("Failed to send new reservation notification:", notificationError);
+      }
+
+      res.status(201).json(reservation);
+    } catch (error) {
+      console.error("Error creating reservation:", error);
+      res.status(500).json({ message: "Failed to create reservation" });
+    }
+  });
+
+  // Update a reservation
+  app.patch("/api/reservations/:id", isAuthenticated, async (req: any, res) => {
+    try {
+      const user = await storage.getUser(req.session.user.id);
+      if (!user) return res.status(401).json({ message: "User not found" });
+
+      const reservationId = req.params.id;
+      const existingReservation = await storage.getReservation(reservationId);
+
+      if (!existingReservation) {
+        return res.status(404).json({ message: "Reservation not found" });
+      }
+
+      if (
+        !checkBranchPermissions(
+          user.role,
+          user.branchId,
+          existingReservation.branchId,
+        )
+      ) {
+        return res
+          .status(403)
+          .json({ message: "Insufficient permissions for this branch" });
+      }
+
+      const bodyData = req.body;
+      // Convert paidAmount to string if it's a number
+      if (bodyData.paidAmount && typeof bodyData.paidAmount === 'number') {
+        bodyData.paidAmount = bodyData.paidAmount.toString();
+      }
+      const validatedData = insertReservationSchema.partial().parse(bodyData);
+      const reservation = await storage.updateReservation(
+        reservationId,
+        validatedData,
+      );
+
+      // Update room status based on reservation status
+      if (validatedData.status) {
+        for (const roomReservation of existingReservation.reservationRooms) {
+          let newRoomStatus;
+          switch (validatedData.status) {
+            case 'checked-in':
+              newRoomStatus = 'occupied';
+              break;
+            case 'checked-out':
+              newRoomStatus = 'available';
+              break;
+            case 'cancelled':
+              newRoomStatus = 'available';
+              break;
+            default:
+              newRoomStatus = 'reserved';
+          }
+          await storage.updateRoom(roomReservation.roomId, { status: newRoomStatus as any });
+        }
+
+        // Send notifications for status changes
+        try {
+          const branch = await storage.getBranch(existingReservation.branchId);
+          const firstRoom = existingReservation.reservationRooms[0];
+
+          if (branch && firstRoom) {
+            if (validatedData.status === 'checked-in') {
+              await NotificationService.sendCheckInNotification(
+                existingReservation.guest,
+                firstRoom.room,
+                branch,
+                reservationId
+              );
+            } else if (validatedData.status === 'checked-out') {
+              await NotificationService.sendCheckOutNotification(
+                existingReservation.guest,
+                firstRoom.room,
+                branch,
+                reservationId
+              );
+            }
+          }
+        } catch (notificationError) {
+          console.error("Failed to send status change notification:", notificationError);
+        }
+      }
+
+      res.json(reservation);
+    } catch (error) {
+      console.error("Error updating reservation:", error);
+      res.status(500).json({ message: "Failed to update reservation" });
+    }
+  });
+
+  app.delete("/api/reservations/:id", isAuthenticated, async (req: any, res) => {
+    try {
+      const user = await storage.getUser(req.session.user.id);
+      if (!user) return res.status(401).json({ message: "User not found" });
+
+      const reservationId = req.params.id;
+      const existingReservation = await storage.getReservation(reservationId);
+
+      if (!existingReservation) {
+        return res.status(404).json({ message: "Reservation not found" });
+      }
+
+      if (
+        !checkBranchPermissions(
+          user.role,
+          user.branchId,
+          existingReservation.branchId,
+        )
+      ) {
+        return res
+          .status(403)
+          .json({ message: "Insufficient permissions for this branch" });
+      }
+
+      // Cancel the reservation and free up rooms
+      await storage.updateReservation(reservationId, { status: "cancelled" });
+
+      // Update room status back to available
+      for (const roomReservation of existingReservation.reservationRooms) {
+        await storage.updateRoom(roomReservation.roomId, { status: "available" });
+      }
+
+      res.status(204).send();
+    } catch (error) {
+      console.error("Error cancelling reservation:", error);
+      res.status(500).json({ message: "Failed to cancel reservation" });
+    }
+  });
+
+  // Dashboard metrics
+  app.get("/api/dashboard/metrics", isAuthenticated, async (req: any, res) => {
+    try {
+      const user = await storage.getUser(req.session.user.id);
+      if (!user) return res.status(401).json({ message: "User not found" });
+
+      const branchId = user.role === "superadmin" ? undefined : user.branchId!;
+      const metrics = await storage.getDashboardMetrics(branchId);
+      res.json(metrics);
+    } catch (error) {
+      console.error("Error fetching dashboard metrics:", error);
+      res.status(500).json({ message: "Failed to fetch dashboard metrics" });
+    }
+  });
+
+  // Super admin dashboard metrics
+  app.get("/api/dashboard/super-admin-metrics", isAuthenticated, async (req: any, res) => {
+    try {
+      const user = await storage.getUser(req.session.user.id);
+      if (!user || user.role !== "superadmin") {
+        return res.status(403).json({ message: "Insufficient permissions" });
+      }
+
+      const metrics = await storage.getSuperAdminDashboardMetrics();
+      res.json(metrics);
+    } catch (error) {
+      console.error("Error fetching super admin metrics:", error);
+      res.status(500).json({ message: "Failed to fetch super admin metrics" });
+    }
+  });
+
+  // Hotel settings
+  app.get("/api/hotel-settings", isAuthenticated, async (req: any, res) => {
+    try {
+      const user = await storage.getUser(req.session.user.id);
+      if (!user) return res.status(401).json({ message: "User not found" });
+
+      const { branchId } = req.query;
+      const targetBranchId = branchId ? parseInt(branchId as string) : undefined;
+
+      if (targetBranchId && !checkBranchPermissions(user.role, user.branchId, targetBranchId)) {
+        return res.status(403).json({ message: "Insufficient permissions for this branch" });
+      }
+
+      const settings = await storage.getHotelSettings(targetBranchId);
+      res.json(settings || {});
+    } catch (error) {
+      console.error("Error fetching hotel settings:", error);
+      res.status(500).json({ message: "Failed to fetch hotel settings" });
+    }
+  });
+
+  app.post("/api/hotel-settings", isAuthenticated, async (req: any, res) => {
+    try {
+      const user = await storage.getUser(req.session.user.id);
+      if (!user || user.role !== "superadmin") {
+        return res.status(403).json({ message: "Insufficient permissions" });
+      }
+
+      const settingsData = insertHotelSettingsSchema.parse(req.body);
+      const settings = await storage.upsertHotelSettings(settingsData);
+      res.json(settings);
+    } catch (error) {
+      console.error("Error saving hotel settings:", error);
+      res.status(500).json({ message: "Failed to save hotel settings" });
+    }
+  });
+
+  app.put("/api/hotel-settings/:id", isAuthenticated, async (req: any, res) => {
+    try {
+      const user = await storage.getUser(req.session.user.id);
+      if (!user || user.role !== "superadmin") {
+        return res.status(403).json({ message: "Insufficient permissions" });
+      }
+
+      const settingsData = insertHotelSettingsSchema.parse(req.body);
+      const settings = await storage.upsertHotelSettings(settingsData);
+      res.json(settings);
+    } catch (error) {
+      console.error("Error updating hotel settings:", error);
+      res.status(500).json({ message: "Failed to update hotel settings" });
+    }
+  });
+
+  // Profile management
+  app.get("/api/profile", isAuthenticated, async (req: any, res) => {
+    try {
+      const user = await storage.getUser(req.session.user.id);
+      if (!user) return res.status(401).json({ message: "User not found" });
+
+      res.json(user);
+    } catch (error) {
+      console.error("Error fetching profile:", error);
+      res.status(500).json({ message: "Failed to fetch profile" });
+    }
+  });
+
+  app.put("/api/profile", isAuthenticated, async (req: any, res) => {
+    try {
+      const user = await storage.getUser(req.session.user.id);
+      if (!user) return res.status(401).json({ message: "User not found" });
+
+      const updateData = insertUserSchema.partial().parse(req.body);
+      const updatedUser = await storage.updateUser(user.id, updateData);
+      res.json(updatedUser);
+    } catch (error) {
+      console.error("Error updating profile:", error);
+      res.status(500).json({ message: "Failed to update profile" });
+    }
+  });
+
+  // Room availability
+  app.get("/api/rooms/availability", isAuthenticated, async (req: any, res) => {
+    try {
+      const user = await storage.getUser(req.session.user.id);
+      if (!user) return res.status(401).json({ message: "User not found" });
+
+      const { branchId, checkIn, checkOut } = req.query;
+
+      if (!branchId || !checkIn || !checkOut) {
+        return res.status(400).json({ message: "Missing required parameters" });
+      }
+
+      const targetBranchId = parseInt(branchId as string);
+
+      if (!checkBranchPermissions(user.role, user.branchId, targetBranchId)) {
+        return res
+          .status(403)
+          .json({ message: "Insufficient permissions for this branch" });
+      }
+
+      const availableRooms = await storage.getAvailableRooms(
+        targetBranchId,
+        checkIn as string,
+        checkOut as string,
+      );
+      res.json(availableRooms);
+    } catch (error) {
+      console.error("Error fetching room availability:", error);
+      res.status(500).json({ message: "Failed to fetch room availability" });
+    }
+  });
+
   // Push notification routes
   app.get("/api/notifications/vapid-key", async (req, res) => {
     res.json({ publicKey: NotificationService.getVapidPublicKey() });
@@ -1258,7 +2880,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       const limit = parseInt(req.query.limit as string) || 50;
       const notifications = await storage.getNotificationHistory(user.id, limit);
-      
+
       res.json(notifications);
     } catch (error) {
       console.error("Error fetching notification history:", error);
@@ -1273,7 +2895,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       const notificationId = parseInt(req.params.id);
       await storage.markNotificationAsRead(notificationId, user.id);
-      
+
       res.json({ message: "Notification marked as read" });
     } catch (error) {
       console.error("Error marking notification as read:", error);
@@ -1287,7 +2909,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       if (!user) return res.status(401).json({ message: "User not found" });
 
       await storage.markAllNotificationsAsRead(user.id);
-      
+
       res.json({ message: "All notifications marked as read" });
     } catch (error) {
       console.error("Error marking all notifications as read:", error);
@@ -1300,8 +2922,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const user = await storage.getUser(req.session.user.id);
       if (!user) return res.status(401).json({ message: "User not found" });
 
+      // Only allow admin users to view unread count
+      if (user.role !== 'superadmin' && user.role !== 'branch-admin') {
+        return res.status(403).json({ message: "Only admin users can view notification count" });
+      }
+
       const count = await storage.getUnreadNotificationCount(user.id);
-      
+
       res.json({ count });
     } catch (error) {
       console.error("Error fetching unread notification count:", error);

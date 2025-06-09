@@ -379,6 +379,6 @@ export type InsertReservationRoom = z.infer<typeof insertReservationRoomSchema>;
 export type HotelSettings = typeof hotelSettings.$inferSelect;
 export type InsertHotelSettings = z.infer<typeof insertHotelSettingsSchema>;
 export type PushSubscription = typeof pushSubscriptions.$inferSelect;
-export type InsertPushSubscription = z.infer<typeof insertPushSubscriptionSchema>;
+export type InsertPushSubscription = typeof pushSubscriptions.$inferInsert;
 export type NotificationHistory = typeof notificationHistory.$inferSelect;
 export type InsertNotificationHistory = z.infer<typeof insertNotificationHistorySchema>;
