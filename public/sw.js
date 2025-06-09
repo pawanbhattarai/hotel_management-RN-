@@ -131,25 +131,10 @@ self.addEventListener('notificationclick', (event) => {
   );
 });
 
-// Message handler for testing
+// Message handler (ready for future use)
 self.addEventListener('message', (event) => {
   console.log('💬 Service Worker received message:', event.data);
-
-  if (event.data && event.data.type === 'TEST_NOTIFICATION') {
-    console.log('🧪 Showing test notification from service worker');
-
-    self.registration.showNotification('🧪 Service Worker Test', {
-      body: 'Service worker is working correctly!',
-      icon: '/favicon.ico',
-      badge: '/favicon.ico',
-      tag: 'sw-test',
-      requireInteraction: false
-    }).then(() => {
-      console.log('✅ Test notification shown');
-    }).catch((error) => {
-      console.error('❌ Test notification failed:', error);
-    });
-  }
+  // Ready for custom message handling if needed
 });
 
 console.log('✅ Service Worker setup complete');

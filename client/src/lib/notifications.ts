@@ -59,9 +59,6 @@ export class NotificationManager {
       await navigator.serviceWorker.ready;
       console.log('✅ Service Worker is ready');
 
-      // Test if service worker is responding
-      await this.testServiceWorker();
-
       return true;
     } catch (error) {
       console.error('❌ Failed to initialize notifications:', error);
@@ -69,23 +66,7 @@ export class NotificationManager {
     }
   }
 
-  private static async testServiceWorker(): Promise<void> {
-    if (!this.registration) return;
-
-    try {
-      console.log('🧪 Testing service worker communication...');
-
-      // Send a test message to service worker
-      if (this.registration.active) {
-        this.registration.active.postMessage({
-          type: 'TEST_NOTIFICATION'
-        });
-        console.log('✅ Service worker test message sent');
-      }
-    } catch (error) {
-      console.warn('⚠️ Service worker test failed:', error);
-    }
-  }
+  
 
   static async requestPermission(): Promise<NotificationPermission> {
     console.log('🔔 Requesting notification permission...');

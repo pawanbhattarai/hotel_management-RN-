@@ -186,7 +186,7 @@ export function NotificationManager() {
     }
   };
 
-  
+
 
   if (!isAdmin || !isSupported) {
     return null;
