@@ -232,13 +232,13 @@ export function NotificationHistory() {
         <CardTitle className="text-sm font-medium flex items-center gap-2">
           <History className="h-4 w-4" />
           Notifications
-          {unreadCount?.count > 0 && (
+          {unreadCount > 0 && (
             <Badge variant="destructive" className="text-xs">
-              {unreadCount.count}
+              {unreadCount}
             </Badge>
           )}
         </CardTitle>
-        {notifications?.length > 0 && (
+        {(notifications as any[]).length > 0 && (
           <Button
             variant="ghost"
             size="sm"
@@ -256,13 +256,13 @@ export function NotificationHistory() {
             <div className="p-4 text-center text-sm text-muted-foreground">
               Loading notifications...
             </div>
-          ) : !notifications?.length ? (
+          ) : !(notifications as any[]).length ? (
             <div className="p-4 text-center text-sm text-muted-foreground">
               No notifications yet
             </div>
           ) : (
             <div className="space-y-2 p-4">
-              {notifications.map((notification: any) => (
+              {(notifications as any[]).map((notification: any) => (
                 <div
                   key={notification.id}
                   className={`p-3 rounded-lg border cursor-pointer transition-colors ${
