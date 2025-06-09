@@ -383,6 +383,25 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       const roomData = insertRoomSchema.partial().parse(req.body);
       const room = await storage.updateRoom(roomId, roomData);
+      
+      // Send maintenance notification if room status changed to maintenance
+      if (roomData.status && (roomData.status === 'maintenance' || roomData.status === 'out-of-order')) {
+        try {
+          const branch = await storage.getBranch(existingRoom.branchId);
+          const roomType = await storage.getRoomType(existingRoom.roomTypeId);
+          
+          if (branch && roomType) {
+            await NotificationService.sendMaintenanceNotification(
+              { ...existingRoom, roomType },
+              branch,
+              roomData.status
+            );
+          }
+        } catch (notificationError) {
+          console.error("Failed to send maintenance notification:", notificationError);
+        }
+      }
+      
       res.json(room);
     } catch (error) {
       console.error("Error updating room:", error);
@@ -1078,6 +1097,32 @@ export async function registerRoutes(app: Express): Promise<Server> {
               newRoomStatus = 'reserved';
           }
           await storage.updateRoom(roomReservation.roomId, { status: newRoomStatus as any });
+        }
+
+        // Send notifications for status changes
+        try {
+          const branch = await storage.getBranch(existingReservation.branchId);
+          const firstRoom = existingReservation.reservationRooms[0];
+          
+          if (branch && firstRoom) {
+            if (validatedData.status === 'checked-in') {
+              await NotificationService.sendCheckInNotification(
+                existingReservation.guest,
+                firstRoom.room,
+                branch,
+                reservationId
+              );
+            } else if (validatedData.status === 'checked-out') {
+              await NotificationService.sendCheckOutNotification(
+                existingReservation.guest,
+                firstRoom.room,
+                branch,
+                reservationId
+              );
+            }
+          }
+        } catch (notificationError) {
+          console.error("Failed to send status change notification:", notificationError);
         }
       }
 
