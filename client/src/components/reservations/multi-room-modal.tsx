@@ -32,7 +32,12 @@ interface MultiRoomModalProps {
   isEdit?: boolean;
 }
 
-export default function MultiRoomModal({ isOpen, onClose, editData, isEdit = false }: MultiRoomModalProps) {
+export default function MultiRoomModal({
+  isOpen,
+  onClose,
+  editData,
+  isEdit = false,
+}: MultiRoomModalProps) {
   const { user } = useAuth();
   const { toast } = useToast();
   const queryClient = useQueryClient();
@@ -156,7 +161,10 @@ export default function MultiRoomModal({ isOpen, onClose, editData, isEdit = fal
 
     setIsSearchingGuest(true);
     try {
-      const response = await apiRequest("GET", `/api/guests?phone=${encodeURIComponent(phone)}`);
+      const response = await apiRequest(
+        "GET",
+        `/api/guests?phone=${encodeURIComponent(phone)}`,
+      );
       if (response.ok) {
         const guests = await response.json();
         if (guests && guests.length > 0) {
@@ -282,7 +290,7 @@ export default function MultiRoomModal({ isOpen, onClose, editData, isEdit = fal
       return sum;
     }, 0);
     const subtotal = rooms.reduce((sum, room) => sum + room.totalAmount, 0);
-    const taxes = subtotal * 0.15; // 15% tax
+    const taxes = subtotal * 0.0; // 15% tax
     const total = subtotal + taxes;
 
     return { totalRooms, totalNights, subtotal, taxes, total };
@@ -359,20 +367,20 @@ export default function MultiRoomModal({ isOpen, onClose, editData, isEdit = fal
 
   const summary = calculateSummary();
 
-    // Initialize form with edit data
-    useEffect(() => {
-      if (isEdit && editData && isOpen) {
-        setGuestData({
-          firstName: editData.guest.firstName || "",
-          lastName: editData.guest.lastName || "",
-          email: editData.guest.email || "",
-          phone: editData.guest.phone || "",
-          idType: editData.guest.idType || "passport",
-          idNumber: editData.guest.idNumber || "",
-        });
+  // Initialize form with edit data
+  useEffect(() => {
+    if (isEdit && editData && isOpen) {
+      setGuestData({
+        firstName: editData.guest.firstName || "",
+        lastName: editData.guest.lastName || "",
+        email: editData.guest.email || "",
+        phone: editData.guest.phone || "",
+        idType: editData.guest.idType || "passport",
+        idNumber: editData.guest.idNumber || "",
+      });
 
-
-        setRooms(editData.reservationRooms.map((rr: any) => ({
+      setRooms(
+        editData.reservationRooms.map((rr: any) => ({
           roomTypeId: rr.room.id.toString(),
           checkInDate: rr.checkInDate,
           checkOutDate: rr.checkOutDate,
@@ -381,18 +389,20 @@ export default function MultiRoomModal({ isOpen, onClose, editData, isEdit = fal
           ratePerNight: parseFloat(rr.ratePerNight),
           totalAmount: parseFloat(rr.totalAmount),
           specialRequests: rr.specialRequests || "",
-        })));
-      } else if (!isEdit) {
-        // Reset form for new reservation
-        setGuestData({
-          firstName: "",
-          lastName: "",
-          email: "",
-          phone: "",
-          idType: "passport",
-          idNumber: "",
-        });
-        setRooms([{
+        })),
+      );
+    } else if (!isEdit) {
+      // Reset form for new reservation
+      setGuestData({
+        firstName: "",
+        lastName: "",
+        email: "",
+        phone: "",
+        idType: "passport",
+        idNumber: "",
+      });
+      setRooms([
+        {
           roomTypeId: "",
           checkInDate: "",
           checkOutDate: "",
@@ -401,9 +411,10 @@ export default function MultiRoomModal({ isOpen, onClose, editData, isEdit = fal
           ratePerNight: 0,
           totalAmount: 0,
           specialRequests: "",
-        }]);
-      }
-    }, [isEdit, editData, isOpen]);
+        },
+      ]);
+    }
+  }, [isEdit, editData, isOpen]);
 
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
@@ -509,8 +520,9 @@ export default function MultiRoomModal({ isOpen, onClose, editData, isEdit = fal
                 </div>
                 {existingGuest && (
                   <div className="mt-2 p-2 bg-green-50 border border-green-200 rounded text-sm text-green-800">
-                    Found existing guest: {existingGuest.firstName} {existingGuest.lastName} 
-                    ({existingGuest.reservationCount || 0} previous reservations)
+                    Found existing guest: {existingGuest.firstName}{" "}
+                    {existingGuest.lastName}(
+                    {existingGuest.reservationCount || 0} previous reservations)
                   </div>
                 )}
               </div>
@@ -757,7 +769,9 @@ export default function MultiRoomModal({ isOpen, onClose, editData, isEdit = fal
               </div>
               <div className="flex justify-between">
                 <span className="text-gray-600">Taxes & Fees (15%):</span>
-                <span className="font-medium">Rs.{summary.taxes.toFixed(2)}</span>
+                <span className="font-medium">
+                  Rs.{summary.taxes.toFixed(2)}
+                </span>
               </div>
               <div className="flex justify-between border-t border-gray-300 pt-2">
                 <span className="font-semibold text-gray-900">
