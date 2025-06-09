@@ -1,6 +1,7 @@
 import type { Express } from "express";
 import { createServer, type Server } from "http";
 import { storage } from "./storage";
+import { NotificationService } from "./notifications";
 import {
   insertBranchSchema,
   insertRoomSchema,
@@ -704,6 +705,26 @@ export async function registerRoutes(app: Express): Promise<Server> {
         await storage.updateRoom(roomData.roomId, { status: "reserved" });
       }
 
+      // Send new reservation notification
+      try {
+        const branch = await storage.getBranch(reservationData.branchId);
+        const room = await storage.getRoom(roomsData[0].roomId);
+        const roomType = await storage.getRoomType(room?.roomTypeId || 0);
+        
+        if (branch && room && roomType) {
+          await NotificationService.sendNewReservationNotification(
+            guest,
+            { ...room, roomType },
+            branch,
+            reservation.id,
+            reservationData.checkInDate,
+            reservationData.checkOutDate
+          );
+        }
+      } catch (notificationError) {
+        console.error("Failed to send new reservation notification:", notificationError);
+      }
+
       res.status(201).json(reservation);
     } catch (error) {
       console.error("Error creating reservation:", error);
@@ -1136,6 +1157,92 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Push notification routes
   app.get("/api/notifications/vapid-key", async (req, res) => {
     res.json({ publicKey: NotificationService.getVapidPublicKey() });
+  });
+
+  app.post("/api/notifications/subscribe", isAuthenticated, async (req: any, res) => {
+    try {
+      const user = await storage.getUser(req.session.user.id);
+      if (!user) return res.status(401).json({ message: "User not found" });
+
+      // Only allow admin users to subscribe to notifications
+      if (user.role !== 'superadmin' && user.role !== 'branch-admin') {
+        return res.status(403).json({ message: "Only admin users can subscribe to notifications" });
+      }
+
+      const { endpoint, p256dh, auth } = req.body;
+
+      if (!endpoint || !p256dh || !auth) {
+        return res.status(400).json({ message: "Missing required subscription data" });
+      }
+
+      // Check if subscription already exists
+      const existingSubscription = await storage.getPushSubscription(user.id, endpoint);
+      if (existingSubscription) {
+        return res.json(existingSubscription);
+      }
+
+      // Create new subscription
+      const subscription = await storage.createPushSubscription({
+        userId: user.id,
+        endpoint,
+        p256dh,
+        auth,
+      });
+
+      console.log(`✅ Push subscription created for user ${user.id}`);
+      res.json(subscription);
+    } catch (error) {
+      console.error("Error creating push subscription:", error);
+      res.status(500).json({ message: "Failed to create push subscription" });
+    }
+  });
+
+  app.delete("/api/notifications/unsubscribe", isAuthenticated, async (req: any, res) => {
+    try {
+      const user = await storage.getUser(req.session.user.id);
+      if (!user) return res.status(401).json({ message: "User not found" });
+
+      const { endpoint } = req.body;
+
+      if (!endpoint) {
+        return res.status(400).json({ message: "Missing endpoint" });
+      }
+
+      await storage.deletePushSubscription(user.id, endpoint);
+      console.log(`✅ Push subscription deleted for user ${user.id}`);
+      res.json({ message: "Unsubscribed successfully" });
+    } catch (error) {
+      console.error("Error deleting push subscription:", error);
+      res.status(500).json({ message: "Failed to unsubscribe" });
+    }
+  });
+
+  app.post("/api/notifications/test", isAuthenticated, async (req: any, res) => {
+    try {
+      const user = await storage.getUser(req.session.user.id);
+      if (!user) return res.status(401).json({ message: "User not found" });
+
+      // Only allow admin users to send test notifications
+      if (user.role !== 'superadmin' && user.role !== 'branch-admin') {
+        return res.status(403).json({ message: "Only admin users can send test notifications" });
+      }
+
+      await NotificationService.sendToAllAdmins({
+        title: '🧪 Test Notification',
+        body: `Test notification sent by ${user.firstName || user.email} at ${new Date().toLocaleString()}`,
+        tag: 'test-notification',
+        data: {
+          type: 'test',
+          timestamp: new Date().toISOString(),
+        }
+      });
+
+      console.log(`✅ Test notification sent by user ${user.id}`);
+      res.json({ message: "Test notification sent successfully" });
+    } catch (error) {
+      console.error("Error sending test notification:", error);
+      res.status(500).json({ message: "Failed to send test notification" });
+    }
   });
 
   app.post("/api/notifications/subscribe", isAuthenticated, async (req: any, res) => {

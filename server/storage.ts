@@ -382,17 +382,17 @@ export class DatabaseStorage implements IStorage {
     roomStatusCounts: Record<string, number>;
   }> {
     const today = new Date().toISOString().split('T')[0];
-    
+
     // Total reservations (active reservations only)
     let totalReservationsQuery = db
       .select({ count: sql`count(*)`.as('count') })
       .from(reservations)
       .where(sql`${reservations.status} != 'cancelled'`);
-    
+
     if (branchId) {
       totalReservationsQuery = totalReservationsQuery.where(eq(reservations.branchId, branchId));
     }
-    
+
     const [{ count: totalReservations }] = await totalReservationsQuery;
 
     // Room status counts with proper filtering
@@ -404,11 +404,11 @@ export class DatabaseStorage implements IStorage {
       .from(rooms)
       .where(eq(rooms.isActive, true))
       .groupBy(rooms.status);
-      
+
     if (branchId) {
       roomStatusQuery = roomStatusQuery.where(eq(rooms.branchId, branchId));
     }
-    
+
     const statusResults = await roomStatusQuery;
     const roomStatusCounts = statusResults.reduce((acc, { status, count }) => {
       acc[status] = Number(count);
@@ -433,11 +433,11 @@ export class DatabaseStorage implements IStorage {
           sql`${reservations.status} != 'cancelled'`
         )
       );
-      
+
     if (branchId) {
       revenueTodayQuery = revenueTodayQuery.where(eq(reservations.branchId, branchId));
     }
-      
+
     const [{ total: revenueToday }] = await revenueTodayQuery;
 
     return {
@@ -466,19 +466,19 @@ export class DatabaseStorage implements IStorage {
   }> {
     // Get all branches
     const branchesData = await db.select().from(branches).where(eq(branches.isActive, true));
-    
+
     // Get global metrics - total active reservations
     const [{ count: totalReservations }] = await db
       .select({ count: sql`count(*)`.as('count') })
       .from(reservations)
       .where(sql`${reservations.status} != 'cancelled'`);
-      
+
     // Total revenue from all paid amounts across all time and branches
     const [{ total: totalRevenue }] = await db
       .select({ total: sql`COALESCE(SUM(CAST(${reservations.paidAmount} AS DECIMAL)), 0)`.as('total') })
       .from(reservations)
       .where(sql`${reservations.status} != 'cancelled'`);
-      
+
     const [{ count: totalRooms }] = await db
       .select({ count: sql`count(*)`.as('count') })
       .from(rooms)
@@ -488,7 +488,7 @@ export class DatabaseStorage implements IStorage {
     const branchMetrics = await Promise.all(
       branchesData.map(async (branch) => {
         const metrics = await this.getDashboardMetrics(branch.id);
-        
+
         return {
           branchId: branch.id,
           branchName: branch.name,
@@ -565,7 +565,7 @@ export class DatabaseStorage implements IStorage {
 
   async upsertHotelSettings(settings: InsertHotelSettings): Promise<HotelSettings> {
     const existingSettings = await this.getHotelSettings(settings.branchId || undefined);
-    
+
     if (existingSettings) {
       const [updatedSettings] = await db
         .update(hotelSettings)

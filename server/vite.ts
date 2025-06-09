@@ -46,12 +46,15 @@ export async function setupVite(app: Express, server: Server) {
   app.use("/sw.js", async (req, res, next) => {
     try {
       const swPath = path.resolve(import.meta.dirname, "..", "public", "sw.js");
+      console.log("📋 Serving service worker from:", swPath);
       const swContent = await fs.promises.readFile(swPath, "utf-8");
       res.setHeader("Content-Type", "application/javascript");
       res.setHeader("Service-Worker-Allowed", "/");
+      res.setHeader("Cache-Control", "no-cache");
       res.status(200).send(swContent);
+      console.log("✅ Service worker served successfully");
     } catch (e) {
-      console.error("Failed to serve sw.js:", e);
+      console.error("❌ Failed to serve sw.js:", e);
       next(e);
     }
   });

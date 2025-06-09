@@ -1,9 +1,10 @@
 import { useEffect, useState } from 'react';
-import { Bell, BellOff } from 'lucide-react';
+import { Bell, BellOff, TestTube } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { useToast } from '@/hooks/use-toast';
 import { NotificationManager } from '@/lib/notifications';
 import { useQuery } from '@tanstack/react-query';
+import { apiRequest } from '@/lib/queryClient';
 
 export function NotificationToggle() {
   const [isSubscribed, setIsSubscribed] = useState(false);
@@ -105,40 +106,83 @@ export function NotificationToggle() {
     }
   };
 
+  const handleTestNotification = async (e: React.MouseEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    
+    if (!isSubscribed) {
+      toast({
+        title: 'Not Subscribed',
+        description: 'Please enable notifications first.',
+        variant: 'destructive',
+      });
+      return;
+    }
+
+    try {
+      await apiRequest('POST', '/api/notifications/test', {});
+      toast({
+        title: 'Test Sent',
+        description: 'A test notification has been sent to all admin users.',
+      });
+    } catch (error) {
+      console.error('❌ Test notification error:', error);
+      toast({
+        title: 'Error',
+        description: 'Failed to send test notification.',
+        variant: 'destructive',
+      });
+    }
+  };
+
   // Only show for admin users
   if (!isAdmin) {
     return null;
   }
 
   return (
-    <button
-      type="button"
-      onClick={handleToggleNotifications}
-      disabled={isLoading || !isSupported}
-      className={`
-        flex items-center gap-2 w-full justify-start text-sm font-medium 
-        min-h-[36px] px-3 py-2 rounded-md border transition-colors duration-200
-        ${isSubscribed 
-          ? 'bg-primary text-primary-foreground border-primary hover:bg-primary/90' 
-          : 'border-input bg-background hover:bg-accent hover:text-accent-foreground'
-        }
-        ${(isLoading || !isSupported) 
-          ? 'opacity-50 cursor-not-allowed' 
-          : 'cursor-pointer'
-        }
-        focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2
-      `}
-      style={{ pointerEvents: 'auto' }}
-    >
-      {isSubscribed ? (
-        <Bell className="h-4 w-4 flex-shrink-0" />
-      ) : (
-        <BellOff className="h-4 w-4 flex-shrink-0" />
+    <div className="space-y-2">
+      <button
+        type="button"
+        onClick={handleToggleNotifications}
+        disabled={isLoading || !isSupported}
+        className={`
+          flex items-center gap-2 w-full justify-start text-sm font-medium 
+          min-h-[36px] px-3 py-2 rounded-md border transition-colors duration-200
+          ${isSubscribed 
+            ? 'bg-primary text-primary-foreground border-primary hover:bg-primary/90' 
+            : 'border-input bg-background hover:bg-accent hover:text-accent-foreground'
+          }
+          ${(isLoading || !isSupported) 
+            ? 'opacity-50 cursor-not-allowed' 
+            : 'cursor-pointer'
+          }
+          focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2
+        `}
+        style={{ pointerEvents: 'auto' }}
+      >
+        {isSubscribed ? (
+          <Bell className="h-4 w-4 flex-shrink-0" />
+        ) : (
+          <BellOff className="h-4 w-4 flex-shrink-0" />
+        )}
+        <span className="truncate">
+          {isLoading ? 'Loading...' : isSubscribed ? 'Notifications On' : 'Enable Notifications'}
+        </span>
+      </button>
+      
+      {isSubscribed && (
+        <button
+          type="button"
+          onClick={handleTestNotification}
+          className="flex items-center gap-2 w-full justify-start text-sm font-medium min-h-[36px] px-3 py-2 rounded-md border border-input bg-background hover:bg-accent hover:text-accent-foreground transition-colors duration-200 cursor-pointer focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2"
+          style={{ pointerEvents: 'auto' }}
+        >
+          <TestTube className="h-4 w-4 flex-shrink-0" />
+          <span className="truncate">Test Notification</span>
+        </button>
       )}
-      <span className="truncate">
-        {isLoading ? 'Loading...' : isSubscribed ? 'Notifications On' : 'Enable Notifications'}
-      </span>
-    </button>
+    </div>
   );
 }
 
