@@ -53,8 +53,21 @@ export interface NotificationData {
 export class NotificationService {
   static async sendToAllAdmins(notification: NotificationData, notificationType?: string, additionalData?: any) {
     try {
+      console.log('🔔 Starting notification send process...');
+      console.log('📋 Notification details:', {
+        title: notification.title,
+        body: notification.body,
+        type: notificationType
+      });
+
       const subscriptions = await storage.getAllAdminSubscriptions();
-      
+      console.log(`👥 Found ${subscriptions.length} admin subscriptions`);
+
+      if (subscriptions.length === 0) {
+        console.warn('⚠️ No admin subscriptions found - no notifications will be sent');
+        return;
+      }
+
       // Save notification to history for each admin user
       const savePromises = subscriptions.map(async (sub) => {
         try {
@@ -67,12 +80,14 @@ export class NotificationService {
             ...additionalData
           };
           await storage.createNotificationHistory(historyData);
+          console.log(`💾 Saved notification history for user ${sub.userId}`);
         } catch (error) {
-          console.error(`Failed to save notification history for user ${sub.userId}:`, error);
+          console.error(`❌ Failed to save notification history for user ${sub.userId}:`, error);
         }
       });
       
       await Promise.allSettled(savePromises);
+      console.log('💾 Notification history saved for all users');
       
       const payload = JSON.stringify({
         title: notification.title,
@@ -87,13 +102,17 @@ export class NotificationService {
             action: 'view',
             title: 'View Details'
           }
-        ]
+        ],
+        timestamp: Date.now()
       });
 
-      console.log(`Attempting to send notifications to ${subscriptions.length} subscribers`);
+      console.log(`📤 Attempting to send push notifications to ${subscriptions.length} subscribers...`);
+      console.log('📦 Payload size:', payload.length, 'bytes');
 
       const sendPromises = subscriptions.map(async (sub) => {
         try {
+          console.log(`📨 Sending notification to user ${sub.userId}...`);
+          
           const pushConfig = {
             endpoint: sub.endpoint,
             keys: {
@@ -102,26 +121,59 @@ export class NotificationService {
             },
           };
 
+          console.log(`🔧 Push config for user ${sub.userId}:`, {
+            endpoint: sub.endpoint.substring(0, 50) + '...',
+            authLength: sub.auth.length,
+            p256dhLength: sub.p256dh.length
+          });
+
           const result = await webpush.sendNotification(pushConfig, payload);
-          console.log(`Notification sent to user ${sub.userId}`);
-          return { success: true, userId: sub.userId };
+          console.log(`✅ Notification sent successfully to user ${sub.userId}`, result.statusCode);
+          return { success: true, userId: sub.userId, statusCode: result.statusCode };
         } catch (error: any) {
-          console.error(`Failed to send notification to user ${sub.userId}:`, error.message);
+          console.error(`❌ Failed to send notification to user ${sub.userId}:`, {
+            message: error.message,
+            statusCode: error.statusCode,
+            body: error.body
+          });
           
           // If subscription is invalid or VAPID mismatch, remove it
           if (error.statusCode === 410 || error.statusCode === 404 || error.statusCode === 403) {
-            console.log(`Removing invalid subscription for user ${sub.userId}`);
-            await storage.deletePushSubscription(sub.userId, sub.endpoint);
+            console.log(`🗑️ Removing invalid subscription for user ${sub.userId}`);
+            try {
+              await storage.deletePushSubscription(sub.userId, sub.endpoint);
+              console.log(`✅ Removed invalid subscription for user ${sub.userId}`);
+            } catch (deleteError) {
+              console.error(`❌ Failed to remove invalid subscription for user ${sub.userId}:`, deleteError);
+            }
           }
           
-          return { success: false, userId: sub.userId, error: error.message };
+          return { success: false, userId: sub.userId, error: error.message, statusCode: error.statusCode };
         }
       });
 
       const results = await Promise.allSettled(sendPromises);
-      console.log(`Notification results: ${results.filter(r => r.status === 'fulfilled').length}/${results.length} sent successfully`);
+      const successful = results.filter(r => r.status === 'fulfilled' && (r.value as any).success).length;
+      const failed = results.length - successful;
+      
+      console.log(`📊 Notification send results: ${successful}/${results.length} successful, ${failed} failed`);
+      
+      // Log details of failed sends
+      results.forEach((result, index) => {
+        if (result.status === 'fulfilled' && !(result.value as any).success) {
+          console.error(`❌ Failed send details for user ${subscriptions[index].userId}:`, result.value);
+        } else if (result.status === 'rejected') {
+          console.error(`❌ Promise rejected for user ${subscriptions[index].userId}:`, result.reason);
+        }
+      });
+
+      if (successful === 0) {
+        console.error('❌ All notification sends failed!');
+      } else {
+        console.log(`✅ Notification send process completed: ${successful} successful sends`);
+      }
     } catch (error) {
-      console.error('Failed to send notifications:', error);
+      console.error('❌ Critical error in notification send process:', error);
     }
   }
 

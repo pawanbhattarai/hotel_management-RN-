@@ -127,18 +127,30 @@ export class NotificationManager {
       console.log('🔍 Checking existing subscription...');
       const existingSubscription = await this.registration.pushManager.getSubscription();
       if (existingSubscription) {
-        console.log('🔄 Unsubscribing from existing subscription...');
+        console.log('🔄 Found existing subscription, unsubscribing...');
+        console.log('🔧 Existing subscription endpoint:', existingSubscription.endpoint.substring(0, 50) + '...');
         await existingSubscription.unsubscribe();
+        console.log('✅ Unsubscribed from existing subscription');
       }
+
+      // Wait a moment to ensure unsubscription is complete
+      await new Promise(resolve => setTimeout(resolve, 500));
 
       // Create new subscription
       console.log('📝 Creating new push subscription...');
+      console.log('🔑 Using VAPID key:', this.vapidPublicKey.substring(0, 20) + '...');
+      
       const subscription = await this.registration.pushManager.subscribe({
         userVisibleOnly: true,
         applicationServerKey: this.urlBase64ToUint8Array(this.vapidPublicKey),
       });
 
-      console.log('✅ Push subscription created:', subscription.endpoint.substring(0, 50) + '...');
+      console.log('✅ Push subscription created successfully!');
+      console.log('🔧 Subscription details:', {
+        endpoint: subscription.endpoint.substring(0, 50) + '...',
+        p256dhLength: subscription.getKey('p256dh')?.byteLength || 0,
+        authLength: subscription.getKey('auth')?.byteLength || 0
+      });
 
       // Send subscription to server
       console.log('📤 Sending subscription to server...');
@@ -148,13 +160,14 @@ export class NotificationManager {
         auth: this.arrayBufferToBase64(subscription.getKey('auth')),
       };
 
-      console.log('📤 Subscription data:', {
+      console.log('📤 Subscription data prepared:', {
         endpoint: subscriptionData.endpoint.substring(0, 50) + '...',
         p256dhLength: subscriptionData.p256dh.length,
         authLength: subscriptionData.auth.length
       });
 
-      await apiRequest('POST', '/api/notifications/subscribe', subscriptionData);
+      const response = await apiRequest('POST', '/api/notifications/subscribe', subscriptionData);
+      console.log('✅ Subscription saved to server:', response);
 
       console.log('✅ Successfully subscribed to push notifications');
       
@@ -164,6 +177,16 @@ export class NotificationManager {
       return true;
     } catch (error) {
       console.error('❌ Failed to subscribe to push notifications:', error);
+      
+      // Additional error details
+      if (error instanceof Error) {
+        console.error('❌ Error details:', {
+          name: error.name,
+          message: error.message,
+          stack: error.stack
+        });
+      }
+      
       return false;
     }
   }

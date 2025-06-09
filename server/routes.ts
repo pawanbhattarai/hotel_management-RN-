@@ -388,18 +388,24 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // Send maintenance notification if room status changed to maintenance
       if (roomData.status && (roomData.status === 'maintenance' || roomData.status === 'out-of-order')) {
         try {
+          console.log(`🔧 Room ${existingRoom.number} status changed to ${roomData.status}, sending notification...`);
+          
           const branch = await storage.getBranch(existingRoom.branchId);
           const roomType = await storage.getRoomType(existingRoom.roomTypeId);
 
           if (branch && roomType) {
+            console.log(`📨 Sending maintenance notification for room ${existingRoom.number} at branch ${branch.name}`);
             await NotificationService.sendMaintenanceNotification(
               { ...existingRoom, roomType },
               branch,
               roomData.status
             );
+            console.log(`✅ Maintenance notification sent for room ${existingRoom.number}`);
+          } else {
+            console.warn(`⚠️ Missing branch or room type data for maintenance notification`);
           }
         } catch (notificationError) {
-          console.error("Failed to send maintenance notification:", notificationError);
+          console.error("❌ Failed to send maintenance notification:", notificationError);
         }
       }
 
@@ -790,28 +796,36 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
         // Send notifications for status changes
         try {
+          console.log(`📋 Reservation ${reservationId} status changed to ${validatedData.status}, sending notification...`);
+          
           const branch = await storage.getBranch(existingReservation.branchId);
           const firstRoom = existingReservation.reservationRooms[0];
 
           if (branch && firstRoom) {
             if (validatedData.status === 'checked-in') {
+              console.log(`🏨 Sending check-in notification for reservation ${reservationId}`);
               await NotificationService.sendCheckInNotification(
                 existingReservation.guest,
                 firstRoom.room,
                 branch,
                 reservationId
               );
+              console.log(`✅ Check-in notification sent for reservation ${reservationId}`);
             } else if (validatedData.status === 'checked-out') {
+              console.log(`🚪 Sending check-out notification for reservation ${reservationId}`);
               await NotificationService.sendCheckOutNotification(
                 existingReservation.guest,
                 firstRoom.room,
                 branch,
                 reservationId
               );
+              console.log(`✅ Check-out notification sent for reservation ${reservationId}`);
             }
+          } else {
+            console.warn(`⚠️ Missing branch or room data for status change notification`);
           }
         } catch (notificationError) {
-          console.error("Failed to send status change notification:", notificationError);
+          console.error("❌ Failed to send status change notification:", notificationError);
         }
       }
 
@@ -1012,29 +1026,38 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.post("/api/notifications/subscribe", isAuthenticated, async (req: any, res) => {
     try {
       const user = await storage.getUser(req.session.user.id);
-      if (!user) return res.status(401).json({ message: "User not found" });
+      if (!user) {
+        console.error("❌ User not found during subscription");
+        return res.status(401).json({ message: "User not found" });
+      }
+
+      console.log(`👤 User subscribing: ${user.id} (${user.email}) - Role: ${user.role}`);
 
       // Only allow admin users to subscribe to notifications
       if (user.role !== 'superadmin' && user.role !== 'branch-admin') {
+        console.warn(`❌ Non-admin user ${user.id} tried to subscribe to notifications`);
         return res.status(403).json({ message: "Only admin users can subscribe to notifications" });
       }
 
       const { endpoint, p256dh, auth } = req.body;
 
       if (!endpoint || !p256dh || !auth) {
+        console.error("❌ Missing subscription data:", { endpoint: !!endpoint, p256dh: !!p256dh, auth: !!auth });
         return res.status(400).json({ message: "Missing required subscription data" });
       }
 
-      console.log(`📝 Creating push subscription for user ${user.id}:`, {
+      console.log(`📝 Creating push subscription for user ${user.id} (${user.email}):`, {
         endpoint: endpoint.substring(0, 50) + '...',
         p256dhLength: p256dh.length,
-        authLength: auth.length
+        authLength: auth.length,
+        userRole: user.role,
+        branchId: user.branchId
       });
 
       // Check if subscription already exists
       const existingSubscription = await storage.getPushSubscription(user.id, endpoint);
       if (existingSubscription) {
-        console.log(`✅ Push subscription already exists for user ${user.id}`);
+        console.log(`♻️ Push subscription already exists for user ${user.id}, returning existing`);
         return res.json(existingSubscription);
       }
 
@@ -1046,10 +1069,16 @@ export async function registerRoutes(app: Express): Promise<Server> {
         auth,
       });
 
-      console.log(`✅ Push subscription created for user ${user.id}`);
+      console.log(`✅ Push subscription created successfully for user ${user.id} (${user.email})`);
+      
+      // Verify the subscription was saved
+      const allSubscriptions = await storage.getAllAdminSubscriptions();
+      console.log(`📊 Total admin subscriptions after creation: ${allSubscriptions.length}`);
+      console.log(`👥 Subscribed admin users:`, allSubscriptions.map(s => s.userId));
+
       res.json(subscription);
     } catch (error) {
-      console.error("Error creating push subscription:", error);
+      console.error("❌ Error creating push subscription:", error);
       res.status(500).json({ message: "Failed to create push subscription" });
     }
   });
@@ -1085,26 +1114,52 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(403).json({ message: "Only admin users can send test notifications" });
       }
 
-      console.log(`🧪 Sending test notification for user ${user.id}`);
+      console.log(`🧪 Starting comprehensive notification test for user ${user.id} (${user.email})`);
 
-      const notification = {
-        title: '🧪 Test Notification',
-        body: `Test notification sent at ${new Date().toLocaleTimeString()}`,
+      // Check current subscriptions
+      const allSubscriptions = await storage.getAllAdminSubscriptions();
+      console.log(`📊 Current admin subscriptions: ${allSubscriptions.length}`);
+      allSubscriptions.forEach((sub, index) => {
+        console.log(`👤 Subscription ${index + 1}: User ${sub.userId}, Endpoint: ${sub.endpoint.substring(0, 50)}...`);
+      });
+
+      if (allSubscriptions.length === 0) {
+        console.warn(`⚠️ No admin subscriptions found - test notification cannot be sent`);
+        return res.status(400).json({ 
+          message: "No admin subscriptions found. Please subscribe to notifications first.",
+          subscriptions: 0
+        });
+      }
+
+      const testNotification = {
+        title: '🧪 Hotel Management Test',
+        body: `Test notification sent by ${user.email} at ${new Date().toLocaleTimeString()}`,
+        icon: '/favicon.ico',
+        badge: '/favicon.ico',
         tag: 'test-notification',
         data: {
           type: 'test',
           userId: user.id,
+          timestamp: new Date().toISOString()
         }
       };
 
-      await NotificationService.sendToAllAdmins(notification, 'test', {
-        userId: user.id
+      console.log(`📤 Sending test notification to ${allSubscriptions.length} subscribers...`);
+
+      await NotificationService.sendToAllAdmins(testNotification, 'test', {
+        userId: user.id,
+        testTimestamp: new Date().toISOString()
       });
 
-      console.log(`✅ Test notification sent for user ${user.id}`);
-      res.json({ message: "Test notification sent successfully" });
+      console.log(`✅ Test notification process completed for user ${user.id}`);
+      
+      res.json({ 
+        message: "Test notification sent successfully",
+        subscriberCount: allSubscriptions.length,
+        timestamp: new Date().toISOString()
+      });
     } catch (error) {
-      console.error("Error sending test notification:", error);
+      console.error("❌ Error sending test notification:", error);
       res.status(500).json({ message: "Failed to send test notification" });
     }
   });
