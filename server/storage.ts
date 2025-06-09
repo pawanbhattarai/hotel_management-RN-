@@ -649,19 +649,38 @@ export class DatabaseStorage implements IStorage {
   //     .where(sql`${users.role} IN ('superadmin', 'branch-admin')`);
   // }
   async getAllAdminSubscriptions(): Promise<(PushSubscription & { user: User })[]> {
-    return await this.db
-      .select({
-        id: pushSubscriptions.id,
-        userId: pushSubscriptions.userId,
-        endpoint: pushSubscriptions.endpoint,
-        p256dh: pushSubscriptions.p256dh,
-        auth: pushSubscriptions.auth,
-        createdAt: pushSubscriptions.createdAt,
-        user: users,
-      })
-      .from(pushSubscriptions)
-      .innerJoin(users, eq(pushSubscriptions.userId, users.id))
-      .where(or(eq(users.role, 'superadmin'), eq(users.role, 'branch-admin')));
+    try {
+      console.log('🔍 Fetching all admin subscriptions...');
+      
+      const result = await this.db
+        .select({
+          id: pushSubscriptions.id,
+          userId: pushSubscriptions.userId,
+          endpoint: pushSubscriptions.endpoint,
+          p256dh: pushSubscriptions.p256dh,
+          auth: pushSubscriptions.auth,
+          createdAt: pushSubscriptions.createdAt,
+          user: users,
+        })
+        .from(pushSubscriptions)
+        .innerJoin(users, eq(pushSubscriptions.userId, users.id))
+        .where(and(
+          or(eq(users.role, 'superadmin'), eq(users.role, 'branch-admin')),
+          eq(users.isActive, true)
+        ));
+
+      console.log(`📊 Found ${result.length} admin subscriptions`);
+      
+      // Log details for debugging
+      result.forEach((sub, index) => {
+        console.log(`👤 Admin subscription ${index + 1}: User ${sub.userId} (${sub.user?.email}) - Role: ${sub.user?.role}`);
+      });
+
+      return result;
+    } catch (error) {
+      console.error('❌ Error fetching admin subscriptions:', error);
+      throw error;
+    }
   }
 
   // Notification history operations

@@ -1,419 +1,285 @@
-
-import { useEffect, useState } from 'react';
-import { Bell, BellOff, History, Check, CheckCheck, TestTube } from 'lucide-react';
+import React, { useEffect, useState } from 'react';
+import { useAuth } from '@/hooks/useAuth';
+import { notificationService } from '@/lib/notifications';
 import { Button } from '@/components/ui/button';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { ScrollArea } from '@/components/ui/scroll-area';
 import { Badge } from '@/components/ui/badge';
+import { Bell, BellOff, Settings } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
-import { NotificationManager } from '@/lib/notifications';
-import { useQuery, useMutation } from '@tanstack/react-query';
-import { apiRequest, queryClient } from '@/lib/queryClient';
 
-export function NotificationToggle() {
-  const [isSubscribed, setIsSubscribed] = useState(false);
-  const [isLoading, setIsLoading] = useState(false);
-  const [isSupported, setIsSupported] = useState(false);
-  const [permissionStatus, setPermissionStatus] = useState<NotificationPermission>('default');
+export function NotificationManager() {
+  const { user } = useAuth();
   const { toast } = useToast();
+  const [isSupported, setIsSupported] = useState(false);
+  const [permission, setPermission] = useState<NotificationPermission>('default');
+  const [isSubscribed, setIsSubscribed] = useState(false);
+  const [loading, setLoading] = useState(false);
+  const [autoSubscribeAttempted, setAutoSubscribeAttempted] = useState(false);
 
-  // Check if user is admin (only show for admin users)
-  const { data: user } = useQuery({
-    queryKey: ['/api/auth/user'],
-  });
-
-  const isAdmin = (user as any)?.role === 'superadmin' || (user as any)?.role === 'branch-admin';
+  // Only show for admin users
+  const isAdmin = user?.role === 'superadmin' || user?.role === 'branch-admin';
 
   useEffect(() => {
-    const initializeNotifications = async () => {
-      console.log('🔄 Initializing notifications for admin user...');
-      
-      const supported = await NotificationManager.initialize();
-      console.log('🔧 Notification support:', supported);
-      setIsSupported(supported);
+    if (!isAdmin) return;
 
-      if (supported) {
-        const subscribed = await NotificationManager.isSubscribed();
-        console.log('📊 Current subscription status:', subscribed);
-        setIsSubscribed(subscribed);
-        
-        // Check permission status
-        if ('Notification' in window) {
-          setPermissionStatus(Notification.permission);
-        }
-      }
-    };
+    // Check if push notifications are supported
+    const supported = 'serviceWorker' in navigator && 'PushManager' in window;
+    setIsSupported(supported);
 
-    if (isAdmin) {
-      console.log('👑 User is admin, initializing notifications...');
-      initializeNotifications();
-    } else {
-      console.log('👤 User is not admin, skipping notification initialization');
+    if (supported) {
+      setPermission(Notification.permission);
+      checkSubscriptionStatus();
     }
   }, [isAdmin]);
 
-  const handleTestNotification = async () => {
-    console.log('🧪 Testing notification...');
-    
-    if (!isSupported) {
-      toast({
-        title: 'Not Supported',
-        description: 'Push notifications are not supported by your browser.',
-        variant: 'destructive',
-      });
-      return;
-    }
+  // Auto-subscribe admin users on first load
+  useEffect(() => {
+    if (!isAdmin || !isSupported || autoSubscribeAttempted) return;
 
-    try {
-      if ('Notification' in window && Notification.permission === 'granted') {
-        new Notification('🧪 Test Notification', {
-          body: 'This is a test notification to verify notifications are working.',
-          icon: '/favicon.ico',
-          tag: 'test-notification'
-        });
-        
-        toast({
-          title: 'Test Notification Sent',
-          description: 'Check if the notification appeared in your system tray.',
-        });
-      } else {
-        toast({
-          title: 'Permission Required',
-          description: 'Please enable notifications first.',
-          variant: 'destructive',
-        });
+    const attemptAutoSubscribe = async () => {
+      setAutoSubscribeAttempted(true);
+
+      try {
+        const registration = await navigator.serviceWorker.ready;
+        const subscription = await registration.pushManager.getSubscription();
+
+        if (!subscription) {
+          console.log('🔔 Auto-subscribing admin user to notifications...');
+
+          // Check if permission is already granted
+          if (Notification.permission === 'granted') {
+            console.log('✅ Notification permission already granted, subscribing...');
+            await subscribe(false); // false = don't show toast for auto-subscribe
+          } else if (Notification.permission === 'default') {
+            console.log('📋 Requesting notification permission...');
+            const permission = await Notification.requestPermission();
+            if (permission === 'granted') {
+              console.log('✅ Permission granted, subscribing...');
+              await subscribe(false); // false = don't show toast for auto-subscribe
+            } else {
+              console.log('❌ Notification permission denied');
+              toast({
+                title: "Notifications Disabled",
+                description: "Enable notifications in your browser to receive real-time hotel updates.",
+                variant: "destructive",
+              });
+            }
+          }
+        } else {
+          console.log('✅ User already subscribed to notifications');
+          setIsSubscribed(true);
+        }
+      } catch (error) {
+        console.error('❌ Auto-subscribe failed:', error);
       }
+    };
+
+    // Delay auto-subscribe to ensure everything is loaded
+    const timer = setTimeout(attemptAutoSubscribe, 2000);
+    return () => clearTimeout(timer);
+  }, [isAdmin, isSupported, autoSubscribeAttempted]);
+
+  const checkSubscriptionStatus = async () => {
+    try {
+      const registration = await navigator.serviceWorker.ready;
+      const subscription = await registration.pushManager.getSubscription();
+      setIsSubscribed(!!subscription);
     } catch (error) {
-      console.error('❌ Test notification failed:', error);
-      toast({
-        title: 'Test Failed',
-        description: 'Failed to send test notification.',
-        variant: 'destructive',
-      });
+      console.error('Error checking subscription status:', error);
     }
   };
 
-  const handleToggleNotifications = async (e: React.MouseEvent) => {
-    e.preventDefault();
-    e.stopPropagation();
-
-    console.log('🔔 Notification toggle clicked!', { isSupported, isSubscribed, isLoading, permissionStatus });
-
-    if (!isSupported) {
-      console.warn('❌ Browser not supported');
-      toast({
-        title: 'Not Supported',
-        description: 'Push notifications are not supported by your browser.',
-        variant: 'destructive',
-      });
-      return;
-    }
-
-    if (isLoading) {
-      console.log('⏳ Already loading, skipping...');
-      return;
-    }
-
-    setIsLoading(true);
-    console.log('🚀 Starting notification toggle process...');
+  const requestPermission = async () => {
+    if (!isSupported) return false;
 
     try {
-      if (isSubscribed) {
-        console.log('🔕 Attempting to unsubscribe...');
-        const success = await NotificationManager.unsubscribe();
-        if (success) {
-          setIsSubscribed(false);
-          console.log('✅ Successfully unsubscribed');
+      const permission = await Notification.requestPermission();
+      setPermission(permission);
+      return permission === 'granted';
+    } catch (error) {
+      console.error('Error requesting notification permission:', error);
+      return false;
+    }
+  };
+
+  const subscribe = async (showToast = true) => {
+    if (!isSupported || !user) return;
+
+    setLoading(true);
+    try {
+      const hasPermission = permission === 'granted' || await requestPermission();
+
+      if (!hasPermission) {
+        if (showToast) {
           toast({
-            title: 'Notifications Disabled',
-            description: 'You will no longer receive push notifications.',
+            title: "Permission Required",
+            description: "Please allow notifications to receive real-time updates.",
+            variant: "destructive",
           });
-        } else {
-          throw new Error('Failed to unsubscribe');
         }
-      } else {
-        console.log("🔔 Attempting to subscribe...");
+        return;
+      }
 
-        // Re-initialize the notification manager first
-        const initialized = await NotificationManager.initialize();
-        if (!initialized) {
-          throw new Error('Failed to initialize notification manager');
-        }
+      const success = await notificationService.subscribe();
 
-        // Check notification permission first
-        const permission = await NotificationManager.requestPermission();
-        console.log("🔐 Notification permission:", permission);
-        setPermissionStatus(permission);
-
-        if (permission !== 'granted') {
-          let errorMessage = 'Please enable notifications in your browser settings.';
-          if (permission === 'denied') {
-            errorMessage = 'Notifications are blocked. Please enable them in your browser settings and refresh the page.';
-          }
-          throw new Error(`Notification permission ${permission}. ${errorMessage}`);
-        }
-
-        const success = await NotificationManager.subscribe();
-        if (success) {
-          console.log("✅ Successfully subscribed to notifications");
-          setIsSubscribed(true);
+      if (success) {
+        setIsSubscribed(true);
+        console.log(`✅ User ${user.email} successfully subscribed to notifications`);
+        if (showToast) {
           toast({
             title: "Notifications Enabled",
-            description: "You will now receive push notifications for hotel events.",
+            description: "You'll now receive real-time hotel notifications.",
           });
-        } else {
-          throw new Error("Failed to subscribe");
+        }
+      } else {
+        console.error('❌ Notification subscription failed');
+        if (showToast) {
+          toast({
+            title: "Subscription Failed",
+            description: "Could not enable notifications. Please try again.",
+            variant: "destructive",
+          });
         }
       }
     } catch (error) {
-      console.error('❌ Notification toggle error:', error);
+      console.error('Subscription error:', error);
+      if (showToast) {
+        toast({
+          title: "Error",
+          description: "Failed to enable notifications.",
+          variant: "destructive",
+        });
+      }
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const unsubscribe = async () => {
+    if (!isSupported) return;
+
+    setLoading(true);
+    try {
+      const success = await notificationService.unsubscribe();
+
+      if (success) {
+        setIsSubscribed(false);
+        console.log(`✅ User ${user?.email} unsubscribed from notifications`);
+        toast({
+          title: "Notifications Disabled",
+          description: "You'll no longer receive push notifications.",
+        });
+      }
+    } catch (error) {
+      console.error('Unsubscribe error:', error);
       toast({
-        title: 'Error',
-        description: error instanceof Error ? error.message : 'Failed to update notification settings. Please try again.',
-        variant: 'destructive',
+        title: "Error",
+        description: "Failed to disable notifications.",
+        variant: "destructive",
       });
     } finally {
-      setIsLoading(false);
-      console.log('🏁 Notification toggle process finished');
+      setLoading(false);
     }
   };
 
-  // Only show for admin users
-  if (!isAdmin) {
+  const sendTestNotification = async () => {
+    if (!isSubscribed) {
+      toast({
+        title: "Not Subscribed",
+        description: "Please enable notifications first.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    setLoading(true);
+    try {
+      console.log('🧪 Sending test notification...');
+      const response = await fetch('/api/notifications/test', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+      });
+
+      if (response.ok) {
+        const data = await response.json();
+        console.log(`✅ Test notification sent to ${data.subscriberCount} subscribers`);
+        toast({
+          title: "Test Notification Sent",
+          description: `Sent to ${data.subscriberCount} subscribers`,
+        });
+      } else {
+        const error = await response.json();
+        console.error('❌ Test notification failed:', error);
+        toast({
+          title: "Test Failed",
+          description: error.message || "Could not send test notification.",
+          variant: "destructive",
+        });
+      }
+    } catch (error) {
+      console.error('Test notification error:', error);
+      toast({
+        title: "Error",
+        description: "Failed to send test notification.",
+        variant: "destructive",
+      });
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  if (!isAdmin || !isSupported) {
     return null;
   }
 
-  const getStatusText = () => {
-    if (isLoading) return 'Loading...';
-    if (!isSupported) return 'Not Supported';
-    if (permissionStatus === 'denied') return 'Blocked';
-    if (isSubscribed) return 'Notifications On';
-    return 'Enable Notifications';
-  };
-
-  const getStatusColor = () => {
-    if (!isSupported || permissionStatus === 'denied') return 'destructive';
-    if (isSubscribed) return 'default';
-    return 'secondary';
-  };
-
   return (
-    <div className="space-y-2">
-      <button
-        type="button"
-        onClick={handleToggleNotifications}
-        disabled={isLoading || !isSupported || permissionStatus === 'denied'}
-        className={`
-          flex items-center gap-2 w-full justify-start text-sm font-medium 
-          min-h-[36px] px-3 py-2 rounded-md border transition-colors duration-200
-          ${isSubscribed 
-            ? 'bg-primary text-primary-foreground border-primary hover:bg-primary/90' 
-            : 'border-input bg-background hover:bg-accent hover:text-accent-foreground'
-          }
-          ${(isLoading || !isSupported || permissionStatus === 'denied') 
-            ? 'opacity-50 cursor-not-allowed' 
-            : 'cursor-pointer'
-          }
-          focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2
-        `}
-        style={{ pointerEvents: 'auto' }}
-      >
+    <div className="flex items-center space-x-2">
+      <div className="flex items-center space-x-2">
         {isSubscribed ? (
-          <Bell className="h-4 w-4 flex-shrink-0" />
-        ) : (
-          <BellOff className="h-4 w-4 flex-shrink-0" />
-        )}
-        <span className="truncate">
-          {getStatusText()}
-        </span>
-      </button>
-
-      {isSupported && (
-        <div className="flex gap-2">
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={handleTestNotification}
-            disabled={permissionStatus !== 'granted'}
-            className="flex-1 text-xs"
-          >
-            <TestTube className="h-3 w-3 mr-1" />
-            Test
-          </Button>
-          <Badge variant={getStatusColor() as any} className="text-xs">
-            {permissionStatus === 'granted' ? 'Allowed' : 
-             permissionStatus === 'denied' ? 'Blocked' : 'Default'}
+          <Badge variant="secondary" className="flex items-center space-x-1">
+            <Bell className="h-3 w-3" />
+            <span>Notifications On</span>
           </Badge>
-        </div>
-      )}
-    </div>
-  );
-}
-
-export function NotificationHistory() {
-  const { data: user } = useQuery({
-    queryKey: ['/api/auth/user'],
-  });
-
-  const isAdmin = (user as any)?.role === 'superadmin' || (user as any)?.role === 'branch-admin';
-
-  const { data: notifications = [], isLoading } = useQuery({
-    queryKey: ['/api/notifications/history'],
-    enabled: isAdmin,
-  });
-
-  const { data: unreadData } = useQuery({
-    queryKey: ['/api/notifications/unread-count'],
-    enabled: isAdmin,
-    refetchInterval: 30000, // Refetch every 30 seconds
-  });
-
-  const unreadCount = (unreadData as any)?.count || 0;
-
-  const markAsReadMutation = useMutation({
-    mutationFn: (notificationId: number) => 
-      apiRequest('PATCH', `/api/notifications/history/${notificationId}/read`, {}),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['/api/notifications/history'] });
-      queryClient.invalidateQueries({ queryKey: ['/api/notifications/unread-count'] });
-    },
-  });
-
-  const markAllAsReadMutation = useMutation({
-    mutationFn: () => 
-      apiRequest('PATCH', '/api/notifications/history/read-all', {}),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['/api/notifications/history'] });
-      queryClient.invalidateQueries({ queryKey: ['/api/notifications/unread-count'] });
-    },
-  });
-
-  if (!isAdmin) {
-    return null;
-  }
-
-  const formatNotificationTime = (timestamp: string) => {
-    const date = new Date(timestamp);
-    const now = new Date();
-    const diff = now.getTime() - date.getTime();
-    
-    if (diff < 60000) return 'Just now';
-    if (diff < 3600000) return `${Math.floor(diff / 60000)}m ago`;
-    if (diff < 86400000) return `${Math.floor(diff / 3600000)}h ago`;
-    return date.toLocaleDateString();
-  };
-
-  const getNotificationIcon = (type: string) => {
-    switch (type) {
-      case 'new-reservation': return '📋';
-      case 'check-in': return '🏨';
-      case 'check-out': return '🚪';
-      case 'maintenance': return '🔧';
-      default: return '📢';
-    }
-  };
-
-  return (
-    <Card className="w-full max-w-md">
-      <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-        <CardTitle className="text-sm font-medium flex items-center gap-2">
-          <History className="h-4 w-4" />
-          Notifications
-          {unreadCount > 0 && (
-            <Badge variant="destructive" className="text-xs">
-              {unreadCount}
-            </Badge>
-          )}
-        </CardTitle>
-        {(notifications as any[]).length > 0 && (
-          <Button
-            variant="ghost"
-            size="sm"
-            onClick={() => markAllAsReadMutation.mutate()}
-            disabled={markAllAsReadMutation.isPending}
-            className="h-8 px-2"
-          >
-            <CheckCheck className="h-3 w-3" />
-          </Button>
+        ) : (
+          <Badge variant="outline" className="flex items-center space-x-1">
+            <BellOff className="h-3 w-3" />
+            <span>Notifications Off</span>
+          </Badge>
         )}
-      </CardHeader>
-      <CardContent className="p-0">
-        <ScrollArea className="h-80">
-          {isLoading ? (
-            <div className="p-4 text-center text-sm text-muted-foreground">
-              Loading notifications...
-            </div>
-          ) : !(notifications as any[]).length ? (
-            <div className="p-4 text-center text-sm text-muted-foreground">
-              No notifications yet
-            </div>
-          ) : (
-            <div className="space-y-2 p-4">
-              {(notifications as any[]).map((notification: any) => (
-                <div
-                  key={notification.id}
-                  className={`p-3 rounded-lg border cursor-pointer transition-colors ${
-                    notification.isRead 
-                      ? 'bg-background border-border' 
-                      : 'bg-muted border-primary/20'
-                  }`}
-                  onClick={() => !notification.isRead && markAsReadMutation.mutate(notification.id)}
-                >
-                  <div className="flex items-start gap-2">
-                    <span className="text-lg flex-shrink-0">
-                      {getNotificationIcon(notification.type)}
-                    </span>
-                    <div className="flex-1 min-w-0">
-                      <p className="text-sm font-medium truncate">
-                        {notification.title}
-                      </p>
-                      <p className="text-xs text-muted-foreground line-clamp-2">
-                        {notification.body}
-                      </p>
-                      <div className="flex items-center justify-between mt-2">
-                        <span className="text-xs text-muted-foreground">
-                          {formatNotificationTime(notification.sentAt)}
-                        </span>
-                        {!notification.isRead && (
-                          <Badge variant="secondary" className="text-xs">
-                            New
-                          </Badge>
-                        )}
-                      </div>
-                    </div>
-                  </div>
-                </div>
-              ))}
-            </div>
-          )}
-        </ScrollArea>
-      </CardContent>
-    </Card>
-  );
-}
-
-export function NotificationStatus() {
-  const [permission, setPermission] = useState<NotificationPermission>('default');
-  const [isSupported, setIsSupported] = useState(false);
-
-  useEffect(() => {
-    setIsSupported('Notification' in window && 'serviceWorker' in navigator);
-    if ('Notification' in window) {
-      setPermission(Notification.permission);
-    }
-  }, []);
-
-  if (!isSupported) {
-    return (
-      <div className="text-sm text-muted-foreground">
-        Push notifications not supported
       </div>
-    );
-  }
 
-  return (
-    <div className="text-sm text-muted-foreground">
-      Notifications: {permission === 'granted' ? 'Enabled' : permission === 'denied' ? 'Blocked' : 'Not requested'}
+      <div className="flex space-x-1">
+        {!isSubscribed ? (
+          <Button
+            onClick={() => subscribe(true)}
+            disabled={loading}
+            size="sm"
+            variant="outline"
+          >
+            Enable Notifications
+          </Button>
+        ) : (
+          <>
+            <Button
+              onClick={sendTestNotification}
+              disabled={loading}
+              size="sm"
+              variant="outline"
+            >
+              Test
+            </Button>
+            <Button
+              onClick={unsubscribe}
+              disabled={loading}
+              size="sm"
+              variant="outline"
+            >
+              Disable
+            </Button>
+          </>
+        )}
+      </div>
     </div>
   );
 }

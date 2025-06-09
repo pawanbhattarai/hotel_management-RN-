@@ -1031,23 +1031,37 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(401).json({ message: "User not found" });
       }
 
-      console.log(`👤 User subscribing: ${user.id} (${user.email}) - Role: ${user.role}`);
+      console.log(`👤 User subscribing: ${user.id} (${user.email}) - Role: ${user.role}, Branch: ${user.branchId}`);
 
       // Only allow admin users to subscribe to notifications
       if (user.role !== 'superadmin' && user.role !== 'branch-admin') {
-        console.warn(`❌ Non-admin user ${user.id} tried to subscribe to notifications`);
+        console.warn(`❌ Non-admin user ${user.id} (${user.role}) tried to subscribe to notifications`);
         return res.status(403).json({ message: "Only admin users can subscribe to notifications" });
       }
 
       const { endpoint, p256dh, auth } = req.body;
 
       if (!endpoint || !p256dh || !auth) {
-        console.error("❌ Missing subscription data:", { endpoint: !!endpoint, p256dh: !!p256dh, auth: !!auth });
+        console.error("❌ Missing subscription data:", { 
+          endpoint: !!endpoint, 
+          p256dh: !!p256dh, 
+          auth: !!auth,
+          endpointType: typeof endpoint,
+          p256dhType: typeof p256dh,
+          authType: typeof auth
+        });
         return res.status(400).json({ message: "Missing required subscription data" });
+      }
+
+      // Validate subscription data format
+      if (typeof endpoint !== 'string' || typeof p256dh !== 'string' || typeof auth !== 'string') {
+        console.error("❌ Invalid subscription data types");
+        return res.status(400).json({ message: "Invalid subscription data format" });
       }
 
       console.log(`📝 Creating push subscription for user ${user.id} (${user.email}):`, {
         endpoint: endpoint.substring(0, 50) + '...',
+        endpointLength: endpoint.length,
         p256dhLength: p256dh.length,
         authLength: auth.length,
         userRole: user.role,
@@ -1055,10 +1069,21 @@ export async function registerRoutes(app: Express): Promise<Server> {
       });
 
       // Check if subscription already exists
-      const existingSubscription = await storage.getPushSubscription(user.id, endpoint);
-      if (existingSubscription) {
-        console.log(`♻️ Push subscription already exists for user ${user.id}, returning existing`);
-        return res.json(existingSubscription);
+      try {
+        const existingSubscription = await storage.getPushSubscription(user.id, endpoint);
+        if (existingSubscription) {
+          console.log(`♻️ Push subscription already exists for user ${user.id}, returning existing`);
+          
+          // Verify it's still in the admin subscriptions list
+          const allSubscriptions = await storage.getAllAdminSubscriptions();
+          const isInAdminList = allSubscriptions.some(sub => sub.userId === user.id && sub.endpoint === endpoint);
+          console.log(`📋 Subscription found in admin list: ${isInAdminList}`);
+          
+          return res.json(existingSubscription);
+        }
+      } catch (error) {
+        console.error("❌ Error checking existing subscription:", error);
+        // Continue with creating new subscription
       }
 
       // Create new subscription
@@ -1071,15 +1096,44 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       console.log(`✅ Push subscription created successfully for user ${user.id} (${user.email})`);
       
-      // Verify the subscription was saved
-      const allSubscriptions = await storage.getAllAdminSubscriptions();
-      console.log(`📊 Total admin subscriptions after creation: ${allSubscriptions.length}`);
-      console.log(`👥 Subscribed admin users:`, allSubscriptions.map(s => s.userId));
+      // Verify the subscription was saved and is accessible
+      try {
+        const allSubscriptions = await storage.getAllAdminSubscriptions();
+        console.log(`📊 Total admin subscriptions after creation: ${allSubscriptions.length}`);
+        
+        const userSubscriptions = allSubscriptions.filter(sub => sub.userId === user.id);
+        console.log(`👤 Subscriptions for user ${user.id}: ${userSubscriptions.length}`);
+        
+        const adminUsers = allSubscriptions.map(sub => ({ 
+          userId: sub.userId, 
+          email: sub.user?.email, 
+          role: sub.user?.role 
+        }));
+        console.log(`👥 All subscribed admin users:`, adminUsers);
 
-      res.json(subscription);
+        // Double-check the newly created subscription is in the list
+        const newSubInList = allSubscriptions.some(sub => 
+          sub.userId === user.id && sub.endpoint === endpoint
+        );
+        console.log(`✅ New subscription found in admin list: ${newSubInList}`);
+
+        if (!newSubInList) {
+          console.error(`❌ CRITICAL: New subscription not found in admin list!`);
+        }
+      } catch (verifyError) {
+        console.error("❌ Error verifying subscription creation:", verifyError);
+      }
+
+      res.json({
+        ...subscription,
+        message: "Subscription created successfully"
+      });
     } catch (error) {
       console.error("❌ Error creating push subscription:", error);
-      res.status(500).json({ message: "Failed to create push subscription" });
+      res.status(500).json({ 
+        message: "Failed to create push subscription",
+        error: error instanceof Error ? error.message : "Unknown error"
+      });
     }
   });
 

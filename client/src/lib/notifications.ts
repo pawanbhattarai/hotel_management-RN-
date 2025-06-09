@@ -1,4 +1,3 @@
-
 import { apiRequest } from './queryClient';
 
 export class NotificationManager {
@@ -7,7 +6,7 @@ export class NotificationManager {
 
   static async initialize(): Promise<boolean> {
     console.log('🔄 Initializing NotificationManager...');
-    
+
     // Check for basic browser support
     if (!('serviceWorker' in navigator)) {
       console.warn('❌ Service Workers not supported by this browser');
@@ -52,7 +51,7 @@ export class NotificationManager {
         scope: '/',
         updateViaCache: 'none'
       });
-      
+
       console.log('✅ Service Worker registered with scope:', this.registration.scope);
 
       // Wait for service worker to be ready
@@ -75,7 +74,7 @@ export class NotificationManager {
 
     try {
       console.log('🧪 Testing service worker communication...');
-      
+
       // Send a test message to service worker
       if (this.registration.active) {
         this.registration.active.postMessage({
@@ -90,7 +89,7 @@ export class NotificationManager {
 
   static async requestPermission(): Promise<NotificationPermission> {
     console.log('🔔 Requesting notification permission...');
-    
+
     if (!('Notification' in window)) {
       console.warn('❌ Notifications not supported');
       return 'denied';
@@ -110,7 +109,7 @@ export class NotificationManager {
 
   static async subscribe(): Promise<boolean> {
     console.log('🔔 Starting subscription process...');
-    
+
     if (!this.registration || !this.vapidPublicKey) {
       console.error('❌ Notification manager not properly initialized');
       return false;
@@ -139,7 +138,7 @@ export class NotificationManager {
       // Create new subscription
       console.log('📝 Creating new push subscription...');
       console.log('🔑 Using VAPID key:', this.vapidPublicKey.substring(0, 20) + '...');
-      
+
       const subscription = await this.registration.pushManager.subscribe({
         userVisibleOnly: true,
         applicationServerKey: this.urlBase64ToUint8Array(this.vapidPublicKey),
@@ -170,14 +169,14 @@ export class NotificationManager {
       console.log('✅ Subscription saved to server:', response);
 
       console.log('✅ Successfully subscribed to push notifications');
-      
+
       // Send a test notification after subscription
       await this.sendTestNotification();
-      
+
       return true;
     } catch (error) {
       console.error('❌ Failed to subscribe to push notifications:', error);
-      
+
       // Additional error details
       if (error instanceof Error) {
         console.error('❌ Error details:', {
@@ -186,7 +185,7 @@ export class NotificationManager {
           stack: error.stack
         });
       }
-      
+
       return false;
     }
   }
@@ -194,7 +193,7 @@ export class NotificationManager {
   static async sendTestNotification(): Promise<void> {
     try {
       console.log('🧪 Sending test notification...');
-      
+
       // Create a local test notification
       if ('Notification' in window && Notification.permission === 'granted') {
         new Notification('🎉 Notifications Enabled!', {
@@ -211,7 +210,7 @@ export class NotificationManager {
 
   static async unsubscribe(): Promise<boolean> {
     console.log('🔕 Starting unsubscribe process...');
-    
+
     if (!this.registration) {
       console.warn('⚠️ No registration found');
       return false;
@@ -222,13 +221,13 @@ export class NotificationManager {
       if (subscription) {
         console.log('🔄 Unsubscribing from push manager...');
         await subscription.unsubscribe();
-        
+
         // Remove subscription from server
         console.log('📤 Removing subscription from server...');
         await apiRequest('DELETE', '/api/notifications/unsubscribe', {
           endpoint: subscription.endpoint,
         });
-        
+
         console.log('✅ Successfully unsubscribed from push notifications');
       } else {
         console.log('ℹ️ No active subscription found');
@@ -262,11 +261,11 @@ export class NotificationManager {
       const base64 = (base64String + padding).replace(/-/g, '+').replace(/_/g, '/');
       const rawData = window.atob(base64);
       const outputArray = new Uint8Array(rawData.length);
-      
+
       for (let i = 0; i < rawData.length; ++i) {
         outputArray[i] = rawData.charCodeAt(i);
       }
-      
+
       return outputArray;
     } catch (error) {
       console.error('❌ Failed to convert VAPID key:', error);
@@ -276,19 +275,197 @@ export class NotificationManager {
 
   private static arrayBufferToBase64(buffer: ArrayBuffer | null): string {
     if (!buffer) return '';
-    
+
     try {
       const bytes = new Uint8Array(buffer);
       let binary = '';
-      
+
       for (let i = 0; i < bytes.byteLength; i++) {
         binary += String.fromCharCode(bytes[i]);
       }
-      
+
       return window.btoa(binary);
     } catch (error) {
       console.error('❌ Failed to convert buffer to base64:', error);
       return '';
     }
+  }
+}
+
+class NotificationService {
+  private vapidPublicKey: string | null = null;
+
+  async initialize(): Promise<void> {
+    if ('serviceWorker' in navigator) {
+      try {
+        const registration = await navigator.serviceWorker.register('/sw.js');
+        console.log('✅ Service Worker registered successfully');
+
+        // Wait for service worker to be ready
+        await navigator.serviceWorker.ready;
+        console.log('✅ Service Worker is ready');
+      } catch (error) {
+        console.error('❌ Service Worker registration failed:', error);
+        throw error;
+      }
+    } else {
+      console.error('❌ Service Worker not supported in this browser');
+      throw new Error('Service Worker not supported');
+    }
+
+    // Get VAPID public key
+    try {
+      const response = await fetch('/api/notifications/vapid-key');
+      if (!response.ok) {
+        throw new Error(`Failed to fetch VAPID key: ${response.status}`);
+      }
+      const data = await response.json();
+      this.vapidPublicKey = data.publicKey;
+      console.log('✅ VAPID public key obtained');
+    } catch (error) {
+      console.error('❌ Failed to get VAPID public key:', error);
+      throw error;
+    }
+  }
+
+  async subscribe(): Promise<boolean> {
+    try {
+      console.log('🔔 Starting notification subscription process...');
+
+      if (!this.vapidPublicKey) {
+        console.error('❌ VAPID public key not available, initializing...');
+        await this.initialize();
+        if (!this.vapidPublicKey) {
+          throw new Error('VAPID public key still not available');
+        }
+      }
+
+      console.log('📋 Checking for existing subscription...');
+      const registration = await navigator.serviceWorker.ready;
+
+      // Check if already subscribed
+      const existingSubscription = await registration.pushManager.getSubscription();
+      if (existingSubscription) {
+        console.log('♻️ Existing subscription found, verifying with server...');
+
+        // Verify with server
+        const response = await fetch('/api/notifications/subscribe', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            endpoint: existingSubscription.endpoint,
+            p256dh: this.arrayBufferToBase64(existingSubscription.getKey('p256dh')!),
+            auth: this.arrayBufferToBase64(existingSubscription.getKey('auth')!),
+          }),
+        });
+
+        if (response.ok) {
+          console.log('✅ Existing subscription verified with server');
+          return true;
+        }
+      }
+
+      console.log('📝 Creating new push subscription...');
+      const subscription = await registration.pushManager.subscribe({
+        userVisibleOnly: true,
+        applicationServerKey: this.urlBase64ToUint8Array(this.vapidPublicKey),
+      });
+
+      console.log('📤 Sending subscription to server...');
+      const subscriptionData = {
+        endpoint: subscription.endpoint,
+        p256dh: this.arrayBufferToBase64(subscription.getKey('p256dh')!),
+        auth: this.arrayBufferToBase64(subscription.getKey('auth')!),
+      };
+
+      console.log('📊 Subscription data:', {
+        endpoint: subscriptionData.endpoint.substring(0, 50) + '...',
+        p256dhLength: subscriptionData.p256dh.length,
+        authLength: subscriptionData.auth.length
+      });
+
+      const response = await fetch('/api/notifications/subscribe', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(subscriptionData),
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({ message: 'Unknown error' }));
+        throw new Error(`Server subscription failed: ${response.status} - ${errorData.message}`);
+      }
+
+      const responseData = await response.json();
+      console.log('✅ Subscription successful:', responseData);
+      return true;
+    } catch (error) {
+      console.error('❌ Subscription failed:', error);
+      return false;
+    }
+  }
+
+  async unsubscribe(): Promise<boolean> {
+    try {
+      console.log('🗑️ Starting unsubscribe process...');
+
+      const registration = await navigator.serviceWorker.ready;
+      const subscription = await registration.pushManager.getSubscription();
+
+      if (subscription) {
+        console.log('📤 Unsubscribing from push manager...');
+        await subscription.unsubscribe();
+
+        console.log('📤 Notifying server of unsubscription...');
+        const response = await fetch('/api/notifications/unsubscribe', {
+          method: 'DELETE',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            endpoint: subscription.endpoint,
+          }),
+        });
+
+        if (response.ok) {
+          console.log('✅ Successfully unsubscribed');
+          return true;
+        } else {
+          console.error('❌ Server unsubscribe failed:', response.status);
+          return false;
+        }
+      } else {
+        console.log('ℹ️ No subscription found to unsubscribe');
+        return true;
+      }
+    } catch (error) {
+      console.error('❌ Unsubscribe failed:', error);
+      return false;
+    }
+  }
+
+  private urlBase64ToUint8Array(base64String: string): Uint8Array {
+    const padding = '='.repeat((4 - base64String.length % 4) % 4);
+    const base64 = (base64String + padding)
+      .replace(/-/g, '+')
+      .replace(/_/g, '/');
+
+    const rawData = window.atob(base64);
+    const outputArray = new Uint8Array(rawData.length);
+
+    for (let i = 0; i < rawData.length; ++i) {
+      outputArray[i] = rawData.charCodeAt(i);
+    }
+    return outputArray;
+  }
+
+  private arrayBufferToBase64(buffer: ArrayBuffer): string {
+    const bytes = new Uint8Array(buffer);
+    let binary = '';
+    bytes.forEach(byte => binary += String.fromCharCode(byte));
+    return window.btoa(binary);
   }
 }
