@@ -1,5 +1,6 @@
+
 import { useEffect, useState } from 'react';
-import { Bell, BellOff, History, Check, CheckCheck } from 'lucide-react';
+import { Bell, BellOff, History, Check, CheckCheck, TestTube } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { ScrollArea } from '@/components/ui/scroll-area';
@@ -13,6 +14,7 @@ export function NotificationToggle() {
   const [isSubscribed, setIsSubscribed] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [isSupported, setIsSupported] = useState(false);
+  const [permissionStatus, setPermissionStatus] = useState<NotificationPermission>('default');
   const { toast } = useToast();
 
   // Check if user is admin (only show for admin users)
@@ -25,6 +27,7 @@ export function NotificationToggle() {
   useEffect(() => {
     const initializeNotifications = async () => {
       console.log('🔄 Initializing notifications for admin user...');
+      
       const supported = await NotificationManager.initialize();
       console.log('🔧 Notification support:', supported);
       setIsSupported(supported);
@@ -33,6 +36,11 @@ export function NotificationToggle() {
         const subscribed = await NotificationManager.isSubscribed();
         console.log('📊 Current subscription status:', subscribed);
         setIsSubscribed(subscribed);
+        
+        // Check permission status
+        if ('Notification' in window) {
+          setPermissionStatus(Notification.permission);
+        }
       }
     };
 
@@ -44,11 +52,52 @@ export function NotificationToggle() {
     }
   }, [isAdmin]);
 
+  const handleTestNotification = async () => {
+    console.log('🧪 Testing notification...');
+    
+    if (!isSupported) {
+      toast({
+        title: 'Not Supported',
+        description: 'Push notifications are not supported by your browser.',
+        variant: 'destructive',
+      });
+      return;
+    }
+
+    try {
+      if ('Notification' in window && Notification.permission === 'granted') {
+        new Notification('🧪 Test Notification', {
+          body: 'This is a test notification to verify notifications are working.',
+          icon: '/favicon.ico',
+          tag: 'test-notification'
+        });
+        
+        toast({
+          title: 'Test Notification Sent',
+          description: 'Check if the notification appeared in your system tray.',
+        });
+      } else {
+        toast({
+          title: 'Permission Required',
+          description: 'Please enable notifications first.',
+          variant: 'destructive',
+        });
+      }
+    } catch (error) {
+      console.error('❌ Test notification failed:', error);
+      toast({
+        title: 'Test Failed',
+        description: 'Failed to send test notification.',
+        variant: 'destructive',
+      });
+    }
+  };
+
   const handleToggleNotifications = async (e: React.MouseEvent) => {
     e.preventDefault();
     e.stopPropagation();
 
-    console.log('🔔 Notification toggle clicked!', { isSupported, isSubscribed, isLoading });
+    console.log('🔔 Notification toggle clicked!', { isSupported, isSubscribed, isLoading, permissionStatus });
 
     if (!isSupported) {
       console.warn('❌ Browser not supported');
@@ -94,9 +143,14 @@ export function NotificationToggle() {
         // Check notification permission first
         const permission = await NotificationManager.requestPermission();
         console.log("🔐 Notification permission:", permission);
+        setPermissionStatus(permission);
 
         if (permission !== 'granted') {
-          throw new Error(`Notification permission ${permission}. Please enable notifications in your browser settings.`);
+          let errorMessage = 'Please enable notifications in your browser settings.';
+          if (permission === 'denied') {
+            errorMessage = 'Notifications are blocked. Please enable them in your browser settings and refresh the page.';
+          }
+          throw new Error(`Notification permission ${permission}. ${errorMessage}`);
         }
 
         const success = await NotificationManager.subscribe();
@@ -107,19 +161,6 @@ export function NotificationToggle() {
             title: "Notifications Enabled",
             description: "You will now receive push notifications for hotel events.",
           });
-
-          // Send a test notification to verify it's working
-          try {
-            await new Promise(resolve => setTimeout(resolve, 1000));
-            if ('serviceWorker' in navigator && 'Notification' in window) {
-              new Notification('🎉 Notifications Enabled!', {
-                body: 'You will now receive hotel management notifications.',
-                icon: '/favicon.ico'
-              });
-            }
-          } catch (testError) {
-            console.log('Test notification failed:', testError);
-          }
         } else {
           throw new Error("Failed to subscribe");
         }
@@ -137,19 +178,31 @@ export function NotificationToggle() {
     }
   };
 
-
-
   // Only show for admin users
   if (!isAdmin) {
     return null;
   }
+
+  const getStatusText = () => {
+    if (isLoading) return 'Loading...';
+    if (!isSupported) return 'Not Supported';
+    if (permissionStatus === 'denied') return 'Blocked';
+    if (isSubscribed) return 'Notifications On';
+    return 'Enable Notifications';
+  };
+
+  const getStatusColor = () => {
+    if (!isSupported || permissionStatus === 'denied') return 'destructive';
+    if (isSubscribed) return 'default';
+    return 'secondary';
+  };
 
   return (
     <div className="space-y-2">
       <button
         type="button"
         onClick={handleToggleNotifications}
-        disabled={isLoading || !isSupported}
+        disabled={isLoading || !isSupported || permissionStatus === 'denied'}
         className={`
           flex items-center gap-2 w-full justify-start text-sm font-medium 
           min-h-[36px] px-3 py-2 rounded-md border transition-colors duration-200
@@ -157,7 +210,7 @@ export function NotificationToggle() {
             ? 'bg-primary text-primary-foreground border-primary hover:bg-primary/90' 
             : 'border-input bg-background hover:bg-accent hover:text-accent-foreground'
           }
-          ${(isLoading || !isSupported) 
+          ${(isLoading || !isSupported || permissionStatus === 'denied') 
             ? 'opacity-50 cursor-not-allowed' 
             : 'cursor-pointer'
           }
@@ -171,11 +224,28 @@ export function NotificationToggle() {
           <BellOff className="h-4 w-4 flex-shrink-0" />
         )}
         <span className="truncate">
-          {isLoading ? 'Loading...' : isSubscribed ? 'Notifications On' : 'Enable Notifications'}
+          {getStatusText()}
         </span>
       </button>
 
-
+      {isSupported && (
+        <div className="flex gap-2">
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={handleTestNotification}
+            disabled={permissionStatus !== 'granted'}
+            className="flex-1 text-xs"
+          >
+            <TestTube className="h-3 w-3 mr-1" />
+            Test
+          </Button>
+          <Badge variant={getStatusColor() as any} className="text-xs">
+            {permissionStatus === 'granted' ? 'Allowed' : 
+             permissionStatus === 'denied' ? 'Blocked' : 'Default'}
+          </Badge>
+        </div>
+      )}
     </div>
   );
 }
