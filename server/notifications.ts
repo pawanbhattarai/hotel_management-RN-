@@ -189,7 +189,11 @@ export class NotificationService {
       }
     };
 
-    await this.sendToAllAdmins(notification);
+    await this.sendToAllAdmins(notification, 'check-in', {
+      reservationId,
+      roomId: room.id,
+      branchId: branch.id
+    });
   }
 
   static async sendCheckOutNotification(
@@ -217,7 +221,11 @@ export class NotificationService {
       }
     };
 
-    await this.sendToAllAdmins(notification);
+    await this.sendToAllAdmins(notification, 'check-out', {
+      reservationId,
+      roomId: room.id,
+      branchId: branch.id
+    });
   }
 
   static async sendMaintenanceNotification(
@@ -245,7 +253,10 @@ export class NotificationService {
       }
     };
 
-    await this.sendToAllAdmins(notification);
+    await this.sendToAllAdmins(notification, 'maintenance', {
+      roomId: room.id,
+      branchId: branch.id
+    });
   }
 
   static getVapidPublicKey(): string {

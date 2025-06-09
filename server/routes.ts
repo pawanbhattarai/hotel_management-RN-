@@ -14,7 +14,6 @@ import {
   insertPushSubscriptionSchema,
 } from "@shared/schema";
 import { z } from "zod";
-import { NotificationService } from "./notifications";
 
 // Helper function to check user permissions based on role and branch
 function checkBranchPermissions(
@@ -44,10 +43,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
     secret: process.env.SESSION_SECRET || 'your-secret-key',
     resave: false,
     saveUninitialized: false,
+    rolling: true, // Reset maxAge on every request
     cookie: {
       httpOnly: true,
       secure: false, // Set to true in production with HTTPS
-      maxAge: 7 * 24 * 60 * 60 * 1000, // 1 week
+      maxAge: 30 * 24 * 60 * 60 * 1000, // 30 days - persistent until logout
     },
   }));
 
@@ -1245,50 +1245,67 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.post("/api/notifications/test", isAuthenticated, async (req: any, res) => {
+  // Notification history routes
+  app.get("/api/notifications/history", isAuthenticated, async (req: any, res) => {
     try {
       const user = await storage.getUser(req.session.user.id);
       if (!user) return res.status(401).json({ message: "User not found" });
 
-      // Only allow admin users to send test notifications
+      // Only allow admin users to view notification history
       if (user.role !== 'superadmin' && user.role !== 'branch-admin') {
-        return res.status(403).json({ message: "Only admin users can send test notifications" });
+        return res.status(403).json({ message: "Only admin users can view notification history" });
       }
 
-      await NotificationService.sendToAllAdmins({
-        title: '🧪 Test Notification',
-        body: `Test notification sent by ${user.firstName || user.email} at ${new Date().toLocaleString()}`,
-        tag: 'test-notification',
-        data: {
-          type: 'test',
-          timestamp: new Date().toISOString(),
-        }
-      });
-
-      console.log(`✅ Test notification sent by user ${user.id}`);
-      res.json({ message: "Test notification sent successfully" });
+      const limit = parseInt(req.query.limit as string) || 50;
+      const notifications = await storage.getNotificationHistory(user.id, limit);
+      
+      res.json(notifications);
     } catch (error) {
-      console.error("Error sending test notification:", error);
-      res.status(500).json({ message: "Failed to send test notification" });
+      console.error("Error fetching notification history:", error);
+      res.status(500).json({ message: "Failed to fetch notification history" });
     }
   });
 
-  app.post("/api/notifications/debug/clear", isAuthenticated, async (req: any, res) => {
+  app.patch("/api/notifications/history/:id/read", isAuthenticated, async (req: any, res) => {
     try {
       const user = await storage.getUser(req.session.user.id);
       if (!user) return res.status(401).json({ message: "User not found" });
 
-      // Only allow superadmin to clear subscriptions
-      if (user.role !== 'superadmin') {
-        return res.status(403).json({ message: "Only superadmin can clear subscriptions" });
-      }
-
-      await storage.clearAllPushSubscriptions();
-      console.log(`🗑️ All push subscriptions cleared by user ${user.id}`);
-      res.json({ message: "All push subscriptions cleared successfully" });
+      const notificationId = parseInt(req.params.id);
+      await storage.markNotificationAsRead(notificationId, user.id);
+      
+      res.json({ message: "Notification marked as read" });
     } catch (error) {
-      console.error("Error clearing push subscriptions:", error);
-      res.status(500).json({ message: "Failed to clear push subscriptions" });
+      console.error("Error marking notification as read:", error);
+      res.status(500).json({ message: "Failed to mark notification as read" });
+    }
+  });
+
+  app.patch("/api/notifications/history/read-all", isAuthenticated, async (req: any, res) => {
+    try {
+      const user = await storage.getUser(req.session.user.id);
+      if (!user) return res.status(401).json({ message: "User not found" });
+
+      await storage.markAllNotificationsAsRead(user.id);
+      
+      res.json({ message: "All notifications marked as read" });
+    } catch (error) {
+      console.error("Error marking all notifications as read:", error);
+      res.status(500).json({ message: "Failed to mark all notifications as read" });
+    }
+  });
+
+  app.get("/api/notifications/unread-count", isAuthenticated, async (req: any, res) => {
+    try {
+      const user = await storage.getUser(req.session.user.id);
+      if (!user) return res.status(401).json({ message: "User not found" });
+
+      const count = await storage.getUnreadNotificationCount(user.id);
+      
+      res.json({ count });
+    } catch (error) {
+      console.error("Error fetching unread notification count:", error);
+      res.status(500).json({ message: "Failed to fetch unread notification count" });
     }
   });
 

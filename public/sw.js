@@ -10,12 +10,12 @@ self.addEventListener('activate', (event) => {
 });
 
 self.addEventListener('push', (event) => {
-  console.log('📬 Push message received:', event);
+  console.log('Push message received');
   
   if (event.data) {
     try {
       const data = event.data.json();
-      console.log('📄 Push data:', data);
+      console.log('Push data received');
       
       const notificationOptions = {
         body: data.body,
@@ -31,28 +31,75 @@ self.addEventListener('push', (event) => {
             icon: '/favicon.ico'
           }
         ],
-        vibrate: [200, 100, 200],
-        timestamp: Date.now()
+        vibrate: [300, 100, 300, 100, 300],
+        timestamp: Date.now(),
+        silent: false,
+        renotify: true,
+        sticky: true
       };
 
+      // Store notification in IndexedDB for history
       event.waitUntil(
-        self.registration.showNotification(data.title, notificationOptions)
+        Promise.all([
+          self.registration.showNotification(data.title, notificationOptions),
+          storeNotificationInDB(data)
+        ])
       );
     } catch (error) {
-      console.error('❌ Error parsing push data:', error);
+      console.error('Error parsing push data:', error);
       
-      // Fallback notification
       event.waitUntil(
         self.registration.showNotification('Hotel Management System', {
           body: 'You have a new notification',
           icon: '/favicon.ico',
           badge: '/favicon.ico',
-          tag: 'fallback-notification'
+          tag: 'fallback-notification',
+          requireInteraction: true
         })
       );
     }
   }
 });
+
+// Store notification in IndexedDB for offline access
+async function storeNotificationInDB(notificationData) {
+  try {
+    const db = await openNotificationDB();
+    const transaction = db.transaction(['notifications'], 'readwrite');
+    const store = transaction.objectStore('notifications');
+    
+    const notification = {
+      id: Date.now(),
+      title: notificationData.title,
+      body: notificationData.body,
+      data: notificationData.data,
+      timestamp: Date.now(),
+      read: false
+    };
+    
+    await store.add(notification);
+  } catch (error) {
+    console.error('Failed to store notification:', error);
+  }
+}
+
+// Open or create IndexedDB for notifications
+function openNotificationDB() {
+  return new Promise((resolve, reject) => {
+    const request = indexedDB.open('HotelNotifications', 1);
+    
+    request.onerror = () => reject(request.error);
+    request.onsuccess = () => resolve(request.result);
+    
+    request.onupgradeneeded = (event) => {
+      const db = event.target.result;
+      if (!db.objectStoreNames.contains('notifications')) {
+        const store = db.createObjectStore('notifications', { keyPath: 'id' });
+        store.createIndex('timestamp', 'timestamp', { unique: false });
+      }
+    };
+  });
+}
 
 self.addEventListener('notificationclick', (event) => {
   console.log('🖱️ Notification clicked:', event);
