@@ -389,7 +389,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       if (roomData.status && (roomData.status === 'maintenance' || roomData.status === 'out-of-order')) {
         try {
           console.log(`🔧 Room ${existingRoom.number} status changed to ${roomData.status}, sending notification...`);
-          
+
           const branch = await storage.getBranch(existingRoom.branchId);
           const roomType = await storage.getRoomType(existingRoom.roomTypeId);
 
@@ -797,7 +797,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         // Send notifications for status changes
         try {
           console.log(`📋 Reservation ${reservationId} status changed to ${validatedData.status}, sending notification...`);
-          
+
           const branch = await storage.getBranch(existingReservation.branchId);
           const firstRoom = existingReservation.reservationRooms[0];
 
@@ -853,8 +853,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
           user.role,
           user.branchId,
           existingReservation.branchId,
-        )
-      ) {
+        )      ) {
         return res
           .status(403)
           .json({ message: "Insufficient permissions for this branch" });
@@ -1073,12 +1072,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
         const existingSubscription = await storage.getPushSubscription(user.id, endpoint);
         if (existingSubscription) {
           console.log(`♻️ Push subscription already exists for user ${user.id}, returning existing`);
-          
+
           // Verify it's still in the admin subscriptions list
           const allSubscriptions = await storage.getAllAdminSubscriptions();
           const isInAdminList = allSubscriptions.some(sub => sub.userId === user.id && sub.endpoint === endpoint);
           console.log(`📋 Subscription found in admin list: ${isInAdminList}`);
-          
+
           return res.json(existingSubscription);
         }
       } catch (error) {
@@ -1095,15 +1094,15 @@ export async function registerRoutes(app: Express): Promise<Server> {
       });
 
       console.log(`✅ Push subscription created successfully for user ${user.id} (${user.email})`);
-      
+
       // Verify the subscription was saved and is accessible
       try {
         const allSubscriptions = await storage.getAllAdminSubscriptions();
         console.log(`📊 Total admin subscriptions after creation: ${allSubscriptions.length}`);
-        
+
         const userSubscriptions = allSubscriptions.filter(sub => sub.userId === user.id);
         console.log(`👤 Subscriptions for user ${user.id}: ${userSubscriptions.length}`);
-        
+
         const adminUsers = allSubscriptions.map(sub => ({ 
           userId: sub.userId, 
           email: sub.user?.email, 
@@ -1154,67 +1153,6 @@ export async function registerRoutes(app: Express): Promise<Server> {
     } catch (error) {
       console.error("Error deleting push subscription:", error);
       res.status(500).json({ message: "Failed to unsubscribe" });
-    }
-  });
-
-  // Test notification endpoint for debugging
-  app.post("/api/notifications/test", isAuthenticated, async (req: any, res) => {
-    try {
-      const user = await storage.getUser(req.session.user.id);
-      if (!user) return res.status(401).json({ message: "User not found" });
-
-      // Only allow admin users to send test notifications
-      if (user.role !== 'superadmin' && user.role !== 'branch-admin') {
-        return res.status(403).json({ message: "Only admin users can send test notifications" });
-      }
-
-      console.log(`🧪 Starting comprehensive notification test for user ${user.id} (${user.email})`);
-
-      // Check current subscriptions
-      const allSubscriptions = await storage.getAllAdminSubscriptions();
-      console.log(`📊 Current admin subscriptions: ${allSubscriptions.length}`);
-      allSubscriptions.forEach((sub, index) => {
-        console.log(`👤 Subscription ${index + 1}: User ${sub.userId}, Endpoint: ${sub.endpoint.substring(0, 50)}...`);
-      });
-
-      if (allSubscriptions.length === 0) {
-        console.warn(`⚠️ No admin subscriptions found - test notification cannot be sent`);
-        return res.status(400).json({ 
-          message: "No admin subscriptions found. Please subscribe to notifications first.",
-          subscriptions: 0
-        });
-      }
-
-      const testNotification = {
-        title: '🧪 Hotel Management Test',
-        body: `Test notification sent by ${user.email} at ${new Date().toLocaleTimeString()}`,
-        icon: '/favicon.ico',
-        badge: '/favicon.ico',
-        tag: 'test-notification',
-        data: {
-          type: 'test',
-          userId: user.id,
-          timestamp: new Date().toISOString()
-        }
-      };
-
-      console.log(`📤 Sending test notification to ${allSubscriptions.length} subscribers...`);
-
-      await NotificationService.sendToAllAdmins(testNotification, 'test', {
-        userId: user.id,
-        testTimestamp: new Date().toISOString()
-      });
-
-      console.log(`✅ Test notification process completed for user ${user.id}`);
-      
-      res.json({ 
-        message: "Test notification sent successfully",
-        subscriberCount: allSubscriptions.length,
-        timestamp: new Date().toISOString()
-      });
-    } catch (error) {
-      console.error("❌ Error sending test notification:", error);
-      res.status(500).json({ message: "Failed to send test notification" });
     }
   });
 

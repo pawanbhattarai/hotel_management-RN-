@@ -170,9 +170,6 @@ export class NotificationManager {
 
       console.log('✅ Successfully subscribed to push notifications');
 
-      // Send a test notification after subscription
-      await this.sendTestNotification();
-
       return true;
     } catch (error) {
       console.error('❌ Failed to subscribe to push notifications:', error);
@@ -190,23 +187,7 @@ export class NotificationManager {
     }
   }
 
-  static async sendTestNotification(): Promise<void> {
-    try {
-      console.log('🧪 Sending test notification...');
-
-      // Create a local test notification
-      if ('Notification' in window && Notification.permission === 'granted') {
-        new Notification('🎉 Notifications Enabled!', {
-          body: 'You will now receive hotel management notifications.',
-          icon: '/favicon.ico',
-          tag: 'test-notification'
-        });
-        console.log('✅ Test notification sent');
-      }
-    } catch (error) {
-      console.warn('⚠️ Failed to send test notification:', error);
-    }
-  }
+  
 
   static async unsubscribe(): Promise<boolean> {
     console.log('🔕 Starting unsubscribe process...');

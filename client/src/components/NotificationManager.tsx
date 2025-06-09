@@ -186,53 +186,7 @@ export function NotificationManager() {
     }
   };
 
-  const sendTestNotification = async () => {
-    if (!isSubscribed) {
-      toast({
-        title: "Not Subscribed",
-        description: "Please enable notifications first.",
-        variant: "destructive",
-      });
-      return;
-    }
-
-    setLoading(true);
-    try {
-      console.log('🧪 Sending test notification...');
-      const response = await fetch('/api/notifications/test', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-      });
-
-      if (response.ok) {
-        const data = await response.json();
-        console.log(`✅ Test notification sent to ${data.subscriberCount} subscribers`);
-        toast({
-          title: "Test Notification Sent",
-          description: `Sent to ${data.subscriberCount} subscribers`,
-        });
-      } else {
-        const error = await response.json();
-        console.error('❌ Test notification failed:', error);
-        toast({
-          title: "Test Failed",
-          description: error.message || "Could not send test notification.",
-          variant: "destructive",
-        });
-      }
-    } catch (error) {
-      console.error('Test notification error:', error);
-      toast({
-        title: "Error",
-        description: "Failed to send test notification.",
-        variant: "destructive",
-      });
-    } finally {
-      setLoading(false);
-    }
-  };
+  
 
   if (!isAdmin || !isSupported) {
     return null;
@@ -265,24 +219,14 @@ export function NotificationManager() {
             Enable Notifications
           </Button>
         ) : (
-          <>
-            <Button
-              onClick={sendTestNotification}
-              disabled={loading}
-              size="sm"
-              variant="outline"
-            >
-              Test
-            </Button>
-            <Button
-              onClick={unsubscribe}
-              disabled={loading}
-              size="sm"
-              variant="outline"
-            >
-              Disable
-            </Button>
-          </>
+          <Button
+            onClick={unsubscribe}
+            disabled={loading}
+            size="sm"
+            variant="outline"
+          >
+            Disable
+          </Button>
         )}
       </div>
     </div>
