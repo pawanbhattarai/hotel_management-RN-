@@ -23,6 +23,7 @@ import {
   ChevronRight,
   Hotel
 } from "lucide-react";
+import { NotificationToggle } from "@/components/NotificationManager";
 
 interface SidebarProps {
   isMobileMenuOpen?: boolean;
@@ -294,6 +295,18 @@ export default function Sidebar({ isMobileMenuOpen = false, setIsMobileMenuOpen 
                         </button>
                       );
                     })}
+                  </div>
+                </div>
+              )}
+
+              {/* Notifications Section */}
+              {user && ["superadmin", "branch-admin"].includes((user as any).role) && (
+                <div className="border-t border-gray-200 pt-4 mt-4">
+                  <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-2 px-3">
+                    NOTIFICATIONS
+                  </p>
+                  <div className="px-3">
+                    <NotificationToggle />
                   </div>
                 </div>
               )}

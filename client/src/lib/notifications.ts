@@ -58,13 +58,10 @@ export class NotificationManager {
       });
 
       // Send subscription to server
-      await apiRequest('/api/notifications/subscribe', {
-        method: 'POST',
-        body: {
-          endpoint: subscription.endpoint,
-          p256dh: this.arrayBufferToBase64(subscription.getKey('p256dh')),
-          auth: this.arrayBufferToBase64(subscription.getKey('auth')),
-        },
+      await apiRequest('/api/notifications/subscribe', 'POST', {
+        endpoint: subscription.endpoint,
+        p256dh: this.arrayBufferToBase64(subscription.getKey('p256dh')),
+        auth: this.arrayBufferToBase64(subscription.getKey('auth')),
       });
 
       console.log('Successfully subscribed to push notifications');
@@ -86,11 +83,8 @@ export class NotificationManager {
         await subscription.unsubscribe();
         
         // Remove subscription from server
-        await apiRequest('/api/notifications/unsubscribe', {
-          method: 'DELETE',
-          body: {
-            endpoint: subscription.endpoint,
-          },
+        await apiRequest('/api/notifications/unsubscribe', 'DELETE', {
+          endpoint: subscription.endpoint,
         });
         
         console.log('Successfully unsubscribed from push notifications');
