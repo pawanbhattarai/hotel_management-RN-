@@ -93,7 +93,8 @@ export function NotificationToggle() {
       size="sm"
       onClick={handleToggleNotifications}
       disabled={isLoading || !isSupported}
-      className="flex items-center gap-2 w-full justify-start text-sm font-medium cursor-pointer"
+      className="flex items-center gap-2 w-full justify-start text-sm font-medium cursor-pointer hover:bg-gray-100 active:bg-gray-200 transition-colors duration-200 min-h-[36px]"
+      style={{ pointerEvents: 'auto' }}
     >
       {isSubscribed ? (
         <Bell className="h-4 w-4 flex-shrink-0" />
