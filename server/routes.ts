@@ -10,8 +10,10 @@ import {
   insertReservationRoomSchema,
   insertUserSchema,
   insertHotelSettingsSchema,
+  insertPushSubscriptionSchema,
 } from "@shared/schema";
 import { z } from "zod";
+import { NotificationService } from "./notifications";
 
 // Helper function to check user permissions based on role and branch
 function checkBranchPermissions(
@@ -995,6 +997,26 @@ export async function registerRoutes(app: Express): Promise<Server> {
         await storage.updateRoom(roomData.roomId, { status: "reserved" });
       }
 
+      // Send new reservation notification
+      try {
+        const branch = await storage.getBranch(reservationData.branchId);
+        const room = await storage.getRoom(roomsData[0].roomId);
+        const roomType = await storage.getRoomType(room?.roomTypeId || 0);
+        
+        if (branch && room && roomType) {
+          await NotificationService.sendNewReservationNotification(
+            guest,
+            { ...room, roomType },
+            branch,
+            reservation.id,
+            reservationData.checkInDate,
+            reservationData.checkOutDate
+          );
+        }
+      } catch (notificationError) {
+        console.error("Failed to send new reservation notification:", notificationError);
+      }
+
       res.status(201).json(reservation);
     } catch (error) {
       console.error("Error creating reservation:", error);
@@ -1063,6 +1085,52 @@ export async function registerRoutes(app: Express): Promise<Server> {
     } catch (error) {
       console.error("Error updating reservation:", error);
       res.status(500).json({ message: "Failed to update reservation" });
+    }
+  });
+
+  // Push notification routes
+  app.get("/api/notifications/vapid-key", async (req, res) => {
+    res.json({ publicKey: NotificationService.getVapidPublicKey() });
+  });
+
+  app.post("/api/notifications/subscribe", isAuthenticated, async (req: any, res) => {
+    try {
+      const user = await storage.getUser(req.session.user.id);
+      if (!user) return res.status(401).json({ message: "User not found" });
+
+      // Only allow admin users to subscribe
+      if (user.role !== "superadmin" && user.role !== "branch-admin") {
+        return res.status(403).json({ message: "Only admin users can subscribe to notifications" });
+      }
+
+      const validatedData = insertPushSubscriptionSchema.parse({
+        ...req.body,
+        userId: user.id,
+      });
+
+      const subscription = await storage.createPushSubscription(validatedData);
+      res.json(subscription);
+    } catch (error) {
+      console.error("Error creating push subscription:", error);
+      res.status(500).json({ message: "Failed to create push subscription" });
+    }
+  });
+
+  app.delete("/api/notifications/unsubscribe", isAuthenticated, async (req: any, res) => {
+    try {
+      const user = await storage.getUser(req.session.user.id);
+      if (!user) return res.status(401).json({ message: "User not found" });
+
+      const { endpoint } = req.body;
+      if (!endpoint) {
+        return res.status(400).json({ message: "Endpoint is required" });
+      }
+
+      await storage.deletePushSubscription(user.id, endpoint);
+      res.json({ message: "Unsubscribed successfully" });
+    } catch (error) {
+      console.error("Error removing push subscription:", error);
+      res.status(500).json({ message: "Failed to remove push subscription" });
     }
   });
 
