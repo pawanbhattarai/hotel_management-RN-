@@ -20,22 +20,34 @@ export function NotificationToggle() {
 
   useEffect(() => {
     const initializeNotifications = async () => {
+      console.log('🔄 Initializing notifications for admin user...');
       const supported = await NotificationManager.initialize();
+      console.log('🔧 Notification support:', supported);
       setIsSupported(supported);
       
       if (supported) {
         const subscribed = await NotificationManager.isSubscribed();
+        console.log('📊 Current subscription status:', subscribed);
         setIsSubscribed(subscribed);
       }
     };
 
     if (isAdmin) {
+      console.log('👑 User is admin, initializing notifications...');
       initializeNotifications();
+    } else {
+      console.log('👤 User is not admin, skipping notification initialization');
     }
   }, [isAdmin]);
 
-  const handleToggleNotifications = async () => {
+  const handleToggleNotifications = async (e: React.MouseEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    
+    console.log('🔔 Notification toggle clicked!', { isSupported, isSubscribed, isLoading });
+    
     if (!isSupported) {
+      console.warn('❌ Browser not supported');
       toast({
         title: 'Not Supported',
         description: 'Push notifications are not supported by your browser.',
@@ -44,13 +56,21 @@ export function NotificationToggle() {
       return;
     }
 
+    if (isLoading) {
+      console.log('⏳ Already loading, skipping...');
+      return;
+    }
+
     setIsLoading(true);
+    console.log('🚀 Starting notification toggle process...');
 
     try {
       if (isSubscribed) {
+        console.log('🔕 Attempting to unsubscribe...');
         const success = await NotificationManager.unsubscribe();
         if (success) {
           setIsSubscribed(false);
+          console.log('✅ Successfully unsubscribed');
           toast({
             title: 'Notifications Disabled',
             description: 'You will no longer receive push notifications.',
@@ -59,9 +79,11 @@ export function NotificationToggle() {
           throw new Error('Failed to unsubscribe');
         }
       } else {
+        console.log('🔔 Attempting to subscribe...');
         const success = await NotificationManager.subscribe();
         if (success) {
           setIsSubscribed(true);
+          console.log('✅ Successfully subscribed');
           toast({
             title: 'Notifications Enabled',
             description: 'You will now receive push notifications for hotel events.',
@@ -71,7 +93,7 @@ export function NotificationToggle() {
         }
       }
     } catch (error) {
-      console.error('Notification toggle error:', error);
+      console.error('❌ Notification toggle error:', error);
       toast({
         title: 'Error',
         description: 'Failed to update notification settings. Please try again.',
@@ -79,6 +101,7 @@ export function NotificationToggle() {
       });
     } finally {
       setIsLoading(false);
+      console.log('🏁 Notification toggle process finished');
     }
   };
 
@@ -88,12 +111,23 @@ export function NotificationToggle() {
   }
 
   return (
-    <Button
-      variant={isSubscribed ? 'default' : 'outline'}
-      size="sm"
+    <button
+      type="button"
       onClick={handleToggleNotifications}
       disabled={isLoading || !isSupported}
-      className="flex items-center gap-2 w-full justify-start text-sm font-medium cursor-pointer hover:bg-gray-100 active:bg-gray-200 transition-colors duration-200 min-h-[36px]"
+      className={`
+        flex items-center gap-2 w-full justify-start text-sm font-medium 
+        min-h-[36px] px-3 py-2 rounded-md border transition-colors duration-200
+        ${isSubscribed 
+          ? 'bg-primary text-primary-foreground border-primary hover:bg-primary/90' 
+          : 'border-input bg-background hover:bg-accent hover:text-accent-foreground'
+        }
+        ${(isLoading || !isSupported) 
+          ? 'opacity-50 cursor-not-allowed' 
+          : 'cursor-pointer'
+        }
+        focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2
+      `}
       style={{ pointerEvents: 'auto' }}
     >
       {isSubscribed ? (
@@ -104,7 +138,7 @@ export function NotificationToggle() {
       <span className="truncate">
         {isLoading ? 'Loading...' : isSubscribed ? 'Notifications On' : 'Enable Notifications'}
       </span>
-    </Button>
+    </button>
   );
 }
 
