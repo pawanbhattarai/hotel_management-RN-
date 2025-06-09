@@ -45,9 +45,10 @@ export async function setupVite(app: Express, server: Server) {
   // Serve sw.js with correct content type
   app.use("/sw.js", async (req, res, next) => {
     try {
-      const swPath = path.resolve(import.meta.dirname, "..", "client", "sw.js");
+      const swPath = path.resolve(import.meta.dirname, "..", "public", "sw.js");
       const swContent = await fs.promises.readFile(swPath, "utf-8");
       res.setHeader("Content-Type", "application/javascript");
+      res.setHeader("Service-Worker-Allowed", "/");
       res.status(200).send(swContent);
     } catch (e) {
       console.error("Failed to serve sw.js:", e);
