@@ -132,32 +132,27 @@ export function NotificationToggle() {
     }
   };
 
-  const handleTestNotification = async (e: React.MouseEvent) => {
-    e.preventDefault();
-    e.stopPropagation();
-
-    if (!isSubscribed) {
-      toast({
-        title: 'Not Subscribed',
-        description: 'Please enable notifications first.',
-        variant: 'destructive',
-      });
-      return;
-    }
-
+  const handleTestNotification = async () => {
+    setIsLoading(true);
     try {
-      await apiRequest('POST', '/api/notifications/test', {});
-      toast({
-        title: 'Test Sent',
-        description: 'A test notification has been sent to all admin users.',
-      });
+      await apiRequest("POST", "/api/notifications/test", {});
+      console.log("✅ Test notification sent");
     } catch (error) {
-      console.error('❌ Test notification error:', error);
-      toast({
-        title: 'Error',
-        description: 'Failed to send test notification.',
-        variant: 'destructive',
-      });
+      console.error("❌ Failed to send test notification:", error);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const handleDemoNotification = async (type: string) => {
+    setIsLoading(true);
+    try {
+      await apiRequest("POST", "/api/notifications/test", { type });
+      console.log(`✅ ${type} demo notification sent`);
+    } catch (error) {
+      console.error(`❌ Failed to send ${type} demo notification:`, error);
+    } finally {
+      setIsLoading(false);
     }
   };
 
@@ -198,16 +193,51 @@ export function NotificationToggle() {
       </button>
 
       {isSubscribed && (
-        <button
-          type="button"
-          onClick={handleTestNotification}
-          className="flex items-center gap-2 w-full justify-start text-sm font-medium min-h-[36px] px-3 py-2 rounded-md border border-input bg-background hover:bg-accent hover:text-accent-foreground transition-colors duration-200 cursor-pointer focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2"
-          style={{ pointerEvents: 'auto' }}
-        >
-          <TestTube className="h-4 w-4 flex-shrink-0" />
-          <span className="truncate">Test Notification</span>
-        </button>
-      )}
+          <div className="ml-2 flex gap-1">
+            <button
+              onClick={handleTestNotification}
+              disabled={isLoading}
+              className="px-3 py-1 text-sm bg-blue-600 hover:bg-blue-700 disabled:bg-gray-400 text-white rounded transition-colors"
+            >
+              {isLoading ? "Sending..." : "Test"}
+            </button>
+            <details className="relative">
+              <summary className="px-3 py-1 text-sm bg-green-600 hover:bg-green-700 text-white rounded cursor-pointer transition-colors">
+                Demo
+              </summary>
+              <div className="absolute top-8 left-0 bg-white border border-gray-300 rounded shadow-lg p-2 z-50 min-w-[150px]">
+                <button
+                  onClick={() => handleDemoNotification('new_reservation')}
+                  disabled={isLoading}
+                  className="block w-full text-left px-2 py-1 text-sm hover:bg-gray-100 rounded"
+                >
+                  📋 New Reservation
+                </button>
+                <button
+                  onClick={() => handleDemoNotification('check_in')}
+                  disabled={isLoading}
+                  className="block w-full text-left px-2 py-1 text-sm hover:bg-gray-100 rounded"
+                >
+                  🏨 Check-In
+                </button>
+                <button
+                  onClick={() => handleDemoNotification('check_out')}
+                  disabled={isLoading}
+                  className="block w-full text-left px-2 py-1 text-sm hover:bg-gray-100 rounded"
+                >
+                  🚪 Check-Out
+                </button>
+                <button
+                  onClick={() => handleDemoNotification('maintenance')}
+                  disabled={isLoading}
+                  className="block w-full text-left px-2 py-1 text-sm hover:bg-gray-100 rounded"
+                >
+                  🔧 Maintenance
+                </button>
+              </div>
+            </details>
+          </div>
+        )}
       {user?.role === "superadmin" && (
         <div className="mt-2 space-x-2">
           <button

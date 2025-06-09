@@ -122,9 +122,20 @@ export class NotificationService {
     checkIn: string,
     checkOut: string
   ) {
+    const checkInDate = new Date(checkIn).toLocaleDateString('en-US', {
+      year: 'numeric',
+      month: 'short',
+      day: 'numeric'
+    });
+    const checkOutDate = new Date(checkOut).toLocaleDateString('en-US', {
+      year: 'numeric',
+      month: 'short',
+      day: 'numeric'
+    });
+
     const notification: NotificationData = {
-      title: '🆕 New Reservation',
-      body: `${guest.firstName} ${guest.lastName} booked ${room.roomType.name} (Room ${room.number}) at ${branch.name} from ${new Date(checkIn).toLocaleDateString()} to ${new Date(checkOut).toLocaleDateString()}`,
+      title: '🆕 New Reservation Created',
+      body: `${guest.firstName} ${guest.lastName} has booked Room ${room.number} (${room.roomType.name}) at ${branch.name} from ${checkInDate} to ${checkOutDate}`,
       tag: 'new-reservation',
       data: {
         type: 'new_reservation',
@@ -144,9 +155,15 @@ export class NotificationService {
     branch: Branch,
     reservationId: string
   ) {
+    const currentDate = new Date().toLocaleDateString('en-US', {
+      year: 'numeric',
+      month: 'short',
+      day: 'numeric'
+    });
+
     const notification: NotificationData = {
-      title: '🏨 Guest Checked In',
-      body: `${guest.firstName} ${guest.lastName} has checked in to ${room.roomType.name} (Room ${room.number}) at ${branch.name} on ${new Date().toLocaleDateString()}`,
+      title: '🏨 Guest Check-In',
+      body: `Room ${room.number} has been checked in at ${branch.name} on ${currentDate} (${guest.firstName} ${guest.lastName})`,
       tag: 'check-in',
       data: {
         type: 'check_in',
@@ -166,9 +183,15 @@ export class NotificationService {
     branch: Branch,
     reservationId: string
   ) {
+    const currentDate = new Date().toLocaleDateString('en-US', {
+      year: 'numeric',
+      month: 'short',
+      day: 'numeric'
+    });
+
     const notification: NotificationData = {
-      title: '🚪 Guest Checked Out',
-      body: `${guest.firstName} ${guest.lastName} has checked out from ${room.roomType.name} (Room ${room.number}) at ${branch.name} on ${new Date().toLocaleDateString()}`,
+      title: '🚪 Guest Check-Out',
+      body: `Room ${room.number} has been checked out at ${branch.name} on ${currentDate} (${guest.firstName} ${guest.lastName})`,
       tag: 'check-out',
       data: {
         type: 'check_out',
@@ -187,9 +210,17 @@ export class NotificationService {
     branch: Branch,
     maintenanceType: string = 'maintenance'
   ) {
+    const currentDate = new Date().toLocaleDateString('en-US', {
+      year: 'numeric',
+      month: 'short',
+      day: 'numeric'
+    });
+
+    const statusText = maintenanceType === 'out-of-order' ? 'out of order' : 'under maintenance';
+
     const notification: NotificationData = {
-      title: '🔧 Room Maintenance',
-      body: `${room.roomType.name} (Room ${room.number}) is under ${maintenanceType} at ${branch.name} on ${new Date().toLocaleDateString()}`,
+      title: '🔧 Room Maintenance Alert',
+      body: `Room ${room.number} is ${statusText} at ${branch.name} on ${currentDate}`,
       tag: 'maintenance',
       data: {
         type: 'room_maintenance',

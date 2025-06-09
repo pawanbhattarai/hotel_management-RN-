@@ -5,8 +5,19 @@ export class NotificationManager {
   private static registration: ServiceWorkerRegistration | null = null;
 
   static async initialize(): Promise<boolean> {
-    if (!('serviceWorker' in navigator) || !('PushManager' in window)) {
-      console.warn('Push notifications not supported by browser');
+    // Check for basic browser support
+    if (!('serviceWorker' in navigator)) {
+      console.warn('Service Workers not supported by this browser');
+      return false;
+    }
+
+    if (!('PushManager' in window)) {
+      console.warn('Push messaging not supported by this browser');
+      return false;
+    }
+
+    if (!('Notification' in window)) {
+      console.warn('Notifications not supported by this browser');
       return false;
     }
 
@@ -16,9 +27,15 @@ export class NotificationManager {
       const data = await response.json();
       this.vapidPublicKey = data.publicKey;
 
-      // Register service worker
-      this.registration = await navigator.serviceWorker.register('/sw.js');
-      console.log('Service Worker registered');
+      // Register service worker with scope
+      this.registration = await navigator.serviceWorker.register('/sw.js', {
+        scope: '/'
+      });
+      
+      console.log('Service Worker registered with scope:', this.registration.scope);
+
+      // Wait for service worker to be ready
+      await navigator.serviceWorker.ready;
 
       return true;
     } catch (error) {
