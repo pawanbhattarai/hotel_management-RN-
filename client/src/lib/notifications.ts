@@ -473,6 +473,5 @@ class NotificationService {
 // Create a default instance for backward compatibility
 export const notificationService = new NotificationService();
 
-// Export NotificationManager as default
-export { NotificationManager };
+// Export NotificationManager as default (only one export)
 export default NotificationManager;
