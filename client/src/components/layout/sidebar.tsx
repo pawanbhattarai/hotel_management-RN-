@@ -78,12 +78,6 @@ export default function Sidebar({ isMobileMenuOpen = false, setIsMobileMenuOpen 
       roles: ["superadmin", "branch-admin", "front-desk"],
     },
     {
-      title: "Analytics",
-      icon: TrendingUp,
-      path: "/analytics",
-      roles: ["superadmin", "branch-admin"],
-    },
-    {
       title: "Billing",
       icon: CreditCard,
       path: "/billing",
