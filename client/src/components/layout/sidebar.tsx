@@ -111,7 +111,7 @@ export default function Sidebar({ isMobileMenuOpen = false, setIsMobileMenuOpen 
       title: "Analytics",
       icon: TrendingUp,
       path: "/analytics",
-      roles: ["superadmin", "branch-admin"],
+      roles: ["superadmin"],
     },
   ];
 
@@ -269,7 +269,7 @@ export default function Sidebar({ isMobileMenuOpen = false, setIsMobileMenuOpen 
               )}
 
               {/* Reports Section */}
-              {user && ["superadmin", "branch-admin"].includes((user as any).role) && (
+              {user && (user as any).role === "superadmin" && (
                 <div className="border-t border-gray-200 pt-4 mt-4">
                   <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-2 px-3">
                     REPORTS
