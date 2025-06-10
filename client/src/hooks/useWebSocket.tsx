@@ -22,18 +22,29 @@ export function useWebSocket(user: any) {
     
     try {
       wsRef.current = new WebSocket(wsUrl);
+      
+      // Set up connection timeout
+      const connectionTimeout = setTimeout(() => {
+        if (wsRef.current && wsRef.current.readyState === WebSocket.CONNECTING) {
+          wsRef.current.close();
+        }
+      }, 10000);
 
       wsRef.current.onopen = () => {
+        clearTimeout(connectionTimeout);
         console.log('WebSocket connected');
-        // Send authentication info
+        
+        // Send authentication info with error handling
         try {
-          wsRef.current?.send(JSON.stringify({
-            type: 'auth',
-            userId: user.id,
-            branchId: user.branchId
-          }));
+          if (wsRef.current && wsRef.current.readyState === WebSocket.OPEN) {
+            wsRef.current.send(JSON.stringify({
+              type: 'auth',
+              userId: user.id,
+              branchId: user.branchId
+            }));
+          }
         } catch (error) {
-          console.error('Error sending auth message:', error);
+          // Silently handle auth send errors
         }
       };
 
@@ -71,16 +82,16 @@ export function useWebSocket(user: any) {
             }
           }
         } catch (error) {
-          console.error('WebSocket message parse error:', error);
+          // Silently handle message parse errors
         }
       };
 
       wsRef.current.onclose = (event) => {
-        console.log(`WebSocket disconnected: ${event.code} - ${event.reason}`);
-        // Only reconnect if it wasn't a manual close
-        if (event.code !== 1000) {
+        clearTimeout(connectionTimeout);
+        // Only attempt reconnect for unexpected closures
+        if (event.code !== 1000 && event.code !== 1001 && user) {
           reconnectTimeoutRef.current = setTimeout(() => {
-            if (user) { // Check if user is still available
+            if (user) {
               connect();
             }
           }, 3000);
@@ -88,11 +99,11 @@ export function useWebSocket(user: any) {
       };
 
       wsRef.current.onerror = (error) => {
-        console.error('WebSocket client error:', error);
+        clearTimeout(connectionTimeout);
+        // Silently handle WebSocket errors to prevent console spam
       };
     } catch (error) {
-      console.error('WebSocket connection setup error:', error);
-      // Retry connection after delay
+      // Retry connection after delay for setup errors
       reconnectTimeoutRef.current = setTimeout(() => {
         if (user) {
           connect();

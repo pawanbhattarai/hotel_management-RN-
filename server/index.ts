@@ -74,6 +74,19 @@ app.use((req, res, next) => {
   // Initialize WebSocket server
   wsManager.init(server);
 
+  // Graceful shutdown
+  process.on('SIGTERM', () => {
+    console.log('Received SIGTERM, shutting down gracefully...');
+    wsManager.close();
+    process.exit(0);
+  });
+
+  process.on('SIGINT', () => {
+    console.log('Received SIGINT, shutting down gracefully...');
+    wsManager.close();
+    process.exit(0);
+  });
+
   // Seed default users if none exist
   await seedDefaultUsers();
 
