@@ -235,7 +235,7 @@ export default function Analytics() {
               </CardHeader>
               <CardContent>
                 <div className="space-y-4">
-                  {occupancyData?.peakOccupancyDays?.slice(0, 5).map((day: any, index: number) => (
+                  {((occupancyData as any)?.peakOccupancyDays || []).slice(0, 5).map((day: any, index: number) => (
                     <div key={day.date} className="flex justify-between items-center p-3 bg-gray-50 rounded-lg">
                       <div className="flex items-center space-x-3">
                         <div className="w-8 h-8 bg-blue-500 rounded-full flex items-center justify-center text-white font-bold text-sm">
