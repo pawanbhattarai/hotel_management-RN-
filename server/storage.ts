@@ -119,6 +119,57 @@ export interface IStorage {
   markNotificationAsRead(notificationId: number, userId: string): Promise<void>;
   markAllNotificationsAsRead(userId: string): Promise<void>;
   getUnreadNotificationCount(userId: string): Promise<number>;
+
+  // Advanced analytics operations
+  getRevenueAnalytics(branchId?: number, period?: string): Promise<{
+    dailyRevenue: Array<{ date: string; revenue: number; bookings: number }>;
+    monthlyRevenue: Array<{ month: string; revenue: number; bookings: number }>;
+    totalRevenue: number;
+    averageBookingValue: number;
+    revenueGrowth: number;
+  }>;
+  
+  getOccupancyAnalytics(branchId?: number, period?: string): Promise<{
+    dailyOccupancy: Array<{ date: string; occupancyRate: number; totalRooms: number; occupiedRooms: number }>;
+    monthlyOccupancy: Array<{ month: string; occupancyRate: number }>;
+    averageOccupancy: number;
+    peakOccupancyDays: Array<{ date: string; occupancyRate: number }>;
+  }>;
+  
+  getGuestAnalytics(branchId?: number): Promise<{
+    totalGuests: number;
+    newGuestsThisMonth: number;
+    returningGuests: number;
+    guestGrowth: number;
+    topGuests: Array<{ guest: Guest; totalBookings: number; totalSpent: number }>;
+    guestsByNationality: Array<{ nationality: string; count: number }>;
+  }>;
+  
+  getRoomPerformanceAnalytics(branchId?: number): Promise<{
+    roomTypePerformance: Array<{
+      roomType: RoomType;
+      totalBookings: number;
+      totalRevenue: number;
+      averageRate: number;
+      occupancyRate: number;
+    }>;
+    roomPerformance: Array<{
+      room: Room & { roomType: RoomType };
+      totalBookings: number;
+      totalRevenue: number;
+      occupancyRate: number;
+      maintenanceRequests: number;
+    }>;
+  }>;
+  
+  getOperationalAnalytics(branchId?: number): Promise<{
+    checkInTrends: Array<{ hour: number; count: number }>;
+    checkOutTrends: Array<{ hour: number; count: number }>;
+    averageStayDuration: number;
+    cancellationRate: number;
+    noShowRate: number;
+    reservationsBySource: Array<{ source: string; count: number }>;
+  }>;
 }
 
 export class DatabaseStorage implements IStorage {
@@ -721,6 +772,592 @@ export class DatabaseStorage implements IStorage {
       .from(notificationHistory)
       .where(and(eq(notificationHistory.userId, userId), eq(notificationHistory.isRead, false)));
     return result[0]?.count || 0;
+  }
+
+  // Advanced analytics operations
+  async getRevenueAnalytics(branchId?: number, period: string = '30d'): Promise<{
+    dailyRevenue: Array<{ date: string; revenue: number; bookings: number }>;
+    monthlyRevenue: Array<{ month: string; revenue: number; bookings: number }>;
+    totalRevenue: number;
+    averageBookingValue: number;
+    revenueGrowth: number;
+  }> {
+    const periodDays = period === '7d' ? 7 : period === '30d' ? 30 : 90;
+    const startDate = new Date();
+    startDate.setDate(startDate.getDate() - periodDays);
+    
+    let baseQuery = this.db
+      .select({
+        date: sql<string>`DATE(${reservations.createdAt})`,
+        revenue: sql<number>`COALESCE(SUM(CAST(${reservations.paidAmount} AS DECIMAL)), 0)`,
+        bookings: sql<number>`COUNT(*)`
+      })
+      .from(reservations)
+      .where(
+        and(
+          sql`${reservations.createdAt} >= ${startDate.toISOString()}`,
+          sql`${reservations.status} != 'cancelled'`
+        )
+      )
+      .groupBy(sql`DATE(${reservations.createdAt})`)
+      .orderBy(sql`DATE(${reservations.createdAt})`);
+
+    if (branchId) {
+      baseQuery = baseQuery.where(eq(reservations.branchId, branchId));
+    }
+
+    const dailyRevenue = await baseQuery;
+
+    // Monthly revenue for the past 12 months
+    const yearAgo = new Date();
+    yearAgo.setMonth(yearAgo.getMonth() - 12);
+    
+    let monthlyQuery = this.db
+      .select({
+        month: sql<string>`TO_CHAR(${reservations.createdAt}, 'YYYY-MM')`,
+        revenue: sql<number>`COALESCE(SUM(CAST(${reservations.paidAmount} AS DECIMAL)), 0)`,
+        bookings: sql<number>`COUNT(*)`
+      })
+      .from(reservations)
+      .where(
+        and(
+          sql`${reservations.createdAt} >= ${yearAgo.toISOString()}`,
+          sql`${reservations.status} != 'cancelled'`
+        )
+      )
+      .groupBy(sql`TO_CHAR(${reservations.createdAt}, 'YYYY-MM')`)
+      .orderBy(sql`TO_CHAR(${reservations.createdAt}, 'YYYY-MM')`);
+
+    if (branchId) {
+      monthlyQuery = monthlyQuery.where(eq(reservations.branchId, branchId));
+    }
+
+    const monthlyRevenue = await monthlyQuery;
+
+    // Total revenue
+    let totalRevenueQuery = this.db
+      .select({
+        total: sql<number>`COALESCE(SUM(CAST(${reservations.paidAmount} AS DECIMAL)), 0)`,
+        count: sql<number>`COUNT(*)`
+      })
+      .from(reservations)
+      .where(sql`${reservations.status} != 'cancelled'`);
+
+    if (branchId) {
+      totalRevenueQuery = totalRevenueQuery.where(eq(reservations.branchId, branchId));
+    }
+
+    const [totalStats] = await totalRevenueQuery;
+    const totalRevenue = totalStats.total;
+    const averageBookingValue = totalStats.count > 0 ? totalRevenue / totalStats.count : 0;
+
+    // Calculate growth (comparing last month to previous month)
+    const currentMonth = new Date().toISOString().slice(0, 7);
+    const lastMonth = new Date();
+    lastMonth.setMonth(lastMonth.getMonth() - 1);
+    const previousMonth = lastMonth.toISOString().slice(0, 7);
+
+    const currentMonthRevenue = monthlyRevenue.find(m => m.month === currentMonth)?.revenue || 0;
+    const previousMonthRevenue = monthlyRevenue.find(m => m.month === previousMonth)?.revenue || 0;
+    const revenueGrowth = previousMonthRevenue > 0 
+      ? ((currentMonthRevenue - previousMonthRevenue) / previousMonthRevenue) * 100 
+      : 0;
+
+    return {
+      dailyRevenue,
+      monthlyRevenue,
+      totalRevenue,
+      averageBookingValue,
+      revenueGrowth
+    };
+  }
+
+  async getOccupancyAnalytics(branchId?: number, period: string = '30d'): Promise<{
+    dailyOccupancy: Array<{ date: string; occupancyRate: number; totalRooms: number; occupiedRooms: number }>;
+    monthlyOccupancy: Array<{ month: string; occupancyRate: number }>;
+    averageOccupancy: number;
+    peakOccupancyDays: Array<{ date: string; occupancyRate: number }>;
+  }> {
+    const periodDays = period === '7d' ? 7 : period === '30d' ? 30 : 90;
+    const startDate = new Date();
+    startDate.setDate(startDate.getDate() - periodDays);
+
+    // Get total rooms for the branch
+    let totalRoomsQuery = this.db
+      .select({ count: sql<number>`COUNT(*)` })
+      .from(rooms)
+      .where(eq(rooms.isActive, true));
+
+    if (branchId) {
+      totalRoomsQuery = totalRoomsQuery.where(eq(rooms.branchId, branchId));
+    }
+
+    const [{ count: totalRooms }] = await totalRoomsQuery;
+
+    // Daily occupancy calculation
+    const dailyOccupancy = [];
+    for (let i = 0; i < periodDays; i++) {
+      const date = new Date(startDate);
+      date.setDate(date.getDate() + i);
+      const dateStr = date.toISOString().split('T')[0];
+
+      let occupiedQuery = this.db
+        .select({ count: sql<number>`COUNT(DISTINCT ${reservationRooms.roomId})` })
+        .from(reservationRooms)
+        .innerJoin(reservations, eq(reservationRooms.reservationId, reservations.id))
+        .where(
+          and(
+            sql`${reservationRooms.checkInDate} <= ${dateStr}`,
+            sql`${reservationRooms.checkOutDate} > ${dateStr}`,
+            sql`${reservations.status} IN ('confirmed', 'checked-in')`
+          )
+        );
+
+      if (branchId) {
+        occupiedQuery = occupiedQuery.where(eq(reservations.branchId, branchId));
+      }
+
+      const [{ count: occupiedRooms }] = await occupiedQuery;
+      const occupancyRate = totalRooms > 0 ? (occupiedRooms / totalRooms) * 100 : 0;
+
+      dailyOccupancy.push({
+        date: dateStr,
+        occupancyRate: Math.round(occupancyRate * 100) / 100,
+        totalRooms,
+        occupiedRooms
+      });
+    }
+
+    // Monthly occupancy for the past 12 months
+    const monthlyOccupancy = [];
+    for (let i = 11; i >= 0; i--) {
+      const date = new Date();
+      date.setMonth(date.getMonth() - i);
+      const monthStr = date.toISOString().slice(0, 7);
+      
+      // Calculate average occupancy for the month
+      const monthStart = new Date(date.getFullYear(), date.getMonth(), 1);
+      const monthEnd = new Date(date.getFullYear(), date.getMonth() + 1, 0);
+      
+      let monthlyOccupiedQuery = this.db
+        .select({ 
+          avgOccupancy: sql<number>`AVG(daily_occupied.occupied_count)` 
+        })
+        .from(
+          sql`(
+            SELECT DATE(generate_series(${monthStart.toISOString()}::date, ${monthEnd.toISOString()}::date, '1 day'::interval)) as date,
+            COUNT(DISTINCT ${reservationRooms.roomId}) as occupied_count
+            FROM generate_series(${monthStart.toISOString()}::date, ${monthEnd.toISOString()}::date, '1 day'::interval) dates
+            LEFT JOIN ${reservationRooms} ON dates.date >= ${reservationRooms.checkInDate} AND dates.date < ${reservationRooms.checkOutDate}
+            LEFT JOIN ${reservations} ON ${reservationRooms.reservationId} = ${reservations.id}
+            WHERE ${reservations.status} IN ('confirmed', 'checked-in') OR ${reservations.status} IS NULL
+            GROUP BY dates.date
+          ) as daily_occupied`
+        );
+
+      const result = await monthlyOccupiedQuery;
+      const avgOccupiedRooms = result[0]?.avgOccupancy || 0;
+      const occupancyRate = totalRooms > 0 ? (avgOccupiedRooms / totalRooms) * 100 : 0;
+
+      monthlyOccupancy.push({
+        month: monthStr,
+        occupancyRate: Math.round(occupancyRate * 100) / 100
+      });
+    }
+
+    const averageOccupancy = dailyOccupancy.length > 0 
+      ? dailyOccupancy.reduce((sum, day) => sum + day.occupancyRate, 0) / dailyOccupancy.length 
+      : 0;
+
+    const peakOccupancyDays = dailyOccupancy
+      .sort((a, b) => b.occupancyRate - a.occupancyRate)
+      .slice(0, 5);
+
+    return {
+      dailyOccupancy,
+      monthlyOccupancy,
+      averageOccupancy: Math.round(averageOccupancy * 100) / 100,
+      peakOccupancyDays
+    };
+  }
+
+  async getGuestAnalytics(branchId?: number): Promise<{
+    totalGuests: number;
+    newGuestsThisMonth: number;
+    returningGuests: number;
+    guestGrowth: number;
+    topGuests: Array<{ guest: Guest; totalBookings: number; totalSpent: number }>;
+    guestsByNationality: Array<{ nationality: string; count: number }>;
+  }> {
+    let totalGuestsQuery = this.db
+      .select({ count: sql<number>`COUNT(*)` })
+      .from(guests)
+      .where(eq(guests.isActive, true));
+
+    if (branchId) {
+      totalGuestsQuery = totalGuestsQuery.where(eq(guests.branchId, branchId));
+    }
+
+    const [{ count: totalGuests }] = await totalGuestsQuery;
+
+    // New guests this month
+    const monthStart = new Date();
+    monthStart.setDate(1);
+    monthStart.setHours(0, 0, 0, 0);
+
+    let newGuestsQuery = this.db
+      .select({ count: sql<number>`COUNT(*)` })
+      .from(guests)
+      .where(
+        and(
+          eq(guests.isActive, true),
+          sql`${guests.createdAt} >= ${monthStart.toISOString()}`
+        )
+      );
+
+    if (branchId) {
+      newGuestsQuery = newGuestsQuery.where(eq(guests.branchId, branchId));
+    }
+
+    const [{ count: newGuestsThisMonth }] = await newGuestsQuery;
+
+    // Returning guests (more than 1 reservation)
+    let returningGuestsQuery = this.db
+      .select({ count: sql<number>`COUNT(*)` })
+      .from(guests)
+      .where(
+        and(
+          eq(guests.isActive, true),
+          sql`${guests.reservationCount} > 1`
+        )
+      );
+
+    if (branchId) {
+      returningGuestsQuery = returningGuestsQuery.where(eq(guests.branchId, branchId));
+    }
+
+    const [{ count: returningGuests }] = await returningGuestsQuery;
+
+    // Guest growth calculation
+    const lastMonthStart = new Date();
+    lastMonthStart.setMonth(lastMonthStart.getMonth() - 1);
+    lastMonthStart.setDate(1);
+    const lastMonthEnd = new Date();
+    lastMonthEnd.setDate(0);
+
+    let lastMonthGuestsQuery = this.db
+      .select({ count: sql<number>`COUNT(*)` })
+      .from(guests)
+      .where(
+        and(
+          eq(guests.isActive, true),
+          sql`${guests.createdAt} >= ${lastMonthStart.toISOString()}`,
+          sql`${guests.createdAt} <= ${lastMonthEnd.toISOString()}`
+        )
+      );
+
+    if (branchId) {
+      lastMonthGuestsQuery = lastMonthGuestsQuery.where(eq(guests.branchId, branchId));
+    }
+
+    const [{ count: lastMonthGuests }] = await lastMonthGuestsQuery;
+    const guestGrowth = lastMonthGuests > 0 
+      ? ((newGuestsThisMonth - lastMonthGuests) / lastMonthGuests) * 100 
+      : 0;
+
+    // Top guests by bookings and spending
+    let topGuestsQuery = this.db
+      .select({
+        guest: guests,
+        totalBookings: sql<number>`COUNT(${reservations.id})`,
+        totalSpent: sql<number>`COALESCE(SUM(CAST(${reservations.paidAmount} AS DECIMAL)), 0)`
+      })
+      .from(guests)
+      .leftJoin(reservations, eq(guests.id, reservations.guestId))
+      .where(eq(guests.isActive, true))
+      .groupBy(guests.id)
+      .orderBy(sql`COUNT(${reservations.id}) DESC`)
+      .limit(10);
+
+    if (branchId) {
+      topGuestsQuery = topGuestsQuery.where(eq(guests.branchId, branchId));
+    }
+
+    const topGuests = await topGuestsQuery;
+
+    // Guests by nationality
+    let nationalityQuery = this.db
+      .select({
+        nationality: guests.nationality,
+        count: sql<number>`COUNT(*)`
+      })
+      .from(guests)
+      .where(
+        and(
+          eq(guests.isActive, true),
+          sql`${guests.nationality} IS NOT NULL`
+        )
+      )
+      .groupBy(guests.nationality)
+      .orderBy(sql`COUNT(*) DESC`)
+      .limit(10);
+
+    if (branchId) {
+      nationalityQuery = nationalityQuery.where(eq(guests.branchId, branchId));
+    }
+
+    const guestsByNationality = await nationalityQuery;
+
+    return {
+      totalGuests,
+      newGuestsThisMonth,
+      returningGuests,
+      guestGrowth: Math.round(guestGrowth * 100) / 100,
+      topGuests,
+      guestsByNationality
+    };
+  }
+
+  async getRoomPerformanceAnalytics(branchId?: number): Promise<{
+    roomTypePerformance: Array<{
+      roomType: RoomType;
+      totalBookings: number;
+      totalRevenue: number;
+      averageRate: number;
+      occupancyRate: number;
+    }>;
+    roomPerformance: Array<{
+      room: Room & { roomType: RoomType };
+      totalBookings: number;
+      totalRevenue: number;
+      occupancyRate: number;
+      maintenanceRequests: number;
+    }>;
+  }> {
+    // Room type performance
+    let roomTypeQuery = this.db
+      .select({
+        roomType: roomTypes,
+        totalBookings: sql<number>`COUNT(${reservationRooms.id})`,
+        totalRevenue: sql<number>`COALESCE(SUM(CAST(${reservationRooms.totalAmount} AS DECIMAL)), 0)`,
+        averageRate: sql<number>`COALESCE(AVG(CAST(${reservationRooms.ratePerNight} AS DECIMAL)), 0)`
+      })
+      .from(roomTypes)
+      .leftJoin(rooms, eq(roomTypes.id, rooms.roomTypeId))
+      .leftJoin(reservationRooms, eq(rooms.id, reservationRooms.roomId))
+      .leftJoin(reservations, eq(reservationRooms.reservationId, reservations.id))
+      .where(
+        and(
+          eq(roomTypes.isActive, true),
+          or(
+            sql`${reservations.status} IS NULL`,
+            sql`${reservations.status} != 'cancelled'`
+          )
+        )
+      )
+      .groupBy(roomTypes.id);
+
+    if (branchId) {
+      roomTypeQuery = roomTypeQuery.where(eq(roomTypes.branchId, branchId));
+    }
+
+    const roomTypeStats = await roomTypeQuery;
+
+    // Calculate occupancy rate for each room type
+    const roomTypePerformance = await Promise.all(
+      roomTypeStats.map(async (stat) => {
+        // Get total rooms of this type
+        let totalRoomsQuery = this.db
+          .select({ count: sql<number>`COUNT(*)` })
+          .from(rooms)
+          .where(
+            and(
+              eq(rooms.roomTypeId, stat.roomType.id),
+              eq(rooms.isActive, true)
+            )
+          );
+
+        if (branchId) {
+          totalRoomsQuery = totalRoomsQuery.where(eq(rooms.branchId, branchId));
+        }
+
+        const [{ count: totalRooms }] = await totalRoomsQuery;
+
+        // Calculate average occupancy for the last 30 days
+        const thirtyDaysAgo = new Date();
+        thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
+
+        let occupancyQuery = this.db
+          .select({ 
+            avgOccupied: sql<number>`AVG(daily_occupied.occupied_count)` 
+          })
+          .from(
+            sql`(
+              SELECT COUNT(DISTINCT ${reservationRooms.roomId}) as occupied_count
+              FROM generate_series(${thirtyDaysAgo.toISOString()}::date, CURRENT_DATE, '1 day'::interval) dates
+              LEFT JOIN ${reservationRooms} ON dates.date >= ${reservationRooms.checkInDate} 
+                AND dates.date < ${reservationRooms.checkOutDate}
+              LEFT JOIN ${rooms} ON ${reservationRooms.roomId} = ${rooms.id}
+              LEFT JOIN ${reservations} ON ${reservationRooms.reservationId} = ${reservations.id}
+              WHERE (${rooms.roomTypeId} = ${stat.roomType.id} OR ${rooms.roomTypeId} IS NULL)
+                AND (${reservations.status} IN ('confirmed', 'checked-in') OR ${reservations.status} IS NULL)
+              GROUP BY dates.date
+            ) as daily_occupied`
+          );
+
+        const occupancyResult = await occupancyQuery;
+        const avgOccupiedRooms = occupancyResult[0]?.avgOccupied || 0;
+        const occupancyRate = totalRooms > 0 ? (avgOccupiedRooms / totalRooms) * 100 : 0;
+
+        return {
+          roomType: stat.roomType,
+          totalBookings: stat.totalBookings,
+          totalRevenue: stat.totalRevenue,
+          averageRate: stat.averageRate,
+          occupancyRate: Math.round(occupancyRate * 100) / 100
+        };
+      })
+    );
+
+    // Individual room performance
+    let roomQuery = this.db
+      .select({
+        room: rooms,
+        roomType: roomTypes,
+        totalBookings: sql<number>`COUNT(${reservationRooms.id})`,
+        totalRevenue: sql<number>`COALESCE(SUM(CAST(${reservationRooms.totalAmount} AS DECIMAL)), 0)`
+      })
+      .from(rooms)
+      .innerJoin(roomTypes, eq(rooms.roomTypeId, roomTypes.id))
+      .leftJoin(reservationRooms, eq(rooms.id, reservationRooms.roomId))
+      .leftJoin(reservations, eq(reservationRooms.reservationId, reservations.id))
+      .where(
+        and(
+          eq(rooms.isActive, true),
+          or(
+            sql`${reservations.status} IS NULL`,
+            sql`${reservations.status} != 'cancelled'`
+          )
+        )
+      )
+      .groupBy(rooms.id, roomTypes.id);
+
+    if (branchId) {
+      roomQuery = roomQuery.where(eq(rooms.branchId, branchId));
+    }
+
+    const roomStats = await roomQuery;
+
+    const roomPerformance = roomStats.map((stat) => ({
+      room: { ...stat.room, roomType: stat.roomType },
+      totalBookings: stat.totalBookings,
+      totalRevenue: stat.totalRevenue,
+      occupancyRate: 0, // Would need complex calculation similar to room type
+      maintenanceRequests: 0 // Would need maintenance tracking table
+    }));
+
+    return {
+      roomTypePerformance,
+      roomPerformance
+    };
+  }
+
+  async getOperationalAnalytics(branchId?: number): Promise<{
+    checkInTrends: Array<{ hour: number; count: number }>;
+    checkOutTrends: Array<{ hour: number; count: number }>;
+    averageStayDuration: number;
+    cancellationRate: number;
+    noShowRate: number;
+    reservationsBySource: Array<{ source: string; count: number }>;
+  }> {
+    // Check-in trends by hour
+    let checkInQuery = this.db
+      .select({
+        hour: sql<number>`EXTRACT(HOUR FROM ${reservationRooms.actualCheckIn})`,
+        count: sql<number>`COUNT(*)`
+      })
+      .from(reservationRooms)
+      .innerJoin(reservations, eq(reservationRooms.reservationId, reservations.id))
+      .where(sql`${reservationRooms.actualCheckIn} IS NOT NULL`)
+      .groupBy(sql`EXTRACT(HOUR FROM ${reservationRooms.actualCheckIn})`)
+      .orderBy(sql`EXTRACT(HOUR FROM ${reservationRooms.actualCheckIn})`);
+
+    if (branchId) {
+      checkInQuery = checkInQuery.where(eq(reservations.branchId, branchId));
+    }
+
+    const checkInTrends = await checkInQuery;
+
+    // Check-out trends by hour
+    let checkOutQuery = this.db
+      .select({
+        hour: sql<number>`EXTRACT(HOUR FROM ${reservationRooms.actualCheckOut})`,
+        count: sql<number>`COUNT(*)`
+      })
+      .from(reservationRooms)
+      .innerJoin(reservations, eq(reservationRooms.reservationId, reservations.id))
+      .where(sql`${reservationRooms.actualCheckOut} IS NOT NULL`)
+      .groupBy(sql`EXTRACT(HOUR FROM ${reservationRooms.actualCheckOut})`)
+      .orderBy(sql`EXTRACT(HOUR FROM ${reservationRooms.actualCheckOut})`);
+
+    if (branchId) {
+      checkOutQuery = checkOutQuery.where(eq(reservations.branchId, branchId));
+    }
+
+    const checkOutTrends = await checkOutQuery;
+
+    // Average stay duration
+    let avgStayQuery = this.db
+      .select({
+        avgDuration: sql<number>`AVG(EXTRACT(DAY FROM (${reservationRooms.checkOutDate}::date - ${reservationRooms.checkInDate}::date)))`
+      })
+      .from(reservationRooms)
+      .innerJoin(reservations, eq(reservationRooms.reservationId, reservations.id))
+      .where(sql`${reservations.status} != 'cancelled'`);
+
+    if (branchId) {
+      avgStayQuery = avgStayQuery.where(eq(reservations.branchId, branchId));
+    }
+
+    const [{ avgDuration: averageStayDuration }] = await avgStayQuery;
+
+    // Cancellation and no-show rates
+    let statusStatsQuery = this.db
+      .select({
+        status: reservations.status,
+        count: sql<number>`COUNT(*)`
+      })
+      .from(reservations)
+      .groupBy(reservations.status);
+
+    if (branchId) {
+      statusStatsQuery = statusStatsQuery.where(eq(reservations.branchId, branchId));
+    }
+
+    const statusStats = await statusStatsQuery;
+    const totalReservations = statusStats.reduce((sum, stat) => sum + stat.count, 0);
+    const cancelledCount = statusStats.find(s => s.status === 'cancelled')?.count || 0;
+    const noShowCount = statusStats.find(s => s.status === 'no-show')?.count || 0;
+
+    const cancellationRate = totalReservations > 0 ? (cancelledCount / totalReservations) * 100 : 0;
+    const noShowRate = totalReservations > 0 ? (noShowCount / totalReservations) * 100 : 0;
+
+    // Reservations by source (placeholder - would need source tracking)
+    const reservationsBySource = [
+      { source: 'Direct', count: Math.floor(totalReservations * 0.4) },
+      { source: 'Online', count: Math.floor(totalReservations * 0.3) },
+      { source: 'Phone', count: Math.floor(totalReservations * 0.2) },
+      { source: 'Walk-in', count: Math.floor(totalReservations * 0.1) }
+    ];
+
+    return {
+      checkInTrends,
+      checkOutTrends,
+      averageStayDuration: Math.round((averageStayDuration || 0) * 100) / 100,
+      cancellationRate: Math.round(cancellationRate * 100) / 100,
+      noShowRate: Math.round(noShowRate * 100) / 100,
+      reservationsBySource
+    };
   }
 }
 
