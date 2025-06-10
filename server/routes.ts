@@ -14,6 +14,7 @@ import {
   insertPushSubscriptionSchema,
 } from "@shared/schema";
 import { z } from "zod";
+import { broadcastChange } from "./middleware/websocket";
 
 // Helper function to check user permissions based on role and branch
 function checkBranchPermissions(
@@ -156,6 +157,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       const branchData = insertBranchSchema.parse(req.body);
       const branch = await storage.createBranch(branchData);
+      broadcastChange('branches', 'created', branch); // Broadcast change
       res.status(201).json(branch);
     } catch (error) {
       console.error("Error creating branch:", error);
@@ -173,6 +175,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const branchId = parseInt(req.params.id);
       const branchData = insertBranchSchema.partial().parse(req.body);
       const branch = await storage.updateBranch(branchId, branchData);
+      broadcastChange('branches', 'updated', branch); // Broadcast change
       res.json(branch);
     } catch (error) {
       console.error("Error updating branch:", error);
@@ -189,6 +192,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       const branchId = parseInt(req.params.id);
       await storage.updateBranch(branchId, { isActive: false });
+      broadcastChange('branches', 'deleted', { id: branchId }); // Broadcast change
       res.status(204).send();
     } catch (error) {
       console.error("Error deleting branch:", error);
@@ -221,6 +225,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       const userData = insertUserSchema.parse(req.body);
       const newUser = await storage.upsertUser(userData);
+      broadcastChange('users', 'created', newUser); // Broadcast change
       res.status(201).json(newUser);
     } catch (error) {
       console.error("Error creating user:", error);
@@ -238,6 +243,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const userId = req.params.id;
       const userData = insertUserSchema.partial().parse(req.body);
       const updatedUser = await storage.updateUser(userId, userData);
+      broadcastChange('users', 'updated', updatedUser); // Broadcast change
       res.json(updatedUser);
     } catch (error) {
       console.error("Error updating user:", error);
@@ -254,6 +260,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       const userId = req.params.id;
       await storage.updateUser(userId, { isActive: false });
+      broadcastChange('users', 'deleted', { id: userId }); // Broadcast change
       res.status(204).send();
     } catch (error) {
       console.error("Error deleting user:", error);
@@ -298,6 +305,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
 
       const room = await storage.createRoom(roomData);
+      broadcastChange('rooms', 'created', room); // Broadcast change
       res.status(201).json(room);
     } catch (error) {
       console.error("Error creating room:", error);
@@ -327,6 +335,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
 
       const room = await storage.updateRoom(roomId, roomData);
+      broadcastChange('rooms', 'updated', room); // Broadcast change
       res.json(room);
     } catch (error) {
       console.error("Error updating room:", error);
@@ -355,6 +364,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
 
       await storage.updateRoom(roomId, { isActive: false });
+      broadcastChange('rooms', 'deleted', { id: roomId }); // Broadcast change
       res.status(204).send();
     } catch (error) {
       console.error("Error deleting room:", error);
@@ -384,6 +394,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       const roomData = insertRoomSchema.partial().parse(req.body);
       const room = await storage.updateRoom(roomId, roomData);
+        broadcastChange('rooms', 'updated', room); // Broadcast change
 
       // Send maintenance notification if room status changed to maintenance
       if (roomData.status && (roomData.status === 'maintenance' || roomData.status === 'out-of-order')) {
@@ -440,6 +451,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       const roomTypeData = insertRoomTypeSchema.parse(req.body);
       const roomType = await storage.createRoomType(roomTypeData);
+      broadcastChange('room-types', 'created', roomType); // Broadcast change
       res.status(201).json(roomType);
     } catch (error) {
       console.error("Error creating room type:", error);
@@ -457,6 +469,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const roomTypeId = parseInt(req.params.id);
       const roomTypeData = insertRoomTypeSchema.partial().parse(req.body);
       const roomType = await storage.updateRoomType(roomTypeId, roomTypeData);
+      broadcastChange('room-types', 'updated', roomType); // Broadcast change
       res.json(roomType);
     } catch (error) {
       console.error("Error updating room type:", error);
@@ -473,6 +486,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       const roomTypeId = parseInt(req.params.id);
       await storage.updateRoomType(roomTypeId, { isActive: false });
+      broadcastChange('room-types', 'deleted', { id: roomTypeId }); // Broadcast change
       res.status(204).send();
     } catch (error) {
       console.error("Error deleting room type:", error);
@@ -538,6 +552,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
 
       const guest = await storage.createGuest(guestData);
+      broadcastChange('guests', 'created', guest); // Broadcast change
       res.status(201).json(guest);
     } catch (error) {
       console.error("Error creating guest:", error);
@@ -565,6 +580,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
 
       const guest = await storage.updateGuest(guestId, guestData);
+      broadcastChange('guests', 'updated', guest); // Broadcast change
       res.json(guest);
     } catch (error) {
       console.error("Error updating guest:", error);
@@ -592,6 +608,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       // Instead of hard delete, we'll mark as inactive
       await storage.updateGuest(guestId, { isActive: false });
+      broadcastChange('guests', 'deleted', { id: guestId }); // Broadcast change
       res.status(204).send();
     } catch (error) {
       console.error("Error deleting guest:", error);
@@ -705,6 +722,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         reservationWithConfirmation,
         roomsData,
       );
+      broadcastChange('reservations', 'created', reservation); // Broadcast change
 
       // Update room status to reserved
       for (const roomData of roomsData) {
@@ -773,6 +791,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         reservationId,
         validatedData,
       );
+      broadcastChange('reservations', 'updated', reservation); // Broadcast change
 
       // Update room status based on reservation status
       if (validatedData.status) {
@@ -861,6 +880,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       // Cancel the reservation and free up rooms
       await storage.updateReservation(reservationId, { status: "cancelled" });
+      broadcastChange('reservations', 'deleted', { id: reservationId }); // Broadcast change
+
 
       // Update room status back to available
       for (const roomReservation of existingReservation.reservationRooms) {
@@ -1008,6 +1029,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       const settingsData = insertHotelSettingsSchema.parse(req.body);
       const settings = await storage.upsertHotelSettings(settingsData);
+      broadcastChange('hotel-settings', 'created', settings); // Broadcast change
       res.json(settings);
     } catch (error) {
       console.error("Error saving hotel settings:", error);
@@ -1024,6 +1046,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       const settingsData = insertHotelSettingsSchema.parse(req.body);
       const settings = await storage.upsertHotelSettings(settingsData);
+       broadcastChange('hotel-settings', 'updated', settings); // Broadcast change
       res.json(settings);
     } catch (error) {
       console.error("Error updating hotel settings:", error);
@@ -1051,6 +1074,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       const updateData = insertUserSchema.partial().parse(req.body);
       const updatedUser = await storage.updateUser(user.id, updateData);
+       broadcastChange('profile', 'updated', updatedUser); // Broadcast change
       res.json(updatedUser);
     } catch (error) {
       console.error("Error updating profile:", error);

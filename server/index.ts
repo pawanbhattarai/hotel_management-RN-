@@ -3,6 +3,7 @@ import { registerRoutes } from "./routes";
 import { setupVite, serveStatic, log } from "./vite";
 import { setupAuth } from "./replitAuth";
 import { seedDefaultUsers } from "./seedUsers";
+import { wsManager } from "./websocket";
 
 const app = express();
 app.use(express.json());
@@ -69,6 +70,9 @@ app.use((req, res, next) => {
   }, () => {
     log(`serving on port ${port}`);
   });
+
+  // Initialize WebSocket server
+  wsManager.init(server);
 
   // Seed default users if none exist
   await seedDefaultUsers();
