@@ -408,7 +408,7 @@ export class DatabaseStorage implements IStorage {
   }
 
   async createReservation(reservation: InsertReservation, roomsData: InsertReservationRoom[]): Promise<Reservation> {
-    return await this.db.transaction(async (tx) => {
+    return await this.db.transaction(async (tx: any) => {
       const [newReservation] = await tx.insert(reservations).values(reservation).returning();
 
       const roomsWithReservationId = roomsData.map(room => ({

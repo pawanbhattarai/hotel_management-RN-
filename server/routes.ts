@@ -905,6 +905,79 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Advanced Analytics Endpoints
+  app.get("/api/analytics/revenue", isAuthenticated, async (req: any, res) => {
+    try {
+      const user = await storage.getUser(req.session.user.id);
+      if (!user) return res.status(401).json({ message: "User not found" });
+
+      const branchId = user.role === "superadmin" ? undefined : user.branchId!;
+      const period = req.query.period || '30d';
+      const analytics = await storage.getRevenueAnalytics(branchId, period as string);
+      res.json(analytics);
+    } catch (error) {
+      console.error("Error fetching revenue analytics:", error);
+      res.status(500).json({ message: "Failed to fetch revenue analytics" });
+    }
+  });
+
+  app.get("/api/analytics/occupancy", isAuthenticated, async (req: any, res) => {
+    try {
+      const user = await storage.getUser(req.session.user.id);
+      if (!user) return res.status(401).json({ message: "User not found" });
+
+      const branchId = user.role === "superadmin" ? undefined : user.branchId!;
+      const period = req.query.period || '30d';
+      const analytics = await storage.getOccupancyAnalytics(branchId, period as string);
+      res.json(analytics);
+    } catch (error) {
+      console.error("Error fetching occupancy analytics:", error);
+      res.status(500).json({ message: "Failed to fetch occupancy analytics" });
+    }
+  });
+
+  app.get("/api/analytics/guests", isAuthenticated, async (req: any, res) => {
+    try {
+      const user = await storage.getUser(req.session.user.id);
+      if (!user) return res.status(401).json({ message: "User not found" });
+
+      const branchId = user.role === "superadmin" ? undefined : user.branchId!;
+      const analytics = await storage.getGuestAnalytics(branchId);
+      res.json(analytics);
+    } catch (error) {
+      console.error("Error fetching guest analytics:", error);
+      res.status(500).json({ message: "Failed to fetch guest analytics" });
+    }
+  });
+
+  app.get("/api/analytics/rooms", isAuthenticated, async (req: any, res) => {
+    try {
+      const user = await storage.getUser(req.session.user.id);
+      if (!user) return res.status(401).json({ message: "User not found" });
+
+      const branchId = user.role === "superadmin" ? undefined : user.branchId!;
+      const analytics = await storage.getRoomPerformanceAnalytics(branchId);
+      res.json(analytics);
+    } catch (error) {
+      console.error("Error fetching room performance analytics:", error);
+      res.status(500).json({ message: "Failed to fetch room performance analytics" });
+    }
+  });
+
+  app.get("/api/analytics/operations", isAuthenticated, async (req: any, res) => {
+    try {
+      const user = await storage.getUser(req.session.user.id);
+      if (!user) return res.status(401).json({ message: "User not found" });
+
+      const branchId = user.role === "superadmin" ? undefined : user.branchId!;
+      const analytics = await storage.getOperationalAnalytics(branchId);
+      res.json(analytics);
+    } catch (error) {
+      console.error("Error fetching operational analytics:", error);
+      res.status(500).json({ message: "Failed to fetch operational analytics" });
+    }
+  });
+
   // Hotel settings
   app.get("/api/hotel-settings", isAuthenticated, async (req: any, res) => {
     try {

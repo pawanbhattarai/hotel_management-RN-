@@ -16,6 +16,7 @@ import RoomTypes from "@/pages/room-types";
 import Billing from "@/pages/billing";
 import Profile from "@/pages/profile";
 import Settings from "@/pages/settings";
+import Analytics from "@/pages/analytics";
 
 function Router() {
   const { isAuthenticated, isLoading } = useAuth();
@@ -33,6 +34,7 @@ function Router() {
           <Route path="/guests" component={Guests} />
           <Route path="/branches" component={Branches} />
           <Route path="/users" component={Users} />
+          <Route path="/analytics" component={Analytics} />
           <Route path="/billing" component={Billing} />
           <Route path="/profile" component={Profile} />
           <Route path="/settings" component={Settings} />
