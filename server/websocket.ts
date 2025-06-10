@@ -1,4 +1,3 @@
-
 import { WebSocketServer, WebSocket } from 'ws';
 import { Server } from 'http';
 
@@ -17,6 +16,7 @@ class WebSocketManager {
   init(server: Server) {
     this.wss = new WebSocketServer({ 
       server,
+      path: '/ws',
       perMessageDeflate: false,
       maxPayload: 16 * 1024,
       skipUTF8Validation: true, // Skip UTF8 validation for performance
@@ -37,7 +37,7 @@ class WebSocketManager {
           // Ensure we're dealing with valid UTF-8 data
           const messageStr = message.toString('utf8');
           const data = JSON.parse(messageStr);
-          
+
           if (data.type === 'auth') {
             client.userId = data.userId;
             client.branchId = data.branchId;
@@ -117,7 +117,7 @@ class WebSocketManager {
     try {
       const message = JSON.stringify({ event, data, timestamp: new Date().toISOString() });
       const deadClients: Client[] = [];
-      
+
       this.clients.forEach(client => {
         try {
           if (client.ws.readyState === WebSocket.OPEN) {
@@ -158,7 +158,7 @@ class WebSocketManager {
     if (this.heartbeatInterval) {
       clearInterval(this.heartbeatInterval);
     }
-    
+
     this.clients.forEach(client => {
       try {
         client.ws.close(1000, 'Server shutdown');
@@ -166,9 +166,9 @@ class WebSocketManager {
         // Ignore close errors
       }
     });
-    
+
     this.clients.clear();
-    
+
     if (this.wss) {
       this.wss.close();
     }

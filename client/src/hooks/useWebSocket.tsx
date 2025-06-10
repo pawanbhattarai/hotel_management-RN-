@@ -12,13 +12,20 @@ export function useWebSocket(user: any) {
   const connect = () => {
     if (!user) return;
 
+    // Don't connect in development mode to avoid conflicts with Vite HMR
+    if (import.meta.env.DEV) {
+      console.log('WebSocket disabled in development mode to avoid Vite conflicts');
+      return;
+    }
+
     // Clean up existing connection
     if (wsRef.current) {
       wsRef.current.close();
     }
 
+    // Use a specific WebSocket path to avoid conflicts with Vite HMR
     const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
-    const wsUrl = `${protocol}//${window.location.host}`;
+    const wsUrl = `${protocol}//${window.location.host}/ws`;
     
     try {
       wsRef.current = new WebSocket(wsUrl);
