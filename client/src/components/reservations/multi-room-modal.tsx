@@ -420,7 +420,7 @@ export default function MultiRoomModal({
     <Dialog open={isOpen} onOpenChange={onClose}>
       <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
         <DialogHeader>
-          <DialogTitle>New Multi-Room Reservation</DialogTitle>
+          <DialogTitle>Room Reservation</DialogTitle>
         </DialogHeader>
 
         <form onSubmit={handleSubmit} className="space-y-6">
@@ -509,7 +509,7 @@ export default function MultiRoomModal({
                         searchGuestByPhone(phone);
                       }, 500);
                     }}
-                    placeholder="+1 (555) 123-4567"
+                    placeholder="+9779745673009"
                     required
                   />
                   {isSearchingGuest && (

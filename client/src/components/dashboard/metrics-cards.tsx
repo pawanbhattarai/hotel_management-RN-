@@ -25,7 +25,6 @@ export default function MetricsCards() {
     {
       title: "Total Reservations",
       value: metrics?.totalReservations || 0,
-      change: "+12.5%",
       changeType: "positive" as const,
       icon: Calendar,
       iconBg: "bg-primary-50",
@@ -34,7 +33,6 @@ export default function MetricsCards() {
     {
       title: "Occupancy Rate",
       value: `${metrics?.occupancyRate || 0}%`,
-      change: "+5.2%",
       changeType: "positive" as const,
       icon: Bed,
       iconBg: "bg-success-50",
@@ -42,8 +40,7 @@ export default function MetricsCards() {
     },
     {
       title: "Revenue Today",
-      value: `Rs.${(metrics?.revenueToday || 0).toLocaleString()}`,
-      change: "-2.1%",
+      value: `Rs. ${(metrics?.revenueToday || 0).toLocaleString()}`,
       changeType: "negative" as const,
       icon: TrendingUp,
       iconBg: "bg-warning-50",
@@ -52,7 +49,6 @@ export default function MetricsCards() {
     {
       title: "Available Rooms",
       value: metrics?.availableRooms || 0,
-      change: "-8 rooms",
       changeType: "negative" as const,
       icon: DoorOpen,
       iconBg: "bg-error-50",
@@ -85,9 +81,6 @@ export default function MetricsCards() {
                     }`}
                   >
                     {metric.change}
-                  </span>
-                  <span className="text-xs text-gray-500 ml-1">
-                    vs last month
                   </span>
                 </div>
               </div>

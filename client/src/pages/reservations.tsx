@@ -22,7 +22,7 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import { Plus, Eye, Edit, Trash2 } from "lucide-react";
+import { Plus, Eye, Edit, Trash2, LogIn } from "lucide-react";
 import MultiRoomModal from "@/components/reservations/multi-room-modal";
 
 export default function Reservations() {
@@ -71,6 +71,38 @@ export default function Reservations() {
       toast({
         title: "Error",
         description: "Failed to update reservation. Please try again.",
+        variant: "destructive",
+      });
+    },
+  });
+
+  const checkInMutation = useMutation({
+    mutationFn: async (id: string) => {
+      return await apiRequest("PATCH", `/api/reservations/${id}`, { status: "checked-in" });
+    },
+    onSuccess: () => {
+      toast({
+        title: "Success",
+        description: "Guest checked in successfully!",
+      });
+      queryClient.invalidateQueries({ queryKey: ["/api/reservations"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/dashboard/metrics"] });
+    },
+    onError: (error) => {
+      if (isUnauthorizedError(error)) {
+        toast({
+          title: "Unauthorized",
+          description: "You are logged out. Logging in again...",
+          variant: "destructive",
+        });
+        setTimeout(() => {
+          window.location.href = "/api/login";
+        }, 500);
+        return;
+      }
+      toast({
+        title: "Error",
+        description: "Failed to check in guest. Please try again.",
         variant: "destructive",
       });
     },
@@ -197,6 +229,10 @@ export default function Reservations() {
     setIsDeleteDialogOpen(true);
   };
 
+  const handleCheckIn = (reservation: any) => {
+    checkInMutation.mutate(reservation.id);
+  };
+
   const handleUpdateStatus = () => {
     if (selectedReservation && newStatus) {
       updateReservationMutation.mutate({
@@ -210,6 +246,11 @@ export default function Reservations() {
     if (selectedReservation) {
       deleteReservationMutation.mutate(selectedReservation.id);
     }
+  };
+
+  // Check if reservation can be checked in
+  const canCheckIn = (reservation: any) => {
+    return reservation.status === "confirmed" || reservation.status === "pending";
   };
 
   if (isLoading) {
@@ -348,9 +389,22 @@ export default function Reservations() {
                                 variant="ghost" 
                                 size="sm"
                                 onClick={() => handleViewReservation(reservation)}
+                                title="View Details"
                               >
                                 <Eye className="h-4 w-4" />
                               </Button>
+                              {canCheckIn(reservation) && (
+                                <Button 
+                                  variant="ghost" 
+                                  size="sm"
+                                  onClick={() => handleCheckIn(reservation)}
+                                  className="text-green-600 hover:text-green-800"
+                                  disabled={checkInMutation.isPending}
+                                  title="Check In"
+                                >
+                                  <LogIn className="h-4 w-4" />
+                                </Button>
+                              )}
                               <Button 
                                 variant="ghost" 
                                 size="sm"
@@ -364,6 +418,7 @@ export default function Reservations() {
                                 size="sm"
                                 onClick={() => handleDeleteReservation(reservation)}
                                 className="text-red-600 hover:text-red-800"
+                                title="Cancel Reservation"
                               >
                                 <Trash2 className="h-4 w-4" />
                               </Button>

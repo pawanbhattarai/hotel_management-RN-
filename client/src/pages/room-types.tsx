@@ -474,7 +474,7 @@ export default function RoomTypes() {
                       <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-2">
                         <span className="text-sm font-medium">Base Price:</span>
                         <span className="text-lg font-bold text-primary">
-                          ${roomType.basePrice}/night
+                          Rs. {roomType.basePrice}/night
                         </span>
                       </div>
                       <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-2">

@@ -43,6 +43,12 @@ export default function Billing() {
     enabled: isAuthenticated,
   });
 
+  // Fetch hotel settings
+  const { data: hotelSettings } = useQuery({
+    queryKey: ["/api/hotel-settings"],
+    enabled: isAuthenticated,
+  });
+
   const checkoutMutation = useMutation({
     mutationFn: async (data: any) => {
       // Update reservation status to checked-out
@@ -136,6 +142,18 @@ export default function Billing() {
     });
   };
 
+  const formatDateTime = (date: Date, timeZone?: string) => {
+    const options: Intl.DateTimeFormatOptions = {
+      year: 'numeric',
+      month: 'long',
+      day: 'numeric',
+      hour: '2-digit',
+      minute: '2-digit',
+      timeZone: timeZone || 'Asia/Kathmandu',
+    };
+    return date.toLocaleDateString("en-US", options);
+  };
+
   const calculateNights = (checkIn: string, checkOut: string) => {
     const start = new Date(checkIn);
     const end = new Date(checkOut);
@@ -160,7 +178,7 @@ export default function Billing() {
   };
 
   const generateBillHTML = () => {
-    if (!selectedReservation) return "";
+    if (!selectedReservation || !hotelSettings) return "";
 
     const subtotal = selectedReservation.reservationRooms.reduce((sum: number, room: any) => 
       sum + parseFloat(room.totalAmount), 0
@@ -170,6 +188,26 @@ export default function Billing() {
     const tax = billData.tax || 0;
     const finalTotal = subtotal + additionalCharges - discount + tax;
     const isPaid = selectedReservation.status === 'checked-out';
+    
+    // Get currency symbol
+    const getCurrencySymbol = (currency: string) => {
+      const symbols: {[key: string]: string} = {
+        'NPR': 'Rs.',
+        'USD': '$',
+        'EUR': '€',
+        'GBP': '£',
+        'JPY': '¥',
+        'CAD': 'C$',
+        'AUD': 'A$',
+        'CHF': 'CHF',
+        'CNY': '¥',
+        'INR': '₹'
+      };
+      return symbols[currency] || currency;
+    };
+
+    const currencySymbol = getCurrencySymbol(hotelSettings.currency || 'NPR');
+    const currentDateTime = formatDateTime(new Date(), hotelSettings.timeZone);
 
     return `
       <!DOCTYPE html>
@@ -177,69 +215,241 @@ export default function Billing() {
       <head>
         <title>Hotel Bill - ${selectedReservation.confirmationNumber}</title>
         <style>
-          body { font-family: Arial, sans-serif; padding: 20px; }
-          .header { text-align: center; margin-bottom: 20px; }
-          .bill-details { margin-bottom: 20px; }
-          .table { width: 100%; border-collapse: collapse; }
-          .table th, .table td { border: 1px solid #ddd; padding: 8px; text-align: left; }
-          .table th { background-color: #f2f2f2; }
-          .total-section { margin-top: 20px; text-align: right; }
-          .total-row { font-weight: bold; font-size: 1.1em; }
+          body { 
+            font-family: Arial, sans-serif; 
+            padding: 20px; 
+            margin: 0;
+            line-height: 1.4;
+          }
+          .header { 
+            text-align: center; 
+            margin-bottom: 30px; 
+            border-bottom: 2px solid #333;
+            padding-bottom: 20px;
+          }
+          .hotel-logo {
+            max-width: 150px;
+            max-height: 80px;
+            margin-bottom: 10px;
+          }
+          .hotel-name {
+            font-size: 24px;
+            font-weight: bold;
+            color: #333;
+            margin: 10px 0;
+          }
+          .hotel-details {
+            font-size: 12px;
+            color: #666;
+            margin: 5px 0;
+          }
+          .bill-title {
+            font-size: 20px;
+            font-weight: bold;
+            margin: 20px 0 10px 0;
+            color: #333;
+          }
+          .bill-info {
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 20px;
+            padding: 15px;
+            background-color: #f8f9fa;
+            border-radius: 5px;
+          }
+          .guest-details, .bill-details {
+            flex: 1;
+          }
+          .guest-details {
+            margin-right: 20px;
+          }
+          .detail-label {
+            font-weight: bold;
+            color: #333;
+          }
+          .table { 
+            width: 100%; 
+            border-collapse: collapse; 
+            margin: 20px 0;
+          }
+          .table th, .table td { 
+            border: 1px solid #ddd; 
+            padding: 12px; 
+            text-align: left; 
+          }
+          .table th { 
+            background-color: #f2f2f2; 
+            font-weight: bold;
+          }
+          .table td {
+            font-size: 14px;
+          }
+          .amount-cell {
+            text-align: right;
+            font-family: monospace;
+          }
+          .total-section { 
+            margin-top: 20px; 
+            text-align: right;
+            border-top: 2px solid #333;
+            padding-top: 15px;
+          }
+          .total-row { 
+            font-weight: bold; 
+            font-size: 1.2em; 
+            margin: 5px 0;
+            padding: 5px 0;
+          }
+          .subtotal-row {
+            margin: 3px 0;
+            font-size: 14px;
+          }
+          .payment-status {
+            text-align: center;
+            margin: 20px 0;
+            padding: 15px;
+            border-radius: 5px;
+            font-weight: bold;
+            font-size: 16px;
+          }
+          .paid {
+            background-color: #d4edda;
+            color: #155724;
+            border: 1px solid #c3e6cb;
+          }
+          .unpaid {
+            background-color: #f8d7da;
+            color: #721c24;
+            border: 1px solid #f5c6cb;
+          }
+          .footer {
+            margin-top: 30px;
+            text-align: center;
+            font-size: 12px;
+            color: #666;
+            border-top: 1px solid #ddd;
+            padding-top: 20px;
+          }
+          .terms-section {
+            margin-top: 20px;
+            font-size: 11px;
+            color: #555;
+          }
+          .notes-section {
+            margin: 20px 0;
+            padding: 10px;
+            background-color: #f8f9fa;
+            border-left: 4px solid #007bff;
+          }
+          @media print {
+            body { padding: 10px; }
+            .no-print { display: none; }
+          }
         </style>
       </head>
       <body>
         <div class="header">
-          <h1>Hotel Bill</h1>
-          <p>Confirmation Number: ${selectedReservation.confirmationNumber}</p>
+          ${hotelSettings.logo ? `<img src="${hotelSettings.logo}" alt="Hotel Logo" class="hotel-logo">` : ''}
+          <div class="hotel-name">${hotelSettings.hotelName || 'Hotel Name'}</div>
+          ${hotelSettings.hotelChain ? `<div class="hotel-details"><strong>${hotelSettings.hotelChain}</strong></div>` : ''}
+          <div class="hotel-details">
+            ${hotelSettings.address}<br>
+            ${hotelSettings.city}, ${hotelSettings.state} ${hotelSettings.postalCode}<br>
+            ${hotelSettings.country}
+          </div>
+          <div class="hotel-details">
+            Phone: ${hotelSettings.phone} | Email: ${hotelSettings.email}
+            ${hotelSettings.website ? ` | Website: ${hotelSettings.website}` : ''}
+          </div>
+          ${hotelSettings.taxNumber ? `<div class="hotel-details">Tax Number: ${hotelSettings.taxNumber}</div>` : ''}
+          ${hotelSettings.registrationNumber ? `<div class="hotel-details">Registration: ${hotelSettings.registrationNumber}</div>` : ''}
+          
+          <div class="bill-title">HOTEL BILL / INVOICE</div>
         </div>
 
-        <div class="bill-details">
-          <p><strong>Guest:</strong> ${selectedReservation.guest.firstName} ${selectedReservation.guest.lastName}</p>
-          <p><strong>Email:</strong> ${selectedReservation.guest.email || "N/A"}</p>
-          <p><strong>Phone:</strong> ${selectedReservation.guest.phone || "N/A"}</p>
-          <p><strong>Date:</strong> ${new Date().toLocaleDateString()}</p>
+        <div class="bill-info">
+          <div class="guest-details">
+            <div><span class="detail-label">Guest Name:</span> ${selectedReservation.guest.firstName} ${selectedReservation.guest.lastName}</div>
+            <div><span class="detail-label">Email:</span> ${selectedReservation.guest.email || "N/A"}</div>
+            <div><span class="detail-label">Phone:</span> ${selectedReservation.guest.phone || "N/A"}</div>
+            ${selectedReservation.guest.address ? `<div><span class="detail-label">Address:</span> ${selectedReservation.guest.address}</div>` : ''}
+          </div>
+          <div class="bill-details">
+            <div><span class="detail-label">Confirmation Number:</span> ${selectedReservation.confirmationNumber}</div>
+            <div><span class="detail-label">Bill Date:</span> ${currentDateTime}</div>
+            <div><span class="detail-label">Payment Method:</span> ${billData.paymentMethod.toUpperCase()}</div>
+            <div><span class="detail-label">Currency:</span> ${hotelSettings.currency} (${currencySymbol})</div>
+          </div>
         </div>
 
         <table class="table">
           <thead>
             <tr>
               <th>Description</th>
-              <th>Dates</th>
-              <th>Nights</th>
-              <th>Rate/Night</th>
-              <th>Amount</th>
+              <th>Check-in</th>
+              <th>Check-out</th>
+              <th style="text-align: center;">Nights</th>
+              <th style="text-align: right;">Rate/Night</th>
+              <th style="text-align: right;">Amount</th>
             </tr>
           </thead>
           <tbody>
             ${selectedReservation.reservationRooms.map((room: any) => `
               <tr>
-                <td>Room ${room.room.number} (${room.room.roomType.name})</td>
-                <td>${formatDate(room.checkInDate)} - ${formatDate(room.checkOutDate)}</td>
-                <td>${calculateNights(room.checkInDate, room.checkOutDate)}</td>
-                <td>Rs.${parseFloat(room.ratePerNight).toFixed(2)}</td>
-                <td>Rs.${parseFloat(room.totalAmount).toFixed(2)}</td>
+                <td>
+                  <strong>Room ${room.room.number}</strong><br>
+                  <small>${room.room.roomType.name}</small>
+                </td>
+                <td>${formatDate(room.checkInDate)}</td>
+                <td>${formatDate(room.checkOutDate)}</td>
+                <td style="text-align: center;">${calculateNights(room.checkInDate, room.checkOutDate)}</td>
+                <td class="amount-cell">${currencySymbol}${parseFloat(room.ratePerNight).toFixed(2)}</td>
+                <td class="amount-cell">${currencySymbol}${parseFloat(room.totalAmount).toFixed(2)}</td>
               </tr>
             `).join('')}
           </tbody>
         </table>
 
         <div class="total-section">
-          <p>Subtotal: Rs.${subtotal.toFixed(2)}</p>
-          ${additionalCharges > 0 ? `<p>Additional Charges: Rs.${additionalCharges.toFixed(2)}</p>` : ''}
-          ${discount > 0 ? `<p>Discount: -Rs.${discount.toFixed(2)}</p>` : ''}
-          ${tax > 0 ? `<p>Tax: Rs.${tax.toFixed(2)}</p>` : ''}
-          <p class="total-row">Total: Rs.${finalTotal.toFixed(2)}</p>
-          <p><strong>Payment Method:</strong> ${billData.paymentMethod.toUpperCase()}</p>
-          <p style="color: ${isPaid ? 'green' : 'red'}; font-weight: bold; font-size: 1.2em;">
-            Payment Status: ${isPaid ? 'PAID' : 'NOT PAID'}
-          </p>
+          <div class="subtotal-row">Room Subtotal: ${currencySymbol}${subtotal.toFixed(2)}</div>
+          ${additionalCharges > 0 ? `<div class="subtotal-row">Additional Charges: ${currencySymbol}${additionalCharges.toFixed(2)}</div>` : ''}
+          ${discount > 0 ? `<div class="subtotal-row">Discount: -${currencySymbol}${discount.toFixed(2)}</div>` : ''}
+          ${tax > 0 ? `<div class="subtotal-row">Tax: ${currencySymbol}${tax.toFixed(2)}</div>` : ''}
+          <div class="total-row">
+            <strong>TOTAL AMOUNT: ${currencySymbol}${finalTotal.toFixed(2)}</strong>
+          </div>
         </div>
 
-        ${billData.notes ? `<div><p><strong>Notes:</strong> ${billData.notes}</p></div>` : ''}
-
-        <div style="margin-top: 30px; text-align: center;">
-          <p>Thank you for staying with us!</p>
+        <div class="payment-status ${isPaid ? 'paid' : 'unpaid'}">
+          PAYMENT STATUS: ${isPaid ? 'PAID IN FULL' : 'PAYMENT PENDING'}
         </div>
+
+        ${billData.notes ? `
+          <div class="notes-section">
+            <strong>Notes:</strong><br>
+            ${billData.notes}
+          </div>
+        ` : ''}
+
+        ${hotelSettings.billingFooter ? `
+          <div class="footer">
+            ${hotelSettings.billingFooter}
+          </div>
+        ` : ''}
+
+        ${hotelSettings.termsAndConditions ? `
+          <div class="terms-section">
+            <strong>Terms and Conditions:</strong><br>
+            <small>${hotelSettings.termsAndConditions}</small>
+          </div>
+        ` : ''}
+
+        ${hotelSettings.cancellationPolicy ? `
+          <div class="terms-section">
+            <strong>Cancellation Policy:</strong><br>
+            <small>${hotelSettings.cancellationPolicy}</small>
+          </div>
+        ` : ''}
       </body>
       </html>
     `;
@@ -273,6 +483,25 @@ export default function Billing() {
       reservation.confirmationNumber.toLowerCase().includes(searchLower)
     );
   });
+
+  // Get currency symbol for display
+  const getCurrencySymbol = (currency: string) => {
+    const symbols: {[key: string]: string} = {
+      'NPR': 'Rs.',
+      'USD': '$',
+      'EUR': '€',
+      'GBP': '£',
+      'JPY': '¥',
+      'CAD': 'C$',
+      'AUD': 'A$',
+      'CHF': 'CHF',
+      'CNY': '¥',
+      'INR': '₹'
+    };
+    return symbols[currency] || currency;
+  };
+
+  const currencySymbol = hotelSettings ? getCurrencySymbol(hotelSettings.currency || 'NPR') : 'Rs.';
 
   if (isLoading) {
     return (
@@ -387,7 +616,7 @@ export default function Billing() {
                             {getStatusBadge(reservation.status)}
                           </TableCell>
                           <TableCell className="font-medium">
-                            Rs.{parseFloat(reservation.totalAmount).toFixed(2)}
+                            {currencySymbol}{parseFloat(reservation.totalAmount).toFixed(2)}
                           </TableCell>
                           <TableCell>
                             <div className="flex space-x-2">
@@ -460,8 +689,8 @@ export default function Billing() {
                         <TableCell>{room.room.number} ({room.room.roomType.name})</TableCell>
                         <TableCell>{formatDate(room.checkInDate)} - {formatDate(room.checkOutDate)}</TableCell>
                         <TableCell>{calculateNights(room.checkInDate, room.checkOutDate)}</TableCell>
-                        <TableCell>Rs.{parseFloat(room.ratePerNight).toFixed(2)}</TableCell>
-                        <TableCell>Rs.{parseFloat(room.totalAmount).toFixed(2)}</TableCell>
+                        <TableCell>{currencySymbol}{parseFloat(room.ratePerNight).toFixed(2)}</TableCell>
+                        <TableCell>{currencySymbol}{parseFloat(room.totalAmount).toFixed(2)}</TableCell>
                       </TableRow>
                     ))}
                   </TableBody>
@@ -510,7 +739,7 @@ export default function Billing() {
                   >
                     <option value="cash">Cash</option>
                     <option value="card">Card</option>
-                    <option value="upi">UPI</option>
+                    <option value="esawa">eSawa</option>
                     <option value="bank-transfer">Bank Transfer</option>
                   </select>
                 </div>
