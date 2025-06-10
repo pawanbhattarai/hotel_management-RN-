@@ -71,21 +71,25 @@ app.use((req, res, next) => {
     log(`serving on port ${port}`);
   });
 
-  // Initialize WebSocket server
-  wsManager.init(server);
+  // Only initialize WebSocket server in production
+  if (app.get("env") !== "development") {
+    wsManager.init(server);
+    
+    // Graceful shutdown
+    process.on('SIGTERM', () => {
+      console.log('Received SIGTERM, shutting down gracefully...');
+      wsManager.close();
+      process.exit(0);
+    });
 
-  // Graceful shutdown
-  process.on('SIGTERM', () => {
-    console.log('Received SIGTERM, shutting down gracefully...');
-    wsManager.close();
-    process.exit(0);
-  });
-
-  process.on('SIGINT', () => {
-    console.log('Received SIGINT, shutting down gracefully...');
-    wsManager.close();
-    process.exit(0);
-  });
+    process.on('SIGINT', () => {
+      console.log('Received SIGINT, shutting down gracefully...');
+      wsManager.close();
+      process.exit(0);
+    });
+  } else {
+    console.log('WebSocket server disabled in development mode');
+  }
 
   // Seed default users if none exist
   await seedDefaultUsers();

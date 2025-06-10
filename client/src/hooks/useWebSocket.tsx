@@ -15,6 +15,7 @@ export function useWebSocket(user: any) {
     // Don't connect in development mode to avoid conflicts with Vite HMR
     if (import.meta.env.DEV) {
       console.log('WebSocket disabled in development mode to avoid Vite conflicts');
+      // In development, we'll use polling for real-time updates instead
       return;
     }
 

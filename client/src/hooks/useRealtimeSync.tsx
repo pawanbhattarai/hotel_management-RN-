@@ -43,17 +43,20 @@ export function useRealtimeSync(user: any) {
     if (intervalRef.current) {
       clearInterval(intervalRef.current);
     }
-    
+
     // Invalidate all queries immediately
     queryClient.invalidateQueries();
-    
+
     // Show success notification
     toast({
       title: "Data Synchronized",
       description: "All data has been updated with the latest information.",
     });
 
-    // Restart the interval
+    // Start periodic sync for critical data
+    // Use more frequent polling in development since WebSocket is disabled
+    const pollInterval = import.meta.env.DEV ? 5000 : 30000; // 5s in dev, 30s in prod
+
     intervalRef.current = setInterval(() => {
       queryClient.invalidateQueries({ queryKey: ['/api/dashboard/metrics'] });
       queryClient.invalidateQueries({ queryKey: ['/api/dashboard/super-admin-metrics'] });
@@ -65,7 +68,7 @@ export function useRealtimeSync(user: any) {
       queryClient.invalidateQueries({ queryKey: ['/api/analytics/guests'] });
       queryClient.invalidateQueries({ queryKey: ['/api/analytics/rooms'] });
       queryClient.invalidateQueries({ queryKey: ['/api/analytics/operations'] });
-    }, 30000);
+    }, pollInterval);
   };
 
   return { syncNow };
