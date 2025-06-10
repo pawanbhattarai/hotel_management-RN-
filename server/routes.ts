@@ -34,7 +34,7 @@ function checkBranchPermissions(
   return false;
 }
 
-export async function registerRoutes(app: Express): Promise<Server> {
+export async function registerRoutes(app: Express, server?: Server): Promise<Server> {
   // Import session with ES6 syntax
   const session = (await import('express-session')).default;
 
@@ -1225,6 +1225,5 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  const httpServer = createServer(app);
-  return httpServer;
+  return server || createServer(app);
 }
