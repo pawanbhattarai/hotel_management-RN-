@@ -80,12 +80,12 @@ export default function Analytics() {
               <div>
                 <p className="text-sm font-medium text-gray-600">Total Revenue</p>
                 <p className="text-3xl font-bold text-gray-900">
-                  NPR {revenueData?.totalRevenue?.toLocaleString() || '0'}
+                  NPR {(revenueData as any)?.totalRevenue?.toLocaleString() || '0'}
                 </p>
                 <div className="flex items-center mt-2">
-                  <TrendingUp className={`h-4 w-4 ${revenueData?.revenueGrowth >= 0 ? 'text-green-600' : 'text-red-600'}`} />
-                  <span className={`text-sm font-medium ml-1 ${revenueData?.revenueGrowth >= 0 ? 'text-green-600' : 'text-red-600'}`}>
-                    {revenueData?.revenueGrowth?.toFixed(1)}% vs last month
+                  <TrendingUp className={`h-4 w-4 ${(revenueData as any)?.revenueGrowth >= 0 ? 'text-green-600' : 'text-red-600'}`} />
+                  <span className={`text-sm font-medium ml-1 ${(revenueData as any)?.revenueGrowth >= 0 ? 'text-green-600' : 'text-red-600'}`}>
+                    {(revenueData as any)?.revenueGrowth?.toFixed(1)}% vs last month
                   </span>
                 </div>
               </div>
@@ -102,12 +102,12 @@ export default function Analytics() {
               <div>
                 <p className="text-sm font-medium text-gray-600">Average Occupancy</p>
                 <p className="text-3xl font-bold text-gray-900">
-                  {occupancyData?.averageOccupancy?.toFixed(1)}%
+                  {(occupancyData as any)?.averageOccupancy?.toFixed(1) || '0'}%
                 </p>
                 <div className="flex items-center mt-2">
                   <BedDouble className="h-4 w-4 text-green-600" />
                   <span className="text-sm font-medium text-gray-500 ml-1">
-                    {occupancyData?.dailyOccupancy?.length} days tracked
+                    {(occupancyData as any)?.dailyOccupancy?.length || 0} days tracked
                   </span>
                 </div>
               </div>
@@ -124,12 +124,12 @@ export default function Analytics() {
               <div>
                 <p className="text-sm font-medium text-gray-600">Total Guests</p>
                 <p className="text-3xl font-bold text-gray-900">
-                  {guestData?.totalGuests?.toLocaleString() || '0'}
+                  {(guestData as any)?.totalGuests?.toLocaleString() || '0'}
                 </p>
                 <div className="flex items-center mt-2">
                   <Users className="h-4 w-4 text-blue-600" />
                   <span className="text-sm font-medium text-gray-500 ml-1">
-                    {guestData?.newGuestsThisMonth} new this month
+                    {(guestData as any)?.newGuestsThisMonth || 0} new this month
                   </span>
                 </div>
               </div>
@@ -146,7 +146,7 @@ export default function Analytics() {
               <div>
                 <p className="text-sm font-medium text-gray-600">Avg Booking Value</p>
                 <p className="text-3xl font-bold text-gray-900">
-                  NPR {revenueData?.averageBookingValue?.toLocaleString() || '0'}
+                  NPR {(revenueData as any)?.averageBookingValue?.toLocaleString() || '0'}
                 </p>
                 <div className="flex items-center mt-2">
                   <Star className="h-4 w-4 text-yellow-600" />
@@ -180,7 +180,7 @@ export default function Analytics() {
               </CardHeader>
               <CardContent>
                 <ResponsiveContainer width="100%" height={300}>
-                  <AreaChart data={revenueData?.dailyRevenue || []}>
+                  <AreaChart data={(revenueData as any)?.dailyRevenue || []}>
                     <CartesianGrid strokeDasharray="3 3" />
                     <XAxis dataKey="date" />
                     <YAxis />
@@ -197,7 +197,7 @@ export default function Analytics() {
               </CardHeader>
               <CardContent>
                 <ResponsiveContainer width="100%" height={300}>
-                  <BarChart data={revenueData?.monthlyRevenue || []}>
+                  <BarChart data={(revenueData as any)?.monthlyRevenue || []}>
                     <CartesianGrid strokeDasharray="3 3" />
                     <XAxis dataKey="month" />
                     <YAxis />
@@ -218,7 +218,7 @@ export default function Analytics() {
               </CardHeader>
               <CardContent>
                 <ResponsiveContainer width="100%" height={300}>
-                  <LineChart data={occupancyData?.dailyOccupancy || []}>
+                  <LineChart data={(occupancyData as any)?.dailyOccupancy || []}>
                     <CartesianGrid strokeDasharray="3 3" />
                     <XAxis dataKey="date" />
                     <YAxis />
