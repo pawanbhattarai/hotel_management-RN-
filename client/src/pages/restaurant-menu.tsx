@@ -236,11 +236,41 @@ export default function RestaurantMenu() {
   if (categoriesLoading || dishesLoading) return <div>Loading menu...</div>;
 
   return (
-    <div className="flex min-h-screen bg-gray-50">
+    <div className="min-h-screen bg-gray-50">
       <Sidebar />
-      <div className="flex-1 lg:ml-64">
-        <Header />
-        <main className="p-3 sm:p-4 lg:p-6 xl:p-8 main-content">
+      <div className="main-content">
+        <Header
+          title="Restaurant Menu"
+          subtitle="Manage your restaurant menu categories and dishes"
+          action={
+            <div className="flex space-x-2">
+              <Button
+                variant="outline"
+                onClick={() => {
+                  setEditingItem(null);
+                  setActiveTab("categories");
+                  setIsCategoryDialogOpen(true);
+                }}
+                className="button-responsive"
+              >
+                <Plus className="mr-2 h-4 w-4" />
+                Add Category
+              </Button>
+              <Button
+                onClick={() => {
+                  setEditingItem(null);
+                  setActiveTab("dishes");
+                  setIsDishDialogOpen(true);
+                }}
+                className="button-responsive"
+              >
+                <Plus className="mr-2 h-4 w-4" />
+                Add Dish
+              </Button>
+            </div>
+          }
+        />
+        <main className="content-wrapper">
           <div className="max-w-7xl mx-auto space-y-3 sm:space-y-4 lg:space-y-6">
             <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
               <h1 className="text-2xl lg:text-3xl font-bold">Restaurant Menu</h1>

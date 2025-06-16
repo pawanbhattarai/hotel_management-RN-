@@ -148,22 +148,22 @@ export default function RestaurantBilling() {
   if (isLoading) return <div>Loading bills...</div>;
 
   return (
-    <div className="flex min-h-screen bg-gray-50">
+    <div className="min-h-screen bg-gray-50">
       <Sidebar />
-      <div className="lg:ml-64">
+      <div className="main-content">
         <Header
           title="Restaurant Billing"
           subtitle="Manage restaurant bills and payments"
           action={
             <Button onClick={() => setIsDialogOpen(true)} className="button-responsive">
               <Plus className="mr-2 h-4 w-4" />
-              Generate Bill
+              New Bill
             </Button>
           }
         />
-        <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+        <main className="content-wrapper">
           <div className="space-y-6">
-          
+
             <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
               <h1 className="text-2xl lg:text-3xl font-bold">Restaurant Billing</h1>
               <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>

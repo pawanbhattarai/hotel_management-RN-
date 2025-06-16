@@ -60,18 +60,18 @@ export default function Dashboard() {
   const isSuperAdmin = (user as any)?.role === "superadmin";
 
   return (
-    <div className="flex h-screen bg-gray-50">
+    <div className="min-h-screen bg-gray-50">
       <Sidebar 
         isMobileMenuOpen={isMobileSidebarOpen}
         setIsMobileMenuOpen={setIsMobileSidebarOpen}
       />
-      <div className="flex-1 flex flex-col overflow-hidden">
-        <Header
+      <div className="main-content">
+        <Header 
           title="Dashboard"
           subtitle={isSuperAdmin ? "Super Admin - All Branches Overview" : "Overview of hotel operations"}
           onMobileMenuToggle={() => setIsMobileSidebarOpen(!isMobileSidebarOpen)}
         />
-        <main className="flex-1 overflow-y-auto p-4 lg:p-6">
+        <main className="content-wrapper">
           {/* Super Admin Global Overview */}
           {isSuperAdmin && superAdminMetrics && (
             <div className="mb-6">

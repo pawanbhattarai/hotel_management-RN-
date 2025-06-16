@@ -134,7 +134,7 @@ export default function RestaurantTables() {
   return (
     <div className="min-h-screen bg-gray-50">
       <Sidebar />
-      <div className="lg:ml-64">
+      <div className="main-content">
         <Header
           title="Restaurant Tables"
           subtitle="Manage your restaurant tables and seating arrangements"
@@ -145,7 +145,7 @@ export default function RestaurantTables() {
             </Button>
           }
         />
-        <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+        <main className="content-wrapper">
           <div className="space-y-6">
               <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
                 <h1 className="text-2xl lg:text-3xl font-bold">Restaurant Tables</h1>

@@ -21,9 +21,9 @@ export default function Header({ title, subtitle, action, onMobileMenuToggle }: 
   });
 
   return (
-    <header className="bg-white border-b border-gray-200 px-3 sm:px-6 py-3 sm:py-4 lg:ml-0 ml-0">
+    <header className="bg-white border-b border-gray-200 px-3 sm:px-6 py-3 sm:py-4 sticky top-0 z-10">
       <div className="flex items-center justify-between">
-        <div className="min-w-0 flex-1 lg:ml-0 ml-12">
+        <div className="min-w-0 flex-1">
           <h2 className="text-lg sm:text-2xl font-bold text-gray-900 truncate">{title}</h2>
           <p className="text-sm sm:text-base text-gray-600 truncate">{subtitle}</p>
         </div>
