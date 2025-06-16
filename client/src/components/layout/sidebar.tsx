@@ -5,6 +5,7 @@ import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Separator } from "@/components/ui/separator";
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import { 
   BarChart3, 
   Calendar, 
@@ -39,7 +40,10 @@ export default function Sidebar({ isMobileMenuOpen = false, setIsMobileMenuOpen 
   const { user } = useAuth();
   const [location, navigate] = useLocation();
   const [internalMobileMenuOpen, setInternalMobileMenuOpen] = useState(false);
-  const [isRestaurantExpanded, setIsRestaurantExpanded] = useState(false);
+  const [isPMSExpanded, setIsPMSExpanded] = useState(true);
+  const [isSetupExpanded, setIsSetupExpanded] = useState(false);
+  const [isRMSExpanded, setIsRMSExpanded] = useState(false);
+  const [isMenuExpanded, setIsMenuExpanded] = useState(false);
 
   // Use props if provided, otherwise use internal state
   const isMenuOpen = setIsMobileMenuOpen ? isMobileMenuOpen : internalMobileMenuOpen;
@@ -250,11 +254,18 @@ export default function Sidebar({ isMobileMenuOpen = false, setIsMobileMenuOpen 
         <ScrollArea className="flex-1 h-0">
           <nav className="p-3 lg:p-4 space-y-1">
             {/* PMS Section */}
-            <div className="space-y-1">
-              <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-2 px-3">
-                PMS
-              </p>
-              <div className="space-y-1">
+            <Collapsible open={isPMSExpanded} onOpenChange={setIsPMSExpanded}>
+              <CollapsibleTrigger className="w-full flex items-center justify-between px-3 py-2 text-left hover:bg-gray-100 rounded-lg">
+                <span className="text-xs font-semibold text-gray-500 uppercase tracking-wide">
+                  PMS
+                </span>
+                {isPMSExpanded ? (
+                  <ChevronDown className="h-4 w-4 text-gray-500" />
+                ) : (
+                  <ChevronRight className="h-4 w-4 text-gray-500" />
+                )}
+              </CollapsibleTrigger>
+              <CollapsibleContent className="space-y-1 mt-2">
                 {/* Dashboard */}
                 {hasAccess(["superadmin", "branch-admin", "front-desk"]) && (
                   <button
@@ -262,7 +273,7 @@ export default function Sidebar({ isMobileMenuOpen = false, setIsMobileMenuOpen 
                       navigate("/");
                       setMenuOpen(false);
                     }}
-                    className={`w-full flex items-center px-3 py-2 lg:py-2.5 text-left rounded-lg transition-colors ${
+                    className={`w-full flex items-center px-3 py-2 lg:py-2.5 text-left rounded-lg transition-colors ml-4 ${
                       isActiveRoute("/")
                         ? "bg-primary text-white"
                         : "text-gray-700 hover:bg-gray-100"
@@ -280,7 +291,7 @@ export default function Sidebar({ isMobileMenuOpen = false, setIsMobileMenuOpen 
                       navigate("/reservations");
                       setMenuOpen(false);
                     }}
-                    className={`w-full flex items-center px-3 py-2 lg:py-2.5 text-left rounded-lg transition-colors ${
+                    className={`w-full flex items-center px-3 py-2 lg:py-2.5 text-left rounded-lg transition-colors ml-4 ${
                       isActiveRoute("/reservations")
                         ? "bg-primary text-white"
                         : "text-gray-700 hover:bg-gray-100"
@@ -298,7 +309,7 @@ export default function Sidebar({ isMobileMenuOpen = false, setIsMobileMenuOpen 
                       navigate("/rooms");
                       setMenuOpen(false);
                     }}
-                    className={`w-full flex items-center px-3 py-2 lg:py-2.5 text-left rounded-lg transition-colors ${
+                    className={`w-full flex items-center px-3 py-2 lg:py-2.5 text-left rounded-lg transition-colors ml-4 ${
                       isActiveRoute("/rooms")
                         ? "bg-primary text-white"
                         : "text-gray-700 hover:bg-gray-100"
@@ -316,7 +327,7 @@ export default function Sidebar({ isMobileMenuOpen = false, setIsMobileMenuOpen 
                       navigate("/guests");
                       setMenuOpen(false);
                     }}
-                    className={`w-full flex items-center px-3 py-2 lg:py-2.5 text-left rounded-lg transition-colors ${
+                    className={`w-full flex items-center px-3 py-2 lg:py-2.5 text-left rounded-lg transition-colors ml-4 ${
                       isActiveRoute("/guests")
                         ? "bg-primary text-white"
                         : "text-gray-700 hover:bg-gray-100"
@@ -334,7 +345,7 @@ export default function Sidebar({ isMobileMenuOpen = false, setIsMobileMenuOpen 
                       navigate("/billing");
                       setMenuOpen(false);
                     }}
-                    className={`w-full flex items-center px-3 py-2 lg:py-2.5 text-left rounded-lg transition-colors ${
+                    className={`w-full flex items-center px-3 py-2 lg:py-2.5 text-left rounded-lg transition-colors ml-4 ${
                       isActiveRoute("/billing")
                         ? "bg-primary text-white"
                         : "text-gray-700 hover:bg-gray-100"
@@ -347,20 +358,25 @@ export default function Sidebar({ isMobileMenuOpen = false, setIsMobileMenuOpen 
 
                 {/* Setup Section */}
                 {user && (user as any).role === "superadmin" && (
-                  <div className="mt-2">
-                    <div className="px-3 py-1">
+                  <Collapsible open={isSetupExpanded} onOpenChange={setIsSetupExpanded}>
+                    <CollapsibleTrigger className="w-full flex items-center justify-between px-3 py-2 text-left hover:bg-gray-100 rounded-lg ml-4">
                       <span className="text-xs font-semibold text-gray-500 uppercase tracking-wide">
                         Setup
                       </span>
-                    </div>
-                    <div className="ml-4 space-y-1">
+                      {isSetupExpanded ? (
+                        <ChevronDown className="h-4 w-4 text-gray-500" />
+                      ) : (
+                        <ChevronRight className="h-4 w-4 text-gray-500" />
+                      )}
+                    </CollapsibleTrigger>
+                    <CollapsibleContent className="space-y-1 mt-2">
                       {/* Room Types */}
                       <button
                         onClick={() => {
                           navigate("/room-types");
                           setMenuOpen(false);
                         }}
-                        className={`w-full flex items-center px-3 py-2 lg:py-2.5 text-left rounded-lg transition-colors ${
+                        className={`w-full flex items-center px-3 py-2 lg:py-2.5 text-left rounded-lg transition-colors ml-8 ${
                           isActiveRoute("/room-types")
                             ? "bg-primary text-white"
                             : "text-gray-700 hover:bg-gray-100"
@@ -376,7 +392,7 @@ export default function Sidebar({ isMobileMenuOpen = false, setIsMobileMenuOpen 
                           navigate("/branches");
                           setMenuOpen(false);
                         }}
-                        className={`w-full flex items-center px-3 py-2 lg:py-2.5 text-left rounded-lg transition-colors ${
+                        className={`w-full flex items-center px-3 py-2 lg:py-2.5 text-left rounded-lg transition-colors ml-8 ${
                           isActiveRoute("/branches")
                             ? "bg-primary text-white"
                             : "text-gray-700 hover:bg-gray-100"
@@ -392,7 +408,7 @@ export default function Sidebar({ isMobileMenuOpen = false, setIsMobileMenuOpen 
                           navigate("/users");
                           setMenuOpen(false);
                         }}
-                        className={`w-full flex items-center px-3 py-2 lg:py-2.5 text-left rounded-lg transition-colors ${
+                        className={`w-full flex items-center px-3 py-2 lg:py-2.5 text-left rounded-lg transition-colors ml-8 ${
                           isActiveRoute("/users")
                             ? "bg-primary text-white"
                             : "text-gray-700 hover:bg-gray-100"
@@ -401,93 +417,107 @@ export default function Sidebar({ isMobileMenuOpen = false, setIsMobileMenuOpen 
                         <UserCheck className="mr-3 h-4 w-4 flex-shrink-0" />
                         <span className="text-sm font-medium truncate">User Management</span>
                       </button>
-                    </div>
-                  </div>
+                    </CollapsibleContent>
+                  </Collapsible>
                 )}
-              </div>
-            </div>
+              </CollapsibleContent>
+            </Collapsible>
 
             {/* RMS Section */}
             {hasAccess(["superadmin", "branch-admin", "front-desk"]) && (
               <div className="border-t border-gray-200 pt-4 mt-4">
-                <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-2 px-3">
-                  RMS
-                </p>
-                <div className="space-y-1">
-                  {/* Tables */}
-                  <button
-                    onClick={() => {
-                      navigate("/restaurant/tables");
-                      setMenuOpen(false);
-                    }}
-                    className={`w-full flex items-center px-3 py-2 lg:py-2.5 text-left rounded-lg transition-colors ${
-                      isActiveRoute("/restaurant/tables")
-                        ? "bg-primary text-white"
-                        : "text-gray-700 hover:bg-gray-100"
-                    }`}
-                  >
-                    <TableProperties className="mr-3 h-4 w-4 flex-shrink-0" />
-                    <span className="text-sm font-medium truncate">Tables</span>
-                  </button>
+                <Collapsible open={isRMSExpanded} onOpenChange={setIsRMSExpanded}>
+                  <CollapsibleTrigger className="w-full flex items-center justify-between px-3 py-2 text-left hover:bg-gray-100 rounded-lg">
+                    <span className="text-xs font-semibold text-gray-500 uppercase tracking-wide">
+                      RMS
+                    </span>
+                    {isRMSExpanded ? (
+                      <ChevronDown className="h-4 w-4 text-gray-500" />
+                    ) : (
+                      <ChevronRight className="h-4 w-4 text-gray-500" />
+                    )}
+                  </CollapsibleTrigger>
+                  <CollapsibleContent className="space-y-1 mt-2">
+                    {/* Tables */}
+                    <button
+                      onClick={() => {
+                        navigate("/restaurant/tables");
+                        setMenuOpen(false);
+                      }}
+                      className={`w-full flex items-center px-3 py-2 lg:py-2.5 text-left rounded-lg transition-colors ml-4 ${
+                        isActiveRoute("/restaurant/tables")
+                          ? "bg-primary text-white"
+                          : "text-gray-700 hover:bg-gray-100"
+                      }`}
+                    >
+                      <TableProperties className="mr-3 h-4 w-4 flex-shrink-0" />
+                      <span className="text-sm font-medium truncate">Tables</span>
+                    </button>
 
-                  {/* Menu Section */}
-                  <div className="mt-2">
-                    <div className="px-3 py-1">
-                      <span className="text-xs font-semibold text-gray-500 uppercase tracking-wide">
-                        Menu
-                      </span>
-                    </div>
-                    <div className="ml-4 space-y-1">
-                      {/* Category */}
-                      <button
-                        onClick={() => {
-                          navigate("/restaurant/menu");
-                          setMenuOpen(false);
-                        }}
-                        className={`w-full flex items-center px-3 py-2 lg:py-2.5 text-left rounded-lg transition-colors ${
-                          isActiveRoute("/restaurant/menu")
-                            ? "bg-primary text-white"
-                            : "text-gray-700 hover:bg-gray-100"
-                        }`}
-                      >
-                        <Menu className="mr-3 h-4 w-4 flex-shrink-0" />
-                        <span className="text-sm font-medium truncate">Category & Dishes</span>
-                      </button>
-                    </div>
-                  </div>
+                    {/* Menu Section */}
+                    <Collapsible open={isMenuExpanded} onOpenChange={setIsMenuExpanded}>
+                      <CollapsibleTrigger className="w-full flex items-center justify-between px-3 py-2 text-left hover:bg-gray-100 rounded-lg ml-4">
+                        <span className="text-xs font-semibold text-gray-500 uppercase tracking-wide">
+                          Menu
+                        </span>
+                        {isMenuExpanded ? (
+                          <ChevronDown className="h-4 w-4 text-gray-500" />
+                        ) : (
+                          <ChevronRight className="h-4 w-4 text-gray-500" />
+                        )}
+                      </CollapsibleTrigger>
+                      <CollapsibleContent className="space-y-1 mt-2">
+                        {/* Category & Dishes */}
+                        <button
+                          onClick={() => {
+                            navigate("/restaurant/menu");
+                            setMenuOpen(false);
+                          }}
+                          className={`w-full flex items-center px-3 py-2 lg:py-2.5 text-left rounded-lg transition-colors ml-8 ${
+                            isActiveRoute("/restaurant/menu")
+                              ? "bg-primary text-white"
+                              : "text-gray-700 hover:bg-gray-100"
+                          }`}
+                        >
+                          <Menu className="mr-3 h-4 w-4 flex-shrink-0" />
+                          <span className="text-sm font-medium truncate">Category & Dishes</span>
+                        </button>
+                      </CollapsibleContent>
+                    </Collapsible>
 
-                  {/* Orders */}
-                  <button
-                    onClick={() => {
-                      navigate("/restaurant/orders");
-                      setMenuOpen(false);
-                    }}
-                    className={`w-full flex items-center px-3 py-2 lg:py-2.5 text-left rounded-lg transition-colors ${
-                      isActiveRoute("/restaurant/orders")
-                        ? "bg-primary text-white"
-                        : "text-gray-700 hover:bg-gray-100"
-                    }`}
-                  >
-                    <ShoppingCart className="mr-3 h-4 w-4 flex-shrink-0" />
-                    <span className="text-sm font-medium truncate">Orders</span>
-                  </button>
+                    {/* Orders */}
+                    <button
+                      onClick={() => {
+                        navigate("/restaurant/orders");
+                        setMenuOpen(false);
+                      }}
+                      className={`w-full flex items-center px-3 py-2 lg:py-2.5 text-left rounded-lg transition-colors ml-4 ${
+                        isActiveRoute("/restaurant/orders")
+                          ? "bg-primary text-white"
+                          : "text-gray-700 hover:bg-gray-100"
+                      }`}
+                    >
+                      <ShoppingCart className="mr-3 h-4 w-4 flex-shrink-0" />
+                      <span className="text-sm font-medium truncate">Orders</span>
+                    </button>
 
-                  {/* Billing */}
-                  <button
-                    onClick={() => {
-                      navigate("/restaurant/billing");
-                      setMenuOpen(false);
-                    }}
-                    className={`w-full flex items-center px-3 py-2 lg:py-2.5 text-left rounded-lg transition-colors ${
-                      isActiveRoute("/restaurant/billing")
-                        ? "bg-primary text-white"
-                        : "text-gray-700 hover:bg-gray-100"
-                    }`}
-                  >
-                    <Receipt className="mr-3 h-4 w-4 flex-shrink-0" />
-                    <span className="text-sm font-medium truncate">Billing</span>
-                  </button>
-                </div>
+                    {/* Billing */}
+                    <button
+                      onClick={() => {
+                        navigate("/restaurant/billing");
+                        setMenuOpen(false);
+                      }}
+                      className={`w-full flex items-center px-3 py-2 lg:py-2.5 text-left rounded-lg transition-colors ml-4 ${
+                        isActiveRoute("/restaurant/billing")
+                          ? "bg-primary text-white"
+                          : "text-gray-700 hover:bg-gray-100"
+                      }`}
+                    >
+                      <Receipt className="mr-3 h-4 w-4 flex-shrink-0" />
+                      <span className="text-sm font-medium truncate">Billing</span>
+                    </button>
+                  </CollapsibleContent>
+                </Collapsible>
               </div>
             )}
 
