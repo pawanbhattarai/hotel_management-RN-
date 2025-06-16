@@ -211,6 +211,51 @@ body {
     color: rgb(250, 250, 250);
   }
 
+  /* Responsive grid utilities */
+  .grid-responsive {
+    @apply grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4;
+  }
+
+  .grid-responsive-cards {
+    @apply grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 lg:gap-6;
+  }
+
+  .flex-responsive {
+    @apply flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4;
+  }
+
+  .dialog-responsive {
+    @apply w-[95vw] max-w-md mx-auto;
+  }
+
+  .dialog-responsive-lg {
+    @apply w-[95vw] max-w-2xl mx-auto max-h-[90vh] overflow-y-auto;
+  }
+
+  .button-responsive {
+    @apply w-full sm:w-auto;
+  }
+
+  .text-responsive-title {
+    @apply text-2xl lg:text-3xl font-bold;
+  }
+
+  .text-responsive-subtitle {
+    @apply text-lg lg:text-xl font-semibold;
+  }
+
+  .card-title-responsive {
+    @apply text-base lg:text-lg truncate;
+  }
+
+  .padding-responsive {
+    @apply p-4 lg:p-6 xl:p-8;
+  }
+
+  .space-responsive {
+    @apply space-y-4 lg:space-y-6;
+  }
+
   .line-clamp-2 {
     overflow: hidden;
     display: -webkit-box;
