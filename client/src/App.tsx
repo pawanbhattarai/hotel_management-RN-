@@ -18,6 +18,10 @@ import Billing from "@/pages/billing";
 import Profile from "@/pages/profile";
 import Settings from "@/pages/settings";
 import Analytics from "@/pages/analytics";
+import RestaurantTables from "@/pages/restaurant-tables";
+import RestaurantMenu from "@/pages/restaurant-menu";
+import RestaurantOrders from "@/pages/restaurant-orders";
+import RestaurantBilling from "@/pages/restaurant-billing";
 
 function Router() {
   const { isAuthenticated, isLoading, user } = useAuth();
@@ -40,6 +44,10 @@ function Router() {
           <Route path="/billing" component={Billing} />
           <Route path="/profile" component={Profile} />
           <Route path="/settings" component={Settings} />
+          <Route path="/restaurant/tables" component={RestaurantTables} />
+          <Route path="/restaurant/menu" component={RestaurantMenu} />
+          <Route path="/restaurant/orders" component={RestaurantOrders} />
+          <Route path="/restaurant/billing" component={RestaurantBilling} />
         </>
       )}
       <Route component={NotFound} />

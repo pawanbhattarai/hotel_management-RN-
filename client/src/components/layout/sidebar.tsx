@@ -21,7 +21,12 @@ import {
   X,
   ChevronDown,
   ChevronRight,
-  Hotel
+  Hotel,
+  UtensilsCrossed,
+  TableProperties,
+  Menu,
+  ShoppingCart,
+  Receipt
 } from "lucide-react";
 import { NotificationManager } from "@/components/NotificationManager";
 
@@ -34,6 +39,7 @@ export default function Sidebar({ isMobileMenuOpen = false, setIsMobileMenuOpen 
   const { user } = useAuth();
   const [location, navigate] = useLocation();
   const [internalMobileMenuOpen, setInternalMobileMenuOpen] = useState(false);
+  const [isRestaurantExpanded, setIsRestaurantExpanded] = useState(false);
 
   // Use props if provided, otherwise use internal state
   const isMenuOpen = setIsMobileMenuOpen ? isMobileMenuOpen : internalMobileMenuOpen;
@@ -112,6 +118,33 @@ export default function Sidebar({ isMobileMenuOpen = false, setIsMobileMenuOpen 
       icon: TrendingUp,
       path: "/analytics",
       roles: ["superadmin"],
+    },
+  ];
+
+  const restaurantMenuItems = [
+    {
+      title: "Tables",
+      icon: TableProperties,
+      path: "/restaurant/tables",
+      roles: ["superadmin", "branch-admin", "front-desk"],
+    },
+    {
+      title: "Menu",
+      icon: Menu,
+      path: "/restaurant/menu",
+      roles: ["superadmin", "branch-admin", "front-desk"],
+    },
+    {
+      title: "Orders",
+      icon: ShoppingCart,
+      path: "/restaurant/orders",
+      roles: ["superadmin", "branch-admin", "front-desk"],
+    },
+    {
+      title: "Billing",
+      icon: Receipt,
+      path: "/restaurant/billing",
+      roles: ["superadmin", "branch-admin", "front-desk"],
     },
   ];
 
