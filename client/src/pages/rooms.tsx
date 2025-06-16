@@ -202,12 +202,12 @@ export default function Rooms() {
   }
 
   return (
-    <div className="flex h-screen bg-gray-50">
+    <div className="min-h-screen bg-gray-50">
       <Sidebar
         isMobileMenuOpen={isMobileSidebarOpen}
         setIsMobileMenuOpen={setIsMobileSidebarOpen}
       />
-      <div className="flex-1 flex flex-col overflow-hidden">
+      <div className="main-content">
         <Header
           title="Room Management"
           subtitle="Monitor room status"
@@ -215,7 +215,7 @@ export default function Rooms() {
             setIsMobileSidebarOpen(!isMobileSidebarOpen)
           }
         />
-        <main className="flex-1 overflow-y-auto p-6">
+        <main className="p-6">
           <Card>
             <CardHeader className="flex flex-row items-center justify-between">
               <CardTitle>All Rooms</CardTitle>

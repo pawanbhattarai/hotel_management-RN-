@@ -222,12 +222,12 @@ export default function Guests() {
   }
 
   return (
-    <div className="flex h-screen bg-gray-50">
+    <div className="min-h-screen bg-gray-50">
       <Sidebar
         isMobileMenuOpen={isMobileSidebarOpen}
         setIsMobileMenuOpen={setIsMobileSidebarOpen}
       />
-      <div className="flex-1 flex flex-col overflow-hidden">
+      <div className="main-content">
         <Header
           title="Guest Management"
           subtitle="Manage guest profiles and history"
@@ -235,7 +235,7 @@ export default function Guests() {
             setIsMobileSidebarOpen(!isMobileSidebarOpen)
           }
         />
-        <main className="flex-1 overflow-y-auto p-6">
+        <main className="p-6">
           {/* Add Button Section */}
           <div className="mb-6">
             <Button

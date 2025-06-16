@@ -222,11 +222,11 @@ export default function Users() {
 
   if (user && user.role !== "superadmin") {
     return (
-      <div className="flex h-screen bg-gray-50">
+      <div className="min-h-screen bg-gray-50">
         <Sidebar />
-        <div className="flex-1 flex flex-col overflow-hidden">
+        <div className="main-content">
           <Header title="User Management" subtitle="Access Denied" />
-          <main className="flex-1 overflow-y-auto p-6">
+          <main className="p-6">
             <Card>
               <CardContent className="pt-6">
                 <div className="text-center py-8">
@@ -255,12 +255,12 @@ export default function Users() {
   }
 
   return (
-    <div className="flex h-screen bg-gray-50">
+    <div className="min-h-screen bg-gray-50">
       <Sidebar
         isMobileMenuOpen={isMobileSidebarOpen}
         setIsMobileMenuOpen={setIsMobileSidebarOpen}
       />
-      <div className="flex-1 flex flex-col overflow-hidden">
+      <div className="main-content">
         <Header
           title="User Management"
           subtitle="Manage staff accounts and permissions"
@@ -268,7 +268,7 @@ export default function Users() {
             setIsMobileSidebarOpen(!isMobileSidebarOpen)
           }
         />
-        <main className="flex-1 overflow-y-auto p-6">
+        <main className="p-6">
           <Card>
             <CardHeader className="flex flex-row items-center justify-between">
               <CardTitle>All Users</CardTitle>

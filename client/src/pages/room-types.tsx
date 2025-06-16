@@ -246,15 +246,17 @@ export default function RoomTypes() {
 
   if (isLoading) {
     return (
-      <div className="flex h-screen bg-gray-50">
+      <div className="min-h-screen bg-gray-50">
         <Sidebar />
-        <div className="flex-1 p-8">
-          <div className="animate-pulse space-y-4">
-            <div className="h-8 bg-gray-200 rounded w-1/4"></div>
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-              {[1, 2, 3].map((i) => (
-                <div key={i} className="h-48 bg-gray-200 rounded-lg"></div>
-              ))}
+        <div className="main-content">
+          <div className="p-8">
+            <div className="animate-pulse space-y-4">
+              <div className="h-8 bg-gray-200 rounded w-1/4"></div>
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                {[1, 2, 3].map((i) => (
+                  <div key={i} className="h-48 bg-gray-200 rounded-lg"></div>
+                ))}
+              </div>
             </div>
           </div>
         </div>
@@ -263,14 +265,13 @@ export default function RoomTypes() {
   }
 
   return (
-    <div className="flex h-screen bg-gray-50">
+    <div className="min-h-screen bg-gray-50">
       <Sidebar
         isMobileMenuOpen={isMobileSidebarOpen}
         setIsMobileMenuOpen={setIsMobileSidebarOpen}
       />
-
-      <div className="flex-1 flex flex-col min-w-0">
-        <div className="flex-1 overflow-auto p-4 md:p-8">
+      <div className="main-content">
+        <div className="p-4 md:p-8">
           <Header
             title="Room Types"
             subtitle="Manage room categories and pricing"
