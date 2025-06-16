@@ -211,8 +211,8 @@ export default function RestaurantOrders() {
       <Sidebar />
       <div className="flex-1 lg:ml-64">
         <Header />
-        <main className="p-4 lg:p-6 xl:p-8">
-          <div className="max-w-7xl mx-auto space-y-4 lg:space-y-6">
+        <main className="p-3 sm:p-4 lg:p-6 xl:p-8 main-content">
+          <div className="max-w-7xl mx-auto space-y-3 sm:space-y-4 lg:space-y-6">
             <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
               <h1 className="text-2xl lg:text-3xl font-bold">Restaurant Orders</h1>
               <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>

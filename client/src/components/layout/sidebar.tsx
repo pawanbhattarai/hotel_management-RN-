@@ -59,10 +59,12 @@ export default function Sidebar({ isMobileMenuOpen = false, setIsMobileMenuOpen 
       // Expand menu section if on menu page
       if (currentPath === '/restaurant/menu') {
         setIsMenuExpanded(true);
+      } else {
+        setIsMenuExpanded(false);
       }
     } else if (['/room-types', '/branches', '/users'].includes(currentPath)) {
       setIsSetupExpanded(true);
-      setIsPMSExpanded(false);
+      setIsPMSExpanded(true); // Keep PMS expanded for setup items
       setIsRMSExpanded(false);
       setIsMenuExpanded(false);
     } else {
@@ -99,32 +101,35 @@ export default function Sidebar({ isMobileMenuOpen = false, setIsMobileMenuOpen 
   const SidebarContent = () => (
     <div className="flex flex-col h-full bg-white border-r border-gray-200">
       {/* Header */}
-      <div className="p-4 lg:p-6 border-b border-gray-200">
+      <div className="p-3 lg:p-4 border-b border-gray-200 flex-shrink-0">
         <div className="flex items-center justify-between">
-          <div className="flex items-center space-x-3">
-            <div className="w-8 h-8 bg-primary rounded-lg flex items-center justify-center">
-              <Building2 className="h-5 w-5 text-white" />
+          <div className="flex items-center space-x-2 lg:space-x-3">
+            <div className="w-7 h-7 lg:w-8 lg:h-8 bg-primary rounded-lg flex items-center justify-center">
+              <Building2 className="h-4 w-4 lg:h-5 lg:w-5 text-white" />
             </div>
             <div className="hidden lg:block">
-              <h1 className="text-lg font-bold text-gray-900">HotelPro</h1>
-              <p className="text-sm text-gray-500">Management System</p>
+              <h1 className="text-base lg:text-lg font-bold text-gray-900">HotelPro</h1>
+              <p className="text-xs lg:text-sm text-gray-500">Management System</p>
             </div>
           </div>
           {/* Mobile close button */}
           <Button
             variant="ghost"
             size="sm"
-            className="lg:hidden"
+            className="lg:hidden h-8 w-8 p-0"
             onClick={() => setMenuOpen(false)}
           >
-            <X className="h-5 w-5" />
+            <X className="h-4 w-4" />
           </Button>
         </div>
       </div>
 
       {/* Navigation */}
-      <ScrollArea className="flex-1 px-3 lg:px-4">
-        <nav className="py-4 space-y-2">
+      <div className="flex-1 overflow-hidden">
+        <ScrollArea className="h-full px-2 lg:px-3">
+          <nav className="py-3 space-y-1">{/* Remove extra padding */}</nav>
+        </ScrollArea>
+      </div>
           {/* PMS Section */}
           <Collapsible open={isPMSExpanded} onOpenChange={setIsPMSExpanded}>
             <CollapsibleTrigger className="w-full flex items-center justify-between px-3 py-2 text-left hover:bg-gray-100 rounded-lg">
@@ -463,20 +468,21 @@ export default function Sidebar({ isMobileMenuOpen = false, setIsMobileMenuOpen 
             </div>
           </div> */}
         </nav>
-      </ScrollArea>
+        </ScrollArea>
+      </div>
 
       {/* Footer */}
-      <div className="p-4 border-t border-gray-200">
+      <div className="p-3 lg:p-4 border-t border-gray-200 flex-shrink-0">
         <div className="flex items-center justify-between">
-          <div className="hidden lg:block">
-            <p className="text-sm font-medium text-gray-900">{user?.firstName || user?.lastName}</p>
+          <div className="hidden lg:block min-w-0 flex-1">
+            <p className="text-sm font-medium text-gray-900 truncate">{user?.firstName || user?.lastName}</p>
             <p className="text-xs text-gray-500 capitalize">{(user as any)?.role}</p>
           </div>
           <Button
             variant="ghost"
             size="sm"
             onClick={handleLogout}
-            className="text-gray-700 hover:text-red-600 hover:bg-red-50"
+            className="text-gray-700 hover:text-red-600 hover:bg-red-50 flex-shrink-0"
           >
             <LogOut className="h-4 w-4" />
             <span className="hidden lg:inline ml-2">Logout</span>
@@ -495,19 +501,19 @@ export default function Sidebar({ isMobileMenuOpen = false, setIsMobileMenuOpen 
             <Button
               variant="ghost"
               size="sm"
-              className="fixed top-4 left-4 z-50 lg:hidden"
+              className="fixed top-3 left-3 z-50 lg:hidden bg-white shadow-md border"
             >
-              <MenuIcon className="h-5 w-5" />
+              <MenuIcon className="h-4 w-4" />
             </Button>
           </SheetTrigger>
-          <SheetContent side="left" className="w-80 p-0">
+          <SheetContent side="left" className="w-72 sm:w-80 p-0 max-w-[85vw]">
             <SidebarContent />
           </SheetContent>
         </Sheet>
       </div>
 
       {/* Desktop Sidebar */}
-      <div className="hidden lg:flex lg:flex-col lg:w-64 lg:fixed lg:inset-y-0 lg:bg-white lg:border-r lg:border-gray-200">
+      <div className="hidden lg:flex lg:flex-col lg:w-64 lg:fixed lg:inset-y-0 lg:bg-white lg:border-r lg:border-gray-200 lg:z-30">
         <SidebarContent />
       </div>
     </>

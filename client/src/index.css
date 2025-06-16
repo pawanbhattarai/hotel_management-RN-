@@ -18,21 +18,54 @@
     overflow-x: auto;
     -webkit-overflow-scrolling: touch;
   }
+
+  /* Fix mobile layout spacing */
+  body {
+    padding-top: 0;
+  }
+
+  /* Ensure mobile menu button doesn't interfere */
+  .main-content {
+    padding-top: 4rem; /* Space for mobile menu button */
+  }
 }
 
 /* Ensure content doesn't get hidden behind mobile menu button */
 @media (max-width: 1024px) {
   .main-content {
     padding-left: 0;
+    min-height: 100vh;
   }
 
   .main-content.with-mobile-button {
-    padding-top: 1rem;
+    padding-top: 4rem;
   }
 
   /* Add left margin to main content on mobile to accommodate menu button */
   main {
     margin-left: 0;
+    padding-top: 3.5rem;
+  }
+
+  /* Fix mobile dialog positioning */
+  .dialog-responsive {
+    position: fixed;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    max-height: 90vh;
+    overflow-y: auto;
+  }
+}
+
+/* Desktop layout fixes */
+@media (min-width: 1024px) {
+  main {
+    padding-top: 0;
+  }
+  
+  .main-content {
+    padding-top: 0;
   }
 }
 
