@@ -249,133 +249,272 @@ export default function Sidebar({ isMobileMenuOpen = false, setIsMobileMenuOpen 
         {/* Navigation */}
         <ScrollArea className="flex-1 h-0">
           <nav className="p-3 lg:p-4 space-y-1">
-            {menuItems.map((item) => (
-              <button
-                key={item.path}
-                onClick={() => {
-                  navigate(item.path);
-                  setMenuOpen(false);
-                }}
-                className={`
-                  w-full flex items-center px-3 py-2 lg:py-2.5 text-left rounded-lg transition-colors
-                  ${
-                    isActiveRoute(item.path)
-                      ? "bg-primary text-white"
-                      : "text-gray-700 hover:bg-gray-100"
-                  }
-                `}
-              >
-                <item.icon className="mr-3 h-4 w-4 flex-shrink-0" />
-                <span className="text-sm font-medium truncate">{item.title}</span>
-              </button>
-            ))}
+            {/* PMS Section */}
+            <div className="space-y-1">
+              <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-2 px-3">
+                PMS
+              </p>
+              <div className="space-y-1">
+                {/* Dashboard */}
+                {hasAccess(["superadmin", "branch-admin", "front-desk"]) && (
+                  <button
+                    onClick={() => {
+                      navigate("/");
+                      setMenuOpen(false);
+                    }}
+                    className={`w-full flex items-center px-3 py-2 lg:py-2.5 text-left rounded-lg transition-colors ${
+                      isActiveRoute("/")
+                        ? "bg-primary text-white"
+                        : "text-gray-700 hover:bg-gray-100"
+                    }`}
+                  >
+                    <BarChart3 className="mr-3 h-4 w-4 flex-shrink-0" />
+                    <span className="text-sm font-medium truncate">Dashboard</span>
+                  </button>
+                )}
 
-              {/* Admin Section */}
-              {user && (user as any).role === "superadmin" && (
-                <div className="border-t border-gray-200 pt-4 mt-4">
-                  <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-2 px-3">
-                    ADMIN
-                  </p>
-                  <div className="space-y-1">
-                    {adminMenuItems.map((item) => {
-                      if (!hasAccess(item.roles)) return null;
-                      return (
-                        <button
-                          key={item.path}
-                          onClick={() => {
-                            navigate(item.path);
-                            setMenuOpen(false);
-                          }}
-                          className={`w-full flex items-center px-3 py-2 lg:py-2.5 text-left rounded-lg transition-colors ${
-                            isActiveRoute(item.path)
-                              ? "bg-primary text-white"
-                              : "text-gray-700 hover:bg-gray-100"
-                          }`}
-                        >
-                          <item.icon className="h-4 w-4 mr-3 flex-shrink-0" />
-                          <span className="text-sm font-medium truncate">{item.title}</span>
-                        </button>
-                      );
-                    })}
-                  </div>
-                </div>
-              )}
+                {/* Reservations */}
+                {hasAccess(["superadmin", "branch-admin", "front-desk"]) && (
+                  <button
+                    onClick={() => {
+                      navigate("/reservations");
+                      setMenuOpen(false);
+                    }}
+                    className={`w-full flex items-center px-3 py-2 lg:py-2.5 text-left rounded-lg transition-colors ${
+                      isActiveRoute("/reservations")
+                        ? "bg-primary text-white"
+                        : "text-gray-700 hover:bg-gray-100"
+                    }`}
+                  >
+                    <Calendar className="mr-3 h-4 w-4 flex-shrink-0" />
+                    <span className="text-sm font-medium truncate">Reservations</span>
+                  </button>
+                )}
 
-              {/* Restaurant Management System Section */}
-              <div className="border-t border-gray-200 pt-4 mt-4">
-                <button
-                  onClick={() => setIsRestaurantExpanded(!isRestaurantExpanded)}
-                  className="w-full flex items-center justify-between px-3 py-2 text-left rounded-lg transition-colors text-gray-700 hover:bg-gray-100"
-                >
-                  <div className="flex items-center">
-                    <UtensilsCrossed className="h-4 w-4 mr-3 flex-shrink-0" />
-                    <span className="text-xs font-semibold text-gray-500 uppercase tracking-wide">
-                      RESTAURANT
-                    </span>
-                  </div>
-                  {isRestaurantExpanded ? (
-                    <ChevronDown className="h-3 w-3" />
-                  ) : (
-                    <ChevronRight className="h-3 w-3" />
-                  )}
-                </button>
-                
-                {isRestaurantExpanded && (
-                  <div className="mt-2 space-y-1 ml-7">
-                    {restaurantMenuItems.map((item) => {
-                      if (!hasAccess(item.roles)) return null;
-                      return (
-                        <button
-                          key={item.path}
-                          onClick={() => {
-                            navigate(item.path);
-                            setMenuOpen(false);
-                          }}
-                          className={`w-full flex items-center px-3 py-2 lg:py-2.5 text-left rounded-lg transition-colors ${
-                            isActiveRoute(item.path)
-                              ? "bg-primary text-white"
-                              : "text-gray-700 hover:bg-gray-100"
-                          }`}
-                        >
-                          <item.icon className="h-4 w-4 mr-3 flex-shrink-0" />
-                          <span className="text-sm font-medium truncate">{item.title}</span>
-                        </button>
-                      );
-                    })}
+                {/* Room Management */}
+                {hasAccess(["superadmin", "branch-admin", "front-desk"]) && (
+                  <button
+                    onClick={() => {
+                      navigate("/rooms");
+                      setMenuOpen(false);
+                    }}
+                    className={`w-full flex items-center px-3 py-2 lg:py-2.5 text-left rounded-lg transition-colors ${
+                      isActiveRoute("/rooms")
+                        ? "bg-primary text-white"
+                        : "text-gray-700 hover:bg-gray-100"
+                    }`}
+                  >
+                    <Bed className="mr-3 h-4 w-4 flex-shrink-0" />
+                    <span className="text-sm font-medium truncate">Room Management</span>
+                  </button>
+                )}
+
+                {/* Guest Management */}
+                {hasAccess(["superadmin", "branch-admin", "front-desk"]) && (
+                  <button
+                    onClick={() => {
+                      navigate("/guests");
+                      setMenuOpen(false);
+                    }}
+                    className={`w-full flex items-center px-3 py-2 lg:py-2.5 text-left rounded-lg transition-colors ${
+                      isActiveRoute("/guests")
+                        ? "bg-primary text-white"
+                        : "text-gray-700 hover:bg-gray-100"
+                    }`}
+                  >
+                    <Users className="mr-3 h-4 w-4 flex-shrink-0" />
+                    <span className="text-sm font-medium truncate">Guest Management</span>
+                  </button>
+                )}
+
+                {/* Billing */}
+                {hasAccess(["superadmin", "branch-admin", "front-desk"]) && (
+                  <button
+                    onClick={() => {
+                      navigate("/billing");
+                      setMenuOpen(false);
+                    }}
+                    className={`w-full flex items-center px-3 py-2 lg:py-2.5 text-left rounded-lg transition-colors ${
+                      isActiveRoute("/billing")
+                        ? "bg-primary text-white"
+                        : "text-gray-700 hover:bg-gray-100"
+                    }`}
+                  >
+                    <CreditCard className="mr-3 h-4 w-4 flex-shrink-0" />
+                    <span className="text-sm font-medium truncate">Billing</span>
+                  </button>
+                )}
+
+                {/* Setup Section */}
+                {user && (user as any).role === "superadmin" && (
+                  <div className="mt-2">
+                    <div className="px-3 py-1">
+                      <span className="text-xs font-semibold text-gray-500 uppercase tracking-wide">
+                        Setup
+                      </span>
+                    </div>
+                    <div className="ml-4 space-y-1">
+                      {/* Room Types */}
+                      <button
+                        onClick={() => {
+                          navigate("/room-types");
+                          setMenuOpen(false);
+                        }}
+                        className={`w-full flex items-center px-3 py-2 lg:py-2.5 text-left rounded-lg transition-colors ${
+                          isActiveRoute("/room-types")
+                            ? "bg-primary text-white"
+                            : "text-gray-700 hover:bg-gray-100"
+                        }`}
+                      >
+                        <SquareStack className="mr-3 h-4 w-4 flex-shrink-0" />
+                        <span className="text-sm font-medium truncate">Room Types</span>
+                      </button>
+
+                      {/* Branch Management */}
+                      <button
+                        onClick={() => {
+                          navigate("/branches");
+                          setMenuOpen(false);
+                        }}
+                        className={`w-full flex items-center px-3 py-2 lg:py-2.5 text-left rounded-lg transition-colors ${
+                          isActiveRoute("/branches")
+                            ? "bg-primary text-white"
+                            : "text-gray-700 hover:bg-gray-100"
+                        }`}
+                      >
+                        <Building2 className="mr-3 h-4 w-4 flex-shrink-0" />
+                        <span className="text-sm font-medium truncate">Branch Management</span>
+                      </button>
+
+                      {/* User Management */}
+                      <button
+                        onClick={() => {
+                          navigate("/users");
+                          setMenuOpen(false);
+                        }}
+                        className={`w-full flex items-center px-3 py-2 lg:py-2.5 text-left rounded-lg transition-colors ${
+                          isActiveRoute("/users")
+                            ? "bg-primary text-white"
+                            : "text-gray-700 hover:bg-gray-100"
+                        }`}
+                      >
+                        <UserCheck className="mr-3 h-4 w-4 flex-shrink-0" />
+                        <span className="text-sm font-medium truncate">User Management</span>
+                      </button>
+                    </div>
                   </div>
                 )}
               </div>
+            </div>
 
-              {/* Reports Section */}
-              {user && (user as any).role === "superadmin" && (
-                <div className="border-t border-gray-200 pt-4 mt-4">
-                  <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-2 px-3">
-                    REPORTS
-                  </p>
-                  <div className="space-y-1">
-                    {reportsMenuItems.map((item) => {
-                      if (!hasAccess(item.roles)) return null;
-                      return (
-                        <button
-                          key={item.path}
-                          onClick={() => {
-                            navigate(item.path);
-                            setMenuOpen(false);
-                          }}
-                          className={`w-full flex items-center px-3 py-2 lg:py-2.5 text-left rounded-lg transition-colors ${
-                            isActiveRoute(item.path)
-                              ? "bg-primary text-white"
-                              : "text-gray-700 hover:bg-gray-100"
-                          }`}
-                        >
-                          <item.icon className="h-4 w-4 mr-3 flex-shrink-0" />
-                          <span className="text-sm font-medium truncate">{item.title}</span>
-                        </button>
-                      );
-                    })}
+            {/* RMS Section */}
+            {hasAccess(["superadmin", "branch-admin", "front-desk"]) && (
+              <div className="border-t border-gray-200 pt-4 mt-4">
+                <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-2 px-3">
+                  RMS
+                </p>
+                <div className="space-y-1">
+                  {/* Tables */}
+                  <button
+                    onClick={() => {
+                      navigate("/restaurant/tables");
+                      setMenuOpen(false);
+                    }}
+                    className={`w-full flex items-center px-3 py-2 lg:py-2.5 text-left rounded-lg transition-colors ${
+                      isActiveRoute("/restaurant/tables")
+                        ? "bg-primary text-white"
+                        : "text-gray-700 hover:bg-gray-100"
+                    }`}
+                  >
+                    <TableProperties className="mr-3 h-4 w-4 flex-shrink-0" />
+                    <span className="text-sm font-medium truncate">Tables</span>
+                  </button>
+
+                  {/* Menu Section */}
+                  <div className="mt-2">
+                    <div className="px-3 py-1">
+                      <span className="text-xs font-semibold text-gray-500 uppercase tracking-wide">
+                        Menu
+                      </span>
+                    </div>
+                    <div className="ml-4 space-y-1">
+                      {/* Category */}
+                      <button
+                        onClick={() => {
+                          navigate("/restaurant/menu");
+                          setMenuOpen(false);
+                        }}
+                        className={`w-full flex items-center px-3 py-2 lg:py-2.5 text-left rounded-lg transition-colors ${
+                          isActiveRoute("/restaurant/menu")
+                            ? "bg-primary text-white"
+                            : "text-gray-700 hover:bg-gray-100"
+                        }`}
+                      >
+                        <Menu className="mr-3 h-4 w-4 flex-shrink-0" />
+                        <span className="text-sm font-medium truncate">Category & Dishes</span>
+                      </button>
+                    </div>
                   </div>
+
+                  {/* Orders */}
+                  <button
+                    onClick={() => {
+                      navigate("/restaurant/orders");
+                      setMenuOpen(false);
+                    }}
+                    className={`w-full flex items-center px-3 py-2 lg:py-2.5 text-left rounded-lg transition-colors ${
+                      isActiveRoute("/restaurant/orders")
+                        ? "bg-primary text-white"
+                        : "text-gray-700 hover:bg-gray-100"
+                    }`}
+                  >
+                    <ShoppingCart className="mr-3 h-4 w-4 flex-shrink-0" />
+                    <span className="text-sm font-medium truncate">Orders</span>
+                  </button>
+
+                  {/* Billing */}
+                  <button
+                    onClick={() => {
+                      navigate("/restaurant/billing");
+                      setMenuOpen(false);
+                    }}
+                    className={`w-full flex items-center px-3 py-2 lg:py-2.5 text-left rounded-lg transition-colors ${
+                      isActiveRoute("/restaurant/billing")
+                        ? "bg-primary text-white"
+                        : "text-gray-700 hover:bg-gray-100"
+                    }`}
+                  >
+                    <Receipt className="mr-3 h-4 w-4 flex-shrink-0" />
+                    <span className="text-sm font-medium truncate">Billing</span>
+                  </button>
                 </div>
-              )}
+              </div>
+            )}
+
+            {/* Analytics Section */}
+            {user && (user as any).role === "superadmin" && (
+              <div className="border-t border-gray-200 pt-4 mt-4">
+                <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-2 px-3">
+                  REPORTS
+                </p>
+                <div className="space-y-1">
+                  <button
+                    onClick={() => {
+                      navigate("/analytics");
+                      setMenuOpen(false);
+                    }}
+                    className={`w-full flex items-center px-3 py-2 lg:py-2.5 text-left rounded-lg transition-colors ${
+                      isActiveRoute("/analytics")
+                        ? "bg-primary text-white"
+                        : "text-gray-700 hover:bg-gray-100"
+                    }`}
+                  >
+                    <TrendingUp className="mr-3 h-4 w-4 flex-shrink-0" />
+                    <span className="text-sm font-medium truncate">Analytics</span>
+                  </button>
+                </div>
+              </div>
+            )}
 
               {/* Notifications Section */}
               {user && ["superadmin", "branch-admin"].includes((user as any).role) && (
