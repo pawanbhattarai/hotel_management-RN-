@@ -22,6 +22,8 @@ import RestaurantTables from "@/pages/restaurant-tables";
 import RestaurantMenu from "@/pages/restaurant-menu";
 import RestaurantOrders from "@/pages/restaurant-orders";
 import RestaurantBilling from "@/pages/restaurant-billing";
+import RestaurantCategories from "@/pages/restaurant-categories";
+import RestaurantDishes from "@/pages/restaurant-dishes";
 
 function Router() {
   const { isAuthenticated, isLoading, user } = useAuth();
@@ -46,6 +48,8 @@ function Router() {
           <Route path="/settings" component={Settings} />
           <Route path="/restaurant/tables" component={RestaurantTables} />
           <Route path="/restaurant/menu" component={RestaurantMenu} />
+          <Route path="/restaurant/categories" component={RestaurantCategories} />
+          <Route path="/restaurant/dishes" component={RestaurantDishes} />
           <Route path="/restaurant/orders" component={RestaurantOrders} />
           <Route path="/restaurant/billing" component={RestaurantBilling} />
         </>
