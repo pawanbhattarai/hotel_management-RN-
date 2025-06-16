@@ -267,12 +267,12 @@ export default function Reservations() {
   }
 
   return (
-    <div className="flex h-screen bg-gray-50">
+    <div className="min-h-screen bg-gray-50">
       <Sidebar
         isMobileMenuOpen={isMobileSidebarOpen}
         setIsMobileMenuOpen={setIsMobileSidebarOpen}
       />
-      <div className="flex-1 flex flex-col overflow-hidden">
+      <div className="main-content">
         <Header
           title="Reservations"
           subtitle="Manage bookings and availability"
@@ -280,7 +280,7 @@ export default function Reservations() {
             setIsMobileSidebarOpen(!isMobileSidebarOpen)
           }
         />
-        <main className="flex-1 overflow-y-auto p-6">
+        <main className="p-6">
           {/* Add Button Section */}
           <div className="mb-6">
             <Button

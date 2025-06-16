@@ -154,13 +154,13 @@ export default function Profile() {
     : "U";
 
   return (
-    <div className="flex h-screen bg-gray-100">
+    <div className="min-h-screen bg-gray-100">
       <Sidebar 
         isMobileMenuOpen={isMobileSidebarOpen}
         setIsMobileMenuOpen={setIsMobileSidebarOpen}
       />
       
-      <div className="flex-1 flex flex-col overflow-hidden">
+      <div className="main-content">
         <Header 
           title="Profile Management" 
           subtitle="Manage your account information and preferences"
@@ -188,7 +188,7 @@ export default function Profile() {
           }
         />
         
-        <main className="flex-1 overflow-y-auto p-4 lg:p-6 space-y-6">
+        <main className="p-4 lg:p-6 space-y-6">
 
       <div className="grid gap-6 lg:grid-cols-3">
         {/* Profile Overview */}

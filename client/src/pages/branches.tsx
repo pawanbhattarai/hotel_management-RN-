@@ -150,14 +150,14 @@ export default function Branches() {
 
   if (user && user.role !== "superadmin") {
     return (
-      <div className="flex h-screen bg-gray-50">
+      <div className="min-h-screen bg-gray-50">
         <Sidebar />
-        <div className="flex-1 flex flex-col overflow-hidden">
+        <div className="main-content">
           <Header
             title="Branch Management"
             subtitle="Access Denied"
           />
-          <main className="flex-1 overflow-y-auto p-6">
+          <main className="p-6">
             <Card>
               <CardContent className="pt-6">
                 <div className="text-center py-8">
@@ -184,19 +184,18 @@ export default function Branches() {
   }
 
   return (
-    <div className="flex h-screen bg-gray-50">
-
+    <div className="min-h-screen bg-gray-50">
          <Sidebar 
                 isMobileMenuOpen={isMobileSidebarOpen}
                 setIsMobileMenuOpen={setIsMobileSidebarOpen}
               />
-              <div className="flex-1 flex flex-col overflow-hidden">
+              <div className="main-content">
                 <Header
                  title="Branch Management"
           subtitle="Oversee multiple hotel locations"
                  onMobileMenuToggle={() => setIsMobileSidebarOpen(!isMobileSidebarOpen)}
                 />
-        <main className="flex-1 overflow-y-auto p-6">
+        <main className="p-6">
           <Card>
             <CardHeader className="flex flex-row items-center justify-between">
               <CardTitle>All Branches</CardTitle>
