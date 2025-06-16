@@ -1,4 +1,3 @@
-
 import { useState } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { Plus, Eye, FileText, Printer } from "lucide-react";
@@ -209,7 +208,7 @@ export default function RestaurantOrders() {
   return (
     <div className="flex min-h-screen bg-gray-50">
       <Sidebar />
-      <div className="flex-1 lg:ml-64">
+      <div className="lg:ml-64">
         <Header />
         <main className="p-3 sm:p-4 lg:p-6 xl:p-8 main-content">
           <div className="max-w-7xl mx-auto space-y-3 sm:space-y-4 lg:space-y-6">

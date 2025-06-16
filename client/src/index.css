@@ -62,10 +62,16 @@
 @media (min-width: 1024px) {
   main {
     padding-top: 0;
+    margin-left: 16rem; /* 256px - width of sidebar */
   }
   
   .main-content {
     padding-top: 0;
+  }
+  
+  /* Ensure content doesn't overlap with fixed sidebar */
+  .page-container {
+    margin-left: 16rem; /* 256px - width of sidebar */
   }
 }
 

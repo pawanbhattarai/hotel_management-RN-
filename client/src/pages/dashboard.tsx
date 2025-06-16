@@ -19,7 +19,7 @@ export default function Dashboard() {
   const { toast } = useToast();
   const { isAuthenticated, isLoading } = useAuth();
   const [isMobileSidebarOpen, setIsMobileSidebarOpen] = useState(false);
-  
+
   const { data: user } = useQuery({
     queryKey: ["/api/auth/user"],
     enabled: isAuthenticated,
@@ -85,7 +85,7 @@ export default function Dashboard() {
                     <div className="text-2xl font-bold">{superAdminMetrics.totalBranches}</div>
                   </CardContent>
                 </Card>
-                
+
                 <Card>
                   <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
                     <CardTitle className="text-sm font-medium">Total Reservations</CardTitle>
@@ -95,7 +95,7 @@ export default function Dashboard() {
                     <div className="text-2xl font-bold">{superAdminMetrics.totalReservations}</div>
                   </CardContent>
                 </Card>
-                
+
                 <Card>
                   <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
                     <CardTitle className="text-sm font-medium">Total Revenue (All Time)</CardTitle>
@@ -106,7 +106,7 @@ export default function Dashboard() {
                     <p className="text-xs text-muted-foreground mt-1">Cumulative revenue from all branches</p>
                   </CardContent>
                 </Card>
-                
+
                 <Card>
                   <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
                     <CardTitle className="text-sm font-medium">Total Rooms</CardTitle>
@@ -145,7 +145,7 @@ export default function Dashboard() {
                             <span className="text-sm text-muted-foreground">{branch.occupancyRate}%</span>
                           </div>
                           <Progress value={branch.occupancyRate} className="h-2" />
-                          
+
                           <div className="grid grid-cols-2 gap-4 text-sm">
                             <div>
                               <div className="text-muted-foreground">Reservations</div>
@@ -170,17 +170,17 @@ export default function Dashboard() {
           )}
 
           <MetricsCards />
-          
+
           {/* Show branch metrics only for super admin */}
           {!isSuperAdmin && user?.role === "superadmin" && <BranchMetrics />}
-          
+
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 lg:gap-6 mb-6 lg:mb-8">
             <div className="lg:col-span-2">
               <RecentReservations />
             </div>
             <QuickActions />
           </div>
-          
+
           <RoomStatusOverview />
         </main>
       </div>

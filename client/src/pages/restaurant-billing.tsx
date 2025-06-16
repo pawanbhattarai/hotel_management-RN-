@@ -1,4 +1,3 @@
-
 import { useState } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { Plus, Eye, Download, Receipt } from "lucide-react";
@@ -141,7 +140,7 @@ export default function RestaurantBilling() {
       total: bill.totalAmount,
       paymentMethod: bill.paymentMethod,
     };
-    
+
     console.log('Invoice Data:', invoiceData);
     toast({ title: "Invoice generated", description: "Check console for invoice data" });
   };
@@ -151,10 +150,20 @@ export default function RestaurantBilling() {
   return (
     <div className="flex min-h-screen bg-gray-50">
       <Sidebar />
-      <div className="flex-1 lg:ml-64">
-        <Header />
-        <main className="p-3 sm:p-4 lg:p-6 xl:p-8 main-content">
-          <div className="max-w-7xl mx-auto space-y-3 sm:space-y-4 lg:space-y-6">
+      <div className="lg:ml-64">
+        <Header
+          title="Restaurant Billing"
+          subtitle="Manage restaurant bills and payments"
+          action={
+            <Button onClick={() => setIsDialogOpen(true)} className="button-responsive">
+              <Plus className="mr-2 h-4 w-4" />
+              Generate Bill
+            </Button>
+          }
+        />
+        <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+          <div className="space-y-6">
+          
             <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
               <h1 className="text-2xl lg:text-3xl font-bold">Restaurant Billing</h1>
               <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
@@ -444,6 +453,7 @@ export default function RestaurantBilling() {
                 </DialogContent>
               </Dialog>
             )}
+
           </div>
         </main>
       </div>
