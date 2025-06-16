@@ -34,6 +34,7 @@ export default function RestaurantOrders() {
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [viewingOrder, setViewingOrder] = useState<any>(null);
   const [selectedItems, setSelectedItems] = useState<any[]>([]);
+  const [isMobileSidebarOpen, setIsMobileSidebarOpen] = useState(false);
   const { toast } = useToast();
 
   const { data: orders, isLoading } = useQuery({

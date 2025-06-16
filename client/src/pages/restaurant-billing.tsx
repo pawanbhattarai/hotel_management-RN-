@@ -31,6 +31,7 @@ type BillFormData = z.infer<typeof billSchema>;
 export default function RestaurantBilling() {
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [viewingBill, setViewingBill] = useState<any>(null);
+  const [isMobileSidebarOpen, setIsMobileSidebarOpen] = useState(false);
   const { toast } = useToast();
 
   const { data: bills, isLoading } = useQuery({

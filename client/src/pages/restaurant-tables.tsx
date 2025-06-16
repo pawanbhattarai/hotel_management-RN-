@@ -28,6 +28,7 @@ type TableFormData = z.infer<typeof tableSchema>;
 export default function RestaurantTables() {
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [editingTable, setEditingTable] = useState<any>(null);
+  const [isMobileSidebarOpen, setIsMobileSidebarOpen] = useState(false);
   const { toast } = useToast();
 
   const { data: tables, isLoading } = useQuery({
@@ -133,11 +134,15 @@ export default function RestaurantTables() {
 
   return (
     <div className="min-h-screen bg-gray-50">
-      <Sidebar />
+      <Sidebar
+        isMobileMenuOpen={isMobileSidebarOpen}
+        setIsMobileMenuOpen={setIsMobileSidebarOpen}
+      />
       <div className="main-content">
         <Header
           title="Restaurant Tables"
           subtitle="Manage your restaurant tables and seating arrangements"
+          onMobileMenuToggle={() => setIsMobileSidebarOpen(!isMobileSidebarOpen)}
           action={
             <Button onClick={() => setIsDialogOpen(true)} className="button-responsive">
               <Plus className="mr-2 h-4 w-4" />

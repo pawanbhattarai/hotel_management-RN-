@@ -46,6 +46,7 @@ export default function RestaurantMenu() {
   const [isDishDialogOpen, setIsDishDialogOpen] = useState(false);
   const [editingCategory, setEditingCategory] = useState<any>(null);
   const [editingDish, setEditingDish] = useState<any>(null);
+  const [isMobileSidebarOpen, setIsMobileSidebarOpen] = useState(false);
   const { toast } = useToast();
 
   const { data: categories, isLoading: categoriesLoading } = useQuery({
@@ -237,11 +238,15 @@ export default function RestaurantMenu() {
 
   return (
     <div className="min-h-screen bg-gray-50">
-      <Sidebar />
+      <Sidebar
+        isMobileMenuOpen={isMobileSidebarOpen}
+        setIsMobileMenuOpen={setIsMobileSidebarOpen}
+      />
       <div className="main-content">
         <Header
           title="Restaurant Menu"
           subtitle="Manage your restaurant menu categories and dishes"
+          onMobileMenuToggle={() => setIsMobileSidebarOpen(!isMobileSidebarOpen)}
           action={
             <div className="flex space-x-2">
               <Button
