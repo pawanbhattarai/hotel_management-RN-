@@ -1,3 +1,4 @@
+
 import { useState } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { Plus, Edit2, Trash2 } from "lucide-react";
@@ -8,6 +9,7 @@ import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Badge } from "@/components/ui/badge";
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
@@ -52,6 +54,7 @@ export default function RestaurantTables() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['/api/restaurant/tables'] });
       setIsDialogOpen(false);
+      resetForm();
       toast({ title: "Table created successfully" });
     },
   });
@@ -69,7 +72,7 @@ export default function RestaurantTables() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['/api/restaurant/tables'] });
       setIsDialogOpen(false);
-      setEditingTable(null);
+      resetForm();
       toast({ title: "Table updated successfully" });
     },
   });
@@ -95,6 +98,15 @@ export default function RestaurantTables() {
       status: "open",
     },
   });
+
+  const resetForm = () => {
+    form.reset({
+      name: "",
+      capacity: 1,
+      status: "open",
+    });
+    setEditingTable(null);
+  };
 
   const onSubmit = (data: TableFormData) => {
     if (editingTable) {
@@ -130,8 +142,6 @@ export default function RestaurantTables() {
     }
   };
 
-  if (isLoading) return <div>Loading tables...</div>;
-
   return (
     <div className="min-h-screen bg-gray-50">
       <Sidebar
@@ -143,172 +153,182 @@ export default function RestaurantTables() {
           title="Restaurant Tables"
           subtitle="Manage your restaurant tables and seating arrangements"
           onMobileMenuToggle={() => setIsMobileSidebarOpen(!isMobileSidebarOpen)}
-          action={
-            <Button onClick={() => setIsDialogOpen(true)} className="button-responsive">
-              <Plus className="mr-2 h-4 w-4" />
-              Add Table
-            </Button>
-          }
         />
-        <main className="content-wrapper">
-          <div className="space-y-6">
-              <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
-                <h1 className="text-2xl lg:text-3xl font-bold">Restaurant Tables</h1>
-                <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
-                  <DialogTrigger asChild>
-                    <Button 
-                      className="w-full sm:w-auto"
-                      onClick={() => {
-                        setEditingTable(null);
-                        form.reset();
-                      }}
-                    >
-                      <Plus className="mr-2 h-4 w-4" />
-                      Add Table
-                    </Button>
-                  </DialogTrigger>
-                  <DialogContent className="w-[95vw] max-w-md mx-auto">
-                    <DialogHeader>
-                      <DialogTitle>{editingTable ? 'Edit Table' : 'Add New Table'}</DialogTitle>
-                    </DialogHeader>
-                    <Form {...form}>
-                      <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
-                        <FormField
-                          control={form.control}
-                          name="name"
-                          render={({ field }) => (
-                            <FormItem>
-                              <FormLabel>Table Name</FormLabel>
-                              <FormControl>
-                                <Input {...field} placeholder="e.g., Table 1" />
-                              </FormControl>
-                              <FormMessage />
-                            </FormItem>
-                          )}
-                        />
-                        <FormField
-                          control={form.control}
-                          name="capacity"
-                          render={({ field }) => (
-                            <FormItem>
-                              <FormLabel>Capacity</FormLabel>
-                              <FormControl>
-                                <Input 
-                                  {...field} 
-                                  type="number" 
-                                  min={1}
-                                  onChange={(e) => field.onChange(parseInt(e.target.value))}
-                                />
-                              </FormControl>
-                              <FormMessage />
-                            </FormItem>
-                          )}
-                        />
-                        <FormField
-                          control={form.control}
-                          name="branchId"
-                          render={({ field }) => (
-                            <FormItem>
-                              <FormLabel>Branch</FormLabel>
-                              <FormControl>
-                                <Select 
-                                  value={field.value?.toString()} 
-                                  onValueChange={(value) => field.onChange(parseInt(value))}
-                                >
-                                  <SelectTrigger>
-                                    <SelectValue placeholder="Select branch" />
-                                  </SelectTrigger>
-                                  <SelectContent>
-                                    {branches?.map((branch: any) => (
-                                      <SelectItem key={branch.id} value={branch.id.toString()}>
-                                        {branch.name}
-                                      </SelectItem>
-                                    ))}
-                                  </SelectContent>
-                                </Select>
-                              </FormControl>
-                              <FormMessage />
-                            </FormItem>
-                          )}
-                        />
-                        <FormField
-                          control={form.control}
-                          name="status"
-                          render={({ field }) => (
-                            <FormItem>
-                              <FormLabel>Status</FormLabel>
-                              <FormControl>
-                                <Select value={field.value} onValueChange={field.onChange}>
-                                  <SelectTrigger>
-                                    <SelectValue />
-                                  </SelectTrigger>
-                                  <SelectContent>
-                                    <SelectItem value="open">Open</SelectItem>
-                                    <SelectItem value="occupied">Occupied</SelectItem>
-                                    <SelectItem value="maintenance">Maintenance</SelectItem>
-                                  </SelectContent>
-                                </Select>
-                              </FormControl>
-                              <FormMessage />
-                            </FormItem>
-                          )}
-                        />
-                        <div className="flex flex-col sm:flex-row justify-end gap-2">
-                          <Button type="button" variant="outline" onClick={() => setIsDialogOpen(false)}>
-                            Cancel
-                          </Button>
-                          <Button type="submit" disabled={createMutation.isPending || updateMutation.isPending}>
-                            {editingTable ? 'Update' : 'Create'} Table
-                          </Button>
-                        </div>
-                      </form>
-                    </Form>
-                  </DialogContent>
-                </Dialog>
-              </div>
-
-              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
-                {tables?.map((table: any) => (
-                  <Card key={table.id} className="relative">
-                    <CardHeader className="pb-2">
-                      <div className="flex justify-between items-start">
-                        <CardTitle className="text-base lg:text-lg truncate">{table.name}</CardTitle>
-                        <div className="flex space-x-1 flex-shrink-0">
-                          <Button
-                            variant="ghost"
-                            size="sm"
-                            onClick={() => handleEdit(table)}
-                          >
-                            <Edit2 className="h-4 w-4" />
-                          </Button>
-                          <Button
-                            variant="ghost"
-                            size="sm"
-                            onClick={() => handleDelete(table.id)}
-                          >
-                            <Trash2 className="h-4 w-4" />
-                          </Button>
-                        </div>
-                      </div>
-                    </CardHeader>
-                    <CardContent>
-                      <div className="space-y-2">
-                        <div className="flex justify-between">
-                          <span className="text-sm text-muted-foreground">Capacity:</span>
-                          <span className="font-medium text-sm">{table.capacity} people</span>
-                        </div>
-                        <div className="flex justify-between items-center">
-                          <span className="text-sm text-muted-foreground">Status:</span>
-                          <Badge className={`${getStatusColor(table.status)} text-white text-xs`}>
-                            {table.status}
-                          </Badge>
-                        </div>
-                      </div>
-                    </CardContent>
-                  </Card>
-                ))}
-              </div>
+        <main className="p-6">
+          {/* Add Button Section */}
+          <div className="mb-6">
+            <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
+              <DialogTrigger asChild>
+                <Button
+                  onClick={resetForm}
+                  className="w-full sm:w-auto bg-primary hover:bg-primary/90"
+                >
+                  <Plus className="h-4 w-4 mr-2" />
+                  Add Table
+                </Button>
+              </DialogTrigger>
+              <DialogContent className="max-w-md">
+                <DialogHeader>
+                  <DialogTitle>{editingTable ? 'Edit Table' : 'Add New Table'}</DialogTitle>
+                </DialogHeader>
+                <Form {...form}>
+                  <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
+                    <FormField
+                      control={form.control}
+                      name="name"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>Table Name</FormLabel>
+                          <FormControl>
+                            <Input {...field} placeholder="e.g., Table 1" />
+                          </FormControl>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+                    <FormField
+                      control={form.control}
+                      name="capacity"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>Capacity</FormLabel>
+                          <FormControl>
+                            <Input 
+                              {...field} 
+                              type="number" 
+                              min={1}
+                              onChange={(e) => field.onChange(parseInt(e.target.value))}
+                            />
+                          </FormControl>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+                    <FormField
+                      control={form.control}
+                      name="branchId"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>Branch</FormLabel>
+                          <FormControl>
+                            <Select 
+                              value={field.value?.toString()} 
+                              onValueChange={(value) => field.onChange(parseInt(value))}
+                            >
+                              <SelectTrigger>
+                                <SelectValue placeholder="Select branch" />
+                              </SelectTrigger>
+                              <SelectContent>
+                                {branches?.map((branch: any) => (
+                                  <SelectItem key={branch.id} value={branch.id.toString()}>
+                                    {branch.name}
+                                  </SelectItem>
+                                ))}
+                              </SelectContent>
+                            </Select>
+                          </FormControl>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+                    <FormField
+                      control={form.control}
+                      name="status"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>Status</FormLabel>
+                          <FormControl>
+                            <Select value={field.value} onValueChange={field.onChange}>
+                              <SelectTrigger>
+                                <SelectValue />
+                              </SelectTrigger>
+                              <SelectContent>
+                                <SelectItem value="open">Open</SelectItem>
+                                <SelectItem value="occupied">Occupied</SelectItem>
+                                <SelectItem value="maintenance">Maintenance</SelectItem>
+                              </SelectContent>
+                            </Select>
+                          </FormControl>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+                    <div className="flex justify-end gap-2">
+                      <Button type="button" variant="outline" onClick={() => setIsDialogOpen(false)}>
+                        Cancel
+                      </Button>
+                      <Button type="submit" disabled={createMutation.isPending || updateMutation.isPending}>
+                        {editingTable ? 'Update' : 'Create'} Table
+                      </Button>
+                    </div>
+                  </form>
+                </Form>
+              </DialogContent>
+            </Dialog>
           </div>
+
+          <Card>
+            <CardHeader>
+              <CardTitle>All Tables</CardTitle>
+            </CardHeader>
+            <CardContent>
+              {isLoading ? (
+                <div className="flex items-center justify-center py-8">
+                  <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
+                </div>
+              ) : (
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead>Table Name</TableHead>
+                      <TableHead>Capacity</TableHead>
+                      <TableHead>Status</TableHead>
+                      <TableHead>Actions</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {tables?.length ? (
+                      tables.map((table: any) => (
+                        <TableRow key={table.id}>
+                          <TableCell className="font-medium">{table.name}</TableCell>
+                          <TableCell>{table.capacity} people</TableCell>
+                          <TableCell>
+                            <Badge className={`${getStatusColor(table.status)} text-white`}>
+                              {table.status}
+                            </Badge>
+                          </TableCell>
+                          <TableCell>
+                            <div className="flex space-x-2">
+                              <Button
+                                variant="outline"
+                                size="sm"
+                                onClick={() => handleEdit(table)}
+                              >
+                                <Edit2 className="h-4 w-4" />
+                              </Button>
+                              <Button
+                                variant="outline"
+                                size="sm"
+                                onClick={() => handleDelete(table.id)}
+                              >
+                                <Trash2 className="h-4 w-4" />
+                              </Button>
+                            </div>
+                          </TableCell>
+                        </TableRow>
+                      ))
+                    ) : (
+                      <TableRow>
+                        <TableCell colSpan={4} className="text-center py-8 text-gray-500">
+                          No tables found. Create your first table to get started.
+                        </TableCell>
+                      </TableRow>
+                    )}
+                  </TableBody>
+                </Table>
+              )}
+            </CardContent>
+          </Card>
         </main>
       </div>
     </div>
