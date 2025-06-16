@@ -7,6 +7,12 @@ import {
   reservations,
   reservationRooms,
   hotelSettings,
+  restaurantTables,
+  menuCategories,
+  menuDishes,
+  restaurantOrders,
+  restaurantOrderItems,
+  restaurantBills,
   type User,
   type UpsertUser,
   type Branch,
@@ -23,6 +29,18 @@ import {
   type InsertReservationRoom,
   type HotelSettings,
   type InsertHotelSettings,
+  type RestaurantTable,
+  type InsertRestaurantTable,
+  type MenuCategory,
+  type InsertMenuCategory,
+  type MenuDish,
+  type InsertMenuDish,
+  type RestaurantOrder,
+  type InsertRestaurantOrder,
+  type RestaurantOrderItem,
+  type InsertRestaurantOrderItem,
+  type RestaurantBill,
+  type InsertRestaurantBill,
 } from "@shared/schema";
 import { db } from "./db";
 import { eq, and, or, desc, between, sql, ilike } from "drizzle-orm";
@@ -99,6 +117,70 @@ export interface IStorage {
   upsertHotelSettings(settings: InsertHotelSettings): Promise<HotelSettings>;
 
   getUserByEmail(email: string): Promise<User | undefined>;
+
+  // Restaurant Management System operations
+  // Restaurant tables
+  getRestaurantTables(branchId?: number): Promise<RestaurantTable[]>;
+  getRestaurantTable(id: number): Promise<RestaurantTable | undefined>;
+  createRestaurantTable(table: InsertRestaurantTable): Promise<RestaurantTable>;
+  updateRestaurantTable(id: number, table: Partial<InsertRestaurantTable>): Promise<RestaurantTable>;
+  deleteRestaurantTable(id: number): Promise<void>;
+
+  // Menu categories
+  getMenuCategories(branchId?: number): Promise<MenuCategory[]>;
+  getMenuCategory(id: number): Promise<MenuCategory | undefined>;
+  createMenuCategory(category: InsertMenuCategory): Promise<MenuCategory>;
+  updateMenuCategory(id: number, category: Partial<InsertMenuCategory>): Promise<MenuCategory>;
+  deleteMenuCategory(id: number): Promise<void>;
+
+  // Menu dishes
+  getMenuDishes(branchId?: number, categoryId?: number): Promise<(MenuDish & { category: MenuCategory })[]>;
+  getMenuDish(id: number): Promise<MenuDish | undefined>;
+  createMenuDish(dish: InsertMenuDish): Promise<MenuDish>;
+  updateMenuDish(id: number, dish: Partial<InsertMenuDish>): Promise<MenuDish>;
+  deleteMenuDish(id: number): Promise<void>;
+
+  // Restaurant orders
+  getRestaurantOrders(branchId?: number, status?: string): Promise<(RestaurantOrder & { 
+    table: RestaurantTable; 
+    items: (RestaurantOrderItem & { dish: MenuDish })[];
+    createdBy: User;
+  })[]>;
+  getRestaurantOrder(id: string): Promise<(RestaurantOrder & { 
+    table: RestaurantTable; 
+    items: (RestaurantOrderItem & { dish: MenuDish })[];
+    createdBy: User;
+  }) | undefined>;
+  createRestaurantOrder(order: InsertRestaurantOrder, items: InsertRestaurantOrderItem[]): Promise<RestaurantOrder>;
+  updateRestaurantOrder(id: string, order: Partial<InsertRestaurantOrder>): Promise<RestaurantOrder>;
+  updateRestaurantOrderStatus(id: string, status: string): Promise<RestaurantOrder>;
+
+  // Restaurant bills
+  getRestaurantBills(branchId?: number): Promise<(RestaurantBill & { 
+    order: RestaurantOrder; 
+    table: RestaurantTable;
+    createdBy: User;
+  })[]>;
+  getRestaurantBill(id: string): Promise<(RestaurantBill & { 
+    order: RestaurantOrder & { items: (RestaurantOrderItem & { dish: MenuDish })[] }; 
+    table: RestaurantTable;
+    createdBy: User;
+  }) | undefined>;
+  createRestaurantBill(bill: InsertRestaurantBill): Promise<RestaurantBill>;
+  updateRestaurantBill(id: string, bill: Partial<InsertRestaurantBill>): Promise<RestaurantBill>;
+
+  // KOT/BOT operations
+  generateKOT(orderId: string): Promise<{ kotItems: RestaurantOrderItem[]; orderNumber: string }>;
+  generateBOT(orderId: string): Promise<{ botItems: RestaurantOrderItem[]; orderNumber: string }>;
+
+  // Restaurant dashboard metrics
+  getRestaurantDashboardMetrics(branchId?: number): Promise<{
+    totalOrders: number;
+    totalRevenue: number;
+    activeOrders: number;
+    availableTables: number;
+    tableStatusCounts: Record<string, number>;
+  }>;
 }
 
 export class DatabaseStorage implements IStorage {
@@ -490,6 +572,651 @@ export class DatabaseStorage implements IStorage {
         )
       )
       .orderBy(rooms.number);
+  }
+
+  async getSuperAdminDashboardMetrics(): Promise<{
+    totalBranches: number;
+    totalReservations: number;
+    totalRevenue: number;
+    totalRooms: number;
+    branchMetrics: Array<{
+      branchId: number;
+      branchName: string;
+      totalReservations: number;
+      occupancyRate: number;
+      revenue: number;
+      availableRooms: number;
+    }>;
+  }> {
+    // Get total branches
+    const [{ count: totalBranches }] = await db
+      .select({ count: sql<number>`COUNT(*)` })
+      .from(branches)
+      .where(eq(branches.isActive, true));
+
+    // Get total reservations
+    const [{ count: totalReservations }] = await db
+      .select({ count: sql<number>`COUNT(*)` })
+      .from(reservations);
+
+    // Get total revenue
+    const [{ sum: totalRevenue }] = await db
+      .select({ sum: sql<number>`COALESCE(SUM(${reservations.paidAmount}), 0)` })
+      .from(reservations);
+
+    // Get total rooms
+    const [{ count: totalRooms }] = await db
+      .select({ count: sql<number>`COUNT(*)` })
+      .from(rooms)
+      .where(eq(rooms.isActive, true));
+
+    // Get branch metrics
+    const branchesData = await db
+      .select()
+      .from(branches)
+      .where(eq(branches.isActive, true));
+
+    const branchMetrics = await Promise.all(
+      branchesData.map(async (branch) => {
+        const metrics = await this.getDashboardMetrics(branch.id);
+        return {
+          branchId: branch.id,
+          branchName: branch.name,
+          totalReservations: metrics.totalReservations,
+          occupancyRate: metrics.occupancyRate,
+          revenue: metrics.revenueToday,
+          availableRooms: metrics.availableRooms,
+        };
+      })
+    );
+
+    return {
+      totalBranches,
+      totalReservations,
+      totalRevenue: totalRevenue || 0,
+      totalRooms,
+      branchMetrics,
+    };
+  }
+
+  async getHotelSettings(branchId?: number): Promise<HotelSettings | undefined> {
+    let query = db.select().from(hotelSettings);
+    
+    if (branchId) {
+      query = query.where(eq(hotelSettings.branchId, branchId));
+    } else {
+      query = query.where(sql`${hotelSettings.branchId} IS NULL`);
+    }
+    
+    const [settings] = await query;
+    return settings;
+  }
+
+  async upsertHotelSettings(settings: InsertHotelSettings): Promise<HotelSettings> {
+    const [result] = await db
+      .insert(hotelSettings)
+      .values(settings)
+      .onConflictDoUpdate({
+        target: [hotelSettings.branchId],
+        set: {
+          ...settings,
+          updatedAt: sql`NOW()`,
+        },
+      })
+      .returning();
+    return result;
+  }
+
+  // Restaurant Management System Methods
+
+  // Restaurant Tables
+  async getRestaurantTables(branchId?: number): Promise<RestaurantTable[]> {
+    let query = db.select().from(restaurantTables).where(eq(restaurantTables.isActive, true));
+    
+    if (branchId) {
+      query = query.where(and(eq(restaurantTables.isActive, true), eq(restaurantTables.branchId, branchId)));
+    }
+    
+    return await query.orderBy(restaurantTables.name);
+  }
+
+  async getRestaurantTable(id: number): Promise<RestaurantTable | undefined> {
+    const [table] = await db.select().from(restaurantTables).where(eq(restaurantTables.id, id));
+    return table;
+  }
+
+  async createRestaurantTable(table: InsertRestaurantTable): Promise<RestaurantTable> {
+    const [result] = await db.insert(restaurantTables).values(table).returning();
+    return result;
+  }
+
+  async updateRestaurantTable(id: number, table: Partial<InsertRestaurantTable>): Promise<RestaurantTable> {
+    const [result] = await db
+      .update(restaurantTables)
+      .set({ ...table, updatedAt: sql`NOW()` })
+      .where(eq(restaurantTables.id, id))
+      .returning();
+    return result;
+  }
+
+  async deleteRestaurantTable(id: number): Promise<void> {
+    await db
+      .update(restaurantTables)
+      .set({ isActive: false, updatedAt: sql`NOW()` })
+      .where(eq(restaurantTables.id, id));
+  }
+
+  // Menu Categories
+  async getMenuCategories(branchId?: number): Promise<MenuCategory[]> {
+    let query = db.select().from(menuCategories).where(eq(menuCategories.isActive, true));
+    
+    if (branchId) {
+      query = query.where(and(eq(menuCategories.isActive, true), eq(menuCategories.branchId, branchId)));
+    }
+    
+    return await query.orderBy(menuCategories.sortOrder, menuCategories.name);
+  }
+
+  async getMenuCategory(id: number): Promise<MenuCategory | undefined> {
+    const [category] = await db.select().from(menuCategories).where(eq(menuCategories.id, id));
+    return category;
+  }
+
+  async createMenuCategory(category: InsertMenuCategory): Promise<MenuCategory> {
+    const [result] = await db.insert(menuCategories).values(category).returning();
+    return result;
+  }
+
+  async updateMenuCategory(id: number, category: Partial<InsertMenuCategory>): Promise<MenuCategory> {
+    const [result] = await db
+      .update(menuCategories)
+      .set({ ...category, updatedAt: sql`NOW()` })
+      .where(eq(menuCategories.id, id))
+      .returning();
+    return result;
+  }
+
+  async deleteMenuCategory(id: number): Promise<void> {
+    await db
+      .update(menuCategories)
+      .set({ isActive: false, updatedAt: sql`NOW()` })
+      .where(eq(menuCategories.id, id));
+  }
+
+  // Menu Dishes
+  async getMenuDishes(branchId?: number, categoryId?: number): Promise<(MenuDish & { category: MenuCategory })[]> {
+    let query = db
+      .select({
+        ...menuDishes,
+        category: menuCategories,
+      })
+      .from(menuDishes)
+      .innerJoin(menuCategories, eq(menuDishes.categoryId, menuCategories.id))
+      .where(and(eq(menuDishes.isActive, true), eq(menuCategories.isActive, true)));
+    
+    if (branchId) {
+      query = query.where(and(
+        eq(menuDishes.isActive, true), 
+        eq(menuCategories.isActive, true),
+        eq(menuDishes.branchId, branchId)
+      ));
+    }
+    
+    if (categoryId) {
+      query = query.where(and(
+        eq(menuDishes.isActive, true), 
+        eq(menuCategories.isActive, true),
+        eq(menuDishes.categoryId, categoryId)
+      ));
+    }
+    
+    return await query.orderBy(menuDishes.sortOrder, menuDishes.name) as (MenuDish & { category: MenuCategory })[];
+  }
+
+  async getMenuDish(id: number): Promise<MenuDish | undefined> {
+    const [dish] = await db.select().from(menuDishes).where(eq(menuDishes.id, id));
+    return dish;
+  }
+
+  async createMenuDish(dish: InsertMenuDish): Promise<MenuDish> {
+    const [result] = await db.insert(menuDishes).values(dish).returning();
+    return result;
+  }
+
+  async updateMenuDish(id: number, dish: Partial<InsertMenuDish>): Promise<MenuDish> {
+    const [result] = await db
+      .update(menuDishes)
+      .set({ ...dish, updatedAt: sql`NOW()` })
+      .where(eq(menuDishes.id, id))
+      .returning();
+    return result;
+  }
+
+  async deleteMenuDish(id: number): Promise<void> {
+    await db
+      .update(menuDishes)
+      .set({ isActive: false, updatedAt: sql`NOW()` })
+      .where(eq(menuDishes.id, id));
+  }
+
+  // Restaurant Orders
+  async getRestaurantOrders(branchId?: number, status?: string): Promise<(RestaurantOrder & { 
+    table: RestaurantTable; 
+    items: (RestaurantOrderItem & { dish: MenuDish })[];
+    createdBy: User;
+  })[]> {
+    let whereConditions = [];
+    
+    if (branchId) {
+      whereConditions.push(eq(restaurantOrders.branchId, branchId));
+    }
+    
+    if (status) {
+      whereConditions.push(eq(restaurantOrders.status, status));
+    }
+
+    const orders = await db
+      .select({
+        ...restaurantOrders,
+        table: restaurantTables,
+        createdBy: users,
+      })
+      .from(restaurantOrders)
+      .innerJoin(restaurantTables, eq(restaurantOrders.tableId, restaurantTables.id))
+      .innerJoin(users, eq(restaurantOrders.createdById, users.id))
+      .where(whereConditions.length > 0 ? and(...whereConditions) : undefined)
+      .orderBy(desc(restaurantOrders.createdAt));
+
+    // Get order items for each order
+    const ordersWithItems = await Promise.all(
+      orders.map(async (order) => {
+        const items = await db
+          .select({
+            ...restaurantOrderItems,
+            dish: menuDishes,
+          })
+          .from(restaurantOrderItems)
+          .innerJoin(menuDishes, eq(restaurantOrderItems.dishId, menuDishes.id))
+          .where(eq(restaurantOrderItems.orderId, order.id));
+
+        return {
+          ...order,
+          items: items as (RestaurantOrderItem & { dish: MenuDish })[],
+        };
+      })
+    );
+
+    return ordersWithItems as (RestaurantOrder & { 
+      table: RestaurantTable; 
+      items: (RestaurantOrderItem & { dish: MenuDish })[];
+      createdBy: User;
+    })[];
+  }
+
+  async getRestaurantOrder(id: string): Promise<(RestaurantOrder & { 
+    table: RestaurantTable; 
+    items: (RestaurantOrderItem & { dish: MenuDish })[];
+    createdBy: User;
+  }) | undefined> {
+    const [order] = await db
+      .select({
+        ...restaurantOrders,
+        table: restaurantTables,
+        createdBy: users,
+      })
+      .from(restaurantOrders)
+      .innerJoin(restaurantTables, eq(restaurantOrders.tableId, restaurantTables.id))
+      .innerJoin(users, eq(restaurantOrders.createdById, users.id))
+      .where(eq(restaurantOrders.id, id));
+
+    if (!order) return undefined;
+
+    const items = await db
+      .select({
+        ...restaurantOrderItems,
+        dish: menuDishes,
+      })
+      .from(restaurantOrderItems)
+      .innerJoin(menuDishes, eq(restaurantOrderItems.dishId, menuDishes.id))
+      .where(eq(restaurantOrderItems.orderId, id));
+
+    return {
+      ...order,
+      items: items as (RestaurantOrderItem & { dish: MenuDish })[],
+    } as (RestaurantOrder & { 
+      table: RestaurantTable; 
+      items: (RestaurantOrderItem & { dish: MenuDish })[];
+      createdBy: User;
+    });
+  }
+
+  async createRestaurantOrder(order: InsertRestaurantOrder, items: InsertRestaurantOrderItem[]): Promise<RestaurantOrder> {
+    return await db.transaction(async (tx) => {
+      // Create order
+      const [newOrder] = await tx.insert(restaurantOrders).values(order).returning();
+      
+      // Create order items with the new order ID
+      const orderItemsWithOrderId = items.map(item => ({
+        ...item,
+        orderId: newOrder.id,
+      }));
+      
+      await tx.insert(restaurantOrderItems).values(orderItemsWithOrderId);
+      
+      // Update table status to occupied
+      await tx
+        .update(restaurantTables)
+        .set({ status: 'occupied', updatedAt: sql`NOW()` })
+        .where(eq(restaurantTables.id, order.tableId));
+      
+      return newOrder;
+    });
+  }
+
+  async updateRestaurantOrder(id: string, order: Partial<InsertRestaurantOrder>): Promise<RestaurantOrder> {
+    const [result] = await db
+      .update(restaurantOrders)
+      .set({ ...order, updatedAt: sql`NOW()` })
+      .where(eq(restaurantOrders.id, id))
+      .returning();
+    return result;
+  }
+
+  async updateRestaurantOrderStatus(id: string, status: string): Promise<RestaurantOrder> {
+    const updateData: any = { status, updatedAt: sql`NOW()` };
+    
+    if (status === 'served') {
+      updateData.servedAt = sql`NOW()`;
+    } else if (status === 'completed') {
+      updateData.completedAt = sql`NOW()`;
+      
+      // Set table status back to open when order is completed
+      const [order] = await db.select().from(restaurantOrders).where(eq(restaurantOrders.id, id));
+      if (order) {
+        await db
+          .update(restaurantTables)
+          .set({ status: 'open', updatedAt: sql`NOW()` })
+          .where(eq(restaurantTables.id, order.tableId));
+      }
+    }
+
+    const [result] = await db
+      .update(restaurantOrders)
+      .set(updateData)
+      .where(eq(restaurantOrders.id, id))
+      .returning();
+    return result;
+  }
+
+  // Restaurant Bills
+  async getRestaurantBills(branchId?: number): Promise<(RestaurantBill & { 
+    order: RestaurantOrder; 
+    table: RestaurantTable;
+    createdBy: User;
+  })[]> {
+    let query = db
+      .select({
+        ...restaurantBills,
+        order: restaurantOrders,
+        table: restaurantTables,
+        createdBy: users,
+      })
+      .from(restaurantBills)
+      .innerJoin(restaurantOrders, eq(restaurantBills.orderId, restaurantOrders.id))
+      .innerJoin(restaurantTables, eq(restaurantBills.tableId, restaurantTables.id))
+      .innerJoin(users, eq(restaurantBills.createdById, users.id))
+      .orderBy(desc(restaurantBills.createdAt));
+
+    if (branchId) {
+      query = query.where(eq(restaurantBills.branchId, branchId));
+    }
+
+    return await query as (RestaurantBill & { 
+      order: RestaurantOrder; 
+      table: RestaurantTable;
+      createdBy: User;
+    })[];
+  }
+
+  async getRestaurantBill(id: string): Promise<(RestaurantBill & { 
+    order: RestaurantOrder & { items: (RestaurantOrderItem & { dish: MenuDish })[] }; 
+    table: RestaurantTable;
+    createdBy: User;
+  }) | undefined> {
+    const [bill] = await db
+      .select({
+        ...restaurantBills,
+        order: restaurantOrders,
+        table: restaurantTables,
+        createdBy: users,
+      })
+      .from(restaurantBills)
+      .innerJoin(restaurantOrders, eq(restaurantBills.orderId, restaurantOrders.id))
+      .innerJoin(restaurantTables, eq(restaurantBills.tableId, restaurantTables.id))
+      .innerJoin(users, eq(restaurantBills.createdById, users.id))
+      .where(eq(restaurantBills.id, id));
+
+    if (!bill) return undefined;
+
+    // Get order items
+    const items = await db
+      .select({
+        ...restaurantOrderItems,
+        dish: menuDishes,
+      })
+      .from(restaurantOrderItems)
+      .innerJoin(menuDishes, eq(restaurantOrderItems.dishId, menuDishes.id))
+      .where(eq(restaurantOrderItems.orderId, bill.order.id));
+
+    return {
+      ...bill,
+      order: {
+        ...bill.order,
+        items: items as (RestaurantOrderItem & { dish: MenuDish })[],
+      },
+    } as (RestaurantBill & { 
+      order: RestaurantOrder & { items: (RestaurantOrderItem & { dish: MenuDish })[] }; 
+      table: RestaurantTable;
+      createdBy: User;
+    });
+  }
+
+  async createRestaurantBill(bill: InsertRestaurantBill): Promise<RestaurantBill> {
+    const [result] = await db.insert(restaurantBills).values(bill).returning();
+    return result;
+  }
+
+  async updateRestaurantBill(id: string, bill: Partial<InsertRestaurantBill>): Promise<RestaurantBill> {
+    const [result] = await db
+      .update(restaurantBills)
+      .set({ ...bill, updatedAt: sql`NOW()` })
+      .where(eq(restaurantBills.id, id))
+      .returning();
+    return result;
+  }
+
+  // KOT/BOT Operations
+  async generateKOT(orderId: string): Promise<{ kotItems: RestaurantOrderItem[]; orderNumber: string }> {
+    return await db.transaction(async (tx) => {
+      // Get order details
+      const [order] = await tx.select().from(restaurantOrders).where(eq(restaurantOrders.id, orderId));
+      if (!order) throw new Error('Order not found');
+
+      // Get items that need KOT (food items, not beverages)
+      const kotItems = await tx
+        .select()
+        .from(restaurantOrderItems)
+        .innerJoin(menuDishes, eq(restaurantOrderItems.dishId, menuDishes.id))
+        .where(and(
+          eq(restaurantOrderItems.orderId, orderId),
+          eq(restaurantOrderItems.isKot, false),
+          or(
+            sql`${menuDishes.spiceLevel} IS NOT NULL`,
+            sql`${menuDishes.preparationTime} > 0`
+          )
+        ));
+
+      // Mark items as KOT generated
+      if (kotItems.length > 0) {
+        await tx
+          .update(restaurantOrderItems)
+          .set({ isKot: true })
+          .where(and(
+            eq(restaurantOrderItems.orderId, orderId),
+            sql`${restaurantOrderItems.id} IN (${kotItems.map(item => item.restaurant_order_items.id).join(',')})`
+          ));
+
+        // Mark order as KOT generated
+        await tx
+          .update(restaurantOrders)
+          .set({ kotGenerated: true, kotGeneratedAt: sql`NOW()` })
+          .where(eq(restaurantOrders.id, orderId));
+      }
+
+      return { 
+        kotItems: kotItems.map(item => item.restaurant_order_items), 
+        orderNumber: order.orderNumber 
+      };
+    });
+  }
+
+  async generateBOT(orderId: string): Promise<{ botItems: RestaurantOrderItem[]; orderNumber: string }> {
+    return await db.transaction(async (tx) => {
+      // Get order details
+      const [order] = await tx.select().from(restaurantOrders).where(eq(restaurantOrders.id, orderId));
+      if (!order) throw new Error('Order not found');
+
+      // Get beverage items that need BOT
+      const botItems = await tx
+        .select()
+        .from(restaurantOrderItems)
+        .innerJoin(menuDishes, eq(restaurantOrderItems.dishId, menuDishes.id))
+        .innerJoin(menuCategories, eq(menuDishes.categoryId, menuCategories.id))
+        .where(and(
+          eq(restaurantOrderItems.orderId, orderId),
+          eq(restaurantOrderItems.isBot, false),
+          or(
+            ilike(menuCategories.name, '%beverage%'),
+            ilike(menuCategories.name, '%drink%'),
+            ilike(menuCategories.name, '%juice%'),
+            ilike(menuCategories.name, '%tea%'),
+            ilike(menuCategories.name, '%coffee%')
+          )
+        ));
+
+      // Mark items as BOT generated
+      if (botItems.length > 0) {
+        await tx
+          .update(restaurantOrderItems)
+          .set({ isBot: true })
+          .where(and(
+            eq(restaurantOrderItems.orderId, orderId),
+            sql`${restaurantOrderItems.id} IN (${botItems.map(item => item.restaurant_order_items.id).join(',')})`
+          ));
+
+        // Mark order as BOT generated
+        await tx
+          .update(restaurantOrders)
+          .set({ botGenerated: true, botGeneratedAt: sql`NOW()` })
+          .where(eq(restaurantOrders.id, orderId));
+      }
+
+      return { 
+        botItems: botItems.map(item => item.restaurant_order_items), 
+        orderNumber: order.orderNumber 
+      };
+    });
+  }
+
+  // Restaurant Dashboard Metrics
+  async getRestaurantDashboardMetrics(branchId?: number): Promise<{
+    totalOrders: number;
+    totalRevenue: number;
+    activeOrders: number;
+    availableTables: number;
+    tableStatusCounts: Record<string, number>;
+  }> {
+    const today = new Date().toISOString().split('T')[0];
+
+    // Total orders today
+    let totalOrdersQuery = db
+      .select({ count: sql<number>`COUNT(*)` })
+      .from(restaurantOrders)
+      .where(sql`DATE(${restaurantOrders.createdAt}) = ${today}`);
+
+    if (branchId) {
+      totalOrdersQuery = totalOrdersQuery.where(and(
+        sql`DATE(${restaurantOrders.createdAt}) = ${today}`,
+        eq(restaurantOrders.branchId, branchId)
+      ));
+    }
+
+    const [{ count: totalOrders }] = await totalOrdersQuery;
+
+    // Total revenue today
+    let totalRevenueQuery = db
+      .select({ sum: sql<number>`COALESCE(SUM(${restaurantOrders.totalAmount}), 0)` })
+      .from(restaurantOrders)
+      .where(and(
+        sql`DATE(${restaurantOrders.createdAt}) = ${today}`,
+        eq(restaurantOrders.paymentStatus, 'paid')
+      ));
+
+    if (branchId) {
+      totalRevenueQuery = totalRevenueQuery.where(and(
+        sql`DATE(${restaurantOrders.createdAt}) = ${today}`,
+        eq(restaurantOrders.paymentStatus, 'paid'),
+        eq(restaurantOrders.branchId, branchId)
+      ));
+    }
+
+    const [{ sum: totalRevenue }] = await totalRevenueQuery;
+
+    // Active orders (not completed or cancelled)
+    let activeOrdersQuery = db
+      .select({ count: sql<number>`COUNT(*)` })
+      .from(restaurantOrders)
+      .where(sql`${restaurantOrders.status} NOT IN ('completed', 'cancelled')`);
+
+    if (branchId) {
+      activeOrdersQuery = activeOrdersQuery.where(and(
+        sql`${restaurantOrders.status} NOT IN ('completed', 'cancelled')`,
+        eq(restaurantOrders.branchId, branchId)
+      ));
+    }
+
+    const [{ count: activeOrders }] = await activeOrdersQuery;
+
+    // Table status counts
+    let tableStatusQuery = db
+      .select({
+        status: restaurantTables.status,
+        count: sql<number>`COUNT(*)`,
+      })
+      .from(restaurantTables)
+      .where(eq(restaurantTables.isActive, true))
+      .groupBy(restaurantTables.status);
+
+    if (branchId) {
+      tableStatusQuery = tableStatusQuery.where(and(
+        eq(restaurantTables.isActive, true),
+        eq(restaurantTables.branchId, branchId)
+      ));
+    }
+
+    const tableStatusResults = await tableStatusQuery;
+    const tableStatusCounts = tableStatusResults.reduce((acc, row) => {
+      acc[row.status] = row.count;
+      return acc;
+    }, {} as Record<string, number>);
+
+    return {
+      totalOrders,
+      totalRevenue: totalRevenue || 0,
+      activeOrders,
+      availableTables: tableStatusCounts.open || 0,
+      tableStatusCounts,
+    };
   }
 }
 
