@@ -221,7 +221,6 @@ export default function RestaurantTables() {
                                     ))}
                                   </SelectContent>
                                 </Select>
-                              </Select>
                             </FormControl>
                             <FormMessage />
                           </FormItem>
