@@ -221,10 +221,11 @@ export default function RestaurantTables() {
                                     ))}
                                   </SelectContent>
                                 </Select>
-                            </FormControl>
-                            <FormMessage />
-                          </FormItem>
-                        )}
+                              </FormControl>
+                              <FormMessage />
+                            </FormItem>
+                          )}
+                        />
                         <FormField
                           control={form.control}
                           name="status"
