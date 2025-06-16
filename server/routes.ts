@@ -1,6 +1,7 @@
 import type { Express } from "express";
 import { createServer, type Server } from "http";
 import { storage } from "./storage";
+import { restaurantStorage } from "./restaurant-storage";
 import { NotificationService } from "./notifications";
 import {
   insertBranchSchema,
@@ -12,6 +13,12 @@ import {
   insertUserSchema,
   insertHotelSettingsSchema,
   insertPushSubscriptionSchema,
+  insertRestaurantTableSchema,
+  insertMenuCategorySchema,
+  insertMenuDishSchema,
+  insertRestaurantOrderSchema,
+  insertRestaurantOrderItemSchema,
+  insertRestaurantBillSchema,
 } from "@shared/schema";
 import { z } from "zod";
 import { broadcastChange } from "./middleware/websocket";
@@ -1319,6 +1326,472 @@ export async function registerRoutes(app: Express): Promise<Server> {
     } catch (error) {
       console.error("Error fetching unread notification count:", error);
       res.status(500).json({ message: "Failed to fetch unread notification count" });
+    }
+  });
+
+  // Restaurant Management System (RMS) Routes
+
+  // Restaurant Tables
+  app.get("/api/restaurant/tables", isAuthenticated, async (req: any, res) => {
+    try {
+      const user = await storage.getUser(req.session.user.id);
+      if (!user) return res.status(401).json({ message: "User not found" });
+
+      const branchId = user.role === "superadmin" ? undefined : user.branchId!;
+      const tables = await restaurantStorage.getRestaurantTables(branchId);
+      res.json(tables);
+    } catch (error) {
+      console.error("Error fetching restaurant tables:", error);
+      res.status(500).json({ message: "Failed to fetch restaurant tables" });
+    }
+  });
+
+  app.post("/api/restaurant/tables", isAuthenticated, async (req: any, res) => {
+    try {
+      const user = await storage.getUser(req.session.user.id);
+      if (!user) return res.status(401).json({ message: "User not found" });
+
+      const tableData = insertRestaurantTableSchema.parse(req.body);
+
+      if (!checkBranchPermissions(user.role, user.branchId, tableData.branchId)) {
+        return res.status(403).json({ message: "Insufficient permissions for this branch" });
+      }
+
+      const table = await restaurantStorage.createRestaurantTable(tableData);
+      res.status(201).json(table);
+    } catch (error) {
+      console.error("Error creating restaurant table:", error);
+      res.status(500).json({ message: "Failed to create restaurant table" });
+    }
+  });
+
+  app.put("/api/restaurant/tables/:id", isAuthenticated, async (req: any, res) => {
+    try {
+      const user = await storage.getUser(req.session.user.id);
+      if (!user) return res.status(401).json({ message: "User not found" });
+
+      const tableId = parseInt(req.params.id);
+      const tableData = insertRestaurantTableSchema.partial().parse(req.body);
+
+      const existingTable = await restaurantStorage.getRestaurantTable(tableId);
+      if (!existingTable || !checkBranchPermissions(user.role, user.branchId, existingTable.branchId)) {
+        return res.status(403).json({ message: "Insufficient permissions for this table" });
+      }
+
+      const table = await restaurantStorage.updateRestaurantTable(tableId, tableData);
+      res.json(table);
+    } catch (error) {
+      console.error("Error updating restaurant table:", error);
+      res.status(500).json({ message: "Failed to update restaurant table" });
+    }
+  });
+
+  app.delete("/api/restaurant/tables/:id", isAuthenticated, async (req: any, res) => {
+    try {
+      const user = await storage.getUser(req.session.user.id);
+      if (!user) return res.status(401).json({ message: "User not found" });
+
+      const tableId = parseInt(req.params.id);
+
+      const existingTable = await restaurantStorage.getRestaurantTable(tableId);
+      if (!existingTable || !checkBranchPermissions(user.role, user.branchId, existingTable.branchId)) {
+        return res.status(403).json({ message: "Insufficient permissions for this table" });
+      }
+
+      await restaurantStorage.deleteRestaurantTable(tableId);
+      res.status(204).send();
+    } catch (error) {
+      console.error("Error deleting restaurant table:", error);
+      res.status(500).json({ message: "Failed to delete restaurant table" });
+    }
+  });
+
+  // Menu Categories
+  app.get("/api/restaurant/categories", isAuthenticated, async (req: any, res) => {
+    try {
+      const user = await storage.getUser(req.session.user.id);
+      if (!user) return res.status(401).json({ message: "User not found" });
+
+      const branchId = user.role === "superadmin" ? undefined : user.branchId!;
+      const categories = await restaurantStorage.getMenuCategories(branchId);
+      res.json(categories);
+    } catch (error) {
+      console.error("Error fetching menu categories:", error);
+      res.status(500).json({ message: "Failed to fetch menu categories" });
+    }
+  });
+
+  app.post("/api/restaurant/categories", isAuthenticated, async (req: any, res) => {
+    try {
+      const user = await storage.getUser(req.session.user.id);
+      if (!user) return res.status(401).json({ message: "User not found" });
+
+      const categoryData = insertMenuCategorySchema.parse(req.body);
+
+      if (!checkBranchPermissions(user.role, user.branchId, categoryData.branchId)) {
+        return res.status(403).json({ message: "Insufficient permissions for this branch" });
+      }
+
+      const category = await restaurantStorage.createMenuCategory(categoryData);
+      res.status(201).json(category);
+    } catch (error) {
+      console.error("Error creating menu category:", error);
+      res.status(500).json({ message: "Failed to create menu category" });
+    }
+  });
+
+  app.put("/api/restaurant/categories/:id", isAuthenticated, async (req: any, res) => {
+    try {
+      const user = await storage.getUser(req.session.user.id);
+      if (!user) return res.status(401).json({ message: "User not found" });
+
+      const categoryId = parseInt(req.params.id);
+      const categoryData = insertMenuCategorySchema.partial().parse(req.body);
+
+      const existingCategory = await restaurantStorage.getMenuCategory(categoryId);
+      if (!existingCategory || !checkBranchPermissions(user.role, user.branchId, existingCategory.branchId)) {
+        return res.status(403).json({ message: "Insufficient permissions for this category" });
+      }
+
+      const category = await restaurantStorage.updateMenuCategory(categoryId, categoryData);
+      res.json(category);
+    } catch (error) {
+      console.error("Error updating menu category:", error);
+      res.status(500).json({ message: "Failed to update menu category" });
+    }
+  });
+
+  app.delete("/api/restaurant/categories/:id", isAuthenticated, async (req: any, res) => {
+    try {
+      const user = await storage.getUser(req.session.user.id);
+      if (!user) return res.status(401).json({ message: "User not found" });
+
+      const categoryId = parseInt(req.params.id);
+
+      const existingCategory = await restaurantStorage.getMenuCategory(categoryId);
+      if (!existingCategory || !checkBranchPermissions(user.role, user.branchId, existingCategory.branchId)) {
+        return res.status(403).json({ message: "Insufficient permissions for this category" });
+      }
+
+      await restaurantStorage.deleteMenuCategory(categoryId);
+      res.status(204).send();
+    } catch (error) {
+      console.error("Error deleting menu category:", error);
+      res.status(500).json({ message: "Failed to delete menu category" });
+    }
+  });
+
+  // Menu Dishes
+  app.get("/api/restaurant/dishes", isAuthenticated, async (req: any, res) => {
+    try {
+      const user = await storage.getUser(req.session.user.id);
+      if (!user) return res.status(401).json({ message: "User not found" });
+
+      const branchId = user.role === "superadmin" ? undefined : user.branchId!;
+      const categoryId = req.query.categoryId ? parseInt(req.query.categoryId as string) : undefined;
+      const dishes = await restaurantStorage.getMenuDishes(branchId, categoryId);
+      res.json(dishes);
+    } catch (error) {
+      console.error("Error fetching menu dishes:", error);
+      res.status(500).json({ message: "Failed to fetch menu dishes" });
+    }
+  });
+
+  app.post("/api/restaurant/dishes", isAuthenticated, async (req: any, res) => {
+    try {
+      const user = await storage.getUser(req.session.user.id);
+      if (!user) return res.status(401).json({ message: "User not found" });
+
+      const dishData = insertMenuDishSchema.parse(req.body);
+
+      if (!checkBranchPermissions(user.role, user.branchId, dishData.branchId)) {
+        return res.status(403).json({ message: "Insufficient permissions for this branch" });
+      }
+
+      const dish = await restaurantStorage.createMenuDish(dishData);
+      res.status(201).json(dish);
+    } catch (error) {
+      console.error("Error creating menu dish:", error);
+      res.status(500).json({ message: "Failed to create menu dish" });
+    }
+  });
+
+  app.put("/api/restaurant/dishes/:id", isAuthenticated, async (req: any, res) => {
+    try {
+      const user = await storage.getUser(req.session.user.id);
+      if (!user) return res.status(401).json({ message: "User not found" });
+
+      const dishId = parseInt(req.params.id);
+      const dishData = insertMenuDishSchema.partial().parse(req.body);
+
+      const existingDish = await restaurantStorage.getMenuDish(dishId);
+      if (!existingDish || !checkBranchPermissions(user.role, user.branchId, existingDish.branchId)) {
+        return res.status(403).json({ message: "Insufficient permissions for this dish" });
+      }
+
+      const dish = await restaurantStorage.updateMenuDish(dishId, dishData);
+      res.json(dish);
+    } catch (error) {
+      console.error("Error updating menu dish:", error);
+      res.status(500).json({ message: "Failed to update menu dish" });
+    }
+  });
+
+  app.delete("/api/restaurant/dishes/:id", isAuthenticated, async (req: any, res) => {
+    try {
+      const user = await storage.getUser(req.session.user.id);
+      if (!user) return res.status(401).json({ message: "User not found" });
+
+      const dishId = parseInt(req.params.id);
+
+      const existingDish = await restaurantStorage.getMenuDish(dishId);
+      if (!existingDish || !checkBranchPermissions(user.role, user.branchId, existingDish.branchId)) {
+        return res.status(403).json({ message: "Insufficient permissions for this dish" });
+      }
+
+      await restaurantStorage.deleteMenuDish(dishId);
+      res.status(204).send();
+    } catch (error) {
+      console.error("Error deleting menu dish:", error);
+      res.status(500).json({ message: "Failed to delete menu dish" });
+    }
+  });
+
+  // Restaurant Orders
+  app.get("/api/restaurant/orders", isAuthenticated, async (req: any, res) => {
+    try {
+      const user = await storage.getUser(req.session.user.id);
+      if (!user) return res.status(401).json({ message: "User not found" });
+
+      const branchId = user.role === "superadmin" ? undefined : user.branchId!;
+      const status = req.query.status as string;
+      const orders = await restaurantStorage.getRestaurantOrders(branchId, status);
+      
+      // Get order items for each order
+      const ordersWithItems = await Promise.all(
+        orders.map(async (order) => {
+          const items = await restaurantStorage.getRestaurantOrderItems(order.id);
+          return { ...order, items };
+        })
+      );
+      
+      res.json(ordersWithItems);
+    } catch (error) {
+      console.error("Error fetching restaurant orders:", error);
+      res.status(500).json({ message: "Failed to fetch restaurant orders" });
+    }
+  });
+
+  app.get("/api/restaurant/orders/:id", isAuthenticated, async (req: any, res) => {
+    try {
+      const user = await storage.getUser(req.session.user.id);
+      if (!user) return res.status(401).json({ message: "User not found" });
+
+      const order = await restaurantStorage.getRestaurantOrder(req.params.id);
+      if (!order) {
+        return res.status(404).json({ message: "Order not found" });
+      }
+
+      if (!checkBranchPermissions(user.role, user.branchId, order.branchId)) {
+        return res.status(403).json({ message: "Insufficient permissions for this order" });
+      }
+
+      const items = await restaurantStorage.getRestaurantOrderItems(order.id);
+      res.json({ ...order, items });
+    } catch (error) {
+      console.error("Error fetching restaurant order:", error);
+      res.status(500).json({ message: "Failed to fetch restaurant order" });
+    }
+  });
+
+  const createOrderSchema = z.object({
+    order: insertRestaurantOrderSchema.omit({ 
+      id: true,
+      orderNumber: true, 
+      createdById: true 
+    }),
+    items: z.array(insertRestaurantOrderItemSchema.omit({ 
+      id: true,
+      orderId: true 
+    })),
+  });
+
+  app.post("/api/restaurant/orders", isAuthenticated, async (req: any, res) => {
+    try {
+      const user = await storage.getUser(req.session.user.id);
+      if (!user) return res.status(401).json({ message: "User not found" });
+
+      const { order: orderData, items: itemsData } = createOrderSchema.parse(req.body);
+
+      if (!checkBranchPermissions(user.role, user.branchId, orderData.branchId)) {
+        return res.status(403).json({ message: "Insufficient permissions for this branch" });
+      }
+
+      // Generate order number
+      const orderNumber = `ORD${Date.now().toString().slice(-8)}`;
+      const orderWithNumber = {
+        ...orderData,
+        orderNumber,
+        createdById: user.id,
+      };
+
+      const order = await restaurantStorage.createRestaurantOrder(orderWithNumber, itemsData);
+      res.status(201).json(order);
+    } catch (error) {
+      console.error("Error creating restaurant order:", error);
+      res.status(500).json({ message: "Failed to create restaurant order" });
+    }
+  });
+
+  app.patch("/api/restaurant/orders/:id/status", isAuthenticated, async (req: any, res) => {
+    try {
+      const user = await storage.getUser(req.session.user.id);
+      if (!user) return res.status(401).json({ message: "User not found" });
+
+      const orderId = req.params.id;
+      const { status } = req.body;
+
+      const existingOrder = await restaurantStorage.getRestaurantOrder(orderId);
+      if (!existingOrder) {
+        return res.status(404).json({ message: "Order not found" });
+      }
+
+      if (!checkBranchPermissions(user.role, user.branchId, existingOrder.branchId)) {
+        return res.status(403).json({ message: "Insufficient permissions for this order" });
+      }
+
+      const order = await restaurantStorage.updateRestaurantOrderStatus(orderId, status);
+      res.json(order);
+    } catch (error) {
+      console.error("Error updating order status:", error);
+      res.status(500).json({ message: "Failed to update order status" });
+    }
+  });
+
+  // KOT/BOT Generation
+  app.post("/api/restaurant/orders/:id/kot", isAuthenticated, async (req: any, res) => {
+    try {
+      const user = await storage.getUser(req.session.user.id);
+      if (!user) return res.status(401).json({ message: "User not found" });
+
+      const orderId = req.params.id;
+      const existingOrder = await restaurantStorage.getRestaurantOrder(orderId);
+      
+      if (!existingOrder) {
+        return res.status(404).json({ message: "Order not found" });
+      }
+
+      if (!checkBranchPermissions(user.role, user.branchId, existingOrder.branchId)) {
+        return res.status(403).json({ message: "Insufficient permissions for this order" });
+      }
+
+      const kotData = await restaurantStorage.generateKOT(orderId);
+      res.json(kotData);
+    } catch (error) {
+      console.error("Error generating KOT:", error);
+      res.status(500).json({ message: "Failed to generate KOT" });
+    }
+  });
+
+  app.post("/api/restaurant/orders/:id/bot", isAuthenticated, async (req: any, res) => {
+    try {
+      const user = await storage.getUser(req.session.user.id);
+      if (!user) return res.status(401).json({ message: "User not found" });
+
+      const orderId = req.params.id;
+      const existingOrder = await restaurantStorage.getRestaurantOrder(orderId);
+      
+      if (!existingOrder) {
+        return res.status(404).json({ message: "Order not found" });
+      }
+
+      if (!checkBranchPermissions(user.role, user.branchId, existingOrder.branchId)) {
+        return res.status(403).json({ message: "Insufficient permissions for this order" });
+      }
+
+      const botData = await restaurantStorage.generateBOT(orderId);
+      res.json(botData);
+    } catch (error) {
+      console.error("Error generating BOT:", error);
+      res.status(500).json({ message: "Failed to generate BOT" });
+    }
+  });
+
+  // Restaurant Bills
+  app.get("/api/restaurant/bills", isAuthenticated, async (req: any, res) => {
+    try {
+      const user = await storage.getUser(req.session.user.id);
+      if (!user) return res.status(401).json({ message: "User not found" });
+
+      const branchId = user.role === "superadmin" ? undefined : user.branchId!;
+      const bills = await restaurantStorage.getRestaurantBills(branchId);
+      res.json(bills);
+    } catch (error) {
+      console.error("Error fetching restaurant bills:", error);
+      res.status(500).json({ message: "Failed to fetch restaurant bills" });
+    }
+  });
+
+  app.post("/api/restaurant/bills", isAuthenticated, async (req: any, res) => {
+    try {
+      const user = await storage.getUser(req.session.user.id);
+      if (!user) return res.status(401).json({ message: "User not found" });
+
+      const billData = insertRestaurantBillSchema.parse({
+        ...req.body,
+        billNumber: `BILL${Date.now().toString().slice(-8)}`,
+        createdById: user.id,
+      });
+
+      if (!checkBranchPermissions(user.role, user.branchId, billData.branchId)) {
+        return res.status(403).json({ message: "Insufficient permissions for this branch" });
+      }
+
+      const bill = await restaurantStorage.createRestaurantBill(billData);
+      res.status(201).json(bill);
+    } catch (error) {
+      console.error("Error creating restaurant bill:", error);
+      res.status(500).json({ message: "Failed to create restaurant bill" });
+    }
+  });
+
+  app.put("/api/restaurant/bills/:id", isAuthenticated, async (req: any, res) => {
+    try {
+      const user = await storage.getUser(req.session.user.id);
+      if (!user) return res.status(401).json({ message: "User not found" });
+
+      const billId = req.params.id;
+      const billData = insertRestaurantBillSchema.partial().parse(req.body);
+
+      const existingBill = await restaurantStorage.getRestaurantBill(billId);
+      if (!existingBill) {
+        return res.status(404).json({ message: "Bill not found" });
+      }
+
+      if (!checkBranchPermissions(user.role, user.branchId, existingBill.branchId)) {
+        return res.status(403).json({ message: "Insufficient permissions for this bill" });
+      }
+
+      const bill = await restaurantStorage.updateRestaurantBill(billId, billData);
+      res.json(bill);
+    } catch (error) {
+      console.error("Error updating restaurant bill:", error);
+      res.status(500).json({ message: "Failed to update restaurant bill" });
+    }
+  });
+
+  // Restaurant Dashboard Metrics
+  app.get("/api/restaurant/dashboard/metrics", isAuthenticated, async (req: any, res) => {
+    try {
+      const user = await storage.getUser(req.session.user.id);
+      if (!user) return res.status(401).json({ message: "User not found" });
+
+      const branchId = user.role === "superadmin" ? undefined : user.branchId!;
+      const metrics = await restaurantStorage.getRestaurantDashboardMetrics(branchId);
+      res.json(metrics);
+    } catch (error) {
+      console.error("Error fetching restaurant dashboard metrics:", error);
+      res.status(500).json({ message: "Failed to fetch restaurant dashboard metrics" });
     }
   });
 

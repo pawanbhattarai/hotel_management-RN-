@@ -671,13 +671,19 @@ export class DatabaseStorage implements IStorage {
 
   // Restaurant Tables
   async getRestaurantTables(branchId?: number): Promise<RestaurantTable[]> {
-    let query = db.select().from(restaurantTables).where(eq(restaurantTables.isActive, true));
-    
     if (branchId) {
-      query = query.where(and(eq(restaurantTables.isActive, true), eq(restaurantTables.branchId, branchId)));
+      return await db
+        .select()
+        .from(restaurantTables)
+        .where(and(eq(restaurantTables.isActive, true), eq(restaurantTables.branchId, branchId)))
+        .orderBy(restaurantTables.name);
     }
     
-    return await query.orderBy(restaurantTables.name);
+    return await db
+      .select()
+      .from(restaurantTables)
+      .where(eq(restaurantTables.isActive, true))
+      .orderBy(restaurantTables.name);
   }
 
   async getRestaurantTable(id: number): Promise<RestaurantTable | undefined> {
