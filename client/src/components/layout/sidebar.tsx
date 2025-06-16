@@ -301,6 +301,51 @@ export default function Sidebar({ isMobileMenuOpen = false, setIsMobileMenuOpen 
                 </div>
               )}
 
+              {/* Restaurant Management System Section */}
+              <div className="border-t border-gray-200 pt-4 mt-4">
+                <button
+                  onClick={() => setIsRestaurantExpanded(!isRestaurantExpanded)}
+                  className="w-full flex items-center justify-between px-3 py-2 text-left rounded-lg transition-colors text-gray-700 hover:bg-gray-100"
+                >
+                  <div className="flex items-center">
+                    <UtensilsCrossed className="h-4 w-4 mr-3 flex-shrink-0" />
+                    <span className="text-xs font-semibold text-gray-500 uppercase tracking-wide">
+                      RESTAURANT
+                    </span>
+                  </div>
+                  {isRestaurantExpanded ? (
+                    <ChevronDown className="h-3 w-3" />
+                  ) : (
+                    <ChevronRight className="h-3 w-3" />
+                  )}
+                </button>
+                
+                {isRestaurantExpanded && (
+                  <div className="mt-2 space-y-1 ml-7">
+                    {restaurantMenuItems.map((item) => {
+                      if (!hasAccess(item.roles)) return null;
+                      return (
+                        <button
+                          key={item.path}
+                          onClick={() => {
+                            navigate(item.path);
+                            setMenuOpen(false);
+                          }}
+                          className={`w-full flex items-center px-3 py-2 lg:py-2.5 text-left rounded-lg transition-colors ${
+                            isActiveRoute(item.path)
+                              ? "bg-primary text-white"
+                              : "text-gray-700 hover:bg-gray-100"
+                          }`}
+                        >
+                          <item.icon className="h-4 w-4 mr-3 flex-shrink-0" />
+                          <span className="text-sm font-medium truncate">{item.title}</span>
+                        </button>
+                      );
+                    })}
+                  </div>
+                )}
+              </div>
+
               {/* Reports Section */}
               {user && (user as any).role === "superadmin" && (
                 <div className="border-t border-gray-200 pt-4 mt-4">
