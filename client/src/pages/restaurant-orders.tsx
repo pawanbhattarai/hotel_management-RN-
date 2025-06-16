@@ -208,11 +208,15 @@ export default function RestaurantOrders() {
 
   return (
     <div className="min-h-screen bg-gray-50">
-      <Sidebar />
+      <Sidebar
+        isMobileMenuOpen={isMobileSidebarOpen}
+        setIsMobileMenuOpen={setIsMobileSidebarOpen}
+      />
       <div className="main-content">
         <Header
           title="Restaurant Orders"
           subtitle="Manage and track restaurant orders"
+          onMobileMenuToggle={() => setIsMobileSidebarOpen(!isMobileSidebarOpen)}
           action={
             <Button 
               onClick={() => setIsDialogOpen(true)}

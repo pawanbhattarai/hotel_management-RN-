@@ -150,11 +150,15 @@ export default function RestaurantBilling() {
 
   return (
     <div className="min-h-screen bg-gray-50">
-      <Sidebar />
+      <Sidebar
+        isMobileMenuOpen={isMobileSidebarOpen}
+        setIsMobileMenuOpen={setIsMobileSidebarOpen}
+      />
       <div className="main-content">
         <Header
           title="Restaurant Billing"
           subtitle="Manage restaurant bills and payments"
+          onMobileMenuToggle={() => setIsMobileSidebarOpen(!isMobileSidebarOpen)}
           action={
             <Button onClick={() => setIsDialogOpen(true)} className="button-responsive">
               <Plus className="mr-2 h-4 w-4" />
