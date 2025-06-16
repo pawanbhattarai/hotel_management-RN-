@@ -69,12 +69,14 @@ body {
   .main-content {
     margin-left: 16rem; /* 256px sidebar width */
     width: calc(100% - 16rem);
+    min-height: 100vh;
   }
 
   /* Header on desktop */
   header {
     margin-left: 0;
     padding-left: 1.5rem !important;
+    width: 100%;
   }
 
   /* Main content padding on desktop */
@@ -82,6 +84,14 @@ body {
     margin-left: 0;
     padding: 2rem;
     max-width: none;
+    width: 100%;
+  }
+
+  /* Content wrapper */
+  .content-wrapper {
+    width: 100%;
+    max-width: none;
+    padding: 0;
   }
 
   /* Ensure no content overflow */
