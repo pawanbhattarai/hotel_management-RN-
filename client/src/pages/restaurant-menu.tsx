@@ -1,3 +1,4 @@
+
 import { useState } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { Plus, Edit2, Trash2, ChefHat } from "lucide-react";
@@ -15,6 +16,8 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 import { queryClient } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
+import Sidebar from "@/components/layout/sidebar";
+import Header from "@/components/layout/header";
 
 const categorySchema = z.object({
   name: z.string().min(1, "Category name is required"),
@@ -234,397 +237,411 @@ export default function RestaurantMenu() {
   if (categoriesLoading || dishesLoading) return <div>Loading menu...</div>;
 
   return (
-    <div className="container mx-auto py-6 space-y-6">
-      <div className="flex justify-between items-center">
-        <h1 className="text-3xl font-bold">Restaurant Menu</h1>
-      </div>
+    <div className="flex min-h-screen bg-gray-50">
+      <Sidebar />
+      <div className="flex-1 lg:ml-64">
+        <Header />
+        <main className="p-4 lg:p-6 xl:p-8">
+          <div className="max-w-7xl mx-auto space-y-4 lg:space-y-6">
+            <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
+              <h1 className="text-2xl lg:text-3xl font-bold">Restaurant Menu</h1>
+            </div>
 
-      <Tabs defaultValue="categories" className="w-full">
-        <TabsList className="grid w-full grid-cols-2">
-          <TabsTrigger value="categories">Categories</TabsTrigger>
-          <TabsTrigger value="dishes">Dishes</TabsTrigger>
-        </TabsList>
+            <Tabs defaultValue="categories" className="w-full">
+              <TabsList className="grid w-full grid-cols-2 max-w-md">
+                <TabsTrigger value="categories">Categories</TabsTrigger>
+                <TabsTrigger value="dishes">Dishes</TabsTrigger>
+              </TabsList>
 
-        <TabsContent value="categories" className="space-y-4">
-          <div className="flex justify-between items-center">
-            <h2 className="text-xl font-semibold">Menu Categories</h2>
-            <Dialog open={isCategoryDialogOpen} onOpenChange={setIsCategoryDialogOpen}>
-              <DialogTrigger asChild>
-                <Button onClick={() => {
-                  setEditingCategory(null);
-                  categoryForm.reset();
-                }}>
-                  <Plus className="mr-2 h-4 w-4" />
-                  Add Category
-                </Button>
-              </DialogTrigger>
-              <DialogContent>
-                <DialogHeader>
-                  <DialogTitle>{editingCategory ? 'Edit Category' : 'Add New Category'}</DialogTitle>
-                </DialogHeader>
-                <Form {...categoryForm}>
-                  <form onSubmit={categoryForm.handleSubmit(onCategorySubmit)} className="space-y-4">
-                    <FormField
-                      control={categoryForm.control}
-                      name="name"
-                      render={({ field }) => (
-                        <FormItem>
-                          <FormLabel>Category Name</FormLabel>
-                          <FormControl>
-                            <Input {...field} placeholder="e.g., Appetizers" />
-                          </FormControl>
-                          <FormMessage />
-                        </FormItem>
-                      )}
-                    />
-                    <FormField
-                      control={categoryForm.control}
-                      name="branchId"
-                      render={({ field }) => (
-                        <FormItem>
-                          <FormLabel>Branch</FormLabel>
-                          <FormControl>
-                            <Select 
-                              value={field.value?.toString()} 
-                              onValueChange={(value) => field.onChange(parseInt(value))}
+              <TabsContent value="categories" className="space-y-4">
+                <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
+                  <h2 className="text-lg lg:text-xl font-semibold">Menu Categories</h2>
+                  <Dialog open={isCategoryDialogOpen} onOpenChange={setIsCategoryDialogOpen}>
+                    <DialogTrigger asChild>
+                      <Button 
+                        className="w-full sm:w-auto"
+                        onClick={() => {
+                          setEditingCategory(null);
+                          categoryForm.reset();
+                        }}
+                      >
+                        <Plus className="mr-2 h-4 w-4" />
+                        Add Category
+                      </Button>
+                    </DialogTrigger>
+                    <DialogContent className="w-[95vw] max-w-md mx-auto">
+                      <DialogHeader>
+                        <DialogTitle>{editingCategory ? 'Edit Category' : 'Add New Category'}</DialogTitle>
+                      </DialogHeader>
+                      <Form {...categoryForm}>
+                        <form onSubmit={categoryForm.handleSubmit(onCategorySubmit)} className="space-y-4">
+                          <FormField
+                            control={categoryForm.control}
+                            name="name"
+                            render={({ field }) => (
+                              <FormItem>
+                                <FormLabel>Category Name</FormLabel>
+                                <FormControl>
+                                  <Input {...field} placeholder="e.g., Appetizers" />
+                                </FormControl>
+                                <FormMessage />
+                              </FormItem>
+                            )}
+                          />
+                          <FormField
+                            control={categoryForm.control}
+                            name="branchId"
+                            render={({ field }) => (
+                              <FormItem>
+                                <FormLabel>Branch</FormLabel>
+                                <FormControl>
+                                  <Select 
+                                    value={field.value?.toString()} 
+                                    onValueChange={(value) => field.onChange(parseInt(value))}
+                                  >
+                                    <SelectTrigger>
+                                      <SelectValue placeholder="Select branch" />
+                                    </SelectTrigger>
+                                    <SelectContent>
+                                      {branches?.map((branch: any) => (
+                                        <SelectItem key={branch.id} value={branch.id.toString()}>
+                                          {branch.name}
+                                        </SelectItem>
+                                      ))}
+                                    </SelectContent>
+                                  </Select>
+                                </FormControl>
+                                <FormMessage />
+                              </FormItem>
+                            )}
+                          />
+                          <FormField
+                            control={categoryForm.control}
+                            name="sortOrder"
+                            render={({ field }) => (
+                              <FormItem>
+                                <FormLabel>Sort Order</FormLabel>
+                                <FormControl>
+                                  <Input 
+                                    {...field} 
+                                    type="number" 
+                                    onChange={(e) => field.onChange(parseInt(e.target.value))}
+                                  />
+                                </FormControl>
+                                <FormMessage />
+                              </FormItem>
+                            )}
+                          />
+                          <div className="flex flex-col sm:flex-row justify-end gap-2">
+                            <Button type="button" variant="outline" onClick={() => setIsCategoryDialogOpen(false)}>
+                              Cancel
+                            </Button>
+                            <Button type="submit" disabled={createCategoryMutation.isPending || updateCategoryMutation.isPending}>
+                              {editingCategory ? 'Update' : 'Create'} Category
+                            </Button>
+                          </div>
+                        </form>
+                      </Form>
+                    </DialogContent>
+                  </Dialog>
+                </div>
+
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+                  {categories?.map((category: any) => (
+                    <Card key={category.id}>
+                      <CardHeader className="pb-2">
+                        <div className="flex justify-between items-start">
+                          <CardTitle className="text-base lg:text-lg truncate">{category.name}</CardTitle>
+                          <div className="flex space-x-1 flex-shrink-0">
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              onClick={() => handleEditCategory(category)}
                             >
-                              <SelectTrigger>
-                                <SelectValue placeholder="Select branch" />
-                              </SelectTrigger>
-                              <SelectContent>
-                                {branches?.map((branch: any) => (
-                                  <SelectItem key={branch.id} value={branch.id.toString()}>
-                                    {branch.name}
-                                  </SelectItem>
-                                ))}
-                              </SelectContent>
-                            </Select>
-                          </FormControl>
-                          <FormMessage />
-                        </FormItem>
-                      )}
-                    />
-                    <FormField
-                      control={categoryForm.control}
-                      name="sortOrder"
-                      render={({ field }) => (
-                        <FormItem>
-                          <FormLabel>Sort Order</FormLabel>
-                          <FormControl>
-                            <Input 
-                              {...field} 
-                              type="number" 
-                              onChange={(e) => field.onChange(parseInt(e.target.value))}
+                              <Edit2 className="h-4 w-4" />
+                            </Button>
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              onClick={() => {
+                                if (confirm('Are you sure you want to delete this category?')) {
+                                  deleteCategoryMutation.mutate(category.id);
+                                }
+                              }}
+                            >
+                              <Trash2 className="h-4 w-4" />
+                            </Button>
+                          </div>
+                        </div>
+                      </CardHeader>
+                      <CardContent>
+                        <div className="text-sm text-muted-foreground">
+                          Sort Order: {category.sortOrder}
+                        </div>
+                      </CardContent>
+                    </Card>
+                  ))}
+                </div>
+              </TabsContent>
+
+              <TabsContent value="dishes" className="space-y-4">
+                <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
+                  <h2 className="text-lg lg:text-xl font-semibold">Menu Dishes</h2>
+                  <Dialog open={isDishDialogOpen} onOpenChange={setIsDishDialogOpen}>
+                    <DialogTrigger asChild>
+                      <Button 
+                        className="w-full sm:w-auto"
+                        onClick={() => {
+                          setEditingDish(null);
+                          dishForm.reset();
+                        }}
+                      >
+                        <ChefHat className="mr-2 h-4 w-4" />
+                        Add Dish
+                      </Button>
+                    </DialogTrigger>
+                    <DialogContent className="w-[95vw] max-w-2xl mx-auto max-h-[90vh] overflow-y-auto">
+                      <DialogHeader>
+                        <DialogTitle>{editingDish ? 'Edit Dish' : 'Add New Dish'}</DialogTitle>
+                      </DialogHeader>
+                      <Form {...dishForm}>
+                        <form onSubmit={dishForm.handleSubmit(onDishSubmit)} className="space-y-4">
+                          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                            <FormField
+                              control={dishForm.control}
+                              name="name"
+                              render={({ field }) => (
+                                <FormItem>
+                                  <FormLabel>Dish Name</FormLabel>
+                                  <FormControl>
+                                    <Input {...field} placeholder="e.g., Chicken Curry" />
+                                  </FormControl>
+                                  <FormMessage />
+                                </FormItem>
+                              )}
                             />
-                          </FormControl>
-                          <FormMessage />
-                        </FormItem>
-                      )}
-                    />
-                    <div className="flex justify-end space-x-2">
-                      <Button type="button" variant="outline" onClick={() => setIsCategoryDialogOpen(false)}>
-                        Cancel
-                      </Button>
-                      <Button type="submit" disabled={createCategoryMutation.isPending || updateCategoryMutation.isPending}>
-                        {editingCategory ? 'Update' : 'Create'} Category
-                      </Button>
-                    </div>
-                  </form>
-                </Form>
-              </DialogContent>
-            </Dialog>
+                            <FormField
+                              control={dishForm.control}
+                              name="price"
+                              render={({ field }) => (
+                                <FormItem>
+                                  <FormLabel>Price</FormLabel>
+                                  <FormControl>
+                                    <Input {...field} placeholder="e.g., 350.00" />
+                                  </FormControl>
+                                  <FormMessage />
+                                </FormItem>
+                              )}
+                            />
+                          </div>
+
+                          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                            <FormField
+                              control={dishForm.control}
+                              name="categoryId"
+                              render={({ field }) => (
+                                <FormItem>
+                                  <FormLabel>Category</FormLabel>
+                                  <FormControl>
+                                    <Select 
+                                      value={field.value?.toString()} 
+                                      onValueChange={(value) => field.onChange(parseInt(value))}
+                                    >
+                                      <SelectTrigger>
+                                        <SelectValue placeholder="Select category" />
+                                      </SelectTrigger>
+                                      <SelectContent>
+                                        {categories?.map((category: any) => (
+                                          <SelectItem key={category.id} value={category.id.toString()}>
+                                            {category.name}
+                                          </SelectItem>
+                                        ))}
+                                      </SelectContent>
+                                    </Select>
+                                  </FormControl>
+                                  <FormMessage />
+                                </FormItem>
+                              )}
+                            />
+                            <FormField
+                              control={dishForm.control}
+                              name="branchId"
+                              render={({ field }) => (
+                                <FormItem>
+                                  <FormLabel>Branch</FormLabel>
+                                  <FormControl>
+                                    <Select 
+                                      value={field.value?.toString()} 
+                                      onValueChange={(value) => field.onChange(parseInt(value))}
+                                    >
+                                      <SelectTrigger>
+                                        <SelectValue placeholder="Select branch" />
+                                      </SelectTrigger>
+                                      <SelectContent>
+                                        {branches?.map((branch: any) => (
+                                          <SelectItem key={branch.id} value={branch.id.toString()}>
+                                            {branch.name}
+                                          </SelectItem>
+                                        ))}
+                                      </SelectContent>
+                                    </Select>
+                                  </FormControl>
+                                  <FormMessage />
+                                </FormItem>
+                              )}
+                            />
+                          </div>
+
+                          <FormField
+                            control={dishForm.control}
+                            name="description"
+                            render={({ field }) => (
+                              <FormItem>
+                                <FormLabel>Description</FormLabel>
+                                <FormControl>
+                                  <Textarea {...field} placeholder="Describe the dish..." />
+                                </FormControl>
+                                <FormMessage />
+                              </FormItem>
+                            )}
+                          />
+
+                          <FormField
+                            control={dishForm.control}
+                            name="ingredients"
+                            render={({ field }) => (
+                              <FormItem>
+                                <FormLabel>Ingredients</FormLabel>
+                                <FormControl>
+                                  <Textarea {...field} placeholder="List main ingredients..." />
+                                </FormControl>
+                                <FormMessage />
+                              </FormItem>
+                            )}
+                          />
+
+                          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                            <FormField
+                              control={dishForm.control}
+                              name="spiceLevel"
+                              render={({ field }) => (
+                                <FormItem>
+                                  <FormLabel>Spice Level</FormLabel>
+                                  <FormControl>
+                                    <Select value={field.value} onValueChange={field.onChange}>
+                                      <SelectTrigger>
+                                        <SelectValue placeholder="Select spice level" />
+                                      </SelectTrigger>
+                                      <SelectContent>
+                                        <SelectItem value="mild">Mild</SelectItem>
+                                        <SelectItem value="medium">Medium</SelectItem>
+                                        <SelectItem value="hot">Hot</SelectItem>
+                                        <SelectItem value="extra-hot">Extra Hot</SelectItem>
+                                      </SelectContent>
+                                    </Select>
+                                  </FormControl>
+                                  <FormMessage />
+                                </FormItem>
+                              )}
+                            />
+                            <FormField
+                              control={dishForm.control}
+                              name="preparationTime"
+                              render={({ field }) => (
+                                <FormItem>
+                                  <FormLabel>Preparation Time (minutes)</FormLabel>
+                                  <FormControl>
+                                    <Input 
+                                      {...field} 
+                                      type="number" 
+                                      onChange={(e) => field.onChange(parseInt(e.target.value))}
+                                    />
+                                  </FormControl>
+                                  <FormMessage />
+                                </FormItem>
+                              )}
+                            />
+                          </div>
+
+                          <div className="flex flex-col sm:flex-row justify-end gap-2">
+                            <Button type="button" variant="outline" onClick={() => setIsDishDialogOpen(false)}>
+                              Cancel
+                            </Button>
+                            <Button type="submit" disabled={createDishMutation.isPending || updateDishMutation.isPending}>
+                              {editingDish ? 'Update' : 'Create'} Dish
+                            </Button>
+                          </div>
+                        </form>
+                      </Form>
+                    </DialogContent>
+                  </Dialog>
+                </div>
+
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+                  {dishes?.map((dish: any) => (
+                    <Card key={dish.id}>
+                      <CardHeader className="pb-2">
+                        <div className="flex justify-between items-start">
+                          <CardTitle className="text-base lg:text-lg truncate">{dish.name}</CardTitle>
+                          <div className="flex space-x-1 flex-shrink-0">
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              onClick={() => handleEditDish(dish)}
+                            >
+                              <Edit2 className="h-4 w-4" />
+                            </Button>
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              onClick={() => {
+                                if (confirm('Are you sure you want to delete this dish?')) {
+                                  deleteDishMutation.mutate(dish.id);
+                                }
+                              }}
+                            >
+                              <Trash2 className="h-4 w-4" />
+                            </Button>
+                          </div>
+                        </div>
+                      </CardHeader>
+                      <CardContent>
+                        <div className="space-y-2">
+                          <div className="flex justify-between">
+                            <span className="text-sm text-muted-foreground">Price:</span>
+                            <span className="font-medium text-sm">Rs. {dish.price}</span>
+                          </div>
+                          {dish.description && (
+                            <p className="text-sm text-muted-foreground line-clamp-2">{dish.description}</p>
+                          )}
+                          <div className="flex flex-wrap gap-1">
+                            {dish.isVegetarian && (
+                              <Badge className="bg-green-500 text-white text-xs">Vegetarian</Badge>
+                            )}
+                            {dish.isVegan && (
+                              <Badge className="bg-green-700 text-white text-xs">Vegan</Badge>
+                            )}
+                            {dish.spiceLevel && (
+                              <Badge className={`${getSpiceLevelColor(dish.spiceLevel)} text-white text-xs`}>
+                                {dish.spiceLevel}
+                              </Badge>
+                            )}
+                          </div>
+                          {dish.preparationTime && (
+                            <div className="text-sm text-muted-foreground">
+                              Prep time: {dish.preparationTime} mins
+                            </div>
+                          )}
+                        </div>
+                      </CardContent>
+                    </Card>
+                  ))}
+                </div>
+              </TabsContent>
+            </Tabs>
           </div>
-
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-            {categories?.map((category: any) => (
-              <Card key={category.id}>
-                <CardHeader className="pb-2">
-                  <div className="flex justify-between items-start">
-                    <CardTitle className="text-lg">{category.name}</CardTitle>
-                    <div className="flex space-x-1">
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        onClick={() => handleEditCategory(category)}
-                      >
-                        <Edit2 className="h-4 w-4" />
-                      </Button>
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        onClick={() => {
-                          if (confirm('Are you sure you want to delete this category?')) {
-                            deleteCategoryMutation.mutate(category.id);
-                          }
-                        }}
-                      >
-                        <Trash2 className="h-4 w-4" />
-                      </Button>
-                    </div>
-                  </div>
-                </CardHeader>
-                <CardContent>
-                  <div className="text-sm text-muted-foreground">
-                    Sort Order: {category.sortOrder}
-                  </div>
-                </CardContent>
-              </Card>
-            ))}
-          </div>
-        </TabsContent>
-
-        <TabsContent value="dishes" className="space-y-4">
-          <div className="flex justify-between items-center">
-            <h2 className="text-xl font-semibold">Menu Dishes</h2>
-            <Dialog open={isDishDialogOpen} onOpenChange={setIsDishDialogOpen}>
-              <DialogTrigger asChild>
-                <Button onClick={() => {
-                  setEditingDish(null);
-                  dishForm.reset();
-                }}>
-                  <ChefHat className="mr-2 h-4 w-4" />
-                  Add Dish
-                </Button>
-              </DialogTrigger>
-              <DialogContent className="max-w-2xl">
-                <DialogHeader>
-                  <DialogTitle>{editingDish ? 'Edit Dish' : 'Add New Dish'}</DialogTitle>
-                </DialogHeader>
-                <Form {...dishForm}>
-                  <form onSubmit={dishForm.handleSubmit(onDishSubmit)} className="space-y-4">
-                    <div className="grid grid-cols-2 gap-4">
-                      <FormField
-                        control={dishForm.control}
-                        name="name"
-                        render={({ field }) => (
-                          <FormItem>
-                            <FormLabel>Dish Name</FormLabel>
-                            <FormControl>
-                              <Input {...field} placeholder="e.g., Chicken Curry" />
-                            </FormControl>
-                            <FormMessage />
-                          </FormItem>
-                        )}
-                      />
-                      <FormField
-                        control={dishForm.control}
-                        name="price"
-                        render={({ field }) => (
-                          <FormItem>
-                            <FormLabel>Price</FormLabel>
-                            <FormControl>
-                              <Input {...field} placeholder="e.g., 350.00" />
-                            </FormControl>
-                            <FormMessage />
-                          </FormItem>
-                        )}
-                      />
-                    </div>
-
-                    <div className="grid grid-cols-2 gap-4">
-                      <FormField
-                        control={dishForm.control}
-                        name="categoryId"
-                        render={({ field }) => (
-                          <FormItem>
-                            <FormLabel>Category</FormLabel>
-                            <FormControl>
-                              <Select 
-                                value={field.value?.toString()} 
-                                onValueChange={(value) => field.onChange(parseInt(value))}
-                              >
-                                <SelectTrigger>
-                                  <SelectValue placeholder="Select category" />
-                                </SelectTrigger>
-                                <SelectContent>
-                                  {categories?.map((category: any) => (
-                                    <SelectItem key={category.id} value={category.id.toString()}>
-                                      {category.name}
-                                    </SelectItem>
-                                  ))}
-                                </SelectContent>
-                              </Select>
-                            </FormControl>
-                            <FormMessage />
-                          </FormItem>
-                        )}
-                      />
-                      <FormField
-                        control={dishForm.control}
-                        name="branchId"
-                        render={({ field }) => (
-                          <FormItem>
-                            <FormLabel>Branch</FormLabel>
-                            <FormControl>
-                              <Select 
-                                value={field.value?.toString()} 
-                                onValueChange={(value) => field.onChange(parseInt(value))}
-                              >
-                                <SelectTrigger>
-                                  <SelectValue placeholder="Select branch" />
-                                </SelectTrigger>
-                                <SelectContent>
-                                  {branches?.map((branch: any) => (
-                                    <SelectItem key={branch.id} value={branch.id.toString()}>
-                                      {branch.name}
-                                    </SelectItem>
-                                  ))}
-                                </SelectContent>
-                              </Select>
-                            </FormControl>
-                            <FormMessage />
-                          </FormItem>
-                        )}
-                      />
-                    </div>
-
-                    <FormField
-                      control={dishForm.control}
-                      name="description"
-                      render={({ field }) => (
-                        <FormItem>
-                          <FormLabel>Description</FormLabel>
-                          <FormControl>
-                            <Textarea {...field} placeholder="Describe the dish..." />
-                          </FormControl>
-                          <FormMessage />
-                        </FormItem>
-                      )}
-                    />
-
-                    <FormField
-                      control={dishForm.control}
-                      name="ingredients"
-                      render={({ field }) => (
-                        <FormItem>
-                          <FormLabel>Ingredients</FormLabel>
-                          <FormControl>
-                            <Textarea {...field} placeholder="List main ingredients..." />
-                          </FormControl>
-                          <FormMessage />
-                        </FormItem>
-                      )}
-                    />
-
-                    <div className="grid grid-cols-2 gap-4">
-                      <FormField
-                        control={dishForm.control}
-                        name="spiceLevel"
-                        render={({ field }) => (
-                          <FormItem>
-                            <FormLabel>Spice Level</FormLabel>
-                            <FormControl>
-                              <Select value={field.value} onValueChange={field.onChange}>
-                                <SelectTrigger>
-                                  <SelectValue placeholder="Select spice level" />
-                                </SelectTrigger>
-                                <SelectContent>
-                                  <SelectItem value="mild">Mild</SelectItem>
-                                  <SelectItem value="medium">Medium</SelectItem>
-                                  <SelectItem value="hot">Hot</SelectItem>
-                                  <SelectItem value="extra-hot">Extra Hot</SelectItem>
-                                </SelectContent>
-                              </Select>
-                            </FormControl>
-                            <FormMessage />
-                          </FormItem>
-                        )}
-                      />
-                      <FormField
-                        control={dishForm.control}
-                        name="preparationTime"
-                        render={({ field }) => (
-                          <FormItem>
-                            <FormLabel>Preparation Time (minutes)</FormLabel>
-                            <FormControl>
-                              <Input 
-                                {...field} 
-                                type="number" 
-                                onChange={(e) => field.onChange(parseInt(e.target.value))}
-                              />
-                            </FormControl>
-                            <FormMessage />
-                          </FormItem>
-                        )}
-                      />
-                    </div>
-
-                    <div className="flex justify-end space-x-2">
-                      <Button type="button" variant="outline" onClick={() => setIsDishDialogOpen(false)}>
-                        Cancel
-                      </Button>
-                      <Button type="submit" disabled={createDishMutation.isPending || updateDishMutation.isPending}>
-                        {editingDish ? 'Update' : 'Create'} Dish
-                      </Button>
-                    </div>
-                  </form>
-                </Form>
-              </DialogContent>
-            </Dialog>
-          </div>
-
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-            {dishes?.map((dish: any) => (
-              <Card key={dish.id}>
-                <CardHeader className="pb-2">
-                  <div className="flex justify-between items-start">
-                    <CardTitle className="text-lg">{dish.name}</CardTitle>
-                    <div className="flex space-x-1">
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        onClick={() => handleEditDish(dish)}
-                      >
-                        <Edit2 className="h-4 w-4" />
-                      </Button>
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        onClick={() => {
-                          if (confirm('Are you sure you want to delete this dish?')) {
-                            deleteDishMutation.mutate(dish.id);
-                          }
-                        }}
-                      >
-                        <Trash2 className="h-4 w-4" />
-                      </Button>
-                    </div>
-                  </div>
-                </CardHeader>
-                <CardContent>
-                  <div className="space-y-2">
-                    <div className="flex justify-between">
-                      <span className="text-sm text-muted-foreground">Price:</span>
-                      <span className="font-medium">Rs. {dish.price}</span>
-                    </div>
-                    {dish.description && (
-                      <p className="text-sm text-muted-foreground">{dish.description}</p>
-                    )}
-                    <div className="flex flex-wrap gap-1">
-                      {dish.isVegetarian && (
-                        <Badge className="bg-green-500 text-white">Vegetarian</Badge>
-                      )}
-                      {dish.isVegan && (
-                        <Badge className="bg-green-700 text-white">Vegan</Badge>
-                      )}
-                      {dish.spiceLevel && (
-                        <Badge className={`${getSpiceLevelColor(dish.spiceLevel)} text-white`}>
-                          {dish.spiceLevel}
-                        </Badge>
-                      )}
-                    </div>
-                    {dish.preparationTime && (
-                      <div className="text-sm text-muted-foreground">
-                        Prep time: {dish.preparationTime} mins
-                      </div>
-                    )}
-                  </div>
-                </CardContent>
-              </Card>
-            ))}
-          </div>
-        </TabsContent>
-      </Tabs>
+        </main>
+      </div>
     </div>
   );
 }
