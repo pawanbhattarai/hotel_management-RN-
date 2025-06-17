@@ -64,8 +64,8 @@ export default function RestaurantBilling() {
       }
 
       // Check if order is in correct status for checkout
-      if (order.status !== 'served') {
-        throw new Error('Order must be served before checkout');
+      if (!['pending', 'confirmed', 'preparing', 'ready', 'served'].includes(order.status)) {
+        throw new Error('Order must be active to checkout');
       }
 
       const subtotal = parseFloat(order.subtotal || order.totalAmount || "0");
@@ -142,8 +142,8 @@ export default function RestaurantBilling() {
       
       if (error.message?.includes("Bill already exists")) {
         errorMessage = "This order has already been billed. Please refresh the page to see the updated status.";
-      } else if (error.message?.includes("Order must be served")) {
-        errorMessage = "Order must be marked as 'served' before checkout.";
+      } else if (error.message?.includes("Order must be active")) {
+        errorMessage = "Order must be active to checkout.";
       }
       
       toast({ 
@@ -194,12 +194,12 @@ export default function RestaurantBilling() {
     }
   };
 
-  const getServedOrders = () => {
+  const getReadyForCheckoutOrders = () => {
     if (!orders || !bills) return [];
 
-    // Get orders that are served and don't have bills yet
+    // Get orders that are pending, confirmed, preparing, ready, or served and don't have bills yet
     return orders.filter((order: any) => 
-      order.status === 'served' && 
+      ['pending', 'confirmed', 'preparing', 'ready', 'served'].includes(order.status) && 
       !bills.some((bill: any) => bill.orderId === order.id)
     );
   };
@@ -284,7 +284,7 @@ export default function RestaurantBilling() {
               <CardTitle>Orders Ready for Checkout</CardTitle>
             </CardHeader>
             <CardContent>
-              {getServedOrders().length > 0 ? (
+              {getReadyForCheckoutOrders().length > 0 ? (
                 <Table>
                   <TableHeader>
                     <TableRow>
@@ -296,7 +296,7 @@ export default function RestaurantBilling() {
                     </TableRow>
                   </TableHeader>
                   <TableBody>
-                    {getServedOrders().map((order: any) => (
+                    {getReadyForCheckoutOrders().map((order: any) => (
                       <TableRow key={order.id}>
                         <TableCell className="font-medium">#{order.orderNumber}</TableCell>
                         <TableCell>{getTableName(order.tableId)}</TableCell>
@@ -318,7 +318,7 @@ export default function RestaurantBilling() {
                 </Table>
               ) : (
                 <div className="text-center py-8 text-gray-500">
-                  No orders ready for checkout. Orders must be served before checkout.
+                  No orders ready for checkout. Create orders to see them here.
                 </div>
               )}
             </CardContent>

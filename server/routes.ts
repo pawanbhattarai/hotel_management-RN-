@@ -1845,8 +1845,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(404).json({ message: "Order not found" });
       }
 
-      if (order.status !== 'served') {
-        return res.status(400).json({ message: "Order must be served before creating bill" });
+      if (!['pending', 'confirmed', 'preparing', 'ready', 'served'].includes(order.status)) {
+        return res.status(400).json({ message: "Order must be active to create bill" });
       }
 
       const bill = await restaurantStorage.createRestaurantBill(billData);
