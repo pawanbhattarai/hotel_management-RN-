@@ -47,6 +47,8 @@ type DishFormData = z.infer<typeof dishSchema>;
 export default function RestaurantMenu() {
   const [isCategoryDialogOpen, setIsCategoryDialogOpen] = useState(false);
   const [isDishDialogOpen, setIsDishDialogOpen] = useState(false);
+  const [isBulkCategoryDialogOpen, setIsBulkCategoryDialogOpen] = useState(false);
+  const [isBulkDishDialogOpen, setIsBulkDishDialogOpen] = useState(false);
   const [editingCategory, setEditingCategory] = useState<any>(null);
   const [editingDish, setEditingDish] = useState<any>(null);
   const [isMobileSidebarOpen, setIsMobileSidebarOpen] = useState(false);
@@ -326,7 +328,7 @@ export default function RestaurantMenu() {
                                     <SelectValue placeholder="Select branch" />
                                   </SelectTrigger>
                                   <SelectContent>
-                                    {branches?.map((branch: any) => (
+                                    {Array.isArray(branches) && branches.map((branch: any) => (
                                       <SelectItem key={branch.id} value={branch.id.toString()}>
                                         {branch.name}
                                       </SelectItem>
@@ -359,6 +361,18 @@ export default function RestaurantMenu() {
                           <Button type="button" variant="outline" onClick={() => setIsCategoryDialogOpen(false)}>
                             Cancel
                           </Button>
+                          {!editingCategory && (
+                            <Button 
+                              type="button" 
+                              variant="secondary" 
+                              onClick={() => {
+                                setIsCategoryDialogOpen(false);
+                                setIsBulkCategoryDialogOpen(true);
+                              }}
+                            >
+                              Add Bulk
+                            </Button>
+                          )}
                           <Button type="submit" disabled={createCategoryMutation.isPending || updateCategoryMutation.isPending}>
                             {editingCategory ? 'Update' : 'Create'} Category
                           </Button>
@@ -369,7 +383,7 @@ export default function RestaurantMenu() {
                 </Dialog>
                 <BulkOperations 
                   type="categories" 
-                  branches={branches || []} 
+                  branches={Array.isArray(branches) ? branches : []} 
                   onSuccess={() => {
                     queryClient.invalidateQueries({ queryKey: ['/api/restaurant/categories'] });
                   }} 
