@@ -284,24 +284,16 @@ export class RestaurantStorage {
     return result;
   }
 
-  async updateRestaurantOrderStatus(id: string, status: string): Promise<RestaurantOrder> {
+  async updateRestaurantOrderStatus(id: string, status: string, userId?: string): Promise<RestaurantOrder> {
     return await db.transaction(async (tx) => {
       const updateData: any = { status, updatedAt: sql`NOW()` };
       
       if (status === 'served') {
         updateData.servedAt = sql`NOW()`;
-      } else if (status === 'completed') {
-        updateData.completedAt = sql`NOW()`;
         
         // Get order details
         const [order] = await tx.select().from(restaurantOrders).where(eq(restaurantOrders.id, id));
         if (order) {
-          // Set table status back to open when order is completed
-          await tx
-            .update(restaurantTables)
-            .set({ status: 'open', updatedAt: sql`NOW()` })
-            .where(eq(restaurantTables.id, order.tableId));
-
           // Check if bill already exists for this order
           const [existingBill] = await tx
             .select()
@@ -335,9 +327,21 @@ export class RestaurantStorage {
               changeAmount: "0",
               paymentStatus: "pending",
               paymentMethod: "cash",
-              notes: "Auto-generated bill",
+              notes: "Auto-generated bill when order was served",
             });
           }
+        }
+      } else if (status === 'completed') {
+        updateData.completedAt = sql`NOW()`;
+        
+        // Get order details
+        const [order] = await tx.select().from(restaurantOrders).where(eq(restaurantOrders.id, id));
+        if (order) {
+          // Set table status back to open when order is completed
+          await tx
+            .update(restaurantTables)
+            .set({ status: 'open', updatedAt: sql`NOW()` })
+            .where(eq(restaurantTables.id, order.tableId));
         }
       }
 
@@ -476,7 +480,13 @@ export class RestaurantStorage {
   }
 
   async createRestaurantBill(bill: InsertRestaurantBill): Promise<RestaurantBill> {
-    const [result] = await db.insert(restaurantBills).values(bill).returning();
+    // Ensure the bill data has all required fields
+    const billData = {
+      ...bill,
+      billNumber: bill.billNumber || `BILL${Date.now().toString().slice(-8)}`,
+    };
+    
+    const [result] = await db.insert(restaurantBills).values(billData).returning();
     return result;
   }
 

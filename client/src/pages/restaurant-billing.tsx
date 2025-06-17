@@ -171,9 +171,10 @@ export default function RestaurantBilling() {
   const getCompletedOrders = () => {
     if (!orders || !bills) return [];
     
-    // Get orders that are served and don't have bills yet (completed orders auto-generate bills)
+    // Get orders that are served or completed and don't have bills yet
+    // (served orders should auto-generate bills, but show as fallback)
     return orders.filter((order: any) => 
-      order.status === 'served' && 
+      (order.status === 'served' || order.status === 'completed') && 
       !bills.some((bill: any) => bill.orderId === order.id)
     );
   };

@@ -491,7 +491,7 @@ export const restaurantBills = pgTable("restaurant_bills", {
   }),
   isPrinted: boolean("is_printed").default(false),
   printedAt: timestamp("printed_at"),
-  createdById: text("created_by_id").notNull(),
+  createdById: text("created_by_id"), // Making createdById optional
   createdAt: timestamp("created_at").defaultNow(),
   updatedAt: timestamp("updated_at").defaultNow(),
 });
