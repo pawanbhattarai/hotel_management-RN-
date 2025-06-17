@@ -18,6 +18,7 @@ import { queryClient } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
 import Sidebar from "@/components/layout/sidebar";
 import Header from "@/components/layout/header";
+import { useAuth } from "@/hooks/useAuth";
 
 const dishSchema = z.object({
   name: z.string().min(1, "Dish name is required"),
@@ -40,6 +41,7 @@ export default function RestaurantDishes() {
   const [editingDish, setEditingDish] = useState<any>(null);
   const [isMobileSidebarOpen, setIsMobileSidebarOpen] = useState(false);
   const { toast } = useToast();
+  const { user } = useAuth();
 
   const { data: categories } = useQuery({
     queryKey: ['/api/restaurant/categories'],
@@ -108,6 +110,7 @@ export default function RestaurantDishes() {
     defaultValues: {
       name: "",
       price: "",
+      branchId: user?.role !== "superadmin" ? user?.branchId : undefined,
       description: "",
       ingredients: "",
       isVegetarian: false,
@@ -120,6 +123,7 @@ export default function RestaurantDishes() {
     dishForm.reset({
       name: "",
       price: "",
+      branchId: user?.role !== "superadmin" ? user?.branchId : undefined,
       description: "",
       ingredients: "",
       isVegetarian: false,
@@ -253,33 +257,35 @@ export default function RestaurantDishes() {
                           </FormItem>
                         )}
                       />
-                      <FormField
-                        control={dishForm.control}
-                        name="branchId"
-                        render={({ field }) => (
-                          <FormItem>
-                            <FormLabel>Branch</FormLabel>
-                            <FormControl>
-                              <Select 
-                                value={field.value?.toString()} 
-                                onValueChange={(value) => field.onChange(parseInt(value))}
-                              >
-                                <SelectTrigger>
-                                  <SelectValue placeholder="Select branch" />
-                                </SelectTrigger>
-                                <SelectContent>
-                                  {branches?.map((branch: any) => (
-                                    <SelectItem key={branch.id} value={branch.id.toString()}>
-                                      {branch.name}
-                                    </SelectItem>
-                                  ))}
-                                </SelectContent>
-                              </Select>
-                            </FormControl>
-                            <FormMessage />
-                          </FormItem>
-                        )}
-                      />
+                      {user?.role === "superadmin" && (
+                        <FormField
+                          control={dishForm.control}
+                          name="branchId"
+                          render={({ field }) => (
+                            <FormItem>
+                              <FormLabel>Branch</FormLabel>
+                              <FormControl>
+                                <Select 
+                                  value={field.value?.toString()} 
+                                  onValueChange={(value) => field.onChange(parseInt(value))}
+                                >
+                                  <SelectTrigger>
+                                    <SelectValue placeholder="Select branch" />
+                                  </SelectTrigger>
+                                  <SelectContent>
+                                    {branches?.map((branch: any) => (
+                                      <SelectItem key={branch.id} value={branch.id.toString()}>
+                                        {branch.name}
+                                      </SelectItem>
+                                    ))}
+                                  </SelectContent>
+                                </Select>
+                              </FormControl>
+                              <FormMessage />
+                            </FormItem>
+                          )}
+                        />
+                      )}
                     </div>
 
                     <FormField

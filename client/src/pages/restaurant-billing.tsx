@@ -1,4 +1,3 @@
-
 import { useState } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { Plus, Eye, Download, Receipt } from "lucide-react";
@@ -18,6 +17,7 @@ import { queryClient } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
 import Sidebar from "@/components/layout/sidebar";
 import Header from "@/components/layout/header";
+import { useAuth } from "@/hooks/use-auth";
 
 const billSchema = z.object({
   orderId: z.string(),
@@ -34,6 +34,7 @@ export default function RestaurantBilling() {
   const [viewingBill, setViewingBill] = useState<any>(null);
   const [isMobileSidebarOpen, setIsMobileSidebarOpen] = useState(false);
   const { toast } = useToast();
+  const { user } = useAuth();
 
   const { data: bills, isLoading } = useQuery({
     queryKey: ['/api/restaurant/bills'],
@@ -105,6 +106,7 @@ export default function RestaurantBilling() {
       paymentMethod: "cash",
       discount: 0,
       notes: "",
+      branchId: user?.role !== "superadmin" ? user?.branchId : undefined,
     },
   });
 
@@ -113,6 +115,7 @@ export default function RestaurantBilling() {
       paymentMethod: "cash",
       discount: 0,
       notes: "",
+      branchId: user?.role !== "superadmin" ? user?.branchId : undefined,
     });
   };
 
@@ -211,33 +214,35 @@ export default function RestaurantBilling() {
                         </FormItem>
                       )}
                     />
-                    <FormField
-                      control={form.control}
-                      name="branchId"
-                      render={({ field }) => (
-                        <FormItem>
-                          <FormLabel>Branch</FormLabel>
-                          <FormControl>
-                            <Select 
-                              value={field.value?.toString()} 
-                              onValueChange={(value) => field.onChange(parseInt(value))}
-                            >
-                              <SelectTrigger>
-                                <SelectValue placeholder="Select branch" />
-                              </SelectTrigger>
-                              <SelectContent>
-                                {branches?.map((branch: any) => (
-                                  <SelectItem key={branch.id} value={branch.id.toString()}>
-                                    {branch.name}
-                                  </SelectItem>
-                                ))}
-                              </SelectContent>
-                            </Select>
-                          </FormControl>
-                          <FormMessage />
-                        </FormItem>
+                     {user?.role === "superadmin" && (
+                        <FormField
+                          control={form.control}
+                          name="branchId"
+                          render={({ field }) => (
+                            <FormItem>
+                              <FormLabel>Branch</FormLabel>
+                              <FormControl>
+                                <Select 
+                                  value={field.value?.toString()} 
+                                  onValueChange={(value) => field.onChange(parseInt(value))}
+                                >
+                                  <SelectTrigger>
+                                    <SelectValue placeholder="Select branch" />
+                                  </SelectTrigger>
+                                  <SelectContent>
+                                    {branches?.map((branch: any) => (
+                                      <SelectItem key={branch.id} value={branch.id.toString()}>
+                                        {branch.name}
+                                      </SelectItem>
+                                    ))}
+                                  </SelectContent>
+                                </Select>
+                              </FormControl>
+                              <FormMessage />
+                            </FormItem>
+                          )}
+                        />
                       )}
-                    />
                     <FormField
                       control={form.control}
                       name="paymentMethod"

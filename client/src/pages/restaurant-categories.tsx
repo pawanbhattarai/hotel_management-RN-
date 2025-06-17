@@ -39,6 +39,8 @@ export default function RestaurantCategories() {
     queryKey: ['/api/branches'],
   });
 
+  const { user } = useAuth();
+
   // Category mutations
   const createCategoryMutation = useMutation({
     mutationFn: async (data: CategoryFormData) => {
@@ -93,6 +95,7 @@ export default function RestaurantCategories() {
     resolver: zodResolver(categorySchema),
     defaultValues: {
       name: "",
+      branchId: user?.role !== "superadmin" ? user?.branchId : undefined,
       sortOrder: 0,
     },
   });
@@ -100,6 +103,7 @@ export default function RestaurantCategories() {
   const resetCategoryForm = () => {
     categoryForm.reset({
       name: "",
+      branchId: user?.role !== "superadmin" ? user?.branchId : undefined,
       sortOrder: 0,
     });
     setEditingCategory(null);
@@ -167,33 +171,35 @@ export default function RestaurantCategories() {
                         </FormItem>
                       )}
                     />
-                    <FormField
-                      control={categoryForm.control}
-                      name="branchId"
-                      render={({ field }) => (
-                        <FormItem>
-                          <FormLabel>Branch</FormLabel>
-                          <FormControl>
-                            <Select 
-                              value={field.value?.toString()} 
-                              onValueChange={(value) => field.onChange(parseInt(value))}
-                            >
-                              <SelectTrigger>
-                                <SelectValue placeholder="Select branch" />
-                              </SelectTrigger>
-                              <SelectContent>
-                                {branches?.map((branch: any) => (
-                                  <SelectItem key={branch.id} value={branch.id.toString()}>
-                                    {branch.name}
-                                  </SelectItem>
-                                ))}
-                              </SelectContent>
-                            </Select>
-                          </FormControl>
-                          <FormMessage />
-                        </FormItem>
-                      )}
-                    />
+                    {user?.role === "superadmin" && (
+                      <FormField
+                        control={categoryForm.control}
+                        name="branchId"
+                        render={({ field }) => (
+                          <FormItem>
+                            <FormLabel>Branch</FormLabel>
+                            <FormControl>
+                              <Select 
+                                value={field.value?.toString()} 
+                                onValueChange={(value) => field.onChange(parseInt(value))}
+                              >
+                                <SelectTrigger>
+                                  <SelectValue placeholder="Select branch" />
+                                </SelectTrigger>
+                                <SelectContent>
+                                  {branches?.map((branch: any) => (
+                                    <SelectItem key={branch.id} value={branch.id.toString()}>
+                                      {branch.name}
+                                    </SelectItem>
+                                  ))}
+                                </SelectContent>
+                              </Select>
+                            </FormControl>
+                            <FormMessage />
+                          </FormItem>
+                        )}
+                      />
+                    )}
                     <FormField
                       control={categoryForm.control}
                       name="sortOrder"

@@ -1,4 +1,3 @@
-
 import { useState } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { Plus, Eye, FileText, Printer } from "lucide-react";
@@ -16,6 +15,7 @@ import { queryClient } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
 import Sidebar from "@/components/layout/sidebar";
 import Header from "@/components/layout/header";
+import { useAuth } from "@/hooks/use-auth";
 
 const orderSchema = z.object({
   tableId: z.number(),
@@ -37,6 +37,7 @@ export default function RestaurantOrders() {
   const [selectedItems, setSelectedItems] = useState<any[]>([]);
   const [isMobileSidebarOpen, setIsMobileSidebarOpen] = useState(false);
   const { toast } = useToast();
+  const { user } = useAuth();
 
   const { data: orders, isLoading } = useQuery({
     queryKey: ['/api/restaurant/orders'],
@@ -117,6 +118,8 @@ export default function RestaurantOrders() {
   const form = useForm<OrderFormData>({
     resolver: zodResolver(orderSchema),
     defaultValues: {
+      tableId: 0,
+      branchId: user?.role !== "superadmin" ? user?.branchId : undefined,
       items: [],
       notes: "",
     },
@@ -124,6 +127,8 @@ export default function RestaurantOrders() {
 
   const resetForm = () => {
     form.reset({
+      tableId: 0,
+      branchId: user?.role !== "superadmin" ? user?.branchId : undefined,
       items: [],
       notes: "",
     });
@@ -272,33 +277,35 @@ export default function RestaurantOrders() {
                           </FormItem>
                         )}
                       />
-                      <FormField
-                        control={form.control}
-                        name="branchId"
-                        render={({ field }) => (
-                          <FormItem>
-                            <FormLabel>Branch</FormLabel>
-                            <FormControl>
-                              <Select 
-                                value={field.value?.toString()} 
-                                onValueChange={(value) => field.onChange(parseInt(value))}
-                              >
-                                <SelectTrigger>
-                                  <SelectValue placeholder="Select branch" />
-                                </SelectTrigger>
-                                <SelectContent>
-                                  {branches?.map((branch: any) => (
-                                    <SelectItem key={branch.id} value={branch.id.toString()}>
-                                      {branch.name}
-                                    </SelectItem>
-                                  ))}
-                                </SelectContent>
-                              </Select>
-                            </FormControl>
-                            <FormMessage />
-                          </FormItem>
-                        )}
-                      />
+                      {user?.role === "superadmin" && (
+                        <FormField
+                          control={form.control}
+                          name="branchId"
+                          render={({ field }) => (
+                            <FormItem>
+                              <FormLabel>Branch</FormLabel>
+                              <FormControl>
+                                <Select
+                                  value={field.value?.toString()}
+                                  onValueChange={(value) => field.onChange(parseInt(value))}
+                                >
+                                  <SelectTrigger>
+                                    <SelectValue placeholder="Select branch" />
+                                  </SelectTrigger>
+                                  <SelectContent>
+                                    {branches?.map((branch: any) => (
+                                      <SelectItem key={branch.id} value={branch.id.toString()}>
+                                        {branch.name}
+                                      </SelectItem>
+                                    ))}
+                                  </SelectContent>
+                                </Select>
+                              </FormControl>
+                              <FormMessage />
+                            </FormItem>
+                          )}
+                        />
+                      )}
                     </div>
 
                     <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">

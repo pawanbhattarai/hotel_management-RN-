@@ -1,4 +1,3 @@
-
 import { useState } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { Plus, Edit2, Trash2 } from "lucide-react";
@@ -17,6 +16,7 @@ import { queryClient } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
 import Sidebar from "@/components/layout/sidebar";
 import Header from "@/components/layout/header";
+import { useAuth } from "@/hooks/use-auth";
 
 const tableSchema = z.object({
   name: z.string().min(1, "Table name is required"),
@@ -32,6 +32,7 @@ export default function RestaurantTables() {
   const [editingTable, setEditingTable] = useState<any>(null);
   const [isMobileSidebarOpen, setIsMobileSidebarOpen] = useState(false);
   const { toast } = useToast();
+  const { user } = useAuth();
 
   const { data: tables, isLoading } = useQuery({
     queryKey: ['/api/restaurant/tables'],
@@ -95,6 +96,7 @@ export default function RestaurantTables() {
     defaultValues: {
       name: "",
       capacity: 1,
+      branchId: user?.role !== "superadmin" ? user?.branchId : undefined,
       status: "open",
     },
   });
@@ -103,6 +105,7 @@ export default function RestaurantTables() {
     form.reset({
       name: "",
       capacity: 1,
+      branchId: user?.role !== "superadmin" ? user?.branchId : undefined,
       status: "open",
     });
     setEditingTable(null);
@@ -204,33 +207,35 @@ export default function RestaurantTables() {
                         </FormItem>
                       )}
                     />
-                    <FormField
-                      control={form.control}
-                      name="branchId"
-                      render={({ field }) => (
-                        <FormItem>
-                          <FormLabel>Branch</FormLabel>
-                          <FormControl>
-                            <Select 
-                              value={field.value?.toString()} 
-                              onValueChange={(value) => field.onChange(parseInt(value))}
-                            >
-                              <SelectTrigger>
-                                <SelectValue placeholder="Select branch" />
-                              </SelectTrigger>
-                              <SelectContent>
-                                {branches?.map((branch: any) => (
-                                  <SelectItem key={branch.id} value={branch.id.toString()}>
-                                    {branch.name}
-                                  </SelectItem>
-                                ))}
-                              </SelectContent>
-                            </Select>
-                          </FormControl>
-                          <FormMessage />
-                        </FormItem>
-                      )}
-                    />
+                    {user?.role === "superadmin" && (
+                      <FormField
+                        control={form.control}
+                        name="branchId"
+                        render={({ field }) => (
+                          <FormItem>
+                            <FormLabel>Branch</FormLabel>
+                            <FormControl>
+                              <Select 
+                                value={field.value?.toString()} 
+                                onValueChange={(value) => field.onChange(parseInt(value))}
+                              >
+                                <SelectTrigger>
+                                  <SelectValue placeholder="Select branch" />
+                                </SelectTrigger>
+                                <SelectContent>
+                                  {branches?.map((branch: any) => (
+                                    <SelectItem key={branch.id} value={branch.id.toString()}>
+                                      {branch.name}
+                                    </SelectItem>
+                                  ))}
+                                </SelectContent>
+                              </Select>
+                            </FormControl>
+                            <FormMessage />
+                          </FormItem>
+                        )}
+                      />
+                    )}
                     <FormField
                       control={form.control}
                       name="status"
