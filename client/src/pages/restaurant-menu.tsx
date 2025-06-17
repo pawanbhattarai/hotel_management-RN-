@@ -735,6 +735,7 @@ export default function RestaurantMenu() {
                   setIsBulkCategoryDialogOpen(false);
                   toast({ title: "Categories created successfully" });
                 }} 
+                isDirectForm={true}
               />
             </DialogContent>
           </Dialog>
@@ -754,6 +755,7 @@ export default function RestaurantMenu() {
                   setIsBulkDishDialogOpen(false);
                   toast({ title: "Dishes created successfully" });
                 }} 
+                isDirectForm={true}
               />
             </DialogContent>
           </Dialog>

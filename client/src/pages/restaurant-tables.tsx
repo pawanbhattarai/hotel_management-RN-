@@ -370,6 +370,7 @@ export default function RestaurantTables() {
                   setIsBulkTableDialogOpen(false);
                   toast({ title: "Tables created successfully" });
                 }} 
+                isDirectForm={true}
               />
             </DialogContent>
           </Dialog>
