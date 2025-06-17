@@ -51,6 +51,10 @@ export default function RestaurantBilling() {
     queryKey: ['/api/restaurant/tables'],
   });
 
+  const { data: activeTaxes } = useQuery({
+    queryKey: ['/api/taxes/order'],
+  });
+
   const deleteBillMutation = useMutation({
     mutationFn: async (billId: string) => {
       const response = await fetch(`/api/restaurant/bills/${billId}`, {
@@ -107,8 +111,25 @@ export default function RestaurantBilling() {
       // Calculate amounts
       const afterDiscount = subtotal - finalDiscountAmount;
       const serviceChargeAmount = afterDiscount * serviceChargePercentage / 100;
-      const taxAmount = (afterDiscount + serviceChargeAmount) * 0.13; // 13% VAT
-      const totalAmount = afterDiscount + serviceChargeAmount + taxAmount;
+      
+      // Calculate taxes dynamically from tax management system
+      const baseAmountForTax = afterDiscount + serviceChargeAmount;
+      let totalTaxAmount = 0;
+      let appliedTaxes = [];
+      
+      if (activeTaxes && activeTaxes.length > 0) {
+        activeTaxes.forEach((tax: any) => {
+          const taxAmount = baseAmountForTax * (parseFloat(tax.rate) / 100);
+          totalTaxAmount += taxAmount;
+          appliedTaxes.push({
+            taxName: tax.taxName,
+            rate: tax.rate,
+            amount: taxAmount.toFixed(2)
+          });
+        });
+      }
+      
+      const totalAmount = afterDiscount + serviceChargeAmount + totalTaxAmount;
 
       const billData = {
         orderId: data.orderId,
@@ -117,8 +138,8 @@ export default function RestaurantBilling() {
         customerName: data.customerName || "",
         customerPhone: data.customerPhone || "",
         subtotal: subtotal.toString(),
-        taxAmount: taxAmount.toString(),
-        taxPercentage: "13",
+        taxAmount: totalTaxAmount.toString(),
+        appliedTaxes: JSON.stringify(appliedTaxes),
         discountAmount: finalDiscountAmount.toString(),
         discountPercentage: (data.discountPercentage || 0).toString(),
         serviceChargeAmount: serviceChargeAmount.toString(),
@@ -249,14 +270,32 @@ export default function RestaurantBilling() {
 
     const afterDiscount = subtotal - finalDiscountAmount;
     const serviceChargeAmount = afterDiscount * serviceChargePercentage / 100;
-    const taxAmount = (afterDiscount + serviceChargeAmount) * 0.13;
-    const totalAmount = afterDiscount + serviceChargeAmount + taxAmount;
+    
+    // Calculate taxes dynamically
+    const baseAmountForTax = afterDiscount + serviceChargeAmount;
+    let totalTaxAmount = 0;
+    let appliedTaxes = [];
+    
+    if (activeTaxes && activeTaxes.length > 0) {
+      activeTaxes.forEach((tax: any) => {
+        const taxAmount = baseAmountForTax * (parseFloat(tax.rate) / 100);
+        totalTaxAmount += taxAmount;
+        appliedTaxes.push({
+          taxName: tax.taxName,
+          rate: tax.rate,
+          amount: taxAmount
+        });
+      });
+    }
+    
+    const totalAmount = afterDiscount + serviceChargeAmount + totalTaxAmount;
 
     return {
       subtotal,
       discountAmount: finalDiscountAmount,
       serviceChargeAmount,
-      taxAmount,
+      taxAmount: totalTaxAmount,
+      appliedTaxes,
       totalAmount,
     };
   };
@@ -454,10 +493,19 @@ export default function RestaurantBilling() {
                 <span>Rs. ${parseFloat(bill.serviceChargeAmount).toFixed(2)}</span>
               </div>
             ` : ''}
-            <div class="total-row">
-              <span>VAT (${bill.taxPercentage}%):</span>
-              <span>Rs. ${parseFloat(bill.taxAmount).toFixed(2)}</span>
-            </div>
+            ${bill.appliedTaxes ? 
+              JSON.parse(bill.appliedTaxes).map((tax: any) => `
+                <div class="total-row">
+                  <span>${tax.taxName} (${tax.rate}%):</span>
+                  <span>Rs. ${tax.amount}</span>
+                </div>
+              `).join('') : `
+                <div class="total-row">
+                  <span>Tax:</span>
+                  <span>Rs. ${parseFloat(bill.taxAmount).toFixed(2)}</span>
+                </div>
+              `
+            }
             <div class="total-row final-total">
               <span>TOTAL AMOUNT:</span>
               <span>Rs. ${parseFloat(bill.totalAmount).toFixed(2)}</span>
@@ -858,10 +906,19 @@ export default function RestaurantBilling() {
                           <span>Service Charge:</span>
                           <span>Rs. {billPreview.serviceChargeAmount.toFixed(2)}</span>
                         </div>
-                        <div className="flex justify-between">
-                          <span>Tax (13%):</span>
-                          <span>Rs. {billPreview.taxAmount.toFixed(2)}</span>
-                        </div>
+                        {billPreview.appliedTaxes && billPreview.appliedTaxes.length > 0 ? (
+                          billPreview.appliedTaxes.map((tax: any, index: number) => (
+                            <div key={index} className="flex justify-between">
+                              <span>{tax.taxName} ({tax.rate}%):</span>
+                              <span>Rs. {tax.amount.toFixed(2)}</span>
+                            </div>
+                          ))
+                        ) : (
+                          <div className="flex justify-between">
+                            <span>Tax:</span>
+                            <span>Rs. {billPreview.taxAmount.toFixed(2)}</span>
+                          </div>
+                        )}
                         <div className="flex justify-between text-lg font-bold border-t pt-2">
                           <span>Total Amount:</span>
                           <span>Rs. {billPreview.totalAmount.toFixed(2)}</span>
@@ -972,10 +1029,19 @@ export default function RestaurantBilling() {
                         <span>NPR {parseFloat(viewingBill.serviceChargeAmount).toFixed(2)}</span>
                       </div>
                     )}
-                    <div className="flex justify-between">
-                      <span>Tax:</span>
-                      <span>NPR {parseFloat(viewingBill.taxAmount).toFixed(2)}</span>
-                    </div>
+                    {viewingBill.appliedTaxes ? (
+                      JSON.parse(viewingBill.appliedTaxes).map((tax: any, index: number) => (
+                        <div key={index} className="flex justify-between">
+                          <span>{tax.taxName} ({tax.rate}%):</span>
+                          <span>NPR {tax.amount}</span>
+                        </div>
+                      ))
+                    ) : (
+                      <div className="flex justify-between">
+                        <span>Tax:</span>
+                        <span>NPR {parseFloat(viewingBill.taxAmount).toFixed(2)}</span>
+                      </div>
+                    )}
                     <div className="flex justify-between font-semibold">
                       <span>Total:</span>
                       <span>NPR {parseFloat(viewingBill.totalAmount).toFixed(2)}</span>

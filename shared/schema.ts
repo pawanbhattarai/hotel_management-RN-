@@ -479,7 +479,7 @@ export const restaurantBills = pgTable("restaurant_bills", {
   customerPhone: varchar("customer_phone", { length: 20 }),
   subtotal: decimal("subtotal", { precision: 10, scale: 2 }).notNull(),
   taxAmount: decimal("tax_amount", { precision: 10, scale: 2 }).default("0"),
-  taxPercentage: decimal("tax_percentage", { precision: 5, scale: 2 }).default("13"), // VAT in Nepal
+  appliedTaxes: text("applied_taxes"), // JSON string of applied taxes
   discountAmount: decimal("discount_amount", { precision: 10, scale: 2 }).default("0"),
   discountPercentage: decimal("discount_percentage", { precision: 5, scale: 2 }).default("0"),
   serviceChargeAmount: decimal("service_charge_amount", { precision: 10, scale: 2 }).default("0"),
