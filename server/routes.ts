@@ -1365,6 +1365,34 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Bulk create tables
+  app.post("/api/restaurant/tables/bulk", isAuthenticated, async (req: any, res) => {
+    try {
+      const user = await storage.getUser(req.session.user.id);
+      if (!user) return res.status(401).json({ message: "User not found" });
+
+      const { tables } = req.body;
+      if (!Array.isArray(tables) || tables.length === 0) {
+        return res.status(400).json({ message: "Tables array is required" });
+      }
+
+      const validatedTables = tables.map(table => insertRestaurantTableSchema.parse(table));
+      
+      // Check permissions for all tables
+      for (const table of validatedTables) {
+        if (!checkBranchPermissions(user.role, user.branchId, table.branchId)) {
+          return res.status(403).json({ message: "Insufficient permissions for one or more tables" });
+        }
+      }
+
+      const createdTables = await restaurantStorage.createRestaurantTablesBulk(validatedTables);
+      res.status(201).json(createdTables);
+    } catch (error) {
+      console.error("Error creating restaurant tables in bulk:", error);
+      res.status(500).json({ message: "Failed to create restaurant tables" });
+    }
+  });
+
   app.put("/api/restaurant/tables/:id", isAuthenticated, async (req: any, res) => {
     try {
       const user = await storage.getUser(req.session.user.id);

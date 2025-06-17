@@ -109,7 +109,7 @@ export class RestaurantStorage {
   }
 
   // Menu Dishes
-  async getMenuDishes(branchId?: number, categoryId?: number): Promise<MenuDish[]> {
+  async getMenuDishes(branchId?: number, categoryId?: number): Promise<(MenuDish & { category: MenuCategory })[]> {
     let conditions = [eq(menuDishes.isActive, true)];
     
     if (branchId) {
@@ -121,8 +121,12 @@ export class RestaurantStorage {
     }
     
     return await db
-      .select()
+      .select({
+        ...menuDishes,
+        category: menuCategories,
+      })
       .from(menuDishes)
+      .innerJoin(menuCategories, eq(menuDishes.categoryId, menuCategories.id))
       .where(and(...conditions))
       .orderBy(menuDishes.sortOrder, menuDishes.name);
   }
