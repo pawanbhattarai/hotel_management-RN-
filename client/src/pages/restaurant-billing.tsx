@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
-import { Eye, Download, Receipt, CreditCard } from "lucide-react";
+import { Eye, Download, Receipt, CreditCard, Trash2, Printer } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
@@ -49,6 +49,32 @@ export default function RestaurantBilling() {
 
   const { data: tables } = useQuery({
     queryKey: ['/api/restaurant/tables'],
+  });
+
+  const deleteBillMutation = useMutation({
+    mutationFn: async (billId: string) => {
+      const response = await fetch(`/api/restaurant/bills/${billId}`, {
+        method: 'DELETE',
+      });
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.message || 'Failed to delete bill');
+      }
+      return response.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['/api/restaurant/bills'] });
+      queryClient.invalidateQueries({ queryKey: ['/api/restaurant/orders'] });
+      queryClient.invalidateQueries({ queryKey: ['/api/restaurant/tables'] });
+      toast({ title: "Bill deleted successfully" });
+    },
+    onError: (error: any) => {
+      toast({ 
+        title: "Failed to delete bill", 
+        description: error.message,
+        variant: "destructive"
+      });
+    },
   });
 
   const checkoutMutation = useMutation({
@@ -243,6 +269,92 @@ export default function RestaurantBilling() {
     resetForm();
   };
 
+  const printBill = (bill: any) => {
+    const printWindow = window.open('', '_blank');
+    if (!printWindow) {
+      toast({ title: "Print failed", description: "Please allow popups to print bills", variant: "destructive" });
+      return;
+    }
+
+    const printContent = `
+      <!DOCTYPE html>
+      <html>
+        <head>
+          <title>Bill #${bill.billNumber}</title>
+          <style>
+            body { font-family: Arial, sans-serif; margin: 20px; }
+            .header { text-align: center; margin-bottom: 20px; }
+            .bill-info { margin-bottom: 20px; }
+            .items-table { width: 100%; border-collapse: collapse; margin: 20px 0; }
+            .items-table th, .items-table td { border: 1px solid #ddd; padding: 8px; text-align: left; }
+            .items-table th { background-color: #f2f2f2; }
+            .totals { margin-top: 20px; text-align: right; }
+            .total-row { font-weight: bold; font-size: 18px; }
+            @media print { .no-print { display: none; } }
+          </style>
+        </head>
+        <body>
+          <div class="header">
+            <h2>Restaurant Bill</h2>
+            <p>Bill #${bill.billNumber}</p>
+            <p>Date: ${new Date(bill.createdAt).toLocaleString()}</p>
+          </div>
+          
+          <div class="bill-info">
+            <p><strong>Table:</strong> ${getTableName(bill.tableId)}</p>
+            <p><strong>Order #:</strong> ${bill.order?.orderNumber || 'N/A'}</p>
+            <p><strong>Customer:</strong> ${bill.customerName || 'Guest'}</p>
+            ${bill.customerPhone ? `<p><strong>Phone:</strong> ${bill.customerPhone}</p>` : ''}
+            <p><strong>Payment Method:</strong> ${bill.paymentMethod.toUpperCase()}</p>
+          </div>
+
+          ${bill.order?.items ? `
+            <table class="items-table">
+              <thead>
+                <tr>
+                  <th>Item</th>
+                  <th>Price</th>
+                  <th>Qty</th>
+                  <th>Total</th>
+                </tr>
+              </thead>
+              <tbody>
+                ${bill.order.items.map((item: any) => `
+                  <tr>
+                    <td>${item.dish?.name || 'Item'}</td>
+                    <td>Rs. ${item.unitPrice}</td>
+                    <td>${item.quantity}</td>
+                    <td>Rs. ${(parseFloat(item.unitPrice) * item.quantity).toFixed(2)}</td>
+                  </tr>
+                `).join('')}
+              </tbody>
+            </table>
+          ` : ''}
+
+          <div class="totals">
+            <p>Subtotal: Rs. ${bill.subtotal}</p>
+            ${parseFloat(bill.discountAmount) > 0 ? `<p>Discount: -Rs. ${bill.discountAmount}</p>` : ''}
+            ${parseFloat(bill.serviceChargeAmount) > 0 ? `<p>Service Charge: Rs. ${bill.serviceChargeAmount}</p>` : ''}
+            <p>Tax (13%): Rs. ${bill.taxAmount}</p>
+            <p class="total-row">Total Amount: Rs. ${bill.totalAmount}</p>
+            <p><strong>Payment Status: PAID</strong></p>
+          </div>
+
+          ${bill.notes ? `<div style="margin-top: 20px;"><strong>Notes:</strong><br>${bill.notes}</div>` : ''}
+          
+          <div style="margin-top: 30px; text-align: center; font-size: 12px;">
+            <p>Thank you for dining with us!</p>
+          </div>
+        </body>
+      </html>
+    `;
+
+    printWindow.document.write(printContent);
+    printWindow.document.close();
+    printWindow.print();
+    printWindow.close();
+  };
+
   const generateInvoice = (bill: any) => {
     // Simple invoice generation - in a real app, this would generate a PDF
     const invoiceData = {
@@ -263,6 +375,12 @@ export default function RestaurantBilling() {
 
     console.log('Invoice Data:', invoiceData);
     toast({ title: "Invoice generated", description: "Check console for invoice data" });
+  };
+
+  const handleDeleteBill = (bill: any) => {
+    if (window.confirm(`Are you sure you want to delete bill #${bill.billNumber}? This action cannot be undone.`)) {
+      deleteBillMutation.mutate(bill.id);
+    }
   };
 
   return (
@@ -374,15 +492,35 @@ export default function RestaurantBilling() {
                                 variant="outline"
                                 size="sm"
                                 onClick={() => setViewingBill(bill)}
+                                title="View Bill"
                               >
                                 <Eye className="h-4 w-4" />
                               </Button>
                               <Button
                                 variant="outline"
                                 size="sm"
+                                onClick={() => printBill(bill)}
+                                title="Print Bill"
+                              >
+                                <Printer className="h-4 w-4" />
+                              </Button>
+                              <Button
+                                variant="outline"
+                                size="sm"
                                 onClick={() => generateInvoice(bill)}
+                                title="Download Invoice"
                               >
                                 <Download className="h-4 w-4" />
+                              </Button>
+                              <Button
+                                variant="outline"
+                                size="sm"
+                                onClick={() => handleDeleteBill(bill)}
+                                disabled={deleteBillMutation.isPending}
+                                className="text-red-600 hover:text-red-700 hover:bg-red-50"
+                                title="Delete Bill"
+                              >
+                                <Trash2 className="h-4 w-4" />
                               </Button>
                             </div>
                           </TableCell>

@@ -1882,6 +1882,18 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Delete restaurant bill
+  app.delete("/api/restaurant/bills/:id", isAuthenticated, async (req: any, res) => {
+    try {
+      const { id } = req.params;
+      await restaurantStorage.deleteBill(id);
+      res.json({ message: "Bill deleted successfully" });
+    } catch (error) {
+      console.error("Error deleting restaurant bill:", error);
+      res.status(500).json({ message: "Failed to delete bill" });
+    }
+  });
+
   // Clean up duplicate bills (admin only)
   app.post("/api/restaurant/bills/cleanup-duplicates", isAuthenticated, async (req: any, res) => {
     try {

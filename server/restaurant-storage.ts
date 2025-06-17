@@ -641,6 +641,11 @@ export class RestaurantStorage {
       tableStatusCounts,
     };
   }
+
+  async deleteBill(id: string): Promise<void> {
+    await db.delete(restaurantBills).where(eq(restaurantBills.id, id));
+  }
+
 }
 
 export const restaurantStorage = new RestaurantStorage();
