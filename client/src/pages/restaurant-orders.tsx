@@ -20,14 +20,14 @@ import Header from "@/components/layout/header";
 import { useAuth } from "@/hooks/useAuth";
 
 const orderSchema = z.object({
-  tableId: z.number(),
-  branchId: z.number(),
+  tableId: z.number().min(1, "Table is required"),
+  branchId: z.number().min(1, "Branch is required"), 
   items: z.array(z.object({
-    dishId: z.number(),
-    quantity: z.number(),
-    unitPrice: z.string(),
+    dishId: z.number().min(1, "Dish is required"),
+    quantity: z.number().min(1, "Quantity must be at least 1"),
+    unitPrice: z.string().min(1, "Price is required"),
     notes: z.string().optional(),
-  })),
+  })).min(1, "At least one item is required"),
   notes: z.string().optional(),
 });
 
@@ -64,19 +64,37 @@ export default function RestaurantOrders() {
 
   const createOrderMutation = useMutation({
     mutationFn: async (data: { order: any; items: any[] }) => {
+      console.log("Sending order creation request:", data);
       const response = await fetch('/api/restaurant/orders', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(data),
       });
-      if (!response.ok) throw new Error('Failed to create order');
-      return response.json();
+      
+      const responseData = await response.json();
+      console.log("Order creation response:", responseData);
+      
+      if (!response.ok) {
+        throw new Error(responseData.message || 'Failed to create order');
+      }
+      return responseData;
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['/api/restaurant/orders'] });
       setSelectedTable(null);
       setSelectedItems([]);
-      toast({ title: "Order created successfully", description: "Your order has been placed!" });
+      toast({ 
+        title: "Order created successfully", 
+        description: "Your order has been placed!" 
+      });
+    },
+    onError: (error: any) => {
+      console.error("Order creation failed:", error);
+      toast({ 
+        title: "Failed to create order", 
+        description: error.message || "An error occurred while creating the order",
+        variant: "destructive"
+      });
     },
   });
 
@@ -113,35 +131,74 @@ export default function RestaurantOrders() {
     resolver: zodResolver(orderSchema),
     defaultValues: {
       tableId: 0,
-      branchId: user?.role !== "superadmin" ? user?.branchId : undefined,
+      branchId: user?.role === "superadmin" ? 1 : (user?.branchId || 1),
       items: [],
       notes: "",
     },
   });
 
   const onSubmit = (data: OrderFormData) => {
+    if (selectedItems.length === 0) {
+      toast({ 
+        title: "Error", 
+        description: "Please add at least one item to the order",
+        variant: "destructive"
+      });
+      return;
+    }
+
+    if (!selectedTable) {
+      toast({ 
+        title: "Error", 
+        description: "No table selected",
+        variant: "destructive"
+      });
+      return;
+    }
+
+    // Determine branch ID based on user role
+    let branchId: number;
+    if (user?.role === "superadmin") {
+      branchId = branches?.[0]?.id || 1;
+    } else {
+      branchId = user?.branchId || 1;
+    }
+
     const orderData = {
       tableId: selectedTable.id,
-      branchId: user?.role !== "superadmin" ? user?.branchId : branches?.[0]?.id,
+      branchId: branchId,
       subtotal: calculateSubtotal().toString(),
       totalAmount: calculateTotal().toString(),
-      notes: data.notes,
+      notes: data.notes || "",
       status: "pending",
     };
 
+    const itemsData = selectedItems.map(item => ({
+      dishId: item.dishId,
+      quantity: item.quantity,
+      unitPrice: item.unitPrice,
+      totalPrice: (parseFloat(item.unitPrice) * item.quantity).toString(),
+      specialInstructions: item.notes || "",
+    }));
+
+    console.log("Creating order with data:", { order: orderData, items: itemsData });
+
     createOrderMutation.mutate({
       order: orderData,
-      items: selectedItems.map(item => ({
-        dishId: item.dishId,
-        quantity: item.quantity,
-        unitPrice: item.unitPrice,
-        totalPrice: (parseFloat(item.unitPrice) * item.quantity).toString(),
-        specialInstructions: item.notes,
-      })),
+      items: itemsData,
     });
   };
 
   const addItem = (dish: any) => {
+    if (!dish || !dish.id || !dish.price) {
+      toast({
+        title: "Error",
+        description: "Invalid dish data",
+        variant: "destructive"
+      });
+      return;
+    }
+
     const existingItem = selectedItems.find(item => item.dishId === dish.id);
     if (existingItem) {
       setSelectedItems(items =>
@@ -156,7 +213,7 @@ export default function RestaurantOrders() {
         dishId: dish.id,
         dishName: dish.name,
         quantity: 1,
-        unitPrice: dish.price,
+        unitPrice: dish.price.toString(),
         notes: "",
       }]);
     }
@@ -476,8 +533,14 @@ export default function RestaurantOrders() {
                               className="w-full"
                               disabled={createOrderMutation.isPending || selectedItems.length === 0}
                             >
-                              {createOrderMutation.isPending ? "Creating..." : 
-                                existingOrder ? "Add Items to Order" : "Create Order"}
+                              {createOrderMutation.isPending ? (
+                                <div className="flex items-center">
+                                  <div className="animate-spin rounded-full h-4 w-4 border-2 border-white border-t-transparent mr-2"></div>
+                                  Creating...
+                                </div>
+                              ) : (
+                                existingOrder ? "Add Items to Order" : "Create Order"
+                              )}
                             </Button>
                           </form>
                         </Form>
