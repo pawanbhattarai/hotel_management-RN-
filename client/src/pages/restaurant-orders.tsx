@@ -35,6 +35,7 @@ export default function RestaurantOrders() {
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [viewingOrder, setViewingOrder] = useState<any>(null);
   const [selectedItems, setSelectedItems] = useState<any[]>([]);
+  const [selectedCategory, setSelectedCategory] = useState<string>("");
   const [isMobileSidebarOpen, setIsMobileSidebarOpen] = useState(false);
   const { toast } = useToast();
   const { user } = useAuth();
@@ -49,6 +50,10 @@ export default function RestaurantOrders() {
 
   const { data: dishes } = useQuery({
     queryKey: ['/api/restaurant/dishes'],
+  });
+
+  const { data: categories } = useQuery({
+    queryKey: ['/api/restaurant/categories'],
   });
 
   const { data: branches } = useQuery({
@@ -133,6 +138,7 @@ export default function RestaurantOrders() {
       notes: "",
     });
     setSelectedItems([]);
+    setSelectedCategory("");
   };
 
   const onSubmit = (data: OrderFormData) => {
@@ -206,6 +212,13 @@ export default function RestaurantOrders() {
     return subtotal + tax;
   };
 
+  const getFilteredDishes = () => {
+    if (!selectedCategory || selectedCategory === "all") {
+      return dishes || [];
+    }
+    return dishes?.filter((dish: any) => dish.categoryId === parseInt(selectedCategory)) || [];
+  };
+
   const getStatusColor = (status: string) => {
     switch (status) {
       case 'pending': return 'bg-yellow-500';
@@ -249,54 +262,29 @@ export default function RestaurantOrders() {
                   <DialogTitle>Create New Order</DialogTitle>
                 </DialogHeader>
                 <Form {...form}>
-                  <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
-                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                      <FormField
-                        control={form.control}
-                        name="tableId"
-                        render={({ field }) => (
-                          <FormItem>
-                            <FormLabel>Table</FormLabel>
-                            <FormControl>
-                              <Select 
-                                value={field.value?.toString()} 
-                                onValueChange={(value) => field.onChange(parseInt(value))}
-                              >
-                                <SelectTrigger>
-                                  <SelectValue placeholder="Select table" />
-                                </SelectTrigger>
-                                <SelectContent>
-                                  {tables?.filter((table: any) => table.status === 'open').map((table: any) => (
-                                    <SelectItem key={table.id} value={table.id.toString()}>
-                                      {table.name} (Capacity: {table.capacity})
-                                    </SelectItem>
-                                  ))}
-                                </SelectContent>
-                              </Select>
-                            </FormControl>
-                            <FormMessage />
-                          </FormItem>
-                        )}
-                      />
-                      {user?.role === "superadmin" && (
+                  <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
+                    {/* Order Information Section */}
+                    <div className="bg-gray-50 p-4 rounded-lg">
+                      <h3 className="text-lg font-semibold mb-3">Order Information</h3>
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                         <FormField
                           control={form.control}
-                          name="branchId"
+                          name="tableId"
                           render={({ field }) => (
                             <FormItem>
-                              <FormLabel>Branch</FormLabel>
+                              <FormLabel>Table *</FormLabel>
                               <FormControl>
-                                <Select
-                                  value={field.value?.toString()}
+                                <Select 
+                                  value={field.value?.toString()} 
                                   onValueChange={(value) => field.onChange(parseInt(value))}
                                 >
                                   <SelectTrigger>
-                                    <SelectValue placeholder="Select branch" />
+                                    <SelectValue placeholder="Select table" />
                                   </SelectTrigger>
                                   <SelectContent>
-                                    {branches?.map((branch: any) => (
-                                      <SelectItem key={branch.id} value={branch.id.toString()}>
-                                        {branch.name}
+                                    {tables?.filter((table: any) => table.status === 'open').map((table: any) => (
+                                      <SelectItem key={table.id} value={table.id.toString()}>
+                                        Table {table.name} (Capacity: {table.capacity})
                                       </SelectItem>
                                     ))}
                                   </SelectContent>
@@ -306,101 +294,194 @@ export default function RestaurantOrders() {
                             </FormItem>
                           )}
                         />
-                      )}
-                    </div>
-
-                    <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-                      <div>
-                        <h3 className="text-lg font-semibold mb-2">Available Dishes</h3>
-                        <div className="max-h-80 overflow-y-auto space-y-2">
-                          {dishes?.map((dish: any) => (
-                            <div key={dish.id} className="flex justify-between items-center p-3 border rounded-lg">
-                              <div className="flex-1 min-w-0">
-                                <div className="font-medium truncate">{dish.name}</div>
-                                <div className="text-sm text-muted-foreground">Rs. {dish.price}</div>
-                              </div>
-                              <Button
-                                type="button"
-                                size="sm"
-                                onClick={() => addItem(dish)}
-                                className="ml-2 flex-shrink-0"
-                              >
-                                Add
-                              </Button>
-                            </div>
-                          ))}
-                        </div>
-                      </div>
-
-                      <div>
-                        <h3 className="text-lg font-semibold mb-2">Order Items</h3>
-                        <div className="max-h-80 overflow-y-auto space-y-2">
-                          {selectedItems.map((item) => (
-                            <div key={item.dishId} className="flex justify-between items-center p-3 border rounded-lg">
-                              <div className="flex-1 min-w-0">
-                                <div className="font-medium truncate">{item.dishName}</div>
-                                <div className="text-sm text-muted-foreground">
-                                  Rs. {item.unitPrice} × {item.quantity} = Rs. {(parseFloat(item.unitPrice) * item.quantity).toFixed(2)}
-                                </div>
-                              </div>
-                              <div className="flex items-center space-x-2 flex-shrink-0">
-                                <Button
-                                  type="button"
-                                  size="sm"
-                                  variant="outline"
-                                  onClick={() => updateItemQuantity(item.dishId, item.quantity - 1)}
-                                >
-                                  -
-                                </Button>
-                                <span className="w-8 text-center">{item.quantity}</span>
-                                <Button
-                                  type="button"
-                                  size="sm"
-                                  variant="outline"
-                                  onClick={() => updateItemQuantity(item.dishId, item.quantity + 1)}
-                                >
-                                  +
-                                </Button>
-                                <Button
-                                  type="button"
-                                  size="sm"
-                                  variant="destructive"
-                                  onClick={() => removeItem(item.dishId)}
-                                >
-                                  ×
-                                </Button>
-                              </div>
-                            </div>
-                          ))}
-                        </div>
-                        {selectedItems.length > 0 && (
-                          <div className="mt-4 p-4 bg-muted rounded-lg">
-                            <div className="flex justify-between text-sm">
-                              <span>Subtotal:</span>
-                              <span>Rs. {calculateSubtotal().toFixed(2)}</span>
-                            </div>
-                            <div className="flex justify-between text-sm">
-                              <span>Tax (10%):</span>
-                              <span>Rs. {(calculateSubtotal() * 0.1).toFixed(2)}</span>
-                            </div>
-                            <div className="flex justify-between font-bold border-t pt-2 mt-2">
-                              <span>Total:</span>
-                              <span>Rs. {calculateTotal().toFixed(2)}</span>
-                            </div>
-                          </div>
+                        {user?.role === "superadmin" && (
+                          <FormField
+                            control={form.control}
+                            name="branchId"
+                            render={({ field }) => (
+                              <FormItem>
+                                <FormLabel>Branch *</FormLabel>
+                                <FormControl>
+                                  <Select
+                                    value={field.value?.toString()}
+                                    onValueChange={(value) => field.onChange(parseInt(value))}
+                                  >
+                                    <SelectTrigger>
+                                      <SelectValue placeholder="Select branch" />
+                                    </SelectTrigger>
+                                    <SelectContent>
+                                      {branches?.map((branch: any) => (
+                                        <SelectItem key={branch.id} value={branch.id.toString()}>
+                                          {branch.name}
+                                        </SelectItem>
+                                      ))}
+                                    </SelectContent>
+                                  </Select>
+                                </FormControl>
+                                <FormMessage />
+                              </FormItem>
+                            )}
+                          />
                         )}
                       </div>
                     </div>
 
-                    <div className="flex justify-end gap-2">
+                    {/* Menu Selection Section */}
+                    <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                      <div className="lg:col-span-2">
+                        <div className="bg-white border rounded-lg p-4">
+                          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between mb-4">
+                            <h3 className="text-lg font-semibold mb-2 sm:mb-0">Menu Items</h3>
+                            <div className="w-full sm:w-64">
+                              <Select value={selectedCategory} onValueChange={setSelectedCategory}>
+                                <SelectTrigger>
+                                  <SelectValue placeholder="All Categories" />
+                                </SelectTrigger>
+                                <SelectContent>
+                                  <SelectItem value="all">All Categories</SelectItem>
+                                  {categories?.map((category: any) => (
+                                    <SelectItem key={category.id} value={category.id.toString()}>
+                                      {category.name}
+                                    </SelectItem>
+                                  ))}
+                                </SelectContent>
+                              </Select>
+                            </div>
+                          </div>
+
+                          <div className="max-h-96 overflow-y-auto">
+                            {getFilteredDishes().length > 0 ? (
+                              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                                {getFilteredDishes().map((dish: any) => (
+                                  <div key={dish.id} className="border rounded-lg p-3 hover:shadow-md transition-shadow">
+                                    <div className="flex justify-between items-start mb-2">
+                                      <div className="flex-1 min-w-0">
+                                        <h4 className="font-medium truncate">{dish.name}</h4>
+                                        <p className="text-sm text-gray-600 mb-1">Rs. {dish.price}</p>
+                                        {dish.category && (
+                                          <Badge variant="outline" className="text-xs">
+                                            {dish.category.name}
+                                          </Badge>
+                                        )}
+                                      </div>
+                                      <Button
+                                        type="button"
+                                        size="sm"
+                                        onClick={() => addItem(dish)}
+                                        className="ml-2 flex-shrink-0"
+                                      >
+                                        <Plus className="h-4 w-4" />
+                                      </Button>
+                                    </div>
+                                    {dish.description && (
+                                      <p className="text-xs text-gray-500 line-clamp-2">{dish.description}</p>
+                                    )}
+                                  </div>
+                                ))}
+                              </div>
+                            ) : (
+                              <div className="text-center py-8 text-gray-500">
+                                {selectedCategory && selectedCategory !== "all" 
+                                  ? "No dishes found in this category"
+                                  : "No dishes available"
+                                }
+                              </div>
+                            )}
+                          </div>
+                        </div>
+                      </div>
+
+                      {/* Order Summary Section */}
+                      <div className="lg:col-span-1">
+                        <div className="bg-white border rounded-lg p-4 sticky top-4">
+                          <h3 className="text-lg font-semibold mb-4">Order Summary</h3>
+                          
+                          {selectedItems.length === 0 ? (
+                            <div className="text-center py-8 text-gray-500">
+                              <p className="text-sm">No items selected</p>
+                              <p className="text-xs mt-1">Add items from the menu to start</p>
+                            </div>
+                          ) : (
+                            <>
+                              <div className="max-h-64 overflow-y-auto mb-4 space-y-3">
+                                {selectedItems.map((item) => (
+                                  <div key={item.dishId} className="bg-gray-50 rounded-lg p-3">
+                                    <div className="flex justify-between items-start mb-2">
+                                      <div className="flex-1 min-w-0">
+                                        <h4 className="font-medium text-sm truncate">{item.dishName}</h4>
+                                        <p className="text-xs text-gray-600">Rs. {item.unitPrice} each</p>
+                                      </div>
+                                      <Button
+                                        type="button"
+                                        size="sm"
+                                        variant="ghost"
+                                        onClick={() => removeItem(item.dishId)}
+                                        className="text-red-500 hover:text-red-700 p-1 h-auto"
+                                      >
+                                        <Trash2 className="h-3 w-3" />
+                                      </Button>
+                                    </div>
+                                    <div className="flex items-center justify-between">
+                                      <div className="flex items-center space-x-2">
+                                        <Button
+                                          type="button"
+                                          size="sm"
+                                          variant="outline"
+                                          onClick={() => updateItemQuantity(item.dishId, item.quantity - 1)}
+                                          className="h-7 w-7 p-0"
+                                        >
+                                          -
+                                        </Button>
+                                        <span className="w-8 text-center text-sm font-medium">{item.quantity}</span>
+                                        <Button
+                                          type="button"
+                                          size="sm"
+                                          variant="outline"
+                                          onClick={() => updateItemQuantity(item.dishId, item.quantity + 1)}
+                                          className="h-7 w-7 p-0"
+                                        >
+                                          +
+                                        </Button>
+                                      </div>
+                                      <span className="text-sm font-medium">
+                                        Rs. {(parseFloat(item.unitPrice) * item.quantity).toFixed(2)}
+                                      </span>
+                                    </div>
+                                  </div>
+                                ))}
+                              </div>
+
+                              <div className="border-t pt-4 space-y-2">
+                                <div className="flex justify-between text-sm">
+                                  <span>Subtotal:</span>
+                                  <span>Rs. {calculateSubtotal().toFixed(2)}</span>
+                                </div>
+                                <div className="flex justify-between text-sm text-gray-600">
+                                  <span>Tax (10%):</span>
+                                  <span>Rs. {(calculateSubtotal() * 0.1).toFixed(2)}</span>
+                                </div>
+                                <div className="flex justify-between font-bold text-lg border-t pt-2">
+                                  <span>Total:</span>
+                                  <span>Rs. {calculateTotal().toFixed(2)}</span>
+                                </div>
+                              </div>
+                            </>
+                          )}
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Action Buttons */}
+                    <div className="flex justify-end gap-3 pt-4 border-t">
                       <Button type="button" variant="outline" onClick={() => setIsDialogOpen(false)}>
                         Cancel
                       </Button>
                       <Button 
                         type="submit" 
                         disabled={createOrderMutation.isPending || selectedItems.length === 0}
+                        className="px-8"
                       >
-                        Create Order
+                        {createOrderMutation.isPending ? "Creating..." : "Create Order"}
                       </Button>
                     </div>
                   </form>
