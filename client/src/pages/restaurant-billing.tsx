@@ -894,7 +894,7 @@ export default function RestaurantBilling() {
                   </DialogTitle>
                 </DialogHeader>
                 <div className="space-y-4">
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4```text
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                     <div>
                       <span className="text-sm text-muted-foreground">Order Number:</span>
                       <p className="font-medium">#{viewingBill.order?.orderNumber || 'N/A'}</p>
