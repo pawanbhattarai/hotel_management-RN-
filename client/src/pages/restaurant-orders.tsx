@@ -1,13 +1,51 @@
 import React, { useState } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
-import { Plus, Eye, FileText, Printer, Minus, Trash2, ShoppingCart, Clock, CheckCircle, Users, Utensils, ArrowLeft } from "lucide-react";
+import {
+  Plus,
+  Eye,
+  FileText,
+  Printer,
+  Minus,
+  Trash2,
+  ShoppingCart,
+  Clock,
+  CheckCircle,
+  Users,
+  Utensils,
+  ArrowLeft,
+} from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
-import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
+import {
+  Form,
+  FormControl,
+  FormField,
+  FormItem,
+  FormLabel,
+  FormMessage,
+} from "@/components/ui/form";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { Badge } from "@/components/ui/badge";
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { useForm } from "react-hook-form";
@@ -21,13 +59,17 @@ import { useAuth } from "@/hooks/useAuth";
 
 const orderSchema = z.object({
   tableId: z.number().min(1, "Table is required"),
-  branchId: z.number().min(1, "Branch is required"), 
-  items: z.array(z.object({
-    dishId: z.number().min(1, "Dish is required"),
-    quantity: z.number().min(1, "Quantity must be at least 1"),
-    unitPrice: z.string().min(1, "Price is required"),
-    notes: z.string().optional(),
-  })).optional(),
+  branchId: z.number().min(1, "Branch is required"),
+  items: z
+    .array(
+      z.object({
+        dishId: z.number().min(1, "Dish is required"),
+        quantity: z.number().min(1, "Quantity must be at least 1"),
+        unitPrice: z.string().min(1, "Price is required"),
+        notes: z.string().optional(),
+      }),
+    )
+    .optional(),
   notes: z.string().optional(),
 });
 
@@ -44,59 +86,66 @@ export default function RestaurantOrders() {
   const { user } = useAuth();
 
   const { data: orders, isLoading: ordersLoading } = useQuery({
-    queryKey: ['/api/restaurant/orders'],
+    queryKey: ["/api/restaurant/orders"],
   });
 
   const { data: tables, isLoading: tablesLoading } = useQuery({
-    queryKey: ['/api/restaurant/tables'],
+    queryKey: ["/api/restaurant/tables"],
   });
 
   const { data: dishes } = useQuery({
-    queryKey: ['/api/restaurant/dishes'],
+    queryKey: ["/api/restaurant/dishes"],
   });
 
   const { data: categories } = useQuery({
-    queryKey: ['/api/restaurant/categories'],
+    queryKey: ["/api/restaurant/categories"],
   });
 
   const { data: branches } = useQuery({
-    queryKey: ['/api/branches'],
+    queryKey: ["/api/branches"],
   });
 
   const createOrderMutation = useMutation({
     mutationFn: async (data: { order: any; items: any[] }) => {
       console.log("Sending order creation request:", data);
-      const response = await fetch('/api/restaurant/orders', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+      const response = await fetch("/api/restaurant/orders", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
         body: JSON.stringify(data),
       });
-      
+
       const responseData = await response.json();
       console.log("Order creation response:", responseData);
-      
+
       if (!response.ok) {
-        throw new Error(responseData.message || 'Failed to create order');
+        throw new Error(responseData.message || "Failed to create order");
       }
       return responseData;
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['/api/restaurant/orders'] });
-      const existingOrder = selectedTable ? getTableOrder(selectedTable.id) : null;
+      queryClient.invalidateQueries({ queryKey: ["/api/restaurant/orders"] });
+      const existingOrder = selectedTable
+        ? getTableOrder(selectedTable.id)
+        : null;
       setSelectedTable(null);
       setSelectedItems([]);
       setOriginalItems([]);
-      toast({ 
-        title: existingOrder ? "Order updated successfully" : "Order created successfully", 
-        description: existingOrder ? "Items have been added to the order!" : "Your order has been placed!" 
+      toast({
+        title: existingOrder
+          ? "Order updated successfully"
+          : "Order created successfully",
+        description: existingOrder
+          ? "Items have been added to the order!"
+          : "Your order has been placed!",
       });
     },
     onError: (error: any) => {
       console.error("Order creation failed:", error);
-      toast({ 
-        title: "Failed to create order", 
-        description: error.message || "An error occurred while creating the order",
-        variant: "destructive"
+      toast({
+        title: "Failed to create order",
+        description:
+          error.message || "An error occurred while creating the order",
+        variant: "destructive",
       });
     },
   });
@@ -104,15 +153,15 @@ export default function RestaurantOrders() {
   const updateStatusMutation = useMutation({
     mutationFn: async ({ id, status }: { id: string; status: string }) => {
       const response = await fetch(`/api/restaurant/orders/${id}/status`, {
-        method: 'PATCH',
-        headers: { 'Content-Type': 'application/json' },
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ status }),
       });
-      if (!response.ok) throw new Error('Failed to update order status');
+      if (!response.ok) throw new Error("Failed to update order status");
       return response.json();
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['/api/restaurant/orders'] });
+      queryClient.invalidateQueries({ queryKey: ["/api/restaurant/orders"] });
       toast({ title: "Order status updated" });
     },
   });
@@ -120,9 +169,9 @@ export default function RestaurantOrders() {
   const generateKOTMutation = useMutation({
     mutationFn: async (orderId: string) => {
       const response = await fetch(`/api/restaurant/orders/${orderId}/kot`, {
-        method: 'POST',
+        method: "POST",
       });
-      if (!response.ok) throw new Error('Failed to generate KOT');
+      if (!response.ok) throw new Error("Failed to generate KOT");
       return response.json();
     },
     onSuccess: () => {
@@ -134,7 +183,7 @@ export default function RestaurantOrders() {
     resolver: zodResolver(orderSchema),
     defaultValues: {
       tableId: selectedTable?.id || 0,
-      branchId: user?.role === "superadmin" ? 1 : (user?.branchId || 1),
+      branchId: user?.role === "superadmin" ? 1 : user?.branchId || 1,
       items: [],
       notes: "",
     },
@@ -143,7 +192,7 @@ export default function RestaurantOrders() {
   // Update form values when table changes
   React.useEffect(() => {
     if (selectedTable) {
-      form.setValue('tableId', selectedTable.id);
+      form.setValue("tableId", selectedTable.id);
     }
   }, [selectedTable, form]);
 
@@ -151,33 +200,33 @@ export default function RestaurantOrders() {
     console.log("Form submitted with data:", data);
     console.log("Selected items:", selectedItems);
     console.log("Selected table:", selectedTable);
-    
+
     const existingOrder = getTableOrder(selectedTable.id);
-    
+
     if (selectedItems.length === 0) {
-      toast({ 
-        title: "Error", 
+      toast({
+        title: "Error",
         description: "Please add at least one item to the order",
-        variant: "destructive"
+        variant: "destructive",
       });
       return;
     }
 
     if (!selectedTable) {
-      toast({ 
-        title: "Error", 
+      toast({
+        title: "Error",
         description: "No table selected",
-        variant: "destructive"
+        variant: "destructive",
       });
       return;
     }
 
     // For existing orders, only submit new/changed items
     if (existingOrder && !hasOrderChanged()) {
-      toast({ 
-        title: "No changes", 
+      toast({
+        title: "No changes",
         description: "No changes detected in the order",
-        variant: "default"
+        variant: "default",
       });
       return;
     }
@@ -206,7 +255,7 @@ export default function RestaurantOrders() {
       paymentStatus: "pending" as const,
     };
 
-    const itemsData = selectedItems.map(item => ({
+    const itemsData = selectedItems.map((item) => ({
       dishId: item.dishId,
       quantity: item.quantity,
       unitPrice: item.unitPrice,
@@ -215,7 +264,10 @@ export default function RestaurantOrders() {
       status: "pending" as const,
     }));
 
-    console.log("Creating order with data:", { order: orderData, items: itemsData });
+    console.log("Creating order with data:", {
+      order: orderData,
+      items: itemsData,
+    });
 
     createOrderMutation.mutate({
       order: orderData,
@@ -228,50 +280,54 @@ export default function RestaurantOrders() {
       toast({
         title: "Error",
         description: "Invalid dish data",
-        variant: "destructive"
+        variant: "destructive",
       });
       return;
     }
 
-    const existingItem = selectedItems.find(item => item.dishId === dish.id);
+    const existingItem = selectedItems.find((item) => item.dishId === dish.id);
     if (existingItem) {
-      setSelectedItems(items =>
-        items.map(item =>
+      setSelectedItems((items) =>
+        items.map((item) =>
           item.dishId === dish.id
             ? { ...item, quantity: item.quantity + 1 }
-            : item
-        )
+            : item,
+        ),
       );
     } else {
-      setSelectedItems(items => [...items, {
-        dishId: dish.id,
-        dishName: dish.name,
-        quantity: 1,
-        unitPrice: dish.price.toString(),
-        notes: "",
-      }]);
+      setSelectedItems((items) => [
+        ...items,
+        {
+          dishId: dish.id,
+          dishName: dish.name,
+          quantity: 1,
+          unitPrice: dish.price.toString(),
+          notes: "",
+        },
+      ]);
     }
   };
 
   const removeItem = (dishId: number) => {
-    setSelectedItems(items => items.filter(item => item.dishId !== dishId));
+    setSelectedItems((items) => items.filter((item) => item.dishId !== dishId));
   };
 
   const updateItemQuantity = (dishId: number, quantity: number) => {
     if (quantity <= 0) {
       removeItem(dishId);
     } else {
-      setSelectedItems(items =>
-        items.map(item =>
-          item.dishId === dishId ? { ...item, quantity } : item
-        )
+      setSelectedItems((items) =>
+        items.map((item) =>
+          item.dishId === dishId ? { ...item, quantity } : item,
+        ),
       );
     }
   };
 
   const calculateSubtotal = () => {
-    return selectedItems.reduce((total, item) => 
-      total + (parseFloat(item.unitPrice) * item.quantity), 0
+    return selectedItems.reduce(
+      (total, item) => total + parseFloat(item.unitPrice) * item.quantity,
+      0,
     );
   };
 
@@ -285,11 +341,20 @@ export default function RestaurantOrders() {
     if (!selectedCategory || selectedCategory === "all") {
       return dishes || [];
     }
-    return dishes?.filter((dish: any) => dish.categoryId === parseInt(selectedCategory)) || [];
+    return (
+      dishes?.filter(
+        (dish: any) => dish.categoryId === parseInt(selectedCategory),
+      ) || []
+    );
   };
 
   const getTableOrder = (tableId: number) => {
-    return orders?.find((order: any) => order.tableId === tableId && order.status !== 'completed' && order.status !== 'cancelled');
+    return orders?.find(
+      (order: any) =>
+        order.tableId === tableId &&
+        order.status !== "completed" &&
+        order.status !== "cancelled",
+    );
   };
 
   const handleTableClick = (table: any) => {
@@ -303,7 +368,7 @@ export default function RestaurantOrders() {
     if (existingOrder && existingOrder.items) {
       const orderItems = existingOrder.items.map((item: any) => ({
         dishId: item.dishId,
-        dishName: item.dish?.name || 'Unknown Dish',
+        dishName: item.dish?.name || "Unknown Dish",
         quantity: item.quantity,
         unitPrice: item.unitPrice,
         notes: item.specialInstructions || "",
@@ -317,20 +382,28 @@ export default function RestaurantOrders() {
   const hasOrderChanged = () => {
     if (originalItems.length === 0 && selectedItems.length === 0) return false;
     if (originalItems.length !== selectedItems.length) return true;
-    
+
     return JSON.stringify(originalItems) !== JSON.stringify(selectedItems);
   };
 
   const getStatusColor = (status: string) => {
     switch (status) {
-      case 'pending': return 'bg-yellow-100 text-yellow-800';
-      case 'confirmed': return 'bg-blue-100 text-blue-800';
-      case 'preparing': return 'bg-orange-100 text-orange-800';
-      case 'ready': return 'bg-green-100 text-green-800';
-      case 'served': return 'bg-gray-100 text-gray-800';
-      case 'completed': return 'bg-emerald-100 text-emerald-800';
-      case 'cancelled': return 'bg-red-100 text-red-800';
-      default: return 'bg-gray-100 text-gray-800';
+      case "pending":
+        return "bg-yellow-100 text-yellow-800";
+      case "confirmed":
+        return "bg-blue-100 text-blue-800";
+      case "preparing":
+        return "bg-orange-100 text-orange-800";
+      case "ready":
+        return "bg-green-100 text-green-800";
+      case "served":
+        return "bg-gray-100 text-gray-800";
+      case "completed":
+        return "bg-emerald-100 text-emerald-800";
+      case "cancelled":
+        return "bg-red-100 text-red-800";
+      default:
+        return "bg-gray-100 text-gray-800";
     }
   };
 
@@ -345,7 +418,9 @@ export default function RestaurantOrders() {
           <Header
             title="Restaurant Orders"
             subtitle="Manage table orders"
-            onMobileMenuToggle={() => setIsMobileSidebarOpen(!isMobileSidebarOpen)}
+            onMobileMenuToggle={() =>
+              setIsMobileSidebarOpen(!isMobileSidebarOpen)
+            }
           />
           <main className="p-6">
             <div className="flex items-center justify-center py-12">
@@ -370,8 +445,14 @@ export default function RestaurantOrders() {
         <div className="main-content">
           <Header
             title={`Table ${selectedTable.name} - Order`}
-            subtitle={existingOrder ? "Add more items to existing order" : "Create new order"}
-            onMobileMenuToggle={() => setIsMobileSidebarOpen(!isMobileSidebarOpen)}
+            subtitle={
+              existingOrder
+                ? "Add more items to existing order"
+                : "Create new order"
+            }
+            onMobileMenuToggle={() =>
+              setIsMobileSidebarOpen(!isMobileSidebarOpen)
+            }
           />
           <main className="p-6">
             {/* Back Button */}
@@ -390,11 +471,20 @@ export default function RestaurantOrders() {
                   <CardContent className="p-4">
                     <div className="flex items-center justify-between">
                       <div>
-                        <h3 className="font-semibold">Existing Order #{existingOrder.orderNumber}</h3>
+                        <h3 className="font-semibold">
+                          Existing Order #{existingOrder.orderNumber}
+                        </h3>
                         <p className="text-sm text-gray-600">
-                          Status: <Badge className={getStatusColor(existingOrder.status)}>{existingOrder.status}</Badge>
+                          Status:{" "}
+                          <Badge
+                            className={getStatusColor(existingOrder.status)}
+                          >
+                            {existingOrder.status}
+                          </Badge>
                         </p>
-                        <p className="text-sm text-gray-600">Total: Rs. {existingOrder.totalAmount}</p>
+                        <p className="text-sm text-gray-600">
+                          Total: Rs. {existingOrder.totalAmount}
+                        </p>
                       </div>
                       <div className="space-x-2">
                         <Button
@@ -407,7 +497,12 @@ export default function RestaurantOrders() {
                         </Button>
                         <Select
                           value={existingOrder.status}
-                          onValueChange={(status) => updateStatusMutation.mutate({ id: existingOrder.id, status })}
+                          onValueChange={(status) =>
+                            updateStatusMutation.mutate({
+                              id: existingOrder.id,
+                              status,
+                            })
+                          }
                         >
                           <SelectTrigger className="w-32">
                             <SelectValue />
@@ -436,14 +531,20 @@ export default function RestaurantOrders() {
                   <CardHeader>
                     <div className="flex items-center justify-between">
                       <CardTitle>Menu Items</CardTitle>
-                      <Select value={selectedCategory} onValueChange={setSelectedCategory}>
+                      <Select
+                        value={selectedCategory}
+                        onValueChange={setSelectedCategory}
+                      >
                         <SelectTrigger className="w-48">
                           <SelectValue placeholder="All Categories" />
                         </SelectTrigger>
                         <SelectContent>
                           <SelectItem value="all">All Categories</SelectItem>
                           {categories?.map((category: any) => (
-                            <SelectItem key={category.id} value={category.id.toString()}>
+                            <SelectItem
+                              key={category.id}
+                              value={category.id.toString()}
+                            >
                               {category.name}
                             </SelectItem>
                           ))}
@@ -454,14 +555,21 @@ export default function RestaurantOrders() {
                   <CardContent>
                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 max-h-96 overflow-y-auto">
                       {getFilteredDishes().map((dish: any) => (
-                        <Card key={dish.id} className="hover:shadow-md transition-shadow cursor-pointer">
+                        <Card
+                          key={dish.id}
+                          className="hover:shadow-md transition-shadow cursor-pointer"
+                        >
                           <CardContent className="p-4">
                             <div className="flex justify-between items-start">
                               <div className="flex-1">
                                 <h4 className="font-medium">{dish.name}</h4>
-                                <p className="text-green-600 font-semibold">Rs. {dish.price}</p>
+                                <p className="text-green-600 font-semibold">
+                                  Rs. {dish.price}
+                                </p>
                                 {dish.description && (
-                                  <p className="text-sm text-gray-500 mt-1">{dish.description}</p>
+                                  <p className="text-sm text-gray-500 mt-1">
+                                    {dish.description}
+                                  </p>
                                 )}
                               </div>
                               <Button
@@ -502,25 +610,44 @@ export default function RestaurantOrders() {
                       <>
                         <div className="space-y-3 mb-4 max-h-64 overflow-y-auto">
                           {selectedItems.map((item) => (
-                            <div key={item.dishId} className="flex items-center justify-between p-2 bg-gray-50 rounded">
+                            <div
+                              key={item.dishId}
+                              className="flex items-center justify-between p-2 bg-gray-50 rounded"
+                            >
                               <div className="flex-1">
-                                <h4 className="font-medium text-sm">{item.dishName}</h4>
-                                <p className="text-xs text-gray-600">Rs. {item.unitPrice} each</p>
+                                <h4 className="font-medium text-sm">
+                                  {item.dishName}
+                                </h4>
+                                <p className="text-xs text-gray-600">
+                                  Rs. {item.unitPrice} each
+                                </p>
                               </div>
                               <div className="flex items-center space-x-2">
                                 <Button
                                   size="sm"
                                   variant="outline"
-                                  onClick={() => updateItemQuantity(item.dishId, item.quantity - 1)}
+                                  onClick={() =>
+                                    updateItemQuantity(
+                                      item.dishId,
+                                      item.quantity - 1,
+                                    )
+                                  }
                                   className="h-6 w-6 p-0"
                                 >
                                   <Minus className="h-3 w-3" />
                                 </Button>
-                                <span className="w-6 text-center text-sm">{item.quantity}</span>
+                                <span className="w-6 text-center text-sm">
+                                  {item.quantity}
+                                </span>
                                 <Button
                                   size="sm"
                                   variant="outline"
-                                  onClick={() => updateItemQuantity(item.dishId, item.quantity + 1)}
+                                  onClick={() =>
+                                    updateItemQuantity(
+                                      item.dishId,
+                                      item.quantity + 1,
+                                    )
+                                  }
                                   className="h-6 w-6 p-0"
                                 >
                                   <Plus className="h-3 w-3" />
@@ -545,7 +672,9 @@ export default function RestaurantOrders() {
                           </div>
                           <div className="flex justify-between text-sm">
                             <span>Tax (10%):</span>
-                            <span>Rs. {(calculateSubtotal() * 0.1).toFixed(2)}</span>
+                            <span>
+                              Rs. {(calculateSubtotal() * 0.1).toFixed(2)}
+                            </span>
                           </div>
                           <div className="flex justify-between font-semibold text-lg border-t pt-2">
                             <span>Total:</span>
@@ -554,7 +683,10 @@ export default function RestaurantOrders() {
                         </div>
 
                         <Form {...form}>
-                          <form onSubmit={form.handleSubmit(onSubmit)} className="mt-4 space-y-4">
+                          <form
+                            onSubmit={form.handleSubmit(onSubmit)}
+                            className="mt-4 space-y-4"
+                          >
                             <FormField
                               control={form.control}
                               name="notes"
@@ -562,8 +694,8 @@ export default function RestaurantOrders() {
                                 <FormItem>
                                   <FormLabel>Order Notes</FormLabel>
                                   <FormControl>
-                                    <Textarea 
-                                      {...field} 
+                                    <Textarea
+                                      {...field}
                                       placeholder="Special instructions..."
                                       className="h-20"
                                     />
@@ -572,23 +704,34 @@ export default function RestaurantOrders() {
                                 </FormItem>
                               )}
                             />
-                            <Button 
-                              type="submit" 
+                            <Button
+                              type="submit"
                               className="w-full"
-                              disabled={createOrderMutation.isPending || selectedItems.length === 0 || (getTableOrder(selectedTable?.id) && !hasOrderChanged())}
+                              disabled={
+                                createOrderMutation.isPending ||
+                                selectedItems.length === 0 ||
+                                (getTableOrder(selectedTable?.id) &&
+                                  !hasOrderChanged())
+                              }
                               onClick={(e) => {
                                 e.preventDefault();
-                                console.log("Button clicked, submitting form...");
+                                console.log(
+                                  "Button clicked, submitting form...",
+                                );
                                 form.handleSubmit(onSubmit)(e);
                               }}
                             >
                               {createOrderMutation.isPending ? (
                                 <div className="flex items-center">
                                   <div className="animate-spin rounded-full h-4 w-4 border-2 border-white border-t-transparent mr-2"></div>
-                                  {getTableOrder(selectedTable?.id) ? "Updating..." : "Creating..."}
+                                  {getTableOrder(selectedTable?.id)
+                                    ? "Updating..."
+                                    : "Creating..."}
                                 </div>
+                              ) : getTableOrder(selectedTable?.id) ? (
+                                "Add Items to Order"
                               ) : (
-                                getTableOrder(selectedTable?.id) ? "Add Items to Order" : "Create Order"
+                                "Create Order"
                               )}
                             </Button>
                           </form>
@@ -616,7 +759,9 @@ export default function RestaurantOrders() {
         <Header
           title="Restaurant Tables"
           subtitle="Click on a table to manage orders"
-          onMobileMenuToggle={() => setIsMobileSidebarOpen(!isMobileSidebarOpen)}
+          onMobileMenuToggle={() =>
+            setIsMobileSidebarOpen(!isMobileSidebarOpen)
+          }
         />
         <main className="p-6">
           {/* Tables Grid */}
@@ -626,20 +771,28 @@ export default function RestaurantOrders() {
               const isOccupied = !!tableOrder;
 
               return (
-                <Card 
-                  key={table.id} 
+                <Card
+                  key={table.id}
                   className={`cursor-pointer transition-all hover:shadow-lg ${
-                    isOccupied ? 'border-l-4 border-l-orange-500 bg-orange-50' : 'border-l-4 border-l-green-500 bg-green-50'
+                    isOccupied
+                      ? "border-l-4 border-l-orange-500 bg-orange-50"
+                      : "border-l-4 border-l-green-500 bg-green-50"
                   }`}
                   onClick={() => handleTableClick(table)}
                 >
                   <CardContent className="p-6">
                     <div className="flex items-center justify-between mb-4">
                       <div className="flex items-center space-x-2">
-                        <Utensils className={`h-5 w-5 ${isOccupied ? 'text-orange-600' : 'text-green-600'}`} />
-                        <h3 className="font-semibold text-lg">Table {table.name}</h3>
+                        <Utensils
+                          className={`h-5 w-5 ${isOccupied ? "text-orange-600" : "text-green-600"}`}
+                        />
+                        <h3 className="font-semibold text-lg">
+                          Table {table.name}
+                        </h3>
                       </div>
-                      <div className={`w-3 h-3 rounded-full ${isOccupied ? 'bg-orange-500' : 'bg-green-500'}`}></div>
+                      <div
+                        className={`w-3 h-3 rounded-full ${isOccupied ? "bg-orange-500" : "bg-green-500"}`}
+                      ></div>
                     </div>
 
                     <div className="space-y-2">
@@ -649,10 +802,6 @@ export default function RestaurantOrders() {
                       </div>
 
                       <div className="flex items-center justify-between">
-                        <Badge variant={isOccupied ? 'destructive' : 'default'}>
-                          {isOccupied ? 'Occupied' : 'Available'}
-                        </Badge>
-
                         {isOccupied && tableOrder && (
                           <Badge className={getStatusColor(tableOrder.status)}>
                             {tableOrder.status}
@@ -684,36 +833,57 @@ export default function RestaurantOrders() {
             <div className="text-center py-12">
               <Utensils className="h-12 w-12 mx-auto text-gray-400 mb-4" />
               <p className="text-gray-500 font-medium">No tables found</p>
-              <p className="text-sm text-gray-400">Add tables to start taking orders.</p>
+              <p className="text-sm text-gray-400">
+                Add tables to start taking orders.
+              </p>
             </div>
           )}
 
           {/* View Order Modal */}
           {viewingOrder && (
-            <Dialog open={!!viewingOrder} onOpenChange={() => setViewingOrder(null)}>
+            <Dialog
+              open={!!viewingOrder}
+              onOpenChange={() => setViewingOrder(null)}
+            >
               <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
                 <DialogHeader>
-                  <DialogTitle>Order Details - #{viewingOrder.orderNumber}</DialogTitle>
+                  <DialogTitle>
+                    Order Details - #{viewingOrder.orderNumber}
+                  </DialogTitle>
                 </DialogHeader>
                 <div className="space-y-4">
                   <div className="grid grid-cols-2 gap-4">
                     <div>
-                      <p className="text-sm font-medium text-gray-500">Table:</p>
-                      <p className="font-semibold">{viewingOrder.table?.name}</p>
+                      <p className="text-sm font-medium text-gray-500">
+                        Table:
+                      </p>
+                      <p className="font-semibold">
+                        {viewingOrder.table?.name}
+                      </p>
                     </div>
                     <div>
-                      <p className="text-sm font-medium text-gray-500">Status:</p>
+                      <p className="text-sm font-medium text-gray-500">
+                        Status:
+                      </p>
                       <Badge className={getStatusColor(viewingOrder.status)}>
                         {viewingOrder.status}
                       </Badge>
                     </div>
                     <div>
-                      <p className="text-sm font-medium text-gray-500">Total:</p>
-                      <p className="font-bold text-green-600">Rs. {viewingOrder.totalAmount}</p>
+                      <p className="text-sm font-medium text-gray-500">
+                        Total:
+                      </p>
+                      <p className="font-bold text-green-600">
+                        Rs. {viewingOrder.totalAmount}
+                      </p>
                     </div>
                     <div>
-                      <p className="text-sm font-medium text-gray-500">Created:</p>
-                      <p className="text-sm">{new Date(viewingOrder.createdAt).toLocaleString()}</p>
+                      <p className="text-sm font-medium text-gray-500">
+                        Created:
+                      </p>
+                      <p className="text-sm">
+                        {new Date(viewingOrder.createdAt).toLocaleString()}
+                      </p>
                     </div>
                   </div>
 
@@ -721,13 +891,21 @@ export default function RestaurantOrders() {
                     <h4 className="font-semibold mb-2">Order Items</h4>
                     <div className="space-y-2">
                       {viewingOrder.items?.map((item: any) => (
-                        <div key={item.id} className="flex justify-between items-center p-2 bg-gray-50 rounded">
+                        <div
+                          key={item.id}
+                          className="flex justify-between items-center p-2 bg-gray-50 rounded"
+                        >
                           <div>
                             <p className="font-medium">{item.dish?.name}</p>
-                            <p className="text-sm text-gray-600">Qty: {item.quantity} × Rs. {item.unitPrice}</p>
+                            <p className="text-sm text-gray-600">
+                              Qty: {item.quantity} × Rs. {item.unitPrice}
+                            </p>
                           </div>
                           <p className="font-semibold text-green-600">
-                            Rs. {(parseFloat(item.unitPrice) * item.quantity).toFixed(2)}
+                            Rs.{" "}
+                            {(
+                              parseFloat(item.unitPrice) * item.quantity
+                            ).toFixed(2)}
                           </p>
                         </div>
                       ))}
@@ -737,13 +915,17 @@ export default function RestaurantOrders() {
                   {viewingOrder.notes && (
                     <div>
                       <h4 className="font-semibold mb-2">Notes</h4>
-                      <p className="text-gray-700 bg-gray-50 p-2 rounded">{viewingOrder.notes}</p>
+                      <p className="text-gray-700 bg-gray-50 p-2 rounded">
+                        {viewingOrder.notes}
+                      </p>
                     </div>
                   )}
 
                   <div className="flex gap-2 pt-4">
                     <Button
-                      onClick={() => generateKOTMutation.mutate(viewingOrder.id)}
+                      onClick={() =>
+                        generateKOTMutation.mutate(viewingOrder.id)
+                      }
                       variant="outline"
                     >
                       <FileText className="h-4 w-4 mr-2" />
