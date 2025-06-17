@@ -496,6 +496,19 @@ export const restaurantBills = pgTable("restaurant_bills", {
   updatedAt: timestamp("updated_at").defaultNow(),
 });
 
+// Tax/Charges master table
+export const taxes = pgTable("taxes", {
+  id: serial("id").primaryKey(),
+  taxName: varchar("tax_name", { length: 100 }).notNull().unique(),
+  rate: decimal("rate", { precision: 5, scale: 2 }).notNull(), // Rate percentage
+  status: varchar("status", { enum: ["active", "inactive"] }).notNull().default("active"),
+  applyToReservations: boolean("apply_to_reservations").default(false),
+  applyToOrders: boolean("apply_to_orders").default(false),
+  notes: text("notes"),
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+});
+
 // Restaurant Relations
 export const restaurantTablesRelations = relations(restaurantTables, ({ one, many }) => ({
   branch: one(branches, {
@@ -651,3 +664,19 @@ export type RestaurantOrderItem = typeof restaurantOrderItems.$inferSelect;
 export type InsertRestaurantOrderItem = z.infer<typeof insertRestaurantOrderItemSchema>;
 export type RestaurantBill = typeof restaurantBills.$inferSelect;
 export type InsertRestaurantBill = z.infer<typeof insertRestaurantBillSchema>;
+
+// Tax/Charges Schemas and Types
+export const insertTaxSchema = createInsertSchema(taxes).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+}).extend({
+  rate: z.union([z.string(), z.number()]).transform((val) => 
+    typeof val === 'number' ? val.toString() : val
+  ),
+}).refine((data) => data.applyToReservations || data.applyToOrders, {
+  message: "Tax must be applied to at least one area (Reservations or Orders)",
+});
+
+export type Tax = typeof taxes.$inferSelect;
+export type InsertTax = z.infer<typeof insertTaxSchema>;

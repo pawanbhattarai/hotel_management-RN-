@@ -19,6 +19,7 @@ import {
   insertRestaurantOrderSchema,
   insertRestaurantOrderItemSchema,
   insertRestaurantBillSchema,
+  insertTaxSchema,
 } from "@shared/schema";
 import { z } from "zod";
 import { broadcastChange } from "./middleware/websocket";
@@ -1908,6 +1909,133 @@ export async function registerRoutes(app: Express): Promise<Server> {
     } catch (error) {
       console.error("Error cleaning up duplicate bills:", error);
       res.status(500).json({ message: "Failed to clean up duplicate bills" });
+    }
+  });
+
+  // Tax/Charges Management API Routes
+  app.get("/api/taxes", isAuthenticated, async (req: any, res) => {
+    try {
+      const user = await storage.getUser(req.session.user.id);
+      if (!user) return res.status(401).json({ message: "User not found" });
+
+      // Only allow superadmin and branch-admin to access tax management
+      if (!["superadmin", "branch-admin"].includes(user.role)) {
+        return res.status(403).json({ message: "Insufficient permissions" });
+      }
+
+      const taxes = await restaurantStorage.getTaxes();
+      res.json(taxes);
+    } catch (error) {
+      console.error("Error fetching taxes:", error);
+      res.status(500).json({ message: "Failed to fetch taxes" });
+    }
+  });
+
+  app.get("/api/taxes/active", isAuthenticated, async (req: any, res) => {
+    try {
+      const taxes = await restaurantStorage.getActiveTaxes();
+      res.json(taxes);
+    } catch (error) {
+      console.error("Error fetching active taxes:", error);
+      res.status(500).json({ message: "Failed to fetch active taxes" });
+    }
+  });
+
+  app.get("/api/taxes/reservation", isAuthenticated, async (req: any, res) => {
+    try {
+      const taxes = await restaurantStorage.getActiveReservationTaxes();
+      res.json(taxes);
+    } catch (error) {
+      console.error("Error fetching reservation taxes:", error);
+      res.status(500).json({ message: "Failed to fetch reservation taxes" });
+    }
+  });
+
+  app.get("/api/taxes/order", isAuthenticated, async (req: any, res) => {
+    try {
+      const taxes = await restaurantStorage.getActiveOrderTaxes();
+      res.json(taxes);
+    } catch (error) {
+      console.error("Error fetching order taxes:", error);
+      res.status(500).json({ message: "Failed to fetch order taxes" });
+    }
+  });
+
+  app.post("/api/taxes", isAuthenticated, async (req: any, res) => {
+    try {
+      const user = await storage.getUser(req.session.user.id);
+      if (!user) return res.status(401).json({ message: "User not found" });
+
+      // Only allow superadmin and branch-admin to create taxes
+      if (!["superadmin", "branch-admin"].includes(user.role)) {
+        return res.status(403).json({ message: "Insufficient permissions" });
+      }
+
+      const taxData = insertTaxSchema.parse(req.body);
+      const tax = await restaurantStorage.createTax(taxData);
+      res.status(201).json(tax);
+    } catch (error) {
+      console.error("Error creating tax:", error);
+      if (error.code === "23505") { // Unique constraint violation
+        res.status(400).json({ message: "Tax name already exists" });
+      } else {
+        res.status(500).json({ message: "Failed to create tax" });
+      }
+    }
+  });
+
+  app.put("/api/taxes/:id", isAuthenticated, async (req: any, res) => {
+    try {
+      const user = await storage.getUser(req.session.user.id);
+      if (!user) return res.status(401).json({ message: "User not found" });
+
+      // Only allow superadmin and branch-admin to update taxes
+      if (!["superadmin", "branch-admin"].includes(user.role)) {
+        return res.status(403).json({ message: "Insufficient permissions" });
+      }
+
+      const taxId = parseInt(req.params.id);
+      const taxData = insertTaxSchema.partial().parse(req.body);
+
+      const existingTax = await restaurantStorage.getTax(taxId);
+      if (!existingTax) {
+        return res.status(404).json({ message: "Tax not found" });
+      }
+
+      const tax = await restaurantStorage.updateTax(taxId, taxData);
+      res.json(tax);
+    } catch (error) {
+      console.error("Error updating tax:", error);
+      if (error.code === "23505") { // Unique constraint violation
+        res.status(400).json({ message: "Tax name already exists" });
+      } else {
+        res.status(500).json({ message: "Failed to update tax" });
+      }
+    }
+  });
+
+  app.delete("/api/taxes/:id", isAuthenticated, async (req: any, res) => {
+    try {
+      const user = await storage.getUser(req.session.user.id);
+      if (!user) return res.status(401).json({ message: "User not found" });
+
+      // Only allow superadmin and branch-admin to delete taxes
+      if (!["superadmin", "branch-admin"].includes(user.role)) {
+        return res.status(403).json({ message: "Insufficient permissions" });
+      }
+
+      const taxId = parseInt(req.params.id);
+      
+      const existingTax = await restaurantStorage.getTax(taxId);
+      if (!existingTax) {
+        return res.status(404).json({ message: "Tax not found" });
+      }
+
+      await restaurantStorage.deleteTax(taxId);
+      res.json({ message: "Tax deleted successfully" });
+    } catch (error) {
+      console.error("Error deleting tax:", error);
+      res.status(500).json({ message: "Failed to delete tax" });
     }
   });
 

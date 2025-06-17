@@ -5,6 +5,7 @@ import {
   restaurantOrders,
   restaurantOrderItems,
   restaurantBills,
+  taxes,
   type RestaurantTable,
   type InsertRestaurantTable,
   type MenuCategory,
@@ -17,6 +18,8 @@ import {
   type InsertRestaurantOrderItem,
   type RestaurantBill,
   type InsertRestaurantBill,
+  type Tax,
+  type InsertTax,
 } from "@shared/schema";
 import { db } from "./db";
 import { eq, and, or, desc, sql, ilike } from "drizzle-orm";
@@ -644,6 +647,67 @@ export class RestaurantStorage {
 
   async deleteBill(id: string): Promise<void> {
     await db.delete(restaurantBills).where(eq(restaurantBills.id, id));
+  }
+
+  // Tax/Charges Management
+  async getTaxes(): Promise<Tax[]> {
+    return await db
+      .select()
+      .from(taxes)
+      .orderBy(taxes.taxName);
+  }
+
+  async getActiveTaxes(): Promise<Tax[]> {
+    return await db
+      .select()
+      .from(taxes)
+      .where(eq(taxes.status, 'active'))
+      .orderBy(taxes.taxName);
+  }
+
+  async getActiveReservationTaxes(): Promise<Tax[]> {
+    return await db
+      .select()
+      .from(taxes)
+      .where(and(
+        eq(taxes.status, 'active'),
+        eq(taxes.applyToReservations, true)
+      ))
+      .orderBy(taxes.taxName);
+  }
+
+  async getActiveOrderTaxes(): Promise<Tax[]> {
+    return await db
+      .select()
+      .from(taxes)
+      .where(and(
+        eq(taxes.status, 'active'),
+        eq(taxes.applyToOrders, true)
+      ))
+      .orderBy(taxes.taxName);
+  }
+
+  async getTax(id: number): Promise<Tax | undefined> {
+    const [tax] = await db.select().from(taxes).where(eq(taxes.id, id));
+    return tax;
+  }
+
+  async createTax(tax: InsertTax): Promise<Tax> {
+    const [result] = await db.insert(taxes).values(tax).returning();
+    return result;
+  }
+
+  async updateTax(id: number, tax: Partial<InsertTax>): Promise<Tax> {
+    const [result] = await db
+      .update(taxes)
+      .set({ ...tax, updatedAt: new Date() })
+      .where(eq(taxes.id, id))
+      .returning();
+    return result;
+  }
+
+  async deleteTax(id: number): Promise<void> {
+    await db.delete(taxes).where(eq(taxes.id, id));
   }
 
 }
