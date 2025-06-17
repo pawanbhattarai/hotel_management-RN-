@@ -364,7 +364,7 @@ export default function Billing() {
           </div>
           ${hotelSettings.taxNumber ? `<div class="hotel-details">Tax Number: ${hotelSettings.taxNumber}</div>` : ''}
           ${hotelSettings.registrationNumber ? `<div class="hotel-details">Registration: ${hotelSettings.registrationNumber}</div>` : ''}
-          
+
           <div class="bill-title">HOTEL BILL / INVOICE</div>
         </div>
 
@@ -769,24 +769,49 @@ export default function Billing() {
                     const roomSubtotal = selectedReservation.reservationRooms.reduce((sum: number, room: any) =>
                       sum + parseFloat(room.totalAmount), 0
                     );
-                    const finalTotal = roomSubtotal + billData.additionalCharges - billData.discount + billData.tax;
+                    const existingTaxAmount = parseFloat(selectedReservation.taxAmount || '0');
+                    const finalTotal = roomSubtotal + billData.additionalCharges - billData.discount + existingTaxAmount;
 
                     return (
-                      <>
-                        <div>Subtotal: Rs.{roomSubtotal.toFixed(2)}</div>
+                      <div>
+                        <div className="flex justify-between">
+                          <span>Room Charges:</span>
+                          <span>NPR {roomSubtotal.toFixed(2)}</span>
+                        </div>
+                        {existingTaxAmount > 0 && (
+                          <div className="flex justify-between">
+                            <span>Taxes & Charges:</span>
+                            <span>NPR {existingTaxAmount.toFixed(2)}</span>
+                          </div>
+                        )}
                         {billData.additionalCharges > 0 && (
-                          <div>Additional Charges: Rs.{billData.additionalCharges.toFixed(2)}</div>
+                          <div className="flex justify-between">
+                            <span>Additional Charges:</span>
+                            <span>NPR {billData.additionalCharges.toFixed(2)}</span>
+                          </div>
                         )}
                         {billData.discount > 0 && (
-                          <div>Discount: -Rs.{billData.discount.toFixed(2)}</div>
+                          <div className="flex justify-between text-green-600">
+                            <span>Discount:</span>
+                            <span>-NPR {billData.discount.toFixed(2)}</span>
+                          </div>
                         )}
-                        {billData.tax > 0 && (
-                          <div>Tax: Rs.{billData.tax.toFixed(2)}</div>
-                        )}
-                        <div className="text-lg font-bold">
-                          Total: ₨{finalTotal.toFixed(2)}
+                        <div className="flex justify-between font-bold text-lg border-t pt-2">
+                          <span>Total Amount:</span>
+                          <span>NPR {finalTotal.toFixed(2)}</span>
                         </div>
-                      </>
+                        {selectedReservation.appliedTaxes && (
+                          <div className="mt-2 text-xs text-gray-600">
+                            <p>Tax Details:</p>
+                            {JSON.parse(selectedReservation.appliedTaxes).map((tax: any, index: number) => (
+                              <div key={index} className="flex justify-between">
+                                <span>{tax.taxName} ({tax.rate}%):</span>
+                                <span>NPR {tax.amount}</span>
+                              </div>
+                            ))}
+                          </div>
+                        )}
+                      </div>
                     );
                   })()}
                 </div>

@@ -165,13 +165,13 @@ export default function RestaurantBilling() {
     },
     onError: (error: any) => {
       let errorMessage = error.message;
-      
+
       if (error.message?.includes("Bill already exists")) {
         errorMessage = "This order has already been billed. Please refresh the page to see the updated status.";
       } else if (error.message?.includes("Order must be active")) {
         errorMessage = "Order must be active to checkout.";
       }
-      
+
       toast({ 
         title: "Failed to checkout", 
         description: errorMessage,
@@ -388,7 +388,7 @@ export default function RestaurantBilling() {
             <div style="font-size: 10px;">Phone: +977-XXXXXXXX</div>
             <div class="bill-number">Bill #${bill.billNumber}</div>
           </div>
-          
+
           <div class="info-section">
             <div class="info-row">
               <span>Date:</span>
@@ -473,7 +473,7 @@ export default function RestaurantBilling() {
               <strong>Notes:</strong> ${bill.notes}
             </div>
           ` : ''}
-          
+
           <div class="divider">================================</div>
           <div class="footer">
             <div>THANK YOU FOR DINING WITH US!</div>
@@ -546,7 +546,17 @@ export default function RestaurantBilling() {
                         <TableCell className="font-medium">#{order.orderNumber}</TableCell>
                         <TableCell>{getTableName(order.tableId)}</TableCell>
                         <TableCell>{order.items?.length || 0} items</TableCell>
-                        <TableCell>Rs. {order.totalAmount}</TableCell>
+                        <TableCell>
+                          <div className="text-right">
+                            <div>Subtotal: NPR {parseFloat(order.subtotal).toFixed(2)}</div>
+                            {order.taxAmount && parseFloat(order.taxAmount) > 0 && (
+                              <div className="text-sm text-gray-600">
+                                Tax: NPR {parseFloat(order.taxAmount).toFixed(2)}
+                              </div>
+                            )}
+                            <div className="font-semibold">Total: NPR {parseFloat(order.totalAmount).toFixed(2)}</div>
+                          </div>
+                        </TableCell>
                         <TableCell>
                           <Button
                             onClick={() => handleCheckout(order)}
@@ -884,7 +894,7 @@ export default function RestaurantBilling() {
                   </DialogTitle>
                 </DialogHeader>
                 <div className="space-y-4">
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4```text
                     <div>
                       <span className="text-sm text-muted-foreground">Order Number:</span>
                       <p className="font-medium">#{viewingBill.order?.orderNumber || 'N/A'}</p>
@@ -940,6 +950,39 @@ export default function RestaurantBilling() {
                       </div>
                     </div>
                   )}
+
+                  {/* Bill Details */}
+              <div className="space-y-4">
+                <div>
+                  <h3 className="font-semibold mb-2">Order Summary</h3>
+                  <div className="space-y-1 text-sm">
+                    <div className="flex justify-between">
+                      <span>Subtotal:</span>
+                      <span>NPR {parseFloat(selectedOrder.subtotal).toFixed(2)}</span>
+                    </div>
+                    {selectedOrder.taxAmount && parseFloat(selectedOrder.taxAmount) > 0 && (
+                      <div className="flex justify-between">
+                        <span>Taxes & Charges:</span>
+                        <span>NPR {parseFloat(selectedOrder.taxAmount).toFixed(2)}</span>
+                      </div>
+                    )}
+                    <div className="flex justify-between font-semibold">
+                      <span>Total:</span>
+                      <span>NPR {parseFloat(selectedOrder.totalAmount).toFixed(2)}</span>
+                    </div>
+                    {selectedOrder.appliedTaxes && (
+                      <div className="mt-2 text-xs text-gray-600">
+                        <p>Tax Details:</p>
+                        {JSON.parse(selectedOrder.appliedTaxes).map((tax: any, index: number) => (
+                          <div key={index} className="flex justify-between">
+                            <span>{tax.taxName} ({tax.rate}%):</span>
+                            <span>NPR {tax.amount}</span>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                </div>
 
                   <div className="border-t pt-4">
                     <div className="space-y-2">

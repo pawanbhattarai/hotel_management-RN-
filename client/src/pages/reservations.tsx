@@ -266,6 +266,62 @@ export default function Reservations() {
     return null;
   }
 
+  const { data: roomTypes } = useQuery({
+    queryKey: ["/api/room-types"],
+  });
+
+  const { data: branches } = useQuery({
+    queryKey: ["/api/branches"],
+  });
+
+  const { data: reservationTaxes } = useQuery({
+    queryKey: ["/api/taxes/reservation"],
+  });
+
+  const handleCreateReservation = async (data: any) => {
+    try {
+      const subtotal = data.rooms.reduce((sum: number, room: any) => {
+        return sum + (parseFloat(room.ratePerNight) * room.nights);
+      }, 0);
+
+      // Calculate taxes for reservations
+      let totalTaxAmount = 0;
+      const appliedTaxes = [];
+
+      if (reservationTaxes) {
+        for (const tax of reservationTaxes) {
+          const taxAmount = (subtotal * parseFloat(tax.rate)) / 100;
+          totalTaxAmount += taxAmount;
+          appliedTaxes.push({
+            taxId: tax.id,
+            taxName: tax.taxName,
+            rate: tax.rate,
+            amount: taxAmount.toFixed(2)
+          });
+        }
+      }
+
+      const totalAmount = subtotal + totalTaxAmount;
+
+      const reservationData = {
+        guest: data.guest,
+        reservation: {
+          ...data.reservation,
+          totalAmount: totalAmount.toString(),
+          subtotal: subtotal.toString(),
+          taxAmount: totalTaxAmount.toString(),
+          appliedTaxes: JSON.stringify(appliedTaxes),
+        },
+        rooms: data.rooms,
+      };
+
+      await createReservationMutation.mutateAsync(reservationData);
+      setIsMultiRoomModalOpen(false);
+    } catch (error) {
+      console.error("Error creating reservation:", error);
+    }
+  };
+
   return (
     <div className="min-h-screen bg-gray-50">
       <Sidebar
@@ -455,6 +511,7 @@ export default function Reservations() {
       <MultiRoomModal
         isOpen={isModalOpen}
         onClose={() => setIsModalOpen(false)}
+        onCreate={handleCreateReservation}
       />
 
       <MultiRoomModal

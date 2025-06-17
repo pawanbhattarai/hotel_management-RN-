@@ -114,6 +114,9 @@ export const reservations = pgTable("reservations", {
     enum: ["confirmed", "pending", "checked-in", "checked-out", "cancelled", "no-show"] 
   }).notNull().default("pending"),
   totalAmount: decimal("total_amount", { precision: 10, scale: 2 }).notNull(),
+  subtotal: decimal("subtotal", { precision: 10, scale: 2 }),
+  taxAmount: decimal("tax_amount", { precision: 10, scale: 2 }).default("0"),
+  appliedTaxes: jsonb("applied_taxes"), // Store tax breakdown
   paidAmount: decimal("paid_amount", { precision: 10, scale: 2 }).default("0"),
   notes: text("notes"),
   createdById: varchar("created_by_id").notNull(),
@@ -426,6 +429,7 @@ export const restaurantOrders = pgTable("restaurant_orders", {
   customerPhone: varchar("customer_phone", { length: 20 }),
   subtotal: decimal("subtotal", { precision: 10, scale: 2 }).notNull(),
   taxAmount: decimal("tax_amount", { precision: 10, scale: 2 }).default("0"),
+  appliedTaxes: jsonb("applied_taxes"), // Store tax breakdown
   discountAmount: decimal("discount_amount", { precision: 10, scale: 2 }).default("0"),
   totalAmount: decimal("total_amount", { precision: 10, scale: 2 }).notNull(),
   paidAmount: decimal("paid_amount", { precision: 10, scale: 2 }).default("0"),
