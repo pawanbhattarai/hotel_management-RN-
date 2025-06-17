@@ -1,7 +1,7 @@
 
 import { useState } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
-import { Plus, Eye, Download, Receipt } from "lucide-react";
+import { Plus, Eye, Download, Receipt, CreditCard } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
@@ -245,6 +245,49 @@ export default function RestaurantBilling() {
 
   const markAsPaid = (bill: any) => {
     markAsPaidMutation.mutate(bill);
+  };
+
+  const checkoutMutation = useMutation({
+    mutationFn: async (bill: any) => {
+      // Update bill to paid status
+      const billResponse = await fetch(`/api/restaurant/bills/${bill.id}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          paymentStatus: 'paid',
+          paidAmount: bill.totalAmount,
+          changeAmount: "0",
+        }),
+      });
+      if (!billResponse.ok) throw new Error('Failed to update bill');
+
+      // Update order status to completed
+      const orderResponse = await fetch(`/api/restaurant/orders/${bill.orderId}/status`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ status: 'completed' }),
+      });
+      if (!orderResponse.ok) throw new Error('Failed to complete order');
+
+      return billResponse.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['/api/restaurant/bills'] });
+      queryClient.invalidateQueries({ queryKey: ['/api/restaurant/orders'] });
+      queryClient.invalidateQueries({ queryKey: ['/api/restaurant/tables'] });
+      toast({ title: "Checkout completed successfully", description: "Table is now available for new orders." });
+    },
+    onError: (error: any) => {
+      toast({ 
+        title: "Failed to checkout", 
+        description: error.message,
+        variant: "destructive"
+      });
+    },
+  });
+
+  const handleCheckout = (bill: any) => {
+    checkoutMutation.mutate(bill);
   };
 
   const generateInvoice = (bill: any) => {
@@ -591,6 +634,22 @@ export default function RestaurantBilling() {
                                   Mark Paid
                                 </Button>
                               )}
+                              {bill.paymentStatus === 'paid' && bill.order?.status !== 'completed' && (
+                                <Button
+                                  variant="default"
+                                  size="sm"
+                                  onClick={() => handleCheckout(bill)}
+                                  disabled={checkoutMutation.isPending}
+                                  className="bg-green-600 hover:bg-green-700"
+                                >
+                                  {checkoutMutation.isPending ? "Processing..." : "Checkout"}
+                                </Button>
+                              )}
+                              {bill.order?.status === 'completed' && (
+                                <div className="text-green-600 font-medium text-sm">
+                                  ✓ Completed
+                                </div>
+                              )}
                               <Button
                                 variant="outline"
                                 size="sm"
@@ -720,6 +779,20 @@ export default function RestaurantBilling() {
                   )}
 
                   <div className="flex justify-end space-x-2">
+                    {viewingBill.paymentStatus === 'paid' && viewingBill.order?.status !== 'completed' && (
+                      <Button
+                        onClick={() => handleCheckout(viewingBill)}
+                        disabled={checkoutMutation.isPending}
+                        className="bg-green-600 hover:bg-green-700"
+                      >
+                        {checkoutMutation.isPending ? "Processing..." : "Checkout & Complete"}
+                      </Button>
+                    )}
+                    {viewingBill.order?.status === 'completed' && (
+                      <div className="text-green-600 font-medium">
+                        ✓ Order Completed
+                      </div>
+                    )}
                     <Button onClick={() => generateInvoice(viewingBill)}>
                       <Download className="mr-2 h-4 w-4" />
                       Download Invoice
