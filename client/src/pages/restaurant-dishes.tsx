@@ -38,6 +38,7 @@ type DishFormData = z.infer<typeof dishSchema>;
 
 export default function RestaurantDishes() {
   const [isDishDialogOpen, setIsDishDialogOpen] = useState(false);
+  const [isBulkDishDialogOpen, setIsBulkDishDialogOpen] = useState(false);
   const [editingDish, setEditingDish] = useState<any>(null);
   const [isMobileSidebarOpen, setIsMobileSidebarOpen] = useState(false);
   const { toast } = useToast();
@@ -183,7 +184,7 @@ export default function RestaurantDishes() {
         />
         <main className="p-6">
           {/* Add Button Section for Dishes */}
-          <div className="mb-6 flex flex-col sm:flex-row gap-4">
+          <div className="mb-6">
             <Dialog open={isDishDialogOpen} onOpenChange={setIsDishDialogOpen}>
               <DialogTrigger asChild>
                 <Button
@@ -349,6 +350,18 @@ export default function RestaurantDishes() {
                       <Button type="button" variant="outline" onClick={() => setIsDishDialogOpen(false)}>
                         Cancel
                       </Button>
+                      {!editingDish && (
+                        <Button 
+                          type="button" 
+                          variant="secondary" 
+                          onClick={() => {
+                            setIsDishDialogOpen(false);
+                            setIsBulkDishDialogOpen(true);
+                          }}
+                        >
+                          Add Bulk
+                        </Button>
+                      )}
                       <Button type="submit" disabled={createDishMutation.isPending || updateDishMutation.isPending}>
                         {editingDish ? 'Update' : 'Create'} Dish
                       </Button>
@@ -357,15 +370,6 @@ export default function RestaurantDishes() {
                 </Form>
               </DialogContent>
             </Dialog>
-            <BulkOperations 
-              type="dishes" 
-              branches={Array.isArray(branches) ? branches : []} 
-              categories={Array.isArray(categories) ? categories : []}
-              onSuccess={() => {
-                queryClient.invalidateQueries({ queryKey: ['/api/restaurant/dishes'] });
-                toast({ title: "Dishes created successfully" });
-              }} 
-            />
           </div>
 
           <Card>
@@ -438,6 +442,26 @@ export default function RestaurantDishes() {
               )}
             </CardContent>
           </Card>
+
+          {/* Bulk Dish Dialog */}
+          <Dialog open={isBulkDishDialogOpen} onOpenChange={setIsBulkDishDialogOpen}>
+            <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
+              <DialogHeader>
+                <DialogTitle>Add Dishes in Bulk</DialogTitle>
+              </DialogHeader>
+              <BulkOperations 
+                type="dishes" 
+                branches={Array.isArray(branches) ? branches : []} 
+                categories={Array.isArray(categories) ? categories : []}
+                onSuccess={() => {
+                  queryClient.invalidateQueries({ queryKey: ['/api/restaurant/dishes'] });
+                  setIsBulkDishDialogOpen(false);
+                  toast({ title: "Dishes created successfully" });
+                }} 
+                isDirectForm={true}
+              />
+            </DialogContent>
+          </Dialog>
         </main>
       </div>
     </div>

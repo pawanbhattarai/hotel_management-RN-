@@ -28,6 +28,7 @@ type CategoryFormData = z.infer<typeof categorySchema>;
 
 export default function RestaurantCategories() {
   const [isCategoryDialogOpen, setIsCategoryDialogOpen] = useState(false);
+  const [isBulkCategoryDialogOpen, setIsBulkCategoryDialogOpen] = useState(false);
   const [editingCategory, setEditingCategory] = useState<any>(null);
   const [isMobileSidebarOpen, setIsMobileSidebarOpen] = useState(false);
   const { toast } = useToast();
@@ -142,7 +143,7 @@ export default function RestaurantCategories() {
         />
         <main className="p-6">
           {/* Add Button Section for Categories */}
-          <div className="mb-6 flex flex-col sm:flex-row gap-4">
+          <div className="mb-6">
             <Dialog open={isCategoryDialogOpen} onOpenChange={setIsCategoryDialogOpen}>
               <DialogTrigger asChild>
                 <Button
@@ -222,6 +223,18 @@ export default function RestaurantCategories() {
                       <Button type="button" variant="outline" onClick={() => setIsCategoryDialogOpen(false)}>
                         Cancel
                       </Button>
+                      {!editingCategory && (
+                        <Button 
+                          type="button" 
+                          variant="secondary" 
+                          onClick={() => {
+                            setIsCategoryDialogOpen(false);
+                            setIsBulkCategoryDialogOpen(true);
+                          }}
+                        >
+                          Add Bulk
+                        </Button>
+                      )}
                       <Button type="submit" disabled={createCategoryMutation.isPending || updateCategoryMutation.isPending}>
                         {editingCategory ? 'Update' : 'Create'} Category
                       </Button>
@@ -230,14 +243,6 @@ export default function RestaurantCategories() {
                 </Form>
               </DialogContent>
             </Dialog>
-            <BulkOperations 
-              type="categories" 
-              branches={Array.isArray(branches) ? branches : []} 
-              onSuccess={() => {
-                queryClient.invalidateQueries({ queryKey: ['/api/restaurant/categories'] });
-                toast({ title: "Categories created successfully" });
-              }} 
-            />
           </div>
 
           <Card>
@@ -300,6 +305,25 @@ export default function RestaurantCategories() {
               )}
             </CardContent>
           </Card>
+
+          {/* Bulk Category Dialog */}
+          <Dialog open={isBulkCategoryDialogOpen} onOpenChange={setIsBulkCategoryDialogOpen}>
+            <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
+              <DialogHeader>
+                <DialogTitle>Add Categories in Bulk</DialogTitle>
+              </DialogHeader>
+              <BulkOperations 
+                type="categories" 
+                branches={Array.isArray(branches) ? branches : []} 
+                onSuccess={() => {
+                  queryClient.invalidateQueries({ queryKey: ['/api/restaurant/categories'] });
+                  setIsBulkCategoryDialogOpen(false);
+                  toast({ title: "Categories created successfully" });
+                }} 
+                isDirectForm={true}
+              />
+            </DialogContent>
+          </Dialog>
         </main>
       </div>
     </div>
