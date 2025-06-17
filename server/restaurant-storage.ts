@@ -285,34 +285,80 @@ export class RestaurantStorage {
   }
 
   async updateRestaurantOrderStatus(id: string, status: string): Promise<RestaurantOrder> {
-    const updateData: any = { status, updatedAt: sql`NOW()` };
-    
-    if (status === 'served') {
-      updateData.servedAt = sql`NOW()`;
-    } else if (status === 'completed') {
-      updateData.completedAt = sql`NOW()`;
+    return await db.transaction(async (tx) => {
+      const updateData: any = { status, updatedAt: sql`NOW()` };
       
-      // Set table status back to open when order is completed
-      const [order] = await db.select().from(restaurantOrders).where(eq(restaurantOrders.id, id));
-      if (order) {
-        await db
-          .update(restaurantTables)
-          .set({ status: 'open', updatedAt: sql`NOW()` })
-          .where(eq(restaurantTables.id, order.tableId));
-      }
-    }
+      if (status === 'served') {
+        updateData.servedAt = sql`NOW()`;
+      } else if (status === 'completed') {
+        updateData.completedAt = sql`NOW()`;
+        
+        // Get order details
+        const [order] = await tx.select().from(restaurantOrders).where(eq(restaurantOrders.id, id));
+        if (order) {
+          // Set table status back to open when order is completed
+          await tx
+            .update(restaurantTables)
+            .set({ status: 'open', updatedAt: sql`NOW()` })
+            .where(eq(restaurantTables.id, order.tableId));
 
-    const [result] = await db
-      .update(restaurantOrders)
-      .set(updateData)
-      .where(eq(restaurantOrders.id, id))
-      .returning();
-    return result;
+          // Check if bill already exists for this order
+          const [existingBill] = await tx
+            .select()
+            .from(restaurantBills)
+            .where(eq(restaurantBills.orderId, order.id));
+
+          // Auto-generate bill if not exists
+          if (!existingBill) {
+            const billNumber = `BILL${Date.now().toString().slice(-8)}`;
+            const subtotal = parseFloat(order.totalAmount || "0");
+            const serviceChargeAmount = subtotal * 0.10; // 10% service charge
+            const taxAmount = (subtotal + serviceChargeAmount) * 0.13; // 13% VAT
+            const totalAmount = subtotal + serviceChargeAmount + taxAmount;
+
+            await tx.insert(restaurantBills).values({
+              billNumber,
+              orderId: order.id,
+              tableId: order.tableId,
+              branchId: order.branchId,
+              customerName: order.customerName || "",
+              customerPhone: order.customerPhone || "",
+              subtotal: subtotal.toString(),
+              taxAmount: taxAmount.toString(),
+              taxPercentage: "13",
+              discountAmount: "0",
+              discountPercentage: "0",
+              serviceChargeAmount: serviceChargeAmount.toString(),
+              serviceChargePercentage: "10",
+              totalAmount: totalAmount.toString(),
+              paidAmount: "0",
+              changeAmount: "0",
+              paymentStatus: "pending",
+              paymentMethod: "cash",
+              notes: "Auto-generated bill",
+            });
+          }
+        }
+      }
+
+      const [result] = await tx
+        .update(restaurantOrders)
+        .set(updateData)
+        .where(eq(restaurantOrders.id, id))
+        .returning();
+      return result;
+    });
   }
 
   // Restaurant Bills
   async getRestaurantBills(branchId?: number): Promise<any[]> {
-    let query = db
+    let conditions = [];
+    
+    if (branchId) {
+      conditions.push(eq(restaurantBills.branchId, branchId));
+    }
+
+    const bills = await db
       .select({
         id: restaurantBills.id,
         billNumber: restaurantBills.billNumber,
@@ -336,29 +382,43 @@ export class RestaurantStorage {
         notes: restaurantBills.notes,
         createdAt: restaurantBills.createdAt,
         updatedAt: restaurantBills.updatedAt,
-        order: {
-          id: restaurantOrders.id,
-          orderNumber: restaurantOrders.orderNumber,
-          tableId: restaurantOrders.tableId,
-          status: restaurantOrders.status,
-          totalAmount: restaurantOrders.totalAmount,
-        },
-        table: {
-          id: restaurantTables.id,
-          name: restaurantTables.name,
-          capacity: restaurantTables.capacity,
-        },
       })
       .from(restaurantBills)
-      .leftJoin(restaurantOrders, eq(restaurantBills.orderId, restaurantOrders.id))
-      .leftJoin(restaurantTables, eq(restaurantBills.tableId, restaurantTables.id))
+      .where(conditions.length > 0 ? and(...conditions) : undefined)
       .orderBy(desc(restaurantBills.createdAt));
 
-    if (branchId) {
-      query = query.where(eq(restaurantBills.branchId, branchId));
-    }
+    // Get related order and table data for each bill
+    const billsWithRelations = await Promise.all(
+      bills.map(async (bill) => {
+        const [order] = await db
+          .select({
+            id: restaurantOrders.id,
+            orderNumber: restaurantOrders.orderNumber,
+            tableId: restaurantOrders.tableId,
+            status: restaurantOrders.status,
+            totalAmount: restaurantOrders.totalAmount,
+          })
+          .from(restaurantOrders)
+          .where(eq(restaurantOrders.id, bill.orderId));
 
-    return await query;
+        const [table] = await db
+          .select({
+            id: restaurantTables.id,
+            name: restaurantTables.name,
+            capacity: restaurantTables.capacity,
+          })
+          .from(restaurantTables)
+          .where(eq(restaurantTables.id, bill.tableId));
+
+        return {
+          ...bill,
+          order: order || null,
+          table: table || null,
+        };
+      })
+    );
+
+    return billsWithRelations;
   }
 
   async getRestaurantBill(id: string): Promise<any | undefined> {

@@ -171,9 +171,9 @@ export default function RestaurantBilling() {
   const getCompletedOrders = () => {
     if (!orders || !bills) return [];
     
-    // Get orders that are completed/served and don't have bills yet
+    // Get orders that are served and don't have bills yet (completed orders auto-generate bills)
     return orders.filter((order: any) => 
-      (order.status === 'completed' || order.status === 'served') && 
+      order.status === 'served' && 
       !bills.some((bill: any) => bill.orderId === order.id)
     );
   };
@@ -214,6 +214,37 @@ export default function RestaurantBilling() {
   };
 
   const billPreview = calculateBillPreview();
+
+  const markAsPaidMutation = useMutation({
+    mutationFn: async (bill: any) => {
+      const response = await fetch(`/api/restaurant/bills/${bill.id}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          paymentStatus: 'paid',
+          paidAmount: bill.totalAmount,
+          changeAmount: "0",
+        }),
+      });
+      if (!response.ok) throw new Error('Failed to update bill');
+      return response.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['/api/restaurant/bills'] });
+      toast({ title: "Bill marked as paid successfully" });
+    },
+    onError: (error: any) => {
+      toast({ 
+        title: "Failed to mark bill as paid", 
+        description: error.message,
+        variant: "destructive"
+      });
+    },
+  });
+
+  const markAsPaid = (bill: any) => {
+    markAsPaidMutation.mutate(bill);
+  };
 
   const generateInvoice = (bill: any) => {
     // Simple invoice generation - in a real app, this would generate a PDF
@@ -530,9 +561,14 @@ export default function RestaurantBilling() {
                           <TableCell>{getTableName(bill.tableId)}</TableCell>
                           <TableCell>{bill.customerName || 'Guest'}</TableCell>
                           <TableCell>
-                            <Badge className={`${getPaymentMethodColor(bill.paymentMethod)} text-white`}>
-                              {bill.paymentMethod}
-                            </Badge>
+                            <div className="flex space-x-2">
+                              <Badge className={`${getPaymentMethodColor(bill.paymentMethod)} text-white`}>
+                                {bill.paymentMethod}
+                              </Badge>
+                              <Badge variant={bill.paymentStatus === 'paid' ? 'default' : 'destructive'}>
+                                {bill.paymentStatus}
+                              </Badge>
+                            </div>
                           </TableCell>
                           <TableCell>Rs. {bill.totalAmount}</TableCell>
                           <TableCell>{new Date(bill.createdAt).toLocaleDateString()}</TableCell>
@@ -545,6 +581,15 @@ export default function RestaurantBilling() {
                               >
                                 <Eye className="h-4 w-4" />
                               </Button>
+                              {bill.paymentStatus === 'pending' && (
+                                <Button
+                                  variant="default"
+                                  size="sm"
+                                  onClick={() => markAsPaid(bill)}
+                                >
+                                  Mark Paid
+                                </Button>
+                              )}
                               <Button
                                 variant="outline"
                                 size="sm"
