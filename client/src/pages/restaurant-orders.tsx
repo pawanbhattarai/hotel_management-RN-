@@ -795,13 +795,12 @@ export default function RestaurantOrders() {
                       ></div>
                     </div>
 
-                    <div className="space-y-2">
-                      <div className="flex items-center text-sm text-gray-600">
-                        <Users className="h-4 w-4 mr-2" />
-                        <span>Capacity: {table.capacity}</span>
-                      </div>
-
-                      <div className="flex items-center justify-between">
+                    <div className="space-y-3">
+                      <div className="flex items-center justify-between text-sm text-gray-600">
+                        <div className="flex items-center">
+                          <Users className="h-4 w-4 mr-2" />
+                          <span>Capacity: {table.capacity}</span>
+                        </div>
                         {isOccupied && tableOrder && (
                           <Badge className={getStatusColor(tableOrder.status)}>
                             {tableOrder.status}
@@ -810,16 +809,18 @@ export default function RestaurantOrders() {
                       </div>
 
                       {isOccupied && tableOrder && (
-                        <div className="mt-3 pt-3 border-t">
+                        <div className="space-y-1">
                           <p className="text-sm text-gray-600">
                             Order #{tableOrder.orderNumber}
                           </p>
-                          <p className="text-sm font-semibold text-green-600">
-                            Rs. {tableOrder.totalAmount}
-                          </p>
-                          <p className="text-xs text-gray-500">
-                            {tableOrder.items?.length || 0} items
-                          </p>
+                          <div className="flex items-center justify-between">
+                            <p className="text-sm font-semibold text-green-600">
+                              Rs. {tableOrder.totalAmount}
+                            </p>
+                            <p className="text-xs text-gray-500">
+                              {tableOrder.items?.length || 0} items
+                            </p>
+                          </div>
                         </div>
                       )}
                     </div>
