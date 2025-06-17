@@ -101,6 +101,10 @@ export default function RestaurantOrders() {
     queryKey: ["/api/restaurant/categories"],
   });
 
+  const { data: orderTaxes } = useQuery({
+    queryKey: ["/api/taxes/order"],
+  });
+
   const { data: branches } = useQuery({
     queryKey: ["/api/branches"],
   });
@@ -240,14 +244,31 @@ export default function RestaurantOrders() {
     }
 
     const subtotal = calculateSubtotal();
-    const taxAmount = subtotal * 0.1; // 10% tax
-    const total = subtotal + taxAmount;
+
+    // Calculate taxes dynamically
+    let totalTaxAmount = 0;
+    const appliedTaxes = [];
+
+    if (orderTaxes) {
+      for (const tax of orderTaxes) {
+        const taxAmount = (subtotal * parseFloat(tax.rate)) / 100;
+        totalTaxAmount += taxAmount;
+        appliedTaxes.push({
+          taxId: tax.id,
+          taxName: tax.taxName,
+          rate: tax.rate,
+          amount: taxAmount.toFixed(2)
+        });
+      }
+    }
+
+    const total = subtotal + totalTaxAmount;
 
     const orderData = {
       tableId: selectedTable.id,
       branchId: branchId,
       subtotal: subtotal.toString(),
-      taxAmount: taxAmount.toString(),
+      taxAmount: totalTaxAmount.toString(),
       totalAmount: total.toString(),
       notes: data.notes || "",
       status: "pending" as const,
@@ -333,8 +354,13 @@ export default function RestaurantOrders() {
 
   const calculateTotal = () => {
     const subtotal = calculateSubtotal();
-    const tax = subtotal * 0.1; // 10% tax
-    return subtotal + tax;
+    let totalTaxAmount = 0;
+    if (orderTaxes) {
+      for (const tax of orderTaxes) {
+        totalTaxAmount += (subtotal * parseFloat(tax.rate)) / 100;
+      }
+    }
+    return subtotal + totalTaxAmount;
   };
 
   const getFilteredDishes = () => {
@@ -670,16 +696,43 @@ export default function RestaurantOrders() {
                             <span>Subtotal:</span>
                             <span>Rs. {calculateSubtotal().toFixed(2)}</span>
                           </div>
-                          <div className="flex justify-between text-sm">
-                            <span>Tax (10%):</span>
-                            <span>
-                              Rs. {(calculateSubtotal() * 0.1).toFixed(2)}
-                            </span>
-                          </div>
-                          <div className="flex justify-between font-semibold text-lg border-t pt-2">
-                            <span>Total:</span>
-                            <span>Rs. {calculateTotal().toFixed(2)}</span>
-                          </div>
+                         {(() => {
+                  let totalTaxAmount = 0;
+                  const appliedTaxes = [];
+
+                  if (orderTaxes) {
+                    for (const tax of orderTaxes) {
+                      const taxAmount = (calculateSubtotal() * parseFloat(tax.rate)) / 100;
+                      totalTaxAmount += taxAmount;
+                      appliedTaxes.push({
+                        taxName: tax.taxName,
+                        rate: tax.rate,
+                        amount: taxAmount
+                      });
+                    }
+                  }
+
+                  return (
+                    <>
+                      {appliedTaxes.map((tax, index) => (
+                        <div key={index} className="flex justify-between mb-2">
+                          <span>{tax.taxName} ({tax.rate}%):</span>
+                          <span>Rs. {tax.amount.toFixed(2)}</span>
+                        </div>
+                      ))}
+                      {appliedTaxes.length === 0 && (
+                        <div className="flex justify-between mb-2">
+                          <span>Tax:</span>
+                          <span>Rs. 0.00</span>
+                        </div>
+                      )}
+                      <div className="flex justify-between font-semibold text-lg border-t pt-2">
+                        <span>Total:</span>
+                        <span>Rs. {(calculateSubtotal() + totalTaxAmount).toFixed(2)}</span>
+                      </div>
+                    </>
+                  );
+                })()}
                         </div>
 
                         <Form {...form}>
