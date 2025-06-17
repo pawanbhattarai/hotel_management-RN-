@@ -161,7 +161,7 @@ export default function RestaurantTables() {
         />
         <main className="p-6">
           {/* Add Button Section */}
-          <div className="mb-6 flex flex-col sm:flex-row gap-4">
+          <div className="mb-6">
             <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
               <DialogTrigger asChild>
                 <Button
@@ -284,13 +284,6 @@ export default function RestaurantTables() {
                 </Form>
               </DialogContent>
             </Dialog>
-            <BulkOperations 
-              type="tables" 
-              branches={branches || []} 
-              onSuccess={() => {
-                queryClient.invalidateQueries({ queryKey: ['/api/restaurant/tables'] });
-              }} 
-            />
           </div>
 
           <Card>
