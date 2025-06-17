@@ -293,15 +293,11 @@ export class RestaurantStorage {
       } else if (status === 'completed') {
         updateData.completedAt = sql`NOW()`;
 
-        // Get order details
-        const [order] = await tx.select().from(restaurantOrders).where(eq(restaurantOrders.id, id));
-        if (order) {
-          // Set table status back to available when order is completed
-          await tx
-            .update(restaurantTables)
-            .set({ status: 'available', updatedAt: sql`NOW()` })
-            .where(eq(restaurantTables.id, order.tableId));
-        }
+        // Set table status back to open when order is completed
+        await tx
+          .update(restaurantTables)
+          .set({ status: 'open', updatedAt: sql`NOW()` })
+          .where(eq(restaurantTables.id, order.tableId));
       }
 
       const [result] = await tx
