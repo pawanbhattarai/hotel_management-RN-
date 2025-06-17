@@ -57,9 +57,10 @@ interface BulkOperationsProps {
   branches: any[];
   categories?: any[];
   onSuccess: () => void;
+  isDirectForm?: boolean;
 }
 
-export default function BulkOperations({ type, branches, categories, onSuccess }: BulkOperationsProps) {
+export default function BulkOperations({ type, branches, categories, onSuccess, isDirectForm = false }: BulkOperationsProps) {
   const [isOpen, setIsOpen] = useState(false);
   const { toast } = useToast();
   const { user } = useAuth();
@@ -541,6 +542,17 @@ export default function BulkOperations({ type, branches, categories, onSuccess }
       </form>
     </Form>
   );
+
+  // If it's a direct form (used inside a dialog), just return the form
+  if (isDirectForm) {
+    return (
+      <div className="mt-4">
+        {type === 'tables' && renderTablesForm()}
+        {type === 'categories' && renderCategoriesForm()}
+        {type === 'dishes' && renderDishesForm()}
+      </div>
+    );
+  }
 
   return (
     <Dialog open={isOpen} onOpenChange={setIsOpen}>

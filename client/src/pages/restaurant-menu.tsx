@@ -720,6 +720,43 @@ export default function RestaurantMenu() {
               </Card>
             </TabsContent>
           </Tabs>
+
+          {/* Bulk Category Dialog */}
+          <Dialog open={isBulkCategoryDialogOpen} onOpenChange={setIsBulkCategoryDialogOpen}>
+            <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
+              <DialogHeader>
+                <DialogTitle>Add Categories in Bulk</DialogTitle>
+              </DialogHeader>
+              <BulkOperations 
+                type="categories" 
+                branches={Array.isArray(branches) ? branches : []} 
+                onSuccess={() => {
+                  queryClient.invalidateQueries({ queryKey: ['/api/restaurant/categories'] });
+                  setIsBulkCategoryDialogOpen(false);
+                  toast({ title: "Categories created successfully" });
+                }} 
+              />
+            </DialogContent>
+          </Dialog>
+
+          {/* Bulk Dish Dialog */}
+          <Dialog open={isBulkDishDialogOpen} onOpenChange={setIsBulkDishDialogOpen}>
+            <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
+              <DialogHeader>
+                <DialogTitle>Add Dishes in Bulk</DialogTitle>
+              </DialogHeader>
+              <BulkOperations 
+                type="dishes" 
+                branches={Array.isArray(branches) ? branches : []} 
+                categories={Array.isArray(categories) ? categories : []}
+                onSuccess={() => {
+                  queryClient.invalidateQueries({ queryKey: ['/api/restaurant/dishes'] });
+                  setIsBulkDishDialogOpen(false);
+                  toast({ title: "Dishes created successfully" });
+                }} 
+              />
+            </DialogContent>
+          </Dialog>
         </main>
       </div>
     </div>

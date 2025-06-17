@@ -355,6 +355,24 @@ export default function RestaurantTables() {
               )}
             </CardContent>
           </Card>
+
+          {/* Bulk Table Dialog */}
+          <Dialog open={isBulkTableDialogOpen} onOpenChange={setIsBulkTableDialogOpen}>
+            <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
+              <DialogHeader>
+                <DialogTitle>Add Tables in Bulk</DialogTitle>
+              </DialogHeader>
+              <BulkOperations 
+                type="tables" 
+                branches={Array.isArray(branches) ? branches : []} 
+                onSuccess={() => {
+                  queryClient.invalidateQueries({ queryKey: ['/api/restaurant/tables'] });
+                  setIsBulkTableDialogOpen(false);
+                  toast({ title: "Tables created successfully" });
+                }} 
+              />
+            </DialogContent>
+          </Dialog>
         </main>
       </div>
     </div>
