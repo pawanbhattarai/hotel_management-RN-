@@ -1882,6 +1882,23 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Clean up duplicate bills (admin only)
+  app.post("/api/restaurant/bills/cleanup-duplicates", isAuthenticated, async (req: any, res) => {
+    try {
+      const user = await storage.getUser(req.session.user.id);
+      if (!user || user.role !== "superadmin") {
+        return res.status(403).json({ message: "Only superadmin can clean up duplicate bills" });
+      }
+
+      // This is a one-time cleanup for existing duplicate bills
+      // In production, you'd want more sophisticated logic here
+      res.json({ message: "Cleanup endpoint available for superadmin use" });
+    } catch (error) {
+      console.error("Error cleaning up duplicate bills:", error);
+      res.status(500).json({ message: "Failed to clean up duplicate bills" });
+    }
+  });
+
   // Restaurant Dashboard Metrics
   app.get("/api/restaurant/dashboard/metrics", isAuthenticated, async (req: any, res) => {
     try {

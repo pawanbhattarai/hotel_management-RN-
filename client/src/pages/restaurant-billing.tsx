@@ -138,9 +138,17 @@ export default function RestaurantBilling() {
       toast({ title: "Checkout completed successfully", description: "Table is now available for new orders." });
     },
     onError: (error: any) => {
+      let errorMessage = error.message;
+      
+      if (error.message?.includes("Bill already exists")) {
+        errorMessage = "This order has already been billed. Please refresh the page to see the updated status.";
+      } else if (error.message?.includes("Order must be served")) {
+        errorMessage = "Order must be marked as 'served' before checkout.";
+      }
+      
       toast({ 
         title: "Failed to checkout", 
-        description: error.message,
+        description: errorMessage,
         variant: "destructive"
       });
     },

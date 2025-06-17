@@ -290,47 +290,6 @@ export class RestaurantStorage {
 
       if (status === 'served') {
         updateData.servedAt = sql`NOW()`;
-
-        // Get order details
-        const [order] = await tx.select().from(restaurantOrders).where(eq(restaurantOrders.id, id));
-        if (order) {
-          // Check if bill already exists for this order
-          const [existingBill] = await tx
-            .select()
-            .from(restaurantBills)
-            .where(eq(restaurantBills.orderId, order.id));
-
-          // Auto-generate bill if not exists
-          if (!existingBill) {
-            const billNumber = `BILL${Date.now().toString().slice(-8)}`;
-            const subtotal = parseFloat(order.totalAmount || "0");
-            const serviceChargeAmount = subtotal * 0.10; // 10% service charge
-            const taxAmount = (subtotal + serviceChargeAmount) * 0.13; // 13% VAT
-            const totalAmount = subtotal + serviceChargeAmount + taxAmount;
-
-            await tx.insert(restaurantBills).values({
-              billNumber,
-              orderId: order.id,
-              tableId: order.tableId,
-              branchId: order.branchId,
-              customerName: order.customerName || "",
-              customerPhone: order.customerPhone || "",
-              subtotal: subtotal.toString(),
-              taxAmount: taxAmount.toString(),
-              taxPercentage: "13",
-              discountAmount: "0",
-              discountPercentage: "0",
-              serviceChargeAmount: serviceChargeAmount.toString(),
-              serviceChargePercentage: "10",
-              totalAmount: totalAmount.toString(),
-              paidAmount: "0",
-              changeAmount: "0",
-              paymentStatus: "pending",
-              paymentMethod: "cash",
-              notes: "Auto-generated bill when order was served",
-            });
-          }
-        }
       } else if (status === 'completed') {
         updateData.completedAt = sql`NOW()`;
 
