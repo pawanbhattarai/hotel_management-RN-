@@ -31,7 +31,7 @@ export class RestaurantStorage {
         .where(and(eq(restaurantTables.isActive, true), eq(restaurantTables.branchId, branchId)))
         .orderBy(restaurantTables.name);
     }
-    
+
     return await db
       .select()
       .from(restaurantTables)
@@ -78,7 +78,7 @@ export class RestaurantStorage {
         .where(and(eq(menuCategories.isActive, true), eq(menuCategories.branchId, branchId)))
         .orderBy(menuCategories.sortOrder, menuCategories.name);
     }
-    
+
     return await db
       .select()
       .from(menuCategories)
@@ -119,15 +119,15 @@ export class RestaurantStorage {
   // Menu Dishes
   async getMenuDishes(branchId?: number, categoryId?: number): Promise<any[]> {
     let conditions = [eq(menuDishes.isActive, true)];
-    
+
     if (branchId) {
       conditions.push(eq(menuDishes.branchId, branchId));
     }
-    
+
     if (categoryId) {
       conditions.push(eq(menuDishes.categoryId, categoryId));
     }
-    
+
     return await db
       .select({
         id: menuDishes.id,
@@ -195,11 +195,11 @@ export class RestaurantStorage {
   // Restaurant Orders
   async getRestaurantOrders(branchId?: number, status?: string): Promise<RestaurantOrder[]> {
     let conditions = [];
-    
+
     if (branchId) {
       conditions.push(eq(restaurantOrders.branchId, branchId));
     }
-    
+
     if (status) {
       conditions.push(eq(restaurantOrders.status, status as any));
     }
@@ -256,21 +256,21 @@ export class RestaurantStorage {
     return await db.transaction(async (tx) => {
       // Create order
       const [newOrder] = await tx.insert(restaurantOrders).values(order).returning();
-      
+
       // Create order items with the new order ID
       const orderItemsWithOrderId = items.map(item => ({
         ...item,
         orderId: newOrder.id,
       }));
-      
+
       await tx.insert(restaurantOrderItems).values(orderItemsWithOrderId);
-      
+
       // Update table status to occupied
       await tx
         .update(restaurantTables)
         .set({ status: 'occupied', updatedAt: sql`NOW()` })
         .where(eq(restaurantTables.id, order.tableId));
-      
+
       return newOrder;
     });
   }
@@ -287,10 +287,10 @@ export class RestaurantStorage {
   async updateRestaurantOrderStatus(id: string, status: string, userId?: string): Promise<RestaurantOrder> {
     return await db.transaction(async (tx) => {
       const updateData: any = { status, updatedAt: sql`NOW()` };
-      
+
       if (status === 'served') {
         updateData.servedAt = sql`NOW()`;
-        
+
         // Get order details
         const [order] = await tx.select().from(restaurantOrders).where(eq(restaurantOrders.id, id));
         if (order) {
@@ -333,7 +333,7 @@ export class RestaurantStorage {
         }
       } else if (status === 'completed') {
         updateData.completedAt = sql`NOW()`;
-        
+
         // Get order details
         const [order] = await tx.select().from(restaurantOrders).where(eq(restaurantOrders.id, id));
         if (order) {
@@ -357,88 +357,69 @@ export class RestaurantStorage {
   // Restaurant Bills
   async getRestaurantBills(branchId?: number): Promise<any[]> {
     let conditions = [];
-    
+
     if (branchId) {
       conditions.push(eq(restaurantBills.branchId, branchId));
     }
 
-    // Use a simpler approach with left joins
-    const bills = await db
-      .select({
-        // Bill fields
-        id: restaurantBills.id,
-        billNumber: restaurantBills.billNumber,
-        orderId: restaurantBills.orderId,
-        tableId: restaurantBills.tableId,
-        branchId: restaurantBills.branchId,
-        customerName: restaurantBills.customerName,
-        customerPhone: restaurantBills.customerPhone,
-        subtotal: restaurantBills.subtotal,
-        taxAmount: restaurantBills.taxAmount,
-        taxPercentage: restaurantBills.taxPercentage,
-        discountAmount: restaurantBills.discountAmount,
-        discountPercentage: restaurantBills.discountPercentage,
-        serviceChargeAmount: restaurantBills.serviceChargeAmount,
-        serviceChargePercentage: restaurantBills.serviceChargePercentage,
-        totalAmount: restaurantBills.totalAmount,
-        paidAmount: restaurantBills.paidAmount,
-        changeAmount: restaurantBills.changeAmount,
-        paymentStatus: restaurantBills.paymentStatus,
-        paymentMethod: restaurantBills.paymentMethod,
-        notes: restaurantBills.notes,
-        createdAt: restaurantBills.createdAt,
-        updatedAt: restaurantBills.updatedAt,
-        // Order fields
-        orderNumber: restaurantOrders.orderNumber,
-        orderStatus: restaurantOrders.status,
-        orderTotalAmount: restaurantOrders.totalAmount,
-        // Table fields
-        tableName: restaurantTables.name,
-        tableCapacity: restaurantTables.capacity,
-      })
-      .from(restaurantBills)
-      .leftJoin(restaurantOrders, eq(restaurantBills.orderId, restaurantOrders.id))
-      .leftJoin(restaurantTables, eq(restaurantBills.tableId, restaurantTables.id))
-      .where(conditions.length > 0 ? and(...conditions) : undefined)
-      .orderBy(desc(restaurantBills.createdAt));
+    try {
+      // Simple query to get bills first
+      const bills = await db
+        .select()
+        .from(restaurantBills)
+        .where(conditions.length > 0 ? and(...conditions) : undefined)
+        .orderBy(desc(restaurantBills.createdAt));
 
-    // Transform the data to match the expected structure
-    return bills.map(bill => ({
-      id: bill.id,
-      billNumber: bill.billNumber,
-      orderId: bill.orderId,
-      tableId: bill.tableId,
-      branchId: bill.branchId,
-      customerName: bill.customerName,
-      customerPhone: bill.customerPhone,
-      subtotal: bill.subtotal,
-      taxAmount: bill.taxAmount,
-      taxPercentage: bill.taxPercentage,
-      discountAmount: bill.discountAmount,
-      discountPercentage: bill.discountPercentage,
-      serviceChargeAmount: bill.serviceChargeAmount,
-      serviceChargePercentage: bill.serviceChargePercentage,
-      totalAmount: bill.totalAmount,
-      paidAmount: bill.paidAmount,
-      changeAmount: bill.changeAmount,
-      paymentStatus: bill.paymentStatus,
-      paymentMethod: bill.paymentMethod,
-      notes: bill.notes,
-      createdAt: bill.createdAt,
-      updatedAt: bill.updatedAt,
-      order: bill.orderNumber ? {
-        id: bill.orderId,
-        orderNumber: bill.orderNumber,
-        tableId: bill.tableId,
-        status: bill.orderStatus,
-        totalAmount: bill.orderTotalAmount,
-      } : null,
-      table: bill.tableName ? {
-        id: bill.tableId,
-        name: bill.tableName,
-        capacity: bill.tableCapacity,
-      } : null,
-    }));
+      // Manually fetch related data to avoid JOIN issues
+      const billsWithRelations = [];
+
+      for (const bill of bills) {
+        let order = null;
+        let table = null;
+
+        try {
+          // Get order data
+          const orderResults = await db
+            .select()
+            .from(restaurantOrders)
+            .where(eq(restaurantOrders.id, bill.orderId))
+            .limit(1);
+
+          if (orderResults.length > 0) {
+            order = orderResults[0];
+          }
+        } catch (error) {
+          console.error(`Error fetching order for bill ${bill.id}:`, error);
+        }
+
+        try {
+          // Get table data
+          const tableResults = await db
+            .select()
+            .from(restaurantTables)
+            .where(eq(restaurantTables.id, bill.tableId))
+            .limit(1);
+
+          if (tableResults.length > 0) {
+            table = tableResults[0];
+          }
+        } catch (error) {
+          console.error(`Error fetching table for bill ${bill.id}:`, error);
+        }
+
+        billsWithRelations.push({
+          ...bill,
+          order,
+          table,
+        });
+      }
+
+      return billsWithRelations;
+    } catch (error) {
+      console.error('Error in getRestaurantBills:', error);
+      // Return empty array instead of throwing to prevent UI crashes
+      return [];
+    }
   }
 
   async getRestaurantBill(id: string): Promise<any | undefined> {
@@ -501,7 +482,7 @@ export class RestaurantStorage {
       ...bill,
       billNumber: bill.billNumber || `BILL${Date.now().toString().slice(-8)}`,
     };
-    
+
     const [result] = await db.insert(restaurantBills).values(billData).returning();
     return result;
   }
