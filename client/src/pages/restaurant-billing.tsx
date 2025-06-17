@@ -952,66 +952,38 @@ export default function RestaurantBilling() {
                   )}
 
                   {/* Bill Details */}
-              <div className="space-y-4">
+              
                 <div>
                   <h3 className="font-semibold mb-2">Order Summary</h3>
                   <div className="space-y-1 text-sm">
                     <div className="flex justify-between">
                       <span>Subtotal:</span>
-                      <span>NPR {parseFloat(selectedOrder.subtotal).toFixed(2)}</span>
+                      <span>NPR {parseFloat(viewingBill.subtotal).toFixed(2)}</span>
                     </div>
-                    {selectedOrder.taxAmount && parseFloat(selectedOrder.taxAmount) > 0 && (
+                    {parseFloat(viewingBill.discountAmount) > 0 && (
                       <div className="flex justify-between">
-                        <span>Taxes & Charges:</span>
-                        <span>NPR {parseFloat(selectedOrder.taxAmount).toFixed(2)}</span>
+                        <span>Discount:</span>
+                        <span>NPR {parseFloat(viewingBill.discountAmount).toFixed(2)}</span>
                       </div>
                     )}
+                    {parseFloat(viewingBill.serviceChargeAmount) > 0 && (
+                      <div className="flex justify-between">
+                        <span>Service Charge:</span>
+                        <span>NPR {parseFloat(viewingBill.serviceChargeAmount).toFixed(2)}</span>
+                      </div>
+                    )}
+                    <div className="flex justify-between">
+                      <span>Tax:</span>
+                      <span>NPR {parseFloat(viewingBill.taxAmount).toFixed(2)}</span>
+                    </div>
                     <div className="flex justify-between font-semibold">
                       <span>Total:</span>
-                      <span>NPR {parseFloat(selectedOrder.totalAmount).toFixed(2)}</span>
+                      <span>NPR {parseFloat(viewingBill.totalAmount).toFixed(2)}</span>
                     </div>
-                    {selectedOrder.appliedTaxes && (
-                      <div className="mt-2 text-xs text-gray-600">
-                        <p>Tax Details:</p>
-                        {JSON.parse(selectedOrder.appliedTaxes).map((tax: any, index: number) => (
-                          <div key={index} className="flex justify-between">
-                            <span>{tax.taxName} ({tax.rate}%):</span>
-                            <span>NPR {tax.amount}</span>
-                          </div>
-                        ))}
-                      </div>
-                    )}
                   </div>
                 </div>
 
-                  <div className="border-t pt-4">
-                    <div className="space-y-2">
-                      <div className="flex justify-between">
-                        <span>Subtotal:</span>
-                        <span>Rs. {viewingBill.subtotal}</span>
-                      </div>
-                      {parseFloat(viewingBill.discountAmount) > 0 && (
-                        <div className="flex justify-between text-green-600">
-                          <span>Discount:</span>
-                          <span>- Rs. {viewingBill.discountAmount}</span>
-                        </div>
-                      )}
-                      {parseFloat(viewingBill.serviceChargeAmount) > 0 && (
-                        <div className="flex justify-between">
-                          <span>Service Charge:</span>
-                          <span>Rs. {viewingBill.serviceChargeAmount}</span>
-                        </div>
-                      )}
-                      <div className="flex justify-between">
-                        <span>Tax (13%):</span>
-                        <span>Rs. {viewingBill.taxAmount}</span>
-                      </div>
-                      <div className="flex justify-between text-lg font-bold border-t pt-2">
-                        <span>Total Amount:</span>
-                        <span>Rs. {viewingBill.totalAmount}</span>
-                      </div>
-                    </div>
-                  </div>
+                 
 
                   {viewingBill.notes && (
                     <div>
