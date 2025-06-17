@@ -18,6 +18,7 @@ import { useToast } from "@/hooks/use-toast";
 import Sidebar from "@/components/layout/sidebar";
 import Header from "@/components/layout/header";
 import { useAuth } from "@/hooks/useAuth";
+import BulkOperations from "@/components/bulk-operations";
 
 const dishSchema = z.object({
   name: z.string().min(1, "Dish name is required"),
@@ -182,7 +183,7 @@ export default function RestaurantDishes() {
         />
         <main className="p-6">
           {/* Add Button Section for Dishes */}
-          <div className="mb-6">
+          <div className="mb-6 flex flex-col sm:flex-row gap-4">
             <Dialog open={isDishDialogOpen} onOpenChange={setIsDishDialogOpen}>
               <DialogTrigger asChild>
                 <Button
@@ -356,6 +357,15 @@ export default function RestaurantDishes() {
                 </Form>
               </DialogContent>
             </Dialog>
+            <BulkOperations 
+              type="dishes" 
+              branches={Array.isArray(branches) ? branches : []} 
+              categories={Array.isArray(categories) ? categories : []}
+              onSuccess={() => {
+                queryClient.invalidateQueries({ queryKey: ['/api/restaurant/dishes'] });
+                toast({ title: "Dishes created successfully" });
+              }} 
+            />
           </div>
 
           <Card>

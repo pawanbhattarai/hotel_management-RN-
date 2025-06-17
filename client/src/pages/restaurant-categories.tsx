@@ -16,6 +16,7 @@ import { useToast } from "@/hooks/use-toast";
 import Sidebar from "@/components/layout/sidebar";
 import Header from "@/components/layout/header";
 import { useAuth } from "@/hooks/useAuth";
+import BulkOperations from "@/components/bulk-operations";
 
 const categorySchema = z.object({
   name: z.string().min(1, "Category name is required"),
@@ -141,7 +142,7 @@ export default function RestaurantCategories() {
         />
         <main className="p-6">
           {/* Add Button Section for Categories */}
-          <div className="mb-6">
+          <div className="mb-6 flex flex-col sm:flex-row gap-4">
             <Dialog open={isCategoryDialogOpen} onOpenChange={setIsCategoryDialogOpen}>
               <DialogTrigger asChild>
                 <Button
@@ -229,6 +230,14 @@ export default function RestaurantCategories() {
                 </Form>
               </DialogContent>
             </Dialog>
+            <BulkOperations 
+              type="categories" 
+              branches={Array.isArray(branches) ? branches : []} 
+              onSuccess={() => {
+                queryClient.invalidateQueries({ queryKey: ['/api/restaurant/categories'] });
+                toast({ title: "Categories created successfully" });
+              }} 
+            />
           </div>
 
           <Card>
