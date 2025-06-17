@@ -468,6 +468,26 @@ export default function Sidebar({
                     </button>
                   )}
 
+                  {/* Tax/Charges */}
+                  {hasAccess(["superadmin", "branch-admin"]) && (
+                    <button
+                      onClick={() => {
+                        navigate("/tax-management");
+                        setMenuOpen(false);
+                      }}
+                      className={`w-full flex items-center px-3 py-2 lg:py-2.5 text-left rounded-lg transition-colors ml-4 ${
+                        isActiveRoute("/tax-management")
+                          ? "bg-primary text-white"
+                          : "text-gray-700 hover:bg-gray-100"
+                      }`}
+                    >
+                      <Receipt className="mr-3 h-4 w-4 flex-shrink-0" />
+                      <span className="text-sm font-medium">
+                        Tax/Charges
+                      </span>
+                    </button>
+                  )}
+
                   {/* Settings */}
                   {hasAccess(["superadmin"]) && (
                     <button

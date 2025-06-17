@@ -24,6 +24,7 @@ import RestaurantOrders from "@/pages/restaurant-orders";
 import RestaurantBilling from "@/pages/restaurant-billing";
 import RestaurantCategories from "@/pages/restaurant-categories";
 import RestaurantDishes from "@/pages/restaurant-dishes";
+import TaxManagement from "@/pages/tax-management";
 
 function Router() {
   const { isAuthenticated, isLoading, user } = useAuth();
@@ -52,6 +53,7 @@ function Router() {
           <Route path="/restaurant/dishes" component={RestaurantDishes} />
           <Route path="/restaurant/orders" component={RestaurantOrders} />
           <Route path="/restaurant/billing" component={RestaurantBilling} />
+          <Route path="/tax-management" component={TaxManagement} />
         </>
       )}
       <Route component={NotFound} />
