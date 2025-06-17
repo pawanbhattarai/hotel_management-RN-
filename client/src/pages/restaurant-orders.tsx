@@ -1,4 +1,4 @@
-import { useState } from "react";
+import React, { useState } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { Plus, Eye, FileText, Printer, Minus, Trash2, ShoppingCart, Clock, CheckCircle, Users, Utensils, ArrowLeft } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -27,7 +27,7 @@ const orderSchema = z.object({
     quantity: z.number().min(1, "Quantity must be at least 1"),
     unitPrice: z.string().min(1, "Price is required"),
     notes: z.string().optional(),
-  })).min(1, "At least one item is required"),
+  })).optional(),
   notes: z.string().optional(),
 });
 
@@ -130,14 +130,25 @@ export default function RestaurantOrders() {
   const form = useForm<OrderFormData>({
     resolver: zodResolver(orderSchema),
     defaultValues: {
-      tableId: 0,
+      tableId: selectedTable?.id || 0,
       branchId: user?.role === "superadmin" ? 1 : (user?.branchId || 1),
       items: [],
       notes: "",
     },
   });
 
+  // Update form values when table changes
+  React.useEffect(() => {
+    if (selectedTable) {
+      form.setValue('tableId', selectedTable.id);
+    }
+  }, [selectedTable, form]);
+
   const onSubmit = (data: OrderFormData) => {
+    console.log("Form submitted with data:", data);
+    console.log("Selected items:", selectedItems);
+    console.log("Selected table:", selectedTable);
+    
     if (selectedItems.length === 0) {
       toast({ 
         title: "Error", 
@@ -175,7 +186,9 @@ export default function RestaurantOrders() {
       taxAmount: taxAmount.toString(),
       totalAmount: total.toString(),
       notes: data.notes || "",
-      status: "pending",
+      status: "pending" as const,
+      orderType: "dine-in" as const,
+      paymentStatus: "pending" as const,
     };
 
     const itemsData = selectedItems.map(item => ({
@@ -184,6 +197,7 @@ export default function RestaurantOrders() {
       unitPrice: item.unitPrice,
       totalPrice: (parseFloat(item.unitPrice) * item.quantity).toString(),
       specialInstructions: item.notes || "",
+      status: "pending" as const,
     }));
 
     console.log("Creating order with data:", { order: orderData, items: itemsData });
@@ -537,6 +551,11 @@ export default function RestaurantOrders() {
                               type="submit" 
                               className="w-full"
                               disabled={createOrderMutation.isPending || selectedItems.length === 0}
+                              onClick={(e) => {
+                                e.preventDefault();
+                                console.log("Button clicked, submitting form...");
+                                form.handleSubmit(onSubmit)(e);
+                              }}
                             >
                               {createOrderMutation.isPending ? (
                                 <div className="flex items-center">
