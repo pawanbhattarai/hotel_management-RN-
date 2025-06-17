@@ -1831,6 +1831,24 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(403).json({ message: "Insufficient permissions for this branch" });
       }
 
+      // Check if bill already exists for this order
+      const existingBills = await restaurantStorage.getRestaurantBills(billData.branchId);
+      const duplicateBill = existingBills.find((bill: any) => bill.orderId === billData.orderId);
+      
+      if (duplicateBill) {
+        return res.status(400).json({ message: "Bill already exists for this order" });
+      }
+
+      // Verify order exists and is in correct status
+      const order = await restaurantStorage.getRestaurantOrder(billData.orderId);
+      if (!order) {
+        return res.status(404).json({ message: "Order not found" });
+      }
+
+      if (order.status !== 'served') {
+        return res.status(400).json({ message: "Order must be served before creating bill" });
+      }
+
       const bill = await restaurantStorage.createRestaurantBill(billData);
       res.status(201).json(bill);
     } catch (error) {

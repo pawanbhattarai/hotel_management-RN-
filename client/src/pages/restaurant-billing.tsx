@@ -57,6 +57,17 @@ export default function RestaurantBilling() {
       const order = orders?.find((o: any) => o.id === data.orderId);
       if (!order) throw new Error('Order not found');
 
+      // Check if bill already exists for this order
+      const existingBill = bills?.find((bill: any) => bill.orderId === data.orderId);
+      if (existingBill) {
+        throw new Error('Bill already exists for this order');
+      }
+
+      // Check if order is in correct status for checkout
+      if (order.status !== 'served') {
+        throw new Error('Order must be served before checkout');
+      }
+
       const subtotal = parseFloat(order.subtotal || order.totalAmount || "0");
       const discountAmount = data.discountAmount || 0;
       const discountPercentage = data.discountPercentage || 0;
@@ -286,10 +297,11 @@ export default function RestaurantBilling() {
                         <TableCell>
                           <Button
                             onClick={() => handleCheckout(order)}
-                            className="bg-green-600 hover:bg-green-700"
+                            disabled={checkoutMutation.isPending || bills?.some((bill: any) => bill.orderId === order.id)}
+                            className="bg-green-600 hover:bg-green-700 disabled:opacity-50"
                           >
                             <CreditCard className="h-4 w-4 mr-2" />
-                            Checkout
+                            {bills?.some((bill: any) => bill.orderId === order.id) ? 'Billed' : 'Checkout'}
                           </Button>
                         </TableCell>
                       </TableRow>
