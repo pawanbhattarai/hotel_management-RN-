@@ -409,7 +409,7 @@ export default function RestaurantMenu() {
                         </TableRow>
                       </TableHeader>
                       <TableBody>
-                        {categories?.length ? (
+                        {Array.isArray(categories) && categories.length ? (
                           categories.map((category: any) => (
                             <TableRow key={category.id}>
                               <TableCell className="font-medium">{category.name}</TableCell>
@@ -516,7 +516,7 @@ export default function RestaurantMenu() {
                                       <SelectValue placeholder="Select category" />
                                     </SelectTrigger>
                                     <SelectContent>
-                                      {categories?.map((category: any) => (
+                                      {Array.isArray(categories) && categories.map((category: any) => (
                                         <SelectItem key={category.id} value={category.id.toString()}>
                                           {category.name}
                                         </SelectItem>
@@ -543,7 +543,7 @@ export default function RestaurantMenu() {
                                       <SelectValue placeholder="Select branch" />
                                     </SelectTrigger>
                                     <SelectContent>
-                                      {branches?.map((branch: any) => (
+                                      {Array.isArray(branches) && branches.map((branch: any) => (
                                         <SelectItem key={branch.id} value={branch.id.toString()}>
                                           {branch.name}
                                         </SelectItem>
@@ -618,6 +618,18 @@ export default function RestaurantMenu() {
                           <Button type="button" variant="outline" onClick={() => setIsDishDialogOpen(false)}>
                             Cancel
                           </Button>
+                          {!editingDish && (
+                            <Button 
+                              type="button" 
+                              variant="secondary" 
+                              onClick={() => {
+                                setIsDishDialogOpen(false);
+                                setIsBulkDishDialogOpen(true);
+                              }}
+                            >
+                              Add Bulk
+                            </Button>
+                          )}
                           <Button type="submit" disabled={createDishMutation.isPending || updateDishMutation.isPending}>
                             {editingDish ? 'Update' : 'Create'} Dish
                           </Button>
@@ -628,8 +640,8 @@ export default function RestaurantMenu() {
                 </Dialog>
                 <BulkOperations 
                   type="dishes" 
-                  branches={branches || []} 
-                  categories={categories || []}
+                  branches={Array.isArray(branches) ? branches : []} 
+                  categories={Array.isArray(categories) ? categories : []}
                   onSuccess={() => {
                     queryClient.invalidateQueries({ queryKey: ['/api/restaurant/dishes'] });
                   }} 
@@ -657,7 +669,7 @@ export default function RestaurantMenu() {
                         </TableRow>
                       </TableHeader>
                       <TableBody>
-                        {dishes?.length ? (
+                        {Array.isArray(dishes) && dishes.length ? (
                           dishes.map((dish: any) => (
                             <TableRow key={dish.id}>
                               <TableCell className="font-medium">{dish.name}</TableCell>

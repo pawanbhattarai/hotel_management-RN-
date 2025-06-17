@@ -30,6 +30,7 @@ type TableFormData = z.infer<typeof tableSchema>;
 
 export default function RestaurantTables() {
   const [isDialogOpen, setIsDialogOpen] = useState(false);
+  const [isBulkTableDialogOpen, setIsBulkTableDialogOpen] = useState(false);
   const [editingTable, setEditingTable] = useState<any>(null);
   const [isMobileSidebarOpen, setIsMobileSidebarOpen] = useState(false);
   const { toast } = useToast();
@@ -263,6 +264,18 @@ export default function RestaurantTables() {
                       <Button type="button" variant="outline" onClick={() => setIsDialogOpen(false)}>
                         Cancel
                       </Button>
+                      {!editingTable && (
+                        <Button 
+                          type="button" 
+                          variant="secondary" 
+                          onClick={() => {
+                            setIsDialogOpen(false);
+                            setIsBulkTableDialogOpen(true);
+                          }}
+                        >
+                          Add Bulk
+                        </Button>
+                      )}
                       <Button type="submit" disabled={createMutation.isPending || updateMutation.isPending}>
                         {editingTable ? 'Update' : 'Create'} Table
                       </Button>
