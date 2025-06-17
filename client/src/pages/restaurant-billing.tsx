@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
-import { Eye, Download, Receipt, CreditCard, Trash2, Printer } from "lucide-react";
+import { Eye, Receipt, CreditCard, Trash2, Printer } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
@@ -282,100 +282,227 @@ export default function RestaurantBilling() {
         <head>
           <title>Bill #${bill.billNumber}</title>
           <style>
-            body { font-family: Arial, sans-serif; margin: 20px; }
-            .header { text-align: center; margin-bottom: 20px; }
-            .bill-info { margin-bottom: 20px; }
-            .items-table { width: 100%; border-collapse: collapse; margin: 20px 0; }
-            .items-table th, .items-table td { border: 1px solid #ddd; padding: 8px; text-align: left; }
-            .items-table th { background-color: #f2f2f2; }
-            .totals { margin-top: 20px; text-align: right; }
-            .total-row { font-weight: bold; font-size: 18px; }
-            @media print { .no-print { display: none; } }
+            * { margin: 0; padding: 0; box-sizing: border-box; }
+            body { 
+              font-family: 'Courier New', monospace; 
+              font-size: 12px; 
+              line-height: 1.2;
+              width: 80mm;
+              margin: 0 auto;
+              padding: 5mm;
+              background: white;
+            }
+            .receipt-header { 
+              text-align: center; 
+              border-bottom: 1px dashed #000;
+              padding-bottom: 8px;
+              margin-bottom: 10px;
+            }
+            .restaurant-name { 
+              font-size: 16px; 
+              font-weight: bold; 
+              margin-bottom: 2px;
+            }
+            .bill-number { 
+              font-size: 14px; 
+              font-weight: bold; 
+              margin-top: 5px;
+            }
+            .info-section { 
+              margin-bottom: 10px;
+              font-size: 11px;
+            }
+            .info-row { 
+              display: flex; 
+              justify-content: space-between; 
+              margin-bottom: 2px;
+            }
+            .items-section { 
+              border-top: 1px dashed #000;
+              border-bottom: 1px dashed #000;
+              padding: 8px 0;
+              margin: 10px 0;
+            }
+            .items-header { 
+              font-weight: bold; 
+              border-bottom: 1px solid #000;
+              padding-bottom: 2px;
+              margin-bottom: 5px;
+            }
+            .item-row { 
+              display: flex; 
+              justify-content: space-between; 
+              margin-bottom: 3px;
+              font-size: 11px;
+            }
+            .item-name { flex: 1; }
+            .item-qty { width: 25px; text-align: center; }
+            .item-price { width: 50px; text-align: right; }
+            .item-total { width: 60px; text-align: right; }
+            .totals-section { 
+              margin-top: 8px;
+              border-top: 1px dashed #000;
+              padding-top: 5px;
+            }
+            .total-row { 
+              display: flex; 
+              justify-content: space-between; 
+              margin-bottom: 2px;
+              font-size: 11px;
+            }
+            .final-total { 
+              font-weight: bold; 
+              font-size: 13px;
+              border-top: 1px solid #000;
+              padding-top: 3px;
+              margin-top: 5px;
+            }
+            .payment-info { 
+              margin-top: 10px;
+              text-align: center;
+              font-weight: bold;
+              font-size: 12px;
+            }
+            .footer { 
+              margin-top: 15px; 
+              text-align: center; 
+              font-size: 10px;
+              border-top: 1px dashed #000;
+              padding-top: 8px;
+            }
+            .divider { 
+              text-align: center; 
+              margin: 5px 0;
+              font-size: 10px;
+            }
+            @media print { 
+              body { margin: 0; padding: 2mm; }
+              .no-print { display: none; }
+            }
           </style>
         </head>
         <body>
-          <div class="header">
-            <h2>Restaurant Bill</h2>
-            <p>Bill #${bill.billNumber}</p>
-            <p>Date: ${new Date(bill.createdAt).toLocaleString()}</p>
+          <div class="receipt-header">
+            <div class="restaurant-name">RESTAURANT</div>
+            <div style="font-size: 10px;">Restaurant Address</div>
+            <div style="font-size: 10px;">Phone: +977-XXXXXXXX</div>
+            <div class="bill-number">Bill #${bill.billNumber}</div>
           </div>
           
-          <div class="bill-info">
-            <p><strong>Table:</strong> ${getTableName(bill.tableId)}</p>
-            <p><strong>Order #:</strong> ${bill.order?.orderNumber || 'N/A'}</p>
-            <p><strong>Customer:</strong> ${bill.customerName || 'Guest'}</p>
-            ${bill.customerPhone ? `<p><strong>Phone:</strong> ${bill.customerPhone}</p>` : ''}
-            <p><strong>Payment Method:</strong> ${bill.paymentMethod.toUpperCase()}</p>
+          <div class="info-section">
+            <div class="info-row">
+              <span>Date:</span>
+              <span>${new Date(bill.createdAt).toLocaleDateString('en-NP')} ${new Date(bill.createdAt).toLocaleTimeString('en-NP', {hour12: false})}</span>
+            </div>
+            <div class="info-row">
+              <span>Table:</span>
+              <span>${getTableName(bill.tableId)}</span>
+            </div>
+            <div class="info-row">
+              <span>Order #:</span>
+              <span>${bill.order?.orderNumber || 'N/A'}</span>
+            </div>
+            ${bill.customerName ? `
+              <div class="info-row">
+                <span>Customer:</span>
+                <span>${bill.customerName}</span>
+              </div>
+            ` : ''}
+            ${bill.customerPhone ? `
+              <div class="info-row">
+                <span>Phone:</span>
+                <span>${bill.customerPhone}</span>
+              </div>
+            ` : ''}
           </div>
 
-          ${bill.order?.items ? `
-            <table class="items-table">
-              <thead>
-                <tr>
-                  <th>Item</th>
-                  <th>Price</th>
-                  <th>Qty</th>
-                  <th>Total</th>
-                </tr>
-              </thead>
-              <tbody>
-                ${bill.order.items.map((item: any) => `
-                  <tr>
-                    <td>${item.dish?.name || 'Item'}</td>
-                    <td>Rs. ${item.unitPrice}</td>
-                    <td>${item.quantity}</td>
-                    <td>Rs. ${(parseFloat(item.unitPrice) * item.quantity).toFixed(2)}</td>
-                  </tr>
-                `).join('')}
-              </tbody>
-            </table>
+          ${bill.order?.items && bill.order.items.length > 0 ? `
+            <div class="items-section">
+              <div class="items-header">
+                <div class="item-row">
+                  <div class="item-name">ITEM</div>
+                  <div class="item-qty">QTY</div>
+                  <div class="item-price">RATE</div>
+                  <div class="item-total">AMOUNT</div>
+                </div>
+              </div>
+              ${bill.order.items.map((item: any) => `
+                <div class="item-row">
+                  <div class="item-name">${(item.dish?.name || 'Item').substring(0, 15)}</div>
+                  <div class="item-qty">${item.quantity}</div>
+                  <div class="item-price">${parseFloat(item.unitPrice).toFixed(0)}</div>
+                  <div class="item-total">${(parseFloat(item.unitPrice) * item.quantity).toFixed(2)}</div>
+                </div>
+              `).join('')}
+            </div>
           ` : ''}
 
-          <div class="totals">
-            <p>Subtotal: Rs. ${bill.subtotal}</p>
-            ${parseFloat(bill.discountAmount) > 0 ? `<p>Discount: -Rs. ${bill.discountAmount}</p>` : ''}
-            ${parseFloat(bill.serviceChargeAmount) > 0 ? `<p>Service Charge: Rs. ${bill.serviceChargeAmount}</p>` : ''}
-            <p>Tax (13%): Rs. ${bill.taxAmount}</p>
-            <p class="total-row">Total Amount: Rs. ${bill.totalAmount}</p>
-            <p><strong>Payment Status: PAID</strong></p>
+          <div class="totals-section">
+            <div class="total-row">
+              <span>Subtotal:</span>
+              <span>Rs. ${parseFloat(bill.subtotal).toFixed(2)}</span>
+            </div>
+            ${parseFloat(bill.discountAmount) > 0 ? `
+              <div class="total-row">
+                <span>Discount (${bill.discountPercentage}%):</span>
+                <span>-Rs. ${parseFloat(bill.discountAmount).toFixed(2)}</span>
+              </div>
+            ` : ''}
+            ${parseFloat(bill.serviceChargeAmount) > 0 ? `
+              <div class="total-row">
+                <span>Service Charge (${bill.serviceChargePercentage}%):</span>
+                <span>Rs. ${parseFloat(bill.serviceChargeAmount).toFixed(2)}</span>
+              </div>
+            ` : ''}
+            <div class="total-row">
+              <span>VAT (${bill.taxPercentage}%):</span>
+              <span>Rs. ${parseFloat(bill.taxAmount).toFixed(2)}</span>
+            </div>
+            <div class="total-row final-total">
+              <span>TOTAL AMOUNT:</span>
+              <span>Rs. ${parseFloat(bill.totalAmount).toFixed(2)}</span>
+            </div>
           </div>
 
-          ${bill.notes ? `<div style="margin-top: 20px;"><strong>Notes:</strong><br>${bill.notes}</div>` : ''}
-          
-          <div style="margin-top: 30px; text-align: center; font-size: 12px;">
-            <p>Thank you for dining with us!</p>
+          <div class="payment-info">
+            PAYMENT: ${bill.paymentMethod.toUpperCase()} - PAID
           </div>
+
+          ${bill.notes ? `
+            <div style="margin-top: 10px; font-size: 10px; text-align: center;">
+              <strong>Notes:</strong> ${bill.notes}
+            </div>
+          ` : ''}
+          
+          <div class="divider">================================</div>
+          <div class="footer">
+            <div>THANK YOU FOR DINING WITH US!</div>
+            <div style="margin-top: 3px;">Visit Again Soon</div>
+            <div style="margin-top: 5px; font-size: 9px;">
+              Powered by Restaurant POS
+            </div>
+          </div>
+          <div class="divider">================================</div>
+
+          <script>
+            window.onload = function() {
+              setTimeout(function() {
+                window.print();
+                setTimeout(function() {
+                  window.close();
+                }, 500);
+              }, 100);
+            }
+          </script>
         </body>
       </html>
     `;
 
     printWindow.document.write(printContent);
     printWindow.document.close();
-    printWindow.print();
-    printWindow.close();
   };
 
-  const generateInvoice = (bill: any) => {
-    // Simple invoice generation - in a real app, this would generate a PDF
-    const invoiceData = {
-      billNumber: bill.billNumber,
-      date: new Date(bill.createdAt).toLocaleDateString(),
-      orderNumber: bill.order?.orderNumber,
-      tableName: getTableName(bill.tableId),
-      customerName: bill.customerName,
-      customerPhone: bill.customerPhone,
-      items: bill.order?.items || [],
-      subtotal: bill.subtotal,
-      discountAmount: bill.discountAmount,
-      serviceChargeAmount: bill.serviceChargeAmount,
-      taxAmount: bill.taxAmount,
-      totalAmount: bill.totalAmount,
-      paymentMethod: bill.paymentMethod,
-    };
 
-    console.log('Invoice Data:', invoiceData);
-    toast({ title: "Invoice generated", description: "Check console for invoice data" });
-  };
 
   const handleDeleteBill = (bill: any) => {
     if (window.confirm(`Are you sure you want to delete bill #${bill.billNumber}? This action cannot be undone.`)) {
@@ -504,14 +631,7 @@ export default function RestaurantBilling() {
                               >
                                 <Printer className="h-4 w-4" />
                               </Button>
-                              <Button
-                                variant="outline"
-                                size="sm"
-                                onClick={() => generateInvoice(bill)}
-                                title="Download Invoice"
-                              >
-                                <Download className="h-4 w-4" />
-                              </Button>
+
                               <Button
                                 variant="outline"
                                 size="sm"
@@ -858,9 +978,9 @@ export default function RestaurantBilling() {
                   )}
 
                   <div className="flex justify-end space-x-2">
-                    <Button onClick={() => generateInvoice(viewingBill)}>
-                      <Download className="mr-2 h-4 w-4" />
-                      Download Invoice
+                    <Button onClick={() => printBill(viewingBill)}>
+                      <Printer className="mr-2 h-4 w-4" />
+                      Print Bill
                     </Button>
                   </div>
                 </div>

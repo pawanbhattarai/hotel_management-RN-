@@ -51,7 +51,6 @@ export default function Sidebar({
   const [isPMSExpanded, setIsPMSExpanded] = useState(true);
   const [isSetupExpanded, setIsSetupExpanded] = useState(false);
   const [isRMSExpanded, setIsRMSExpanded] = useState(false);
-  const [isMenuExpanded, setIsMenuExpanded] = useState(false);
 
   // Use props if provided, otherwise use internal state
   const isMenuOpen = setIsMobileMenuOpen
@@ -67,13 +66,6 @@ export default function Sidebar({
       setIsRMSExpanded(true);
       setIsPMSExpanded(false);
       setIsSetupExpanded(false);
-
-      // Expand menu section if on menu page
-      if (currentPath === "/restaurant/menu") {
-        setIsMenuExpanded(true);
-      } else {
-        setIsMenuExpanded(false);
-      }
     } else if (
       [
         "/branches",
@@ -86,17 +78,14 @@ export default function Sidebar({
       setIsSetupExpanded(true);
       setIsPMSExpanded(false);
       setIsRMSExpanded(false);
-      setIsMenuExpanded(false);
     } else if (currentPath === "/room-types") {
       setIsPMSExpanded(true);
       setIsSetupExpanded(false);
       setIsRMSExpanded(false);
-      setIsMenuExpanded(false);
     } else {
       setIsPMSExpanded(true);
       setIsRMSExpanded(false);
       setIsSetupExpanded(false);
-      setIsMenuExpanded(false);
     }
   }, [location]);
 
@@ -329,54 +318,37 @@ export default function Sidebar({
                       <span className="text-sm font-medium">Tables</span>
                     </button>
 
-                    {/* Menu Section */}
-                    <Collapsible
-                      open={isMenuExpanded}
-                      onOpenChange={setIsMenuExpanded}
+                    {/* Category */}
+                    <button
+                      onClick={() => {
+                        navigate("/restaurant/categories");
+                        setMenuOpen(false);
+                      }}
+                      className={`w-full flex items-center px-3 py-2 lg:py-2.5 text-left rounded-lg transition-colors ml-4 ${
+                        isActiveRoute("/restaurant/categories")
+                          ? "bg-primary text-white"
+                          : "text-gray-700 hover:bg-gray-100"
+                      }`}
                     >
-                      <CollapsibleTrigger className="w-full flex items-center justify-between px-3 py-2 text-left hover:bg-gray-100 rounded-lg ml-4">
-                        <span className="text-xs font-semibold text-gray-500 uppercase tracking-wide">
-                          Menu
-                        </span>
-                        {isMenuExpanded ? (
-                          <ChevronDown className="h-4 w-4 text-gray-500" />
-                        ) : (
-                          <ChevronRight className="h-4 w-4 text-gray-500" />
-                        )}
-                      </CollapsibleTrigger>
-                      <CollapsibleContent className="space-y-1 mt-2">
-                        {/* Category */}
-                        <button
-                          onClick={() => {
-                            navigate("/restaurant/categories");
-                            setMenuOpen(false);
-                          }}
-                          className={`w-full flex items-center px-3 py-2 lg:py-2.5 text-left rounded-lg transition-colors ml-8 ${
-                            isActiveRoute("/restaurant/categories")
-                              ? "bg-primary text-white"
-                              : "text-gray-700 hover:bg-gray-100"
-                          }`}
-                        >
-                          <MenuIcon className="mr-3 h-4 w-4 flex-shrink-0" />
-                          <span className="text-sm font-medium">Category</span>
-                        </button>
-                        {/* Dishes */}
-                        <button
-                          onClick={() => {
-                            navigate("/restaurant/dishes");
-                            setMenuOpen(false);
-                          }}
-                          className={`w-full flex items-center px-3 py-2 lg:py-2.5 text-left rounded-lg transition-colors ml-8 ${
-                            isActiveRoute("/restaurant/dishes")
-                              ? "bg-primary text-white"
-                              : "text-gray-700 hover:bg-gray-100"
-                          }`}
-                        >
-                          <ChefHat className="mr-3 h-4 w-4 flex-shrink-0" />
-                          <span className="text-sm font-medium">Dishes</span>
-                        </button>
-                      </CollapsibleContent>
-                    </Collapsible>
+                      <MenuIcon className="mr-3 h-4 w-4 flex-shrink-0" />
+                      <span className="text-sm font-medium">Category</span>
+                    </button>
+
+                    {/* Dishes */}
+                    <button
+                      onClick={() => {
+                        navigate("/restaurant/dishes");
+                        setMenuOpen(false);
+                      }}
+                      className={`w-full flex items-center px-3 py-2 lg:py-2.5 text-left rounded-lg transition-colors ml-4 ${
+                        isActiveRoute("/restaurant/dishes")
+                          ? "bg-primary text-white"
+                          : "text-gray-700 hover:bg-gray-100"
+                      }`}
+                    >
+                      <ChefHat className="mr-3 h-4 w-4 flex-shrink-0" />
+                      <span className="text-sm font-medium">Dishes</span>
+                    </button>
 
                     {/* Orders */}
                     <button
