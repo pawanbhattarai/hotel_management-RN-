@@ -82,6 +82,7 @@ export default function RestaurantOrders() {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['/api/restaurant/orders'] });
+      const existingOrder = selectedTable ? getTableOrder(selectedTable.id) : null;
       setSelectedTable(null);
       setSelectedItems([]);
       setOriginalItems([]);
@@ -574,7 +575,7 @@ export default function RestaurantOrders() {
                             <Button 
                               type="submit" 
                               className="w-full"
-                              disabled={createOrderMutation.isPending || selectedItems.length === 0 || (existingOrder && !hasOrderChanged())}
+                              disabled={createOrderMutation.isPending || selectedItems.length === 0 || (getTableOrder(selectedTable?.id) && !hasOrderChanged())}
                               onClick={(e) => {
                                 e.preventDefault();
                                 console.log("Button clicked, submitting form...");
@@ -584,10 +585,10 @@ export default function RestaurantOrders() {
                               {createOrderMutation.isPending ? (
                                 <div className="flex items-center">
                                   <div className="animate-spin rounded-full h-4 w-4 border-2 border-white border-t-transparent mr-2"></div>
-                                  {existingOrder ? "Updating..." : "Creating..."}
+                                  {getTableOrder(selectedTable?.id) ? "Updating..." : "Creating..."}
                                 </div>
                               ) : (
-                                existingOrder ? "Add Items to Order" : "Create Order"
+                                getTableOrder(selectedTable?.id) ? "Add Items to Order" : "Create Order"
                               )}
                             </Button>
                           </form>
