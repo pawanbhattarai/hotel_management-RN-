@@ -1,3 +1,4 @@
+
 import { useState } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { Plus, Eye, Download, Receipt } from "lucide-react";
@@ -20,11 +21,15 @@ import Header from "@/components/layout/header";
 import { useAuth } from "@/hooks/useAuth";
 
 const billSchema = z.object({
-  orderId: z.string(),
-  branchId: z.number(),
+  orderId: z.string().min(1, "Order is required"),
+  branchId: z.number().min(1, "Branch is required"),
   paymentMethod: z.enum(["cash", "card", "upi", "online"]),
-  discount: z.number().optional(),
+  discountAmount: z.number().min(0).optional(),
+  discountPercentage: z.number().min(0).max(100).optional(),
+  serviceChargePercentage: z.number().min(0).max(100).optional(),
   notes: z.string().optional(),
+  customerName: z.string().optional(),
+  customerPhone: z.string().optional(),
 });
 
 type BillFormData = z.infer<typeof billSchema>;
@@ -48,24 +53,51 @@ export default function RestaurantBilling() {
     queryKey: ['/api/branches'],
   });
 
+  const { data: tables } = useQuery({
+    queryKey: ['/api/restaurant/tables'],
+  });
+
   const createBillMutation = useMutation({
     mutationFn: async (data: BillFormData) => {
       // Get order details to calculate amounts
       const order = orders?.find((o: any) => o.id === data.orderId);
       if (!order) throw new Error('Order not found');
 
-      const subtotal = parseFloat(order.subtotal);
-      const discount = data.discount || 0;
-      const tax = (subtotal - discount) * 0.1; // 10% tax
-      const totalAmount = subtotal - discount + tax;
+      const subtotal = parseFloat(order.subtotal || order.totalAmount || "0");
+      const discountAmount = data.discountAmount || 0;
+      const discountPercentage = data.discountPercentage || 0;
+      const serviceChargePercentage = data.serviceChargePercentage || 10;
+      
+      // Calculate discount
+      const finalDiscountAmount = discountPercentage > 0 
+        ? (subtotal * discountPercentage / 100)
+        : discountAmount;
+      
+      // Calculate amounts
+      const afterDiscount = subtotal - finalDiscountAmount;
+      const serviceChargeAmount = afterDiscount * serviceChargePercentage / 100;
+      const taxAmount = (afterDiscount + serviceChargeAmount) * 0.13; // 13% VAT
+      const totalAmount = afterDiscount + serviceChargeAmount + taxAmount;
 
       const billData = {
-        ...data,
-        subtotal: order.subtotal,
+        orderId: data.orderId,
+        tableId: order.tableId,
+        branchId: data.branchId,
+        customerName: data.customerName || "",
+        customerPhone: data.customerPhone || "",
+        subtotal: subtotal.toString(),
+        taxAmount: taxAmount.toString(),
+        taxPercentage: "13",
+        discountAmount: finalDiscountAmount.toString(),
+        discountPercentage: (data.discountPercentage || 0).toString(),
+        serviceChargeAmount: serviceChargeAmount.toString(),
+        serviceChargePercentage: serviceChargePercentage.toString(),
         totalAmount: totalAmount.toString(),
-        tax: tax.toString(),
-        discount: discount.toString(),
-        status: "paid",
+        paidAmount: totalAmount.toString(),
+        changeAmount: "0",
+        paymentStatus: "paid",
+        paymentMethod: data.paymentMethod,
+        notes: data.notes || "",
       };
 
       const response = await fetch('/api/restaurant/bills', {
@@ -73,30 +105,25 @@ export default function RestaurantBilling() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(billData),
       });
-      if (!response.ok) throw new Error('Failed to create bill');
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.message || 'Failed to create bill');
+      }
       return response.json();
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['/api/restaurant/bills'] });
+      queryClient.invalidateQueries({ queryKey: ['/api/restaurant/orders'] });
       setIsDialogOpen(false);
       resetForm();
       toast({ title: "Bill created successfully" });
     },
-  });
-
-  const updateBillMutation = useMutation({
-    mutationFn: async ({ id, data }: { id: string; data: Partial<BillFormData> }) => {
-      const response = await fetch(`/api/restaurant/bills/${id}`, {
-        method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(data),
+    onError: (error: any) => {
+      toast({ 
+        title: "Failed to create bill", 
+        description: error.message,
+        variant: "destructive"
       });
-      if (!response.ok) throw new Error('Failed to update bill');
-      return response.json();
-    },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['/api/restaurant/bills'] });
-      toast({ title: "Bill updated successfully" });
     },
   });
 
@@ -104,8 +131,12 @@ export default function RestaurantBilling() {
     resolver: zodResolver(billSchema),
     defaultValues: {
       paymentMethod: "cash",
-      discount: 0,
+      discountAmount: 0,
+      discountPercentage: 0,
+      serviceChargePercentage: 10,
       notes: "",
+      customerName: "",
+      customerPhone: "",
       branchId: user?.role !== "superadmin" ? user?.branchId : undefined,
     },
   });
@@ -113,8 +144,12 @@ export default function RestaurantBilling() {
   const resetForm = () => {
     form.reset({
       paymentMethod: "cash",
-      discount: 0,
+      discountAmount: 0,
+      discountPercentage: 0,
+      serviceChargePercentage: 10,
       notes: "",
+      customerName: "",
+      customerPhone: "",
       branchId: user?.role !== "superadmin" ? user?.branchId : undefined,
     });
   };
@@ -133,12 +168,52 @@ export default function RestaurantBilling() {
     }
   };
 
-  const getPaidOrders = () => {
-    return orders?.filter((order: any) => 
-      order.status === 'completed' && 
-      !bills?.some((bill: any) => bill.orderId === order.id)
-    ) || [];
+  const getCompletedOrders = () => {
+    if (!orders || !bills) return [];
+    
+    // Get orders that are completed/served and don't have bills yet
+    return orders.filter((order: any) => 
+      (order.status === 'completed' || order.status === 'served') && 
+      !bills.some((bill: any) => bill.orderId === order.id)
+    );
   };
+
+  const getTableName = (tableId: number) => {
+    const table = tables?.find((t: any) => t.id === tableId);
+    return table ? table.name : `Table ${tableId}`;
+  };
+
+  const calculateBillPreview = () => {
+    const selectedOrderId = form.watch('orderId');
+    const discountAmount = form.watch('discountAmount') || 0;
+    const discountPercentage = form.watch('discountPercentage') || 0;
+    const serviceChargePercentage = form.watch('serviceChargePercentage') || 10;
+
+    if (!selectedOrderId) return null;
+
+    const order = orders?.find((o: any) => o.id === selectedOrderId);
+    if (!order) return null;
+
+    const subtotal = parseFloat(order.subtotal || order.totalAmount || "0");
+    const finalDiscountAmount = discountPercentage > 0 
+      ? (subtotal * discountPercentage / 100)
+      : discountAmount;
+    
+    const afterDiscount = subtotal - finalDiscountAmount;
+    const serviceChargeAmount = afterDiscount * serviceChargePercentage / 100;
+    const taxAmount = (afterDiscount + serviceChargeAmount) * 0.13;
+    const totalAmount = afterDiscount + serviceChargeAmount + taxAmount;
+
+    return {
+      subtotal,
+      discountAmount: finalDiscountAmount,
+      serviceChargeAmount,
+      taxAmount,
+      totalAmount,
+    };
+  };
+
+  const billPreview = calculateBillPreview();
 
   const generateInvoice = (bill: any) => {
     // Simple invoice generation - in a real app, this would generate a PDF
@@ -146,12 +221,15 @@ export default function RestaurantBilling() {
       billNumber: bill.billNumber,
       date: new Date(bill.createdAt).toLocaleDateString(),
       orderNumber: bill.order?.orderNumber,
-      tableName: bill.table?.name,
+      tableName: getTableName(bill.tableId),
+      customerName: bill.customerName,
+      customerPhone: bill.customerPhone,
       items: bill.order?.items || [],
       subtotal: bill.subtotal,
-      discount: bill.discount,
-      tax: bill.tax,
-      total: bill.totalAmount,
+      discountAmount: bill.discountAmount,
+      serviceChargeAmount: bill.serviceChargeAmount,
+      taxAmount: bill.taxAmount,
+      totalAmount: bill.totalAmount,
       paymentMethod: bill.paymentMethod,
     };
 
@@ -184,37 +262,39 @@ export default function RestaurantBilling() {
                   Create Bill
                 </Button>
               </DialogTrigger>
-              <DialogContent className="max-w-lg">
+              <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
                 <DialogHeader>
                   <DialogTitle>Create New Bill</DialogTitle>
                 </DialogHeader>
                 <Form {...form}>
                   <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
-                    <FormField
-                      control={form.control}
-                      name="orderId"
-                      render={({ field }) => (
-                        <FormItem>
-                          <FormLabel>Order</FormLabel>
-                          <FormControl>
-                            <Select value={field.value} onValueChange={field.onChange}>
-                              <SelectTrigger>
-                                <SelectValue placeholder="Select order to bill" />
-                              </SelectTrigger>
-                              <SelectContent>
-                                {getPaidOrders().map((order: any) => (
-                                  <SelectItem key={order.id} value={order.id}>
-                                    Order #{order.orderNumber} - {order.table?.name} (Rs. {order.totalAmount})
-                                  </SelectItem>
-                                ))}
-                              </SelectContent>
-                            </Select>
-                          </FormControl>
-                          <FormMessage />
-                        </FormItem>
-                      )}
-                    />
-                     {user?.role === "superadmin" && (
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                      <FormField
+                        control={form.control}
+                        name="orderId"
+                        render={({ field }) => (
+                          <FormItem className="md:col-span-2">
+                            <FormLabel>Order</FormLabel>
+                            <FormControl>
+                              <Select value={field.value} onValueChange={field.onChange}>
+                                <SelectTrigger>
+                                  <SelectValue placeholder="Select order to bill" />
+                                </SelectTrigger>
+                                <SelectContent>
+                                  {getCompletedOrders().map((order: any) => (
+                                    <SelectItem key={order.id} value={order.id}>
+                                      Order #{order.orderNumber} - {getTableName(order.tableId)} (Rs. {order.totalAmount})
+                                    </SelectItem>
+                                  ))}
+                                </SelectContent>
+                              </Select>
+                            </FormControl>
+                            <FormMessage />
+                          </FormItem>
+                        )}
+                      />
+
+                      {user?.role === "superadmin" && (
                         <FormField
                           control={form.control}
                           name="branchId"
@@ -243,66 +323,173 @@ export default function RestaurantBilling() {
                           )}
                         />
                       )}
-                    <FormField
-                      control={form.control}
-                      name="paymentMethod"
-                      render={({ field }) => (
-                        <FormItem>
-                          <FormLabel>Payment Method</FormLabel>
-                          <FormControl>
-                            <Select value={field.value} onValueChange={field.onChange}>
-                              <SelectTrigger>
-                                <SelectValue />
-                              </SelectTrigger>
-                              <SelectContent>
-                                <SelectItem value="cash">Cash</SelectItem>
-                                <SelectItem value="card">Card</SelectItem>
-                                <SelectItem value="upi">UPI</SelectItem>
-                                <SelectItem value="online">Online</SelectItem>
-                              </SelectContent>
-                            </Select>
-                          </FormControl>
-                          <FormMessage />
-                        </FormItem>
-                      )}
-                    />
-                    <FormField
-                      control={form.control}
-                      name="discount"
-                      render={({ field }) => (
-                        <FormItem>
-                          <FormLabel>Discount (Rs.)</FormLabel>
-                          <FormControl>
-                            <Input 
-                              {...field} 
-                              type="number" 
-                              step="0.01"
-                              onChange={(e) => field.onChange(parseFloat(e.target.value) || 0)}
-                            />
-                          </FormControl>
-                          <FormMessage />
-                        </FormItem>
-                      )}
-                    />
-                    <FormField
-                      control={form.control}
-                      name="notes"
-                      render={({ field }) => (
-                        <FormItem>
-                          <FormLabel>Notes</FormLabel>
-                          <FormControl>
-                            <Textarea {...field} placeholder="Additional notes..." />
-                          </FormControl>
-                          <FormMessage />
-                        </FormItem>
-                      )}
-                    />
+
+                      <FormField
+                        control={form.control}
+                        name="customerName"
+                        render={({ field }) => (
+                          <FormItem>
+                            <FormLabel>Customer Name (Optional)</FormLabel>
+                            <FormControl>
+                              <Input {...field} placeholder="Customer name" />
+                            </FormControl>
+                            <FormMessage />
+                          </FormItem>
+                        )}
+                      />
+
+                      <FormField
+                        control={form.control}
+                        name="customerPhone"
+                        render={({ field }) => (
+                          <FormItem>
+                            <FormLabel>Customer Phone (Optional)</FormLabel>
+                            <FormControl>
+                              <Input {...field} placeholder="Customer phone" />
+                            </FormControl>
+                            <FormMessage />
+                          </FormItem>
+                        )}
+                      />
+
+                      <FormField
+                        control={form.control}
+                        name="paymentMethod"
+                        render={({ field }) => (
+                          <FormItem>
+                            <FormLabel>Payment Method</FormLabel>
+                            <FormControl>
+                              <Select value={field.value} onValueChange={field.onChange}>
+                                <SelectTrigger>
+                                  <SelectValue />
+                                </SelectTrigger>
+                                <SelectContent>
+                                  <SelectItem value="cash">Cash</SelectItem>
+                                  <SelectItem value="card">Card</SelectItem>
+                                  <SelectItem value="upi">UPI</SelectItem>
+                                  <SelectItem value="online">Online</SelectItem>
+                                </SelectContent>
+                              </Select>
+                            </FormControl>
+                            <FormMessage />
+                          </FormItem>
+                        )}
+                      />
+
+                      <FormField
+                        control={form.control}
+                        name="serviceChargePercentage"
+                        render={({ field }) => (
+                          <FormItem>
+                            <FormLabel>Service Charge (%)</FormLabel>
+                            <FormControl>
+                              <Input 
+                                {...field} 
+                                type="number" 
+                                step="0.1"
+                                min="0"
+                                max="100"
+                                onChange={(e) => field.onChange(parseFloat(e.target.value) || 0)}
+                              />
+                            </FormControl>
+                            <FormMessage />
+                          </FormItem>
+                        )}
+                      />
+
+                      <FormField
+                        control={form.control}
+                        name="discountPercentage"
+                        render={({ field }) => (
+                          <FormItem>
+                            <FormLabel>Discount (%)</FormLabel>
+                            <FormControl>
+                              <Input 
+                                {...field} 
+                                type="number" 
+                                step="0.1"
+                                min="0"
+                                max="100"
+                                onChange={(e) => field.onChange(parseFloat(e.target.value) || 0)}
+                              />
+                            </FormControl>
+                            <FormMessage />
+                          </FormItem>
+                        )}
+                      />
+
+                      <FormField
+                        control={form.control}
+                        name="discountAmount"
+                        render={({ field }) => (
+                          <FormItem>
+                            <FormLabel>Discount Amount (Rs.)</FormLabel>
+                            <FormControl>
+                              <Input 
+                                {...field} 
+                                type="number" 
+                                step="0.01"
+                                min="0"
+                                onChange={(e) => field.onChange(parseFloat(e.target.value) || 0)}
+                              />
+                            </FormControl>
+                            <FormMessage />
+                          </FormItem>
+                        )}
+                      />
+
+                      <FormField
+                        control={form.control}
+                        name="notes"
+                        render={({ field }) => (
+                          <FormItem className="md:col-span-2">
+                            <FormLabel>Notes</FormLabel>
+                            <FormControl>
+                              <Textarea {...field} placeholder="Additional notes..." />
+                            </FormControl>
+                            <FormMessage />
+                          </FormItem>
+                        )}
+                      />
+                    </div>
+
+                    {/* Bill Preview */}
+                    {billPreview && (
+                      <div className="border rounded-lg p-4 bg-gray-50">
+                        <h3 className="font-semibold mb-3">Bill Preview</h3>
+                        <div className="space-y-2 text-sm">
+                          <div className="flex justify-between">
+                            <span>Subtotal:</span>
+                            <span>Rs. {billPreview.subtotal.toFixed(2)}</span>
+                          </div>
+                          {billPreview.discountAmount > 0 && (
+                            <div className="flex justify-between text-green-600">
+                              <span>Discount:</span>
+                              <span>- Rs. {billPreview.discountAmount.toFixed(2)}</span>
+                            </div>
+                          )}
+                          <div className="flex justify-between">
+                            <span>Service Charge:</span>
+                            <span>Rs. {billPreview.serviceChargeAmount.toFixed(2)}</span>
+                          </div>
+                          <div className="flex justify-between">
+                            <span>Tax (13%):</span>
+                            <span>Rs. {billPreview.taxAmount.toFixed(2)}</span>
+                          </div>
+                          <div className="flex justify-between text-lg font-bold border-t pt-2">
+                            <span>Total Amount:</span>
+                            <span>Rs. {billPreview.totalAmount.toFixed(2)}</span>
+                          </div>
+                        </div>
+                      </div>
+                    )}
+
                     <div className="flex justify-end gap-2">
                       <Button type="button" variant="outline" onClick={() => setIsDialogOpen(false)}>
                         Cancel
                       </Button>
                       <Button type="submit" disabled={createBillMutation.isPending}>
-                        Create Bill
+                        {createBillMutation.isPending ? "Creating..." : "Create Bill"}
                       </Button>
                     </div>
                   </form>
@@ -327,6 +514,7 @@ export default function RestaurantBilling() {
                       <TableHead>Bill #</TableHead>
                       <TableHead>Order #</TableHead>
                       <TableHead>Table</TableHead>
+                      <TableHead>Customer</TableHead>
                       <TableHead>Payment Method</TableHead>
                       <TableHead>Total</TableHead>
                       <TableHead>Date</TableHead>
@@ -338,8 +526,9 @@ export default function RestaurantBilling() {
                       bills.map((bill: any) => (
                         <TableRow key={bill.id}>
                           <TableCell className="font-medium">#{bill.billNumber}</TableCell>
-                          <TableCell>#{bill.order?.orderNumber}</TableCell>
-                          <TableCell>{bill.table?.name}</TableCell>
+                          <TableCell>#{bill.order?.orderNumber || 'N/A'}</TableCell>
+                          <TableCell>{getTableName(bill.tableId)}</TableCell>
+                          <TableCell>{bill.customerName || 'Guest'}</TableCell>
                           <TableCell>
                             <Badge className={`${getPaymentMethodColor(bill.paymentMethod)} text-white`}>
                               {bill.paymentMethod}
@@ -369,7 +558,7 @@ export default function RestaurantBilling() {
                       ))
                     ) : (
                       <TableRow>
-                        <TableCell colSpan={7} className="text-center py-8 text-gray-500">
+                        <TableCell colSpan={8} className="text-center py-8 text-gray-500">
                           No bills found. Create your first bill to get started.
                         </TableCell>
                       </TableRow>
@@ -394,11 +583,19 @@ export default function RestaurantBilling() {
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                     <div>
                       <span className="text-sm text-muted-foreground">Order Number:</span>
-                      <p className="font-medium">#{viewingBill.order?.orderNumber}</p>
+                      <p className="font-medium">#{viewingBill.order?.orderNumber || 'N/A'}</p>
                     </div>
                     <div>
                       <span className="text-sm text-muted-foreground">Table:</span>
-                      <p className="font-medium">{viewingBill.table?.name}</p>
+                      <p className="font-medium">{getTableName(viewingBill.tableId)}</p>
+                    </div>
+                    <div>
+                      <span className="text-sm text-muted-foreground">Customer:</span>
+                      <p className="font-medium">{viewingBill.customerName || 'Guest'}</p>
+                    </div>
+                    <div>
+                      <span className="text-sm text-muted-foreground">Phone:</span>
+                      <p className="font-medium">{viewingBill.customerPhone || 'N/A'}</p>
                     </div>
                     <div>
                       <span className="text-sm text-muted-foreground">Payment Method:</span>
@@ -412,31 +609,33 @@ export default function RestaurantBilling() {
                     </div>
                   </div>
 
-                  <div>
-                    <h3 className="text-lg font-semibold mb-2">Order Items</h3>
-                    <div className="overflow-x-auto">
-                      <Table>
-                        <TableHeader>
-                          <TableRow>
-                            <TableHead>Item</TableHead>
-                            <TableHead>Price</TableHead>
-                            <TableHead>Qty</TableHead>
-                            <TableHead>Total</TableHead>
-                          </TableRow>
-                        </TableHeader>
-                        <TableBody>
-                          {viewingBill.order?.items?.map((item: any) => (
-                            <TableRow key={item.id}>
-                              <TableCell className="font-medium">{item.dish?.name}</TableCell>
-                              <TableCell>Rs. {item.unitPrice}</TableCell>
-                              <TableCell>{item.quantity}</TableCell>
-                              <TableCell>Rs. {(parseFloat(item.unitPrice) * item.quantity).toFixed(2)}</TableCell>
+                  {viewingBill.order?.items && (
+                    <div>
+                      <h3 className="text-lg font-semibold mb-2">Order Items</h3>
+                      <div className="overflow-x-auto">
+                        <Table>
+                          <TableHeader>
+                            <TableRow>
+                              <TableHead>Item</TableHead>
+                              <TableHead>Price</TableHead>
+                              <TableHead>Qty</TableHead>
+                              <TableHead>Total</TableHead>
                             </TableRow>
-                          ))}
-                        </TableBody>
-                      </Table>
+                          </TableHeader>
+                          <TableBody>
+                            {viewingBill.order.items.map((item: any) => (
+                              <TableRow key={item.id}>
+                                <TableCell className="font-medium">{item.dish?.name}</TableCell>
+                                <TableCell>Rs. {item.unitPrice}</TableCell>
+                                <TableCell>{item.quantity}</TableCell>
+                                <TableCell>Rs. {(parseFloat(item.unitPrice) * item.quantity).toFixed(2)}</TableCell>
+                              </TableRow>
+                            ))}
+                          </TableBody>
+                        </Table>
+                      </div>
                     </div>
-                  </div>
+                  )}
 
                   <div className="border-t pt-4">
                     <div className="space-y-2">
@@ -444,15 +643,21 @@ export default function RestaurantBilling() {
                         <span>Subtotal:</span>
                         <span>Rs. {viewingBill.subtotal}</span>
                       </div>
-                      {parseFloat(viewingBill.discount) > 0 && (
+                      {parseFloat(viewingBill.discountAmount) > 0 && (
                         <div className="flex justify-between text-green-600">
                           <span>Discount:</span>
-                          <span>- Rs. {viewingBill.discount}</span>
+                          <span>- Rs. {viewingBill.discountAmount}</span>
+                        </div>
+                      )}
+                      {parseFloat(viewingBill.serviceChargeAmount) > 0 && (
+                        <div className="flex justify-between">
+                          <span>Service Charge:</span>
+                          <span>Rs. {viewingBill.serviceChargeAmount}</span>
                         </div>
                       )}
                       <div className="flex justify-between">
-                        <span>Tax (10%):</span>
-                        <span>Rs. {viewingBill.tax}</span>
+                        <span>Tax (13%):</span>
+                        <span>Rs. {viewingBill.taxAmount}</span>
                       </div>
                       <div className="flex justify-between text-lg font-bold border-t pt-2">
                         <span>Total Amount:</span>

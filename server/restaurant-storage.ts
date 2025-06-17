@@ -311,26 +311,106 @@ export class RestaurantStorage {
   }
 
   // Restaurant Bills
-  async getRestaurantBills(branchId?: number): Promise<RestaurantBill[]> {
+  async getRestaurantBills(branchId?: number): Promise<any[]> {
+    let query = db
+      .select({
+        id: restaurantBills.id,
+        billNumber: restaurantBills.billNumber,
+        orderId: restaurantBills.orderId,
+        tableId: restaurantBills.tableId,
+        branchId: restaurantBills.branchId,
+        customerName: restaurantBills.customerName,
+        customerPhone: restaurantBills.customerPhone,
+        subtotal: restaurantBills.subtotal,
+        taxAmount: restaurantBills.taxAmount,
+        taxPercentage: restaurantBills.taxPercentage,
+        discountAmount: restaurantBills.discountAmount,
+        discountPercentage: restaurantBills.discountPercentage,
+        serviceChargeAmount: restaurantBills.serviceChargeAmount,
+        serviceChargePercentage: restaurantBills.serviceChargePercentage,
+        totalAmount: restaurantBills.totalAmount,
+        paidAmount: restaurantBills.paidAmount,
+        changeAmount: restaurantBills.changeAmount,
+        paymentStatus: restaurantBills.paymentStatus,
+        paymentMethod: restaurantBills.paymentMethod,
+        notes: restaurantBills.notes,
+        createdAt: restaurantBills.createdAt,
+        updatedAt: restaurantBills.updatedAt,
+        order: {
+          id: restaurantOrders.id,
+          orderNumber: restaurantOrders.orderNumber,
+          tableId: restaurantOrders.tableId,
+          status: restaurantOrders.status,
+          totalAmount: restaurantOrders.totalAmount,
+        },
+        table: {
+          id: restaurantTables.id,
+          name: restaurantTables.name,
+          capacity: restaurantTables.capacity,
+        },
+      })
+      .from(restaurantBills)
+      .leftJoin(restaurantOrders, eq(restaurantBills.orderId, restaurantOrders.id))
+      .leftJoin(restaurantTables, eq(restaurantBills.tableId, restaurantTables.id))
+      .orderBy(desc(restaurantBills.createdAt));
+
     if (branchId) {
-      return await db
-        .select()
-        .from(restaurantBills)
-        .where(eq(restaurantBills.branchId, branchId))
-        .orderBy(desc(restaurantBills.createdAt));
+      query = query.where(eq(restaurantBills.branchId, branchId));
     }
 
-    return await db
-      .select()
-      .from(restaurantBills)
-      .orderBy(desc(restaurantBills.createdAt));
+    return await query;
   }
 
-  async getRestaurantBill(id: string): Promise<RestaurantBill | undefined> {
+  async getRestaurantBill(id: string): Promise<any | undefined> {
     const [bill] = await db
-      .select()
+      .select({
+        id: restaurantBills.id,
+        billNumber: restaurantBills.billNumber,
+        orderId: restaurantBills.orderId,
+        tableId: restaurantBills.tableId,
+        branchId: restaurantBills.branchId,
+        customerName: restaurantBills.customerName,
+        customerPhone: restaurantBills.customerPhone,
+        subtotal: restaurantBills.subtotal,
+        taxAmount: restaurantBills.taxAmount,
+        taxPercentage: restaurantBills.taxPercentage,
+        discountAmount: restaurantBills.discountAmount,
+        discountPercentage: restaurantBills.discountPercentage,
+        serviceChargeAmount: restaurantBills.serviceChargeAmount,
+        serviceChargePercentage: restaurantBills.serviceChargePercentage,
+        totalAmount: restaurantBills.totalAmount,
+        paidAmount: restaurantBills.paidAmount,
+        changeAmount: restaurantBills.changeAmount,
+        paymentStatus: restaurantBills.paymentStatus,
+        paymentMethod: restaurantBills.paymentMethod,
+        notes: restaurantBills.notes,
+        createdAt: restaurantBills.createdAt,
+        updatedAt: restaurantBills.updatedAt,
+        order: {
+          id: restaurantOrders.id,
+          orderNumber: restaurantOrders.orderNumber,
+          tableId: restaurantOrders.tableId,
+          status: restaurantOrders.status,
+          totalAmount: restaurantOrders.totalAmount,
+        },
+        table: {
+          id: restaurantTables.id,
+          name: restaurantTables.name,
+          capacity: restaurantTables.capacity,
+        },
+      })
       .from(restaurantBills)
+      .leftJoin(restaurantOrders, eq(restaurantBills.orderId, restaurantOrders.id))
+      .leftJoin(restaurantTables, eq(restaurantBills.tableId, restaurantTables.id))
       .where(eq(restaurantBills.id, id));
+
+    if (!bill) return undefined;
+
+    // Get order items if order exists
+    if (bill.order?.id) {
+      const items = await this.getRestaurantOrderItems(bill.order.id);
+      bill.order.items = items;
+    }
 
     return bill;
   }
