@@ -396,7 +396,7 @@ export default function TaxManagement() {
                           <FormControl>
                             <input
                               type="checkbox"
-                              checked={field.value}
+                              checked={field.value || false}
                               onChange={field.onChange}
                               className="rounded border-gray-300"
                             />

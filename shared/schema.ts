@@ -674,9 +674,19 @@ export const insertTaxSchema = createInsertSchema(taxes).omit({
   rate: z.union([z.string(), z.number()]).transform((val) => 
     typeof val === 'number' ? val.toString() : val
   ),
-}).refine((data) => data.applyToReservations || data.applyToOrders, {
-  message: "Tax must be applied to at least one area (Reservations or Orders)",
+});
+
+export const updateTaxSchema = z.object({
+  taxName: z.string().optional(),
+  rate: z.union([z.string(), z.number()]).transform((val) => 
+    typeof val === 'number' ? val.toString() : val
+  ).optional(),
+  status: z.enum(["active", "inactive"]).optional(),
+  applyToReservations: z.boolean().optional(),
+  applyToOrders: z.boolean().optional(),
+  notes: z.string().nullable().optional(),
 });
 
 export type Tax = typeof taxes.$inferSelect;
 export type InsertTax = z.infer<typeof insertTaxSchema>;
+export type UpdateTax = z.infer<typeof updateTaxSchema>;

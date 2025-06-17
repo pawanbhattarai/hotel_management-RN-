@@ -20,6 +20,7 @@ import {
   insertRestaurantOrderItemSchema,
   insertRestaurantBillSchema,
   insertTaxSchema,
+  updateTaxSchema,
 } from "@shared/schema";
 import { z } from "zod";
 import { broadcastChange } from "./middleware/websocket";
@@ -1995,7 +1996,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
 
       const taxId = parseInt(req.params.id);
-      const taxData = insertTaxSchema.partial().parse(req.body);
+      const taxData = updateTaxSchema.parse(req.body);
 
       const existingTax = await restaurantStorage.getTax(taxId);
       if (!existingTax) {
