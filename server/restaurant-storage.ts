@@ -220,10 +220,35 @@ export class RestaurantStorage {
     return order;
   }
 
-  async getRestaurantOrderItems(orderId: string): Promise<RestaurantOrderItem[]> {
+  async getRestaurantOrderItems(orderId: string): Promise<any[]> {
     return await db
-      .select()
+      .select({
+        id: restaurantOrderItems.id,
+        orderId: restaurantOrderItems.orderId,
+        dishId: restaurantOrderItems.dishId,
+        quantity: restaurantOrderItems.quantity,
+        unitPrice: restaurantOrderItems.unitPrice,
+        totalPrice: restaurantOrderItems.totalPrice,
+        specialInstructions: restaurantOrderItems.specialInstructions,
+        status: restaurantOrderItems.status,
+        isKot: restaurantOrderItems.isKot,
+        isBot: restaurantOrderItems.isBot,
+        createdAt: restaurantOrderItems.createdAt,
+        dish: {
+          id: menuDishes.id,
+          name: menuDishes.name,
+          price: menuDishes.price,
+          categoryId: menuDishes.categoryId,
+          description: menuDishes.description,
+          ingredients: menuDishes.ingredients,
+          isVegetarian: menuDishes.isVegetarian,
+          isVegan: menuDishes.isVegan,
+          spiceLevel: menuDishes.spiceLevel,
+          preparationTime: menuDishes.preparationTime,
+        }
+      })
       .from(restaurantOrderItems)
+      .innerJoin(menuDishes, eq(restaurantOrderItems.dishId, menuDishes.id))
       .where(eq(restaurantOrderItems.orderId, orderId));
   }
 

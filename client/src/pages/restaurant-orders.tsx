@@ -36,6 +36,7 @@ type OrderFormData = z.infer<typeof orderSchema>;
 export default function RestaurantOrders() {
   const [selectedTable, setSelectedTable] = useState<any>(null);
   const [selectedItems, setSelectedItems] = useState<any[]>([]);
+  const [originalItems, setOriginalItems] = useState<any[]>([]);
   const [selectedCategory, setSelectedCategory] = useState<string>("all");
   const [viewingOrder, setViewingOrder] = useState<any>(null);
   const [isMobileSidebarOpen, setIsMobileSidebarOpen] = useState(false);
@@ -83,9 +84,10 @@ export default function RestaurantOrders() {
       queryClient.invalidateQueries({ queryKey: ['/api/restaurant/orders'] });
       setSelectedTable(null);
       setSelectedItems([]);
+      setOriginalItems([]);
       toast({ 
-        title: "Order created successfully", 
-        description: "Your order has been placed!" 
+        title: existingOrder ? "Order updated successfully" : "Order created successfully", 
+        description: existingOrder ? "Items have been added to the order!" : "Your order has been placed!" 
       });
     },
     onError: (error: any) => {
@@ -149,6 +151,8 @@ export default function RestaurantOrders() {
     console.log("Selected items:", selectedItems);
     console.log("Selected table:", selectedTable);
     
+    const existingOrder = getTableOrder(selectedTable.id);
+    
     if (selectedItems.length === 0) {
       toast({ 
         title: "Error", 
@@ -163,6 +167,16 @@ export default function RestaurantOrders() {
         title: "Error", 
         description: "No table selected",
         variant: "destructive"
+      });
+      return;
+    }
+
+    // For existing orders, only submit new/changed items
+    if (existingOrder && !hasOrderChanged()) {
+      toast({ 
+        title: "No changes", 
+        description: "No changes detected in the order",
+        variant: "default"
       });
       return;
     }
@@ -280,6 +294,7 @@ export default function RestaurantOrders() {
   const handleTableClick = (table: any) => {
     setSelectedTable(table);
     setSelectedItems([]);
+    setOriginalItems([]);
     setSelectedCategory("all");
 
     // If table has an existing order, load its items
@@ -293,7 +308,16 @@ export default function RestaurantOrders() {
         notes: item.specialInstructions || "",
       }));
       setSelectedItems(orderItems);
+      setOriginalItems(JSON.parse(JSON.stringify(orderItems))); // Deep copy for comparison
     }
+  };
+
+  // Check if order has been modified
+  const hasOrderChanged = () => {
+    if (originalItems.length === 0 && selectedItems.length === 0) return false;
+    if (originalItems.length !== selectedItems.length) return true;
+    
+    return JSON.stringify(originalItems) !== JSON.stringify(selectedItems);
   };
 
   const getStatusColor = (status: string) => {
@@ -550,7 +574,7 @@ export default function RestaurantOrders() {
                             <Button 
                               type="submit" 
                               className="w-full"
-                              disabled={createOrderMutation.isPending || selectedItems.length === 0}
+                              disabled={createOrderMutation.isPending || selectedItems.length === 0 || (existingOrder && !hasOrderChanged())}
                               onClick={(e) => {
                                 e.preventDefault();
                                 console.log("Button clicked, submitting form...");
@@ -560,7 +584,7 @@ export default function RestaurantOrders() {
                               {createOrderMutation.isPending ? (
                                 <div className="flex items-center">
                                   <div className="animate-spin rounded-full h-4 w-4 border-2 border-white border-t-transparent mr-2"></div>
-                                  Creating...
+                                  {existingOrder ? "Updating..." : "Creating..."}
                                 </div>
                               ) : (
                                 existingOrder ? "Add Items to Order" : "Create Order"
