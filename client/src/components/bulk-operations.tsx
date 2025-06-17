@@ -188,7 +188,15 @@ export default function BulkOperations({ type, branches, categories, onSuccess, 
 
   const renderTablesForm = () => (
     <Form {...tablesForm}>
-      <form onSubmit={tablesForm.handleSubmit((data) => createTablesMutation.mutate(data))} className="space-y-4">
+      <form onSubmit={tablesForm.handleSubmit((data) => {
+        // Filter out empty rows (rows without name)
+        const validTables = data.tables.filter(table => table.name.trim() !== '');
+        if (validTables.length === 0) {
+          toast({ title: "Please fill at least one table", variant: "destructive" });
+          return;
+        }
+        createTablesMutation.mutate({ tables: validTables });
+      })} className="space-y-4">
         {tableFields.map((field, index) => (
           <Card key={field.id} className="p-4">
             <div className="flex justify-between items-center mb-4">
@@ -269,26 +277,60 @@ export default function BulkOperations({ type, branches, categories, onSuccess, 
           </Card>
         ))}
         
-        <Button
-          type="button"
-          variant="outline"
-          onClick={() => appendTable({ 
-            name: "", 
-            capacity: 4, 
-            branchId: user?.role === "superadmin" ? branches?.[0]?.id || 1 : (user?.branchId || 1) 
-          })}
-          className="w-full"
-        >
-          <Plus className="h-4 w-4 mr-2" />
-          Add Another Table
-        </Button>
+        <div className="flex flex-wrap gap-2 mb-4">
+          <Button
+            type="button"
+            variant="outline"
+            onClick={() => appendTable({ 
+              name: "", 
+              capacity: 4, 
+              branchId: user?.role === "superadmin" ? branches?.[0]?.id || 1 : (user?.branchId || 1) 
+            })}
+            size="sm"
+          >
+            <Plus className="h-4 w-4 mr-2" />
+            Add 1 Row
+          </Button>
+          <Button
+            type="button"
+            variant="outline"
+            onClick={() => {
+              for (let i = 0; i < 2; i++) {
+                appendTable({ 
+                  name: "", 
+                  capacity: 4, 
+                  branchId: user?.role === "superadmin" ? branches?.[0]?.id || 1 : (user?.branchId || 1) 
+                });
+              }
+            }}
+            size="sm"
+          >
+            Add 2 Rows
+          </Button>
+          <Button
+            type="button"
+            variant="outline"
+            onClick={() => {
+              for (let i = 0; i < 5; i++) {
+                appendTable({ 
+                  name: "", 
+                  capacity: 4, 
+                  branchId: user?.role === "superadmin" ? branches?.[0]?.id || 1 : (user?.branchId || 1) 
+                });
+              }
+            }}
+            size="sm"
+          >
+            Add 5 Rows
+          </Button>
+        </div>
 
         <Button 
           type="submit" 
           className="w-full"
           disabled={createTablesMutation.isPending}
         >
-          {createTablesMutation.isPending ? "Creating..." : `Create ${tableFields.length} Tables`}
+          {createTablesMutation.isPending ? "Creating..." : "Create Tables"}
         </Button>
       </form>
     </Form>
@@ -296,7 +338,15 @@ export default function BulkOperations({ type, branches, categories, onSuccess, 
 
   const renderCategoriesForm = () => (
     <Form {...categoriesForm}>
-      <form onSubmit={categoriesForm.handleSubmit((data) => createCategoriesMutation.mutate(data))} className="space-y-4">
+      <form onSubmit={categoriesForm.handleSubmit((data) => {
+        // Filter out empty rows (rows without name)
+        const validCategories = data.categories.filter(category => category.name.trim() !== '');
+        if (validCategories.length === 0) {
+          toast({ title: "Please fill at least one category", variant: "destructive" });
+          return;
+        }
+        createCategoriesMutation.mutate({ categories: validCategories });
+      })} className="space-y-4">
         {categoryFields.map((field, index) => (
           <Card key={field.id} className="p-4">
             <div className="flex justify-between items-center mb-4">
@@ -377,26 +427,60 @@ export default function BulkOperations({ type, branches, categories, onSuccess, 
           </Card>
         ))}
         
-        <Button
-          type="button"
-          variant="outline"
-          onClick={() => appendCategory({ 
-            name: "", 
-            branchId: user?.role === "superadmin" ? branches?.[0]?.id || 1 : (user?.branchId || 1),
-            sortOrder: 0 
-          })}
-          className="w-full"
-        >
-          <Plus className="h-4 w-4 mr-2" />
-          Add Another Category
-        </Button>
+        <div className="flex flex-wrap gap-2 mb-4">
+          <Button
+            type="button"
+            variant="outline"
+            onClick={() => appendCategory({ 
+              name: "", 
+              branchId: user?.role === "superadmin" ? branches?.[0]?.id || 1 : (user?.branchId || 1),
+              sortOrder: 0 
+            })}
+            size="sm"
+          >
+            <Plus className="h-4 w-4 mr-2" />
+            Add 1 Row
+          </Button>
+          <Button
+            type="button"
+            variant="outline"
+            onClick={() => {
+              for (let i = 0; i < 2; i++) {
+                appendCategory({ 
+                  name: "", 
+                  branchId: user?.role === "superadmin" ? branches?.[0]?.id || 1 : (user?.branchId || 1),
+                  sortOrder: 0 
+                });
+              }
+            }}
+            size="sm"
+          >
+            Add 2 Rows
+          </Button>
+          <Button
+            type="button"
+            variant="outline"
+            onClick={() => {
+              for (let i = 0; i < 5; i++) {
+                appendCategory({ 
+                  name: "", 
+                  branchId: user?.role === "superadmin" ? branches?.[0]?.id || 1 : (user?.branchId || 1),
+                  sortOrder: 0 
+                });
+              }
+            }}
+            size="sm"
+          >
+            Add 5 Rows
+          </Button>
+        </div>
 
         <Button 
           type="submit" 
           className="w-full"
           disabled={createCategoriesMutation.isPending}
         >
-          {createCategoriesMutation.isPending ? "Creating..." : `Create ${categoryFields.length} Categories`}
+          {createCategoriesMutation.isPending ? "Creating..." : "Create Categories"}
         </Button>
       </form>
     </Form>
@@ -404,7 +488,15 @@ export default function BulkOperations({ type, branches, categories, onSuccess, 
 
   const renderDishesForm = () => (
     <Form {...dishesForm}>
-      <form onSubmit={dishesForm.handleSubmit((data) => createDishesMutation.mutate(data))} className="space-y-4">
+      <form onSubmit={dishesForm.handleSubmit((data) => {
+        // Filter out empty rows (rows without name and price)
+        const validDishes = data.dishes.filter(dish => dish.name.trim() !== '' && dish.price.trim() !== '');
+        if (validDishes.length === 0) {
+          toast({ title: "Please fill at least one dish with name and price", variant: "destructive" });
+          return;
+        }
+        createDishesMutation.mutate({ dishes: validDishes });
+      })} className="space-y-4">
         {dishFields.map((field, index) => (
           <Card key={field.id} className="p-4">
             <div className="flex justify-between items-center mb-4">
@@ -514,30 +606,72 @@ export default function BulkOperations({ type, branches, categories, onSuccess, 
           </Card>
         ))}
         
-        <Button
-          type="button"
-          variant="outline"
-          onClick={() => appendDish({ 
-            name: "", 
-            price: "", 
-            categoryId: categories?.[0]?.id || 1,
-            branchId: user?.role === "superadmin" ? branches?.[0]?.id || 1 : (user?.branchId || 1),
-            description: "",
-            isVegetarian: false,
-            isVegan: false,
-          })}
-          className="w-full"
-        >
-          <Plus className="h-4 w-4 mr-2" />
-          Add Another Dish
-        </Button>
+        <div className="flex flex-wrap gap-2 mb-4">
+          <Button
+            type="button"
+            variant="outline"
+            onClick={() => appendDish({ 
+              name: "", 
+              price: "", 
+              categoryId: categories?.[0]?.id || 1,
+              branchId: user?.role === "superadmin" ? branches?.[0]?.id || 1 : (user?.branchId || 1),
+              description: "",
+              isVegetarian: false,
+              isVegan: false,
+            })}
+            size="sm"
+          >
+            <Plus className="h-4 w-4 mr-2" />
+            Add 1 Row
+          </Button>
+          <Button
+            type="button"
+            variant="outline"
+            onClick={() => {
+              for (let i = 0; i < 2; i++) {
+                appendDish({ 
+                  name: "", 
+                  price: "", 
+                  categoryId: categories?.[0]?.id || 1,
+                  branchId: user?.role === "superadmin" ? branches?.[0]?.id || 1 : (user?.branchId || 1),
+                  description: "",
+                  isVegetarian: false,
+                  isVegan: false,
+                });
+              }
+            }}
+            size="sm"
+          >
+            Add 2 Rows
+          </Button>
+          <Button
+            type="button"
+            variant="outline"
+            onClick={() => {
+              for (let i = 0; i < 5; i++) {
+                appendDish({ 
+                  name: "", 
+                  price: "", 
+                  categoryId: categories?.[0]?.id || 1,
+                  branchId: user?.role === "superadmin" ? branches?.[0]?.id || 1 : (user?.branchId || 1),
+                  description: "",
+                  isVegetarian: false,
+                  isVegan: false,
+                });
+              }
+            }}
+            size="sm"
+          >
+            Add 5 Rows
+          </Button>
+        </div>
 
         <Button 
           type="submit" 
           className="w-full"
           disabled={createDishesMutation.isPending}
         >
-          {createDishesMutation.isPending ? "Creating..." : `Create ${dishFields.length} Dishes`}
+          {createDishesMutation.isPending ? "Creating..." : "Create Dishes"}
         </Button>
       </form>
     </Form>
