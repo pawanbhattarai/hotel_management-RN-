@@ -1468,6 +1468,34 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Bulk create categories
+  app.post("/api/restaurant/categories/bulk", isAuthenticated, async (req: any, res) => {
+    try {
+      const user = await storage.getUser(req.session.user.id);
+      if (!user) return res.status(401).json({ message: "User not found" });
+
+      const { categories } = req.body;
+      if (!Array.isArray(categories) || categories.length === 0) {
+        return res.status(400).json({ message: "Categories array is required" });
+      }
+
+      const validatedCategories = categories.map(category => insertMenuCategorySchema.parse(category));
+      
+      // Check permissions for all categories
+      for (const category of validatedCategories) {
+        if (!checkBranchPermissions(user.role, user.branchId, category.branchId)) {
+          return res.status(403).json({ message: "Insufficient permissions for one or more categories" });
+        }
+      }
+
+      const createdCategories = await restaurantStorage.createMenuCategoriesBulk(validatedCategories);
+      res.status(201).json(createdCategories);
+    } catch (error) {
+      console.error("Error creating menu categories in bulk:", error);
+      res.status(500).json({ message: "Failed to create menu categories" });
+    }
+  });
+
   app.put("/api/restaurant/categories/:id", isAuthenticated, async (req: any, res) => {
     try {
       const user = await storage.getUser(req.session.user.id);

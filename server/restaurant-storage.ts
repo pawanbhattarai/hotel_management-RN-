@@ -65,6 +65,10 @@ export class RestaurantStorage {
       .where(eq(restaurantTables.id, id));
   }
 
+  async createRestaurantTablesBulk(tables: InsertRestaurantTable[]): Promise<RestaurantTable[]> {
+    return await db.insert(restaurantTables).values(tables).returning();
+  }
+
   // Menu Categories
   async getMenuCategories(branchId?: number): Promise<MenuCategory[]> {
     if (branchId) {
@@ -108,8 +112,12 @@ export class RestaurantStorage {
       .where(eq(menuCategories.id, id));
   }
 
+  async createMenuCategoriesBulk(categories: InsertMenuCategory[]): Promise<MenuCategory[]> {
+    return await db.insert(menuCategories).values(categories).returning();
+  }
+
   // Menu Dishes
-  async getMenuDishes(branchId?: number, categoryId?: number): Promise<(MenuDish & { category: MenuCategory })[]> {
+  async getMenuDishes(branchId?: number, categoryId?: number): Promise<any[]> {
     let conditions = [eq(menuDishes.isActive, true)];
     
     if (branchId) {
@@ -122,8 +130,31 @@ export class RestaurantStorage {
     
     return await db
       .select({
-        ...menuDishes,
-        category: menuCategories,
+        id: menuDishes.id,
+        name: menuDishes.name,
+        price: menuDishes.price,
+        image: menuDishes.image,
+        categoryId: menuDishes.categoryId,
+        branchId: menuDishes.branchId,
+        description: menuDishes.description,
+        ingredients: menuDishes.ingredients,
+        isVegetarian: menuDishes.isVegetarian,
+        isVegan: menuDishes.isVegan,
+        spiceLevel: menuDishes.spiceLevel,
+        preparationTime: menuDishes.preparationTime,
+        isActive: menuDishes.isActive,
+        sortOrder: menuDishes.sortOrder,
+        createdAt: menuDishes.createdAt,
+        updatedAt: menuDishes.updatedAt,
+        category: {
+          id: menuCategories.id,
+          name: menuCategories.name,
+          branchId: menuCategories.branchId,
+          isActive: menuCategories.isActive,
+          sortOrder: menuCategories.sortOrder,
+          createdAt: menuCategories.createdAt,
+          updatedAt: menuCategories.updatedAt,
+        },
       })
       .from(menuDishes)
       .innerJoin(menuCategories, eq(menuDishes.categoryId, menuCategories.id))
@@ -155,6 +186,10 @@ export class RestaurantStorage {
       .update(menuDishes)
       .set({ isActive: false, updatedAt: sql`NOW()` })
       .where(eq(menuDishes.id, id));
+  }
+
+  async createMenuDishesBulk(dishes: InsertMenuDish[]): Promise<MenuDish[]> {
+    return await db.insert(menuDishes).values(dishes).returning();
   }
 
   // Restaurant Orders
