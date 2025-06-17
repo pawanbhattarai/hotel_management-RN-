@@ -286,6 +286,10 @@ export class RestaurantStorage {
 
   async updateRestaurantOrderStatus(id: string, status: string, userId?: string): Promise<RestaurantOrder> {
     return await db.transaction(async (tx) => {
+      // Get order details first to access tableId
+      const [order] = await tx.select().from(restaurantOrders).where(eq(restaurantOrders.id, id));
+      if (!order) throw new Error('Order not found');
+
       const updateData: any = { status, updatedAt: sql`NOW()` };
 
       if (status === 'served') {
