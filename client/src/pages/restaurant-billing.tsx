@@ -1,10 +1,9 @@
-
 import { useState } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
-import { Plus, Eye, Download, Receipt, CreditCard } from "lucide-react";
+import { Eye, Download, Receipt, CreditCard } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Input } from "@/components/ui/input";
@@ -20,9 +19,7 @@ import Sidebar from "@/components/layout/sidebar";
 import Header from "@/components/layout/header";
 import { useAuth } from "@/hooks/useAuth";
 
-const billSchema = z.object({
-  orderId: z.string().min(1, "Order is required"),
-  branchId: z.number().min(1, "Branch is required"),
+const checkoutSchema = z.object({
   paymentMethod: z.enum(["cash", "card", "upi", "online"]),
   discountAmount: z.number().min(0).optional(),
   discountPercentage: z.number().min(0).max(100).optional(),
@@ -32,11 +29,12 @@ const billSchema = z.object({
   customerPhone: z.string().optional(),
 });
 
-type BillFormData = z.infer<typeof billSchema>;
+type CheckoutFormData = z.infer<typeof checkoutSchema>;
 
 export default function RestaurantBilling() {
-  const [isDialogOpen, setIsDialogOpen] = useState(false);
+  const [isCheckoutModalOpen, setIsCheckoutModalOpen] = useState(false);
   const [viewingBill, setViewingBill] = useState<any>(null);
+  const [selectedOrder, setSelectedOrder] = useState<any>(null);
   const [isMobileSidebarOpen, setIsMobileSidebarOpen] = useState(false);
   const { toast } = useToast();
   const { user } = useAuth();
@@ -49,16 +47,12 @@ export default function RestaurantBilling() {
     queryKey: ['/api/restaurant/orders'],
   });
 
-  const { data: branches } = useQuery({
-    queryKey: ['/api/branches'],
-  });
-
   const { data: tables } = useQuery({
     queryKey: ['/api/restaurant/tables'],
   });
 
-  const createBillMutation = useMutation({
-    mutationFn: async (data: BillFormData) => {
+  const checkoutMutation = useMutation({
+    mutationFn: async (data: CheckoutFormData & { orderId: string }) => {
       // Get order details to calculate amounts
       const order = orders?.find((o: any) => o.id === data.orderId);
       if (!order) throw new Error('Order not found');
@@ -67,12 +61,12 @@ export default function RestaurantBilling() {
       const discountAmount = data.discountAmount || 0;
       const discountPercentage = data.discountPercentage || 0;
       const serviceChargePercentage = data.serviceChargePercentage || 10;
-      
+
       // Calculate discount
       const finalDiscountAmount = discountPercentage > 0 
         ? (subtotal * discountPercentage / 100)
         : discountAmount;
-      
+
       // Calculate amounts
       const afterDiscount = subtotal - finalDiscountAmount;
       const serviceChargeAmount = afterDiscount * serviceChargePercentage / 100;
@@ -82,7 +76,7 @@ export default function RestaurantBilling() {
       const billData = {
         orderId: data.orderId,
         tableId: order.tableId,
-        branchId: data.branchId,
+        branchId: order.branchId,
         customerName: data.customerName || "",
         customerPhone: data.customerPhone || "",
         subtotal: subtotal.toString(),
@@ -100,35 +94,49 @@ export default function RestaurantBilling() {
         notes: data.notes || "",
       };
 
-      const response = await fetch('/api/restaurant/bills', {
+      // Create bill
+      const billResponse = await fetch('/api/restaurant/bills', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(billData),
       });
-      if (!response.ok) {
-        const errorData = await response.json();
+      if (!billResponse.ok) {
+        const errorData = await billResponse.json();
         throw new Error(errorData.message || 'Failed to create bill');
       }
-      return response.json();
+
+      // Update order status to completed
+      const orderResponse = await fetch(`/api/restaurant/orders/${data.orderId}/status`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ status: 'completed' }),
+      });
+      if (!orderResponse.ok) {
+        throw new Error('Failed to complete order');
+      }
+
+      return billResponse.json();
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['/api/restaurant/bills'] });
       queryClient.invalidateQueries({ queryKey: ['/api/restaurant/orders'] });
-      setIsDialogOpen(false);
+      queryClient.invalidateQueries({ queryKey: ['/api/restaurant/tables'] });
+      setIsCheckoutModalOpen(false);
+      setSelectedOrder(null);
       resetForm();
-      toast({ title: "Bill created successfully" });
+      toast({ title: "Checkout completed successfully", description: "Table is now available for new orders." });
     },
     onError: (error: any) => {
       toast({ 
-        title: "Failed to create bill", 
+        title: "Failed to checkout", 
         description: error.message,
         variant: "destructive"
       });
     },
   });
 
-  const form = useForm<BillFormData>({
-    resolver: zodResolver(billSchema),
+  const form = useForm<CheckoutFormData>({
+    resolver: zodResolver(checkoutSchema),
     defaultValues: {
       paymentMethod: "cash",
       discountAmount: 0,
@@ -137,7 +145,6 @@ export default function RestaurantBilling() {
       notes: "",
       customerName: "",
       customerPhone: "",
-      branchId: user?.role !== "superadmin" ? user?.branchId : undefined,
     },
   });
 
@@ -150,12 +157,12 @@ export default function RestaurantBilling() {
       notes: "",
       customerName: "",
       customerPhone: "",
-      branchId: user?.role !== "superadmin" ? user?.branchId : undefined,
     });
   };
 
-  const onSubmit = (data: BillFormData) => {
-    createBillMutation.mutate(data);
+  const onSubmit = (data: CheckoutFormData) => {
+    if (!selectedOrder) return;
+    checkoutMutation.mutate({ ...data, orderId: selectedOrder.id });
   };
 
   const getPaymentMethodColor = (method: string) => {
@@ -168,13 +175,12 @@ export default function RestaurantBilling() {
     }
   };
 
-  const getCompletedOrders = () => {
+  const getServedOrders = () => {
     if (!orders || !bills) return [];
-    
-    // Get orders that are served or completed and don't have bills yet
-    // (served orders should auto-generate bills, but show as fallback)
+
+    // Get orders that are served and don't have bills yet
     return orders.filter((order: any) => 
-      (order.status === 'served' || order.status === 'completed') && 
+      order.status === 'served' && 
       !bills.some((bill: any) => bill.orderId === order.id)
     );
   };
@@ -185,21 +191,17 @@ export default function RestaurantBilling() {
   };
 
   const calculateBillPreview = () => {
-    const selectedOrderId = form.watch('orderId');
     const discountAmount = form.watch('discountAmount') || 0;
     const discountPercentage = form.watch('discountPercentage') || 0;
     const serviceChargePercentage = form.watch('serviceChargePercentage') || 10;
 
-    if (!selectedOrderId) return null;
+    if (!selectedOrder) return null;
 
-    const order = orders?.find((o: any) => o.id === selectedOrderId);
-    if (!order) return null;
-
-    const subtotal = parseFloat(order.subtotal || order.totalAmount || "0");
+    const subtotal = parseFloat(selectedOrder.subtotal || selectedOrder.totalAmount || "0");
     const finalDiscountAmount = discountPercentage > 0 
       ? (subtotal * discountPercentage / 100)
       : discountAmount;
-    
+
     const afterDiscount = subtotal - finalDiscountAmount;
     const serviceChargeAmount = afterDiscount * serviceChargePercentage / 100;
     const taxAmount = (afterDiscount + serviceChargeAmount) * 0.13;
@@ -216,78 +218,10 @@ export default function RestaurantBilling() {
 
   const billPreview = calculateBillPreview();
 
-  const markAsPaidMutation = useMutation({
-    mutationFn: async (bill: any) => {
-      const response = await fetch(`/api/restaurant/bills/${bill.id}`, {
-        method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          paymentStatus: 'paid',
-          paidAmount: bill.totalAmount,
-          changeAmount: "0",
-        }),
-      });
-      if (!response.ok) throw new Error('Failed to update bill');
-      return response.json();
-    },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['/api/restaurant/bills'] });
-      toast({ title: "Bill marked as paid successfully" });
-    },
-    onError: (error: any) => {
-      toast({ 
-        title: "Failed to mark bill as paid", 
-        description: error.message,
-        variant: "destructive"
-      });
-    },
-  });
-
-  const markAsPaid = (bill: any) => {
-    markAsPaidMutation.mutate(bill);
-  };
-
-  const checkoutMutation = useMutation({
-    mutationFn: async (bill: any) => {
-      // Update bill to paid status
-      const billResponse = await fetch(`/api/restaurant/bills/${bill.id}`, {
-        method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          paymentStatus: 'paid',
-          paidAmount: bill.totalAmount,
-          changeAmount: "0",
-        }),
-      });
-      if (!billResponse.ok) throw new Error('Failed to update bill');
-
-      // Update order status to completed
-      const orderResponse = await fetch(`/api/restaurant/orders/${bill.orderId}/status`, {
-        method: 'PATCH',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ status: 'completed' }),
-      });
-      if (!orderResponse.ok) throw new Error('Failed to complete order');
-
-      return billResponse.json();
-    },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['/api/restaurant/bills'] });
-      queryClient.invalidateQueries({ queryKey: ['/api/restaurant/orders'] });
-      queryClient.invalidateQueries({ queryKey: ['/api/restaurant/tables'] });
-      toast({ title: "Checkout completed successfully", description: "Table is now available for new orders." });
-    },
-    onError: (error: any) => {
-      toast({ 
-        title: "Failed to checkout", 
-        description: error.message,
-        variant: "destructive"
-      });
-    },
-  });
-
-  const handleCheckout = (bill: any) => {
-    checkoutMutation.mutate(bill);
+  const handleCheckout = (order: any) => {
+    setSelectedOrder(order);
+    setIsCheckoutModalOpen(true);
+    resetForm();
   };
 
   const generateInvoice = (bill: any) => {
@@ -325,254 +259,52 @@ export default function RestaurantBilling() {
           onMobileMenuToggle={() => setIsMobileSidebarOpen(!isMobileSidebarOpen)}
         />
         <main className="p-6">
-          {/* Add Button Section */}
-          <div className="mb-6">
-            <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
-              <DialogTrigger asChild>
-                <Button
-                  onClick={resetForm}
-                  className="w-full sm:w-auto bg-primary hover:bg-primary/90"
-                >
-                  <Plus className="h-4 w-4 mr-2" />
-                  Create Bill
-                </Button>
-              </DialogTrigger>
-              <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
-                <DialogHeader>
-                  <DialogTitle>Create New Bill</DialogTitle>
-                </DialogHeader>
-                <Form {...form}>
-                  <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                      <FormField
-                        control={form.control}
-                        name="orderId"
-                        render={({ field }) => (
-                          <FormItem className="md:col-span-2">
-                            <FormLabel>Order</FormLabel>
-                            <FormControl>
-                              <Select value={field.value} onValueChange={field.onChange}>
-                                <SelectTrigger>
-                                  <SelectValue placeholder="Select order to bill" />
-                                </SelectTrigger>
-                                <SelectContent>
-                                  {getCompletedOrders().map((order: any) => (
-                                    <SelectItem key={order.id} value={order.id}>
-                                      Order #{order.orderNumber} - {getTableName(order.tableId)} (Rs. {order.totalAmount})
-                                    </SelectItem>
-                                  ))}
-                                </SelectContent>
-                              </Select>
-                            </FormControl>
-                            <FormMessage />
-                          </FormItem>
-                        )}
-                      />
+          {/* Orders Ready for Checkout */}
+          <Card className="mb-6">
+            <CardHeader>
+              <CardTitle>Orders Ready for Checkout</CardTitle>
+            </CardHeader>
+            <CardContent>
+              {getServedOrders().length > 0 ? (
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead>Order #</TableHead>
+                      <TableHead>Table</TableHead>
+                      <TableHead>Items</TableHead>
+                      <TableHead>Total</TableHead>
+                      <TableHead>Actions</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {getServedOrders().map((order: any) => (
+                      <TableRow key={order.id}>
+                        <TableCell className="font-medium">#{order.orderNumber}</TableCell>
+                        <TableCell>{getTableName(order.tableId)}</TableCell>
+                        <TableCell>{order.items?.length || 0} items</TableCell>
+                        <TableCell>Rs. {order.totalAmount}</TableCell>
+                        <TableCell>
+                          <Button
+                            onClick={() => handleCheckout(order)}
+                            className="bg-green-600 hover:bg-green-700"
+                          >
+                            <CreditCard className="h-4 w-4 mr-2" />
+                            Checkout
+                          </Button>
+                        </TableCell>
+                      </TableRow>
+                    ))}
+                  </TableBody>
+                </Table>
+              ) : (
+                <div className="text-center py-8 text-gray-500">
+                  No orders ready for checkout. Orders must be served before checkout.
+                </div>
+              )}
+            </CardContent>
+          </Card>
 
-                      {user?.role === "superadmin" && (
-                        <FormField
-                          control={form.control}
-                          name="branchId"
-                          render={({ field }) => (
-                            <FormItem>
-                              <FormLabel>Branch</FormLabel>
-                              <FormControl>
-                                <Select 
-                                  value={field.value?.toString()} 
-                                  onValueChange={(value) => field.onChange(parseInt(value))}
-                                >
-                                  <SelectTrigger>
-                                    <SelectValue placeholder="Select branch" />
-                                  </SelectTrigger>
-                                  <SelectContent>
-                                    {branches?.map((branch: any) => (
-                                      <SelectItem key={branch.id} value={branch.id.toString()}>
-                                        {branch.name}
-                                      </SelectItem>
-                                    ))}
-                                  </SelectContent>
-                                </Select>
-                              </FormControl>
-                              <FormMessage />
-                            </FormItem>
-                          )}
-                        />
-                      )}
-
-                      <FormField
-                        control={form.control}
-                        name="customerName"
-                        render={({ field }) => (
-                          <FormItem>
-                            <FormLabel>Customer Name (Optional)</FormLabel>
-                            <FormControl>
-                              <Input {...field} placeholder="Customer name" />
-                            </FormControl>
-                            <FormMessage />
-                          </FormItem>
-                        )}
-                      />
-
-                      <FormField
-                        control={form.control}
-                        name="customerPhone"
-                        render={({ field }) => (
-                          <FormItem>
-                            <FormLabel>Customer Phone (Optional)</FormLabel>
-                            <FormControl>
-                              <Input {...field} placeholder="Customer phone" />
-                            </FormControl>
-                            <FormMessage />
-                          </FormItem>
-                        )}
-                      />
-
-                      <FormField
-                        control={form.control}
-                        name="paymentMethod"
-                        render={({ field }) => (
-                          <FormItem>
-                            <FormLabel>Payment Method</FormLabel>
-                            <FormControl>
-                              <Select value={field.value} onValueChange={field.onChange}>
-                                <SelectTrigger>
-                                  <SelectValue />
-                                </SelectTrigger>
-                                <SelectContent>
-                                  <SelectItem value="cash">Cash</SelectItem>
-                                  <SelectItem value="card">Card</SelectItem>
-                                  <SelectItem value="upi">UPI</SelectItem>
-                                  <SelectItem value="online">Online</SelectItem>
-                                </SelectContent>
-                              </Select>
-                            </FormControl>
-                            <FormMessage />
-                          </FormItem>
-                        )}
-                      />
-
-                      <FormField
-                        control={form.control}
-                        name="serviceChargePercentage"
-                        render={({ field }) => (
-                          <FormItem>
-                            <FormLabel>Service Charge (%)</FormLabel>
-                            <FormControl>
-                              <Input 
-                                {...field} 
-                                type="number" 
-                                step="0.1"
-                                min="0"
-                                max="100"
-                                onChange={(e) => field.onChange(parseFloat(e.target.value) || 0)}
-                              />
-                            </FormControl>
-                            <FormMessage />
-                          </FormItem>
-                        )}
-                      />
-
-                      <FormField
-                        control={form.control}
-                        name="discountPercentage"
-                        render={({ field }) => (
-                          <FormItem>
-                            <FormLabel>Discount (%)</FormLabel>
-                            <FormControl>
-                              <Input 
-                                {...field} 
-                                type="number" 
-                                step="0.1"
-                                min="0"
-                                max="100"
-                                onChange={(e) => field.onChange(parseFloat(e.target.value) || 0)}
-                              />
-                            </FormControl>
-                            <FormMessage />
-                          </FormItem>
-                        )}
-                      />
-
-                      <FormField
-                        control={form.control}
-                        name="discountAmount"
-                        render={({ field }) => (
-                          <FormItem>
-                            <FormLabel>Discount Amount (Rs.)</FormLabel>
-                            <FormControl>
-                              <Input 
-                                {...field} 
-                                type="number" 
-                                step="0.01"
-                                min="0"
-                                onChange={(e) => field.onChange(parseFloat(e.target.value) || 0)}
-                              />
-                            </FormControl>
-                            <FormMessage />
-                          </FormItem>
-                        )}
-                      />
-
-                      <FormField
-                        control={form.control}
-                        name="notes"
-                        render={({ field }) => (
-                          <FormItem className="md:col-span-2">
-                            <FormLabel>Notes</FormLabel>
-                            <FormControl>
-                              <Textarea {...field} placeholder="Additional notes..." />
-                            </FormControl>
-                            <FormMessage />
-                          </FormItem>
-                        )}
-                      />
-                    </div>
-
-                    {/* Bill Preview */}
-                    {billPreview && (
-                      <div className="border rounded-lg p-4 bg-gray-50">
-                        <h3 className="font-semibold mb-3">Bill Preview</h3>
-                        <div className="space-y-2 text-sm">
-                          <div className="flex justify-between">
-                            <span>Subtotal:</span>
-                            <span>Rs. {billPreview.subtotal.toFixed(2)}</span>
-                          </div>
-                          {billPreview.discountAmount > 0 && (
-                            <div className="flex justify-between text-green-600">
-                              <span>Discount:</span>
-                              <span>- Rs. {billPreview.discountAmount.toFixed(2)}</span>
-                            </div>
-                          )}
-                          <div className="flex justify-between">
-                            <span>Service Charge:</span>
-                            <span>Rs. {billPreview.serviceChargeAmount.toFixed(2)}</span>
-                          </div>
-                          <div className="flex justify-between">
-                            <span>Tax (13%):</span>
-                            <span>Rs. {billPreview.taxAmount.toFixed(2)}</span>
-                          </div>
-                          <div className="flex justify-between text-lg font-bold border-t pt-2">
-                            <span>Total Amount:</span>
-                            <span>Rs. {billPreview.totalAmount.toFixed(2)}</span>
-                          </div>
-                        </div>
-                      </div>
-                    )}
-
-                    <div className="flex justify-end gap-2">
-                      <Button type="button" variant="outline" onClick={() => setIsDialogOpen(false)}>
-                        Cancel
-                      </Button>
-                      <Button type="submit" disabled={createBillMutation.isPending}>
-                        {createBillMutation.isPending ? "Creating..." : "Create Bill"}
-                      </Button>
-                    </div>
-                  </form>
-                </Form>
-              </DialogContent>
-            </Dialog>
-          </div>
-
+          {/* All Bills */}
           <Card>
             <CardHeader>
               <CardTitle>All Bills</CardTitle>
@@ -609,8 +341,8 @@ export default function RestaurantBilling() {
                               <Badge className={`${getPaymentMethodColor(bill.paymentMethod)} text-white`}>
                                 {bill.paymentMethod}
                               </Badge>
-                              <Badge variant={bill.paymentStatus === 'paid' ? 'default' : 'destructive'}>
-                                {bill.paymentStatus}
+                              <Badge variant="default">
+                                paid
                               </Badge>
                             </div>
                           </TableCell>
@@ -625,31 +357,6 @@ export default function RestaurantBilling() {
                               >
                                 <Eye className="h-4 w-4" />
                               </Button>
-                              {bill.paymentStatus === 'pending' && (
-                                <Button
-                                  variant="default"
-                                  size="sm"
-                                  onClick={() => markAsPaid(bill)}
-                                >
-                                  Mark Paid
-                                </Button>
-                              )}
-                              {bill.paymentStatus === 'paid' && bill.order?.status !== 'completed' && (
-                                <Button
-                                  variant="default"
-                                  size="sm"
-                                  onClick={() => handleCheckout(bill)}
-                                  disabled={checkoutMutation.isPending}
-                                  className="bg-green-600 hover:bg-green-700"
-                                >
-                                  {checkoutMutation.isPending ? "Processing..." : "Checkout"}
-                                </Button>
-                              )}
-                              {bill.order?.status === 'completed' && (
-                                <div className="text-green-600 font-medium text-sm">
-                                  ✓ Completed
-                                </div>
-                              )}
                               <Button
                                 variant="outline"
                                 size="sm"
@@ -664,7 +371,7 @@ export default function RestaurantBilling() {
                     ) : (
                       <TableRow>
                         <TableCell colSpan={8} className="text-center py-8 text-gray-500">
-                          No bills found. Create your first bill to get started.
+                          No bills found. Complete orders to generate bills automatically.
                         </TableCell>
                       </TableRow>
                     )}
@@ -673,6 +380,220 @@ export default function RestaurantBilling() {
               )}
             </CardContent>
           </Card>
+
+          {/* Checkout Modal */}
+          <Dialog open={isCheckoutModalOpen} onOpenChange={setIsCheckoutModalOpen}>
+            <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
+              <DialogHeader>
+                <DialogTitle>
+                  <Receipt className="mr-2 h-5 w-5 inline" />
+                  Checkout Order #{selectedOrder?.orderNumber}
+                </DialogTitle>
+              </DialogHeader>
+              <Form {...form}>
+                <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <FormField
+                      control={form.control}
+                      name="customerName"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>Customer Name (Optional)</FormLabel>
+                          <FormControl>
+                            <Input {...field} placeholder="Customer name" />
+                          </FormControl>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+
+                    <FormField
+                      control={form.control}
+                      name="customerPhone"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>Customer Phone (Optional)</FormLabel>
+                          <FormControl>
+                            <Input {...field} placeholder="Customer phone" />
+                          </FormControl>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+
+                    <FormField
+                      control={form.control}
+                      name="paymentMethod"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>Payment Method</FormLabel>
+                          <FormControl>
+                            <Select value={field.value} onValueChange={field.onChange}>
+                              <SelectTrigger>
+                                <SelectValue />
+                              </SelectTrigger>
+                              <SelectContent>
+                                <SelectItem value="cash">Cash</SelectItem>
+                                <SelectItem value="card">Card</SelectItem>
+                                <SelectItem value="upi">UPI</SelectItem>
+                                <SelectItem value="online">Online</SelectItem>
+                              </SelectContent>
+                            </Select>
+                          </FormControl>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+
+                    <FormField
+                      control={form.control}
+                      name="serviceChargePercentage"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>Service Charge (%)</FormLabel>
+                          <FormControl>
+                            <Input 
+                              {...field} 
+                              type="number" 
+                              step="0.1"
+                              min="0"
+                              max="100"
+                              onChange={(e) => field.onChange(parseFloat(e.target.value) || 0)}
+                            />
+                          </FormControl>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+
+                    <FormField
+                      control={form.control}
+                      name="discountPercentage"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>Discount (%)</FormLabel>
+                          <FormControl>
+                            <Input 
+                              {...field} 
+                              type="number" 
+                              step="0.1"
+                              min="0"
+                              max="100"
+                              onChange={(e) => field.onChange(parseFloat(e.target.value) || 0)}
+                            />
+                          </FormControl>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+
+                    <FormField
+                      control={form.control}
+                      name="discountAmount"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>Discount Amount (Rs.)</FormLabel>
+                          <FormControl>
+                            <Input 
+                              {...field} 
+                              type="number" 
+                              step="0.01"
+                              min="0"
+                              onChange={(e) => field.onChange(parseFloat(e.target.value) || 0)}
+                            />
+                          </FormControl>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+
+                    <FormField
+                      control={form.control}
+                      name="notes"
+                      render={({ field }) => (
+                        <FormItem className="md:col-span-2">
+                          <FormLabel>Notes</FormLabel>
+                          <FormControl>
+                            <Textarea {...field} placeholder="Additional notes..." />
+                          </FormControl>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+                  </div>
+
+                  {/* Order Items Preview */}
+                  {selectedOrder?.items && (
+                    <div>
+                      <h3 className="font-semibold mb-2">Order Items</h3>
+                      <div className="overflow-x-auto">
+                        <Table>
+                          <TableHeader>
+                            <TableRow>
+                              <TableHead>Item</TableHead>
+                              <TableHead>Price</TableHead>
+                              <TableHead>Qty</TableHead>
+                              <TableHead>Total</TableHead>
+                            </TableRow>
+                          </TableHeader>
+                          <TableBody>
+                            {selectedOrder.items.map((item: any) => (
+                              <TableRow key={item.id}>
+                                <TableCell className="font-medium">{item.dish?.name}</TableCell>
+                                <TableCell>Rs. {item.unitPrice}</TableCell>
+                                <TableCell>{item.quantity}</TableCell>
+                                <TableCell>Rs. {(parseFloat(item.unitPrice) * item.quantity).toFixed(2)}</TableCell>
+                              </TableRow>
+                            ))}
+                          </TableBody>
+                        </Table>
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Bill Preview */}
+                  {billPreview && (
+                    <div className="border rounded-lg p-4 bg-gray-50">
+                      <h3 className="font-semibold mb-3">Bill Preview</h3>
+                      <div className="space-y-2 text-sm">
+                        <div className="flex justify-between">
+                          <span>Subtotal:</span>
+                          <span>Rs. {billPreview.subtotal.toFixed(2)}</span>
+                        </div>
+                        {billPreview.discountAmount > 0 && (
+                          <div className="flex justify-between text-green-600">
+                            <span>Discount:</span>
+                            <span>- Rs. {billPreview.discountAmount.toFixed(2)}</span>
+                          </div>
+                        )}
+                        <div className="flex justify-between">
+                          <span>Service Charge:</span>
+                          <span>Rs. {billPreview.serviceChargeAmount.toFixed(2)}</span>
+                        </div>
+                        <div className="flex justify-between">
+                          <span>Tax (13%):</span>
+                          <span>Rs. {billPreview.taxAmount.toFixed(2)}</span>
+                        </div>
+                        <div className="flex justify-between text-lg font-bold border-t pt-2">
+                          <span>Total Amount:</span>
+                          <span>Rs. {billPreview.totalAmount.toFixed(2)}</span>
+                        </div>
+                      </div>
+                    </div>
+                  )}
+
+                  <div className="flex justify-end gap-2">
+                    <Button type="button" variant="outline" onClick={() => setIsCheckoutModalOpen(false)}>
+                      Cancel
+                    </Button>
+                    <Button type="submit" disabled={checkoutMutation.isPending}>
+                      {checkoutMutation.isPending ? "Processing..." : "Complete Checkout"}
+                    </Button>
+                  </div>
+                </form>
+              </Form>
+            </DialogContent>
+          </Dialog>
 
           {/* View Bill Modal */}
           {viewingBill && (
@@ -779,20 +700,6 @@ export default function RestaurantBilling() {
                   )}
 
                   <div className="flex justify-end space-x-2">
-                    {viewingBill.paymentStatus === 'paid' && viewingBill.order?.status !== 'completed' && (
-                      <Button
-                        onClick={() => handleCheckout(viewingBill)}
-                        disabled={checkoutMutation.isPending}
-                        className="bg-green-600 hover:bg-green-700"
-                      >
-                        {checkoutMutation.isPending ? "Processing..." : "Checkout & Complete"}
-                      </Button>
-                    )}
-                    {viewingBill.order?.status === 'completed' && (
-                      <div className="text-green-600 font-medium">
-                        ✓ Order Completed
-                      </div>
-                    )}
                     <Button onClick={() => generateInvoice(viewingBill)}>
                       <Download className="mr-2 h-4 w-4" />
                       Download Invoice
