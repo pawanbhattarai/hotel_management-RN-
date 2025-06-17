@@ -367,6 +367,13 @@ export default function RestaurantMenu() {
                     </Form>
                   </DialogContent>
                 </Dialog>
+                <BulkOperations 
+                  type="categories" 
+                  branches={branches || []} 
+                  onSuccess={() => {
+                    queryClient.invalidateQueries({ queryKey: ['/api/restaurant/categories'] });
+                  }} 
+                />
               </div>
 
               <Card>
@@ -433,7 +440,7 @@ export default function RestaurantMenu() {
 
             <TabsContent value="dishes" className="space-y-6">
               {/* Add Button Section for Dishes */}
-              <div className="mb-6">
+              <div className="mb-6 flex flex-col sm:flex-row gap-4">
                 <Dialog open={isDishDialogOpen} onOpenChange={setIsDishDialogOpen}>
                   <DialogTrigger asChild>
                     <Button
@@ -605,6 +612,14 @@ export default function RestaurantMenu() {
                     </Form>
                   </DialogContent>
                 </Dialog>
+                <BulkOperations 
+                  type="dishes" 
+                  branches={branches || []} 
+                  categories={categories || []}
+                  onSuccess={() => {
+                    queryClient.invalidateQueries({ queryKey: ['/api/restaurant/dishes'] });
+                  }} 
+                />
               </div>
 
               <Card>

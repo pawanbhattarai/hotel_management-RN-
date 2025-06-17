@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { Plus, Edit2, Trash2 } from "lucide-react";
+import BulkOperations from "@/components/bulk-operations";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
@@ -159,7 +160,7 @@ export default function RestaurantTables() {
         />
         <main className="p-6">
           {/* Add Button Section */}
-          <div className="mb-6">
+          <div className="mb-6 flex flex-col sm:flex-row gap-4">
             <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
               <DialogTrigger asChild>
                 <Button
