@@ -164,11 +164,16 @@ export default function RestaurantOrders() {
       branchId = user?.branchId || 1;
     }
 
+    const subtotal = calculateSubtotal();
+    const taxAmount = subtotal * 0.1; // 10% tax
+    const total = subtotal + taxAmount;
+
     const orderData = {
       tableId: selectedTable.id,
       branchId: branchId,
-      subtotal: calculateSubtotal().toString(),
-      totalAmount: calculateTotal().toString(),
+      subtotal: subtotal.toString(),
+      taxAmount: taxAmount.toString(),
+      totalAmount: total.toString(),
       notes: data.notes || "",
       status: "pending",
     };
