@@ -487,13 +487,46 @@ export class RestaurantStorage {
     return result;
   }
 
-  async updateRestaurantBill(id: string, bill: Partial<InsertRestaurantBill>): Promise<RestaurantBill> {
-    const [result] = await db
+  async updateRestaurantBill(id: string, billData: Partial<any>): Promise<any> {
+    const [updatedBill] = await db
       .update(restaurantBills)
-      .set({ ...bill, updatedAt: sql`NOW()` })
+      .set({ ...billData, updatedAt: new Date() })
       .where(eq(restaurantBills.id, id))
       .returning();
-    return result;
+
+    if (!updatedBill) {
+      throw new Error('Bill not found');
+    }
+
+    // Return the updated bill with related data
+    const billWithRelations = await db
+      .select()
+      .from(restaurantBills)
+      .where(eq(restaurantBills.id, id));
+
+    if (billWithRelations.length === 0) {
+      throw new Error('Bill not found after update');
+    }
+
+    const bill = billWithRelations[0];
+
+    // Get order data
+    const [order] = await db
+      .select()
+      .from(restaurantOrders)
+      .where(eq(restaurantOrders.id, bill.orderId));
+
+    // Get table data
+    const [table] = await db
+      .select()
+      .from(restaurantTables)
+      .where(eq(restaurantTables.id, bill.tableId));
+
+    return {
+      ...bill,
+      order: order || null,
+      table: table || null,
+    };
   }
 
   // KOT/BOT Operations
