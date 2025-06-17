@@ -21,6 +21,7 @@ import {
   ClipboardList,
   Utensils,
   User,
+  Bell,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { ScrollArea } from "@/components/ui/scroll-area";
@@ -51,8 +52,6 @@ export default function Sidebar({
   const [isSetupExpanded, setIsSetupExpanded] = useState(false);
   const [isRMSExpanded, setIsRMSExpanded] = useState(false);
   const [isMenuExpanded, setIsMenuExpanded] = useState(false);
-  const [isCategoryExpanded, setIsCategoryExpanded] = useState(false);
-  const [isDishesExpanded, setIsDishesExpanded] = useState(false);
 
   // Use props if provided, otherwise use internal state
   const isMenuOpen = setIsMobileMenuOpen
@@ -75,9 +74,22 @@ export default function Sidebar({
       } else {
         setIsMenuExpanded(false);
       }
-    } else if (["/room-types", "/branches", "/users"].includes(currentPath)) {
+    } else if (
+      [
+        "/branches",
+        "/users",
+        "/settings",
+        "/profile",
+        "/notifications",
+      ].includes(currentPath)
+    ) {
       setIsSetupExpanded(true);
-      setIsPMSExpanded(true); // Keep PMS expanded for setup items
+      setIsPMSExpanded(false);
+      setIsRMSExpanded(false);
+      setIsMenuExpanded(false);
+    } else if (currentPath === "/room-types") {
+      setIsPMSExpanded(true);
+      setIsSetupExpanded(false);
       setIsRMSExpanded(false);
       setIsMenuExpanded(false);
     } else {
@@ -263,81 +275,23 @@ export default function Sidebar({
                   </button>
                 )}
 
-                {/* Setup Section */}
-                <Collapsible
-                  open={isSetupExpanded}
-                  onOpenChange={setIsSetupExpanded}
-                >
-                  <CollapsibleTrigger className="w-full flex items-center justify-between px-3 py-2 text-left hover:bg-gray-100 rounded-lg ml-4">
-                    <span className="text-xs font-semibold text-gray-500 uppercase tracking-wide">
-                      Setup
-                    </span>
-                    {isSetupExpanded ? (
-                      <ChevronDown className="h-4 w-4 text-gray-500" />
-                    ) : (
-                      <ChevronRight className="h-4 w-4 text-gray-500" />
-                    )}
-                  </CollapsibleTrigger>
-                  <CollapsibleContent className="space-y-1 mt-2">
-                    {/* Room Types */}
-                    {hasAccess(["superadmin"]) && (
-                      <button
-                        onClick={() => {
-                          navigate("/room-types");
-                          setMenuOpen(false);
-                        }}
-                        className={`w-full flex items-center px-3 py-2 lg:py-2.5 text-left rounded-lg transition-colors ml-8 ${
-                          isActiveRoute("/room-types")
-                            ? "bg-primary text-white"
-                            : "text-gray-700 hover:bg-gray-100"
-                        }`}
-                      >
-                        <SquareStack className="mr-3 h-4 w-4 flex-shrink-0" />
-                        <span className="text-sm font-medium">Room Types</span>
-                      </button>
-                    )}
-
-                    {/* Branch Management */}
-                    {hasAccess(["superadmin"]) && (
-                      <button
-                        onClick={() => {
-                          navigate("/branches");
-                          setMenuOpen(false);
-                        }}
-                        className={`w-full flex items-center px-3 py-2 lg:py-2.5 text-left rounded-lg transition-colors ml-8 ${
-                          isActiveRoute("/branches")
-                            ? "bg-primary text-white"
-                            : "text-gray-700 hover:bg-gray-100"
-                        }`}
-                      >
-                        <Building2 className="mr-3 h-4 w-4 flex-shrink-0" />
-                        <span className="text-sm font-medium">
-                          Branch Management
-                        </span>
-                      </button>
-                    )}
-
-                    {/* User Management */}
-                    {hasAccess(["superadmin"]) && (
-                      <button
-                        onClick={() => {
-                          navigate("/users");
-                          setMenuOpen(false);
-                        }}
-                        className={`w-full flex items-center px-3 py-2 lg:py-2.5 text-left rounded-lg transition-colors ml-8 ${
-                          isActiveRoute("/users")
-                            ? "bg-primary text-white"
-                            : "text-gray-700 hover:bg-gray-100"
-                        }`}
-                      >
-                        <UserCheck className="mr-3 h-4 w-4 flex-shrink-0" />
-                        <span className="text-sm font-medium">
-                          User Management
-                        </span>
-                      </button>
-                    )}
-                  </CollapsibleContent>
-                </Collapsible>
+                {/* Room Types */}
+                {hasAccess(["superadmin"]) && (
+                  <button
+                    onClick={() => {
+                      navigate("/room-types");
+                      setMenuOpen(false);
+                    }}
+                    className={`w-full flex items-center px-3 py-2 lg:py-2.5 text-left rounded-lg transition-colors ml-4 ${
+                      isActiveRoute("/room-types")
+                        ? "bg-primary text-white"
+                        : "text-gray-700 hover:bg-gray-100"
+                    }`}
+                  >
+                    <SquareStack className="mr-3 h-4 w-4 flex-shrink-0" />
+                    <span className="text-sm font-medium">Room Types</span>
+                  </button>
+                )}
               </CollapsibleContent>
             </Collapsible>
 
@@ -404,12 +358,10 @@ export default function Sidebar({
                           }`}
                         >
                           <MenuIcon className="mr-3 h-4 w-4 flex-shrink-0" />
-                          <span className="text-sm font-medium">
-                            Category
-                          </span>
+                          <span className="text-sm font-medium">Category</span>
                         </button>
-                         {/* Dishes */}
-                         <button
+                        {/* Dishes */}
+                        <button
                           onClick={() => {
                             navigate("/restaurant/dishes");
                             setMenuOpen(false);
@@ -421,9 +373,7 @@ export default function Sidebar({
                           }`}
                         >
                           <ChefHat className="mr-3 h-4 w-4 flex-shrink-0" />
-                          <span className="text-sm font-medium">
-                            Dishes
-                          </span>
+                          <span className="text-sm font-medium">Dishes</span>
                         </button>
                       </CollapsibleContent>
                     </Collapsible>
@@ -489,61 +439,133 @@ export default function Sidebar({
               </div>
             )}
 
-            {/* Notifications Section */}
-            {user &&
-              ["superadmin", "branch-admin"].includes((user as any).role) && (
-                <div className="border-t border-gray-200 pt-4 mt-4">
-                  <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-2 px-3">
-                    NOTIFICATIONS
-                  </p>
-                  <div className="px-3 py-1" style={{ pointerEvents: "auto" }}>
-                    <NotificationManager />
-                  </div>
-                </div>
-              )}
-
-            {/* Profile Section */}
+            {/* Setup Section */}
             <div className="border-t border-gray-200 pt-4 mt-4">
-              <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-2 px-3">
-                PROFILE
-              </p>
-              <div className="space-y-1">
-                {/* Profile */}
-                {hasAccess(["superadmin", "branch-admin", "front-desk"]) && (
-                  <button
-                    onClick={() => {
-                      navigate("/profile");
-                      setMenuOpen(false);
-                    }}
-                    className={`w-full flex items-center px-3 py-2 lg:py-2.5 text-left rounded-lg transition-colors ml-4 ${
-                      isActiveRoute("/profile")
-                        ? "bg-primary text-white"
-                        : "text-gray-700 hover:bg-gray-100"
-                    }`}
-                  >
-                    <User className="mr-3 h-4 w-4 flex-shrink-0" />
-                    <span className="text-sm font-medium">Profile</span>
-                  </button>
-                )}
+              <Collapsible
+                open={isSetupExpanded}
+                onOpenChange={setIsSetupExpanded}
+              >
+                <CollapsibleTrigger className="w-full flex items-center justify-between px-3 py-2 text-left hover:bg-gray-100 rounded-lg">
+                  <span className="text-xs font-semibold text-gray-500 uppercase tracking-wide">
+                    Setup
+                  </span>
+                  {isSetupExpanded ? (
+                    <ChevronDown className="h-4 w-4 text-gray-500" />
+                  ) : (
+                    <ChevronRight className="h-4 w-4 text-gray-500" />
+                  )}
+                </CollapsibleTrigger>
+                <CollapsibleContent className="space-y-1 mt-2">
+                  {/* Branch Management */}
+                  {hasAccess(["superadmin"]) && (
+                    <button
+                      onClick={() => {
+                        navigate("/branches");
+                        setMenuOpen(false);
+                      }}
+                      className={`w-full flex items-center px-3 py-2 lg:py-2.5 text-left rounded-lg transition-colors ml-4 ${
+                        isActiveRoute("/branches")
+                          ? "bg-primary text-white"
+                          : "text-gray-700 hover:bg-gray-100"
+                      }`}
+                    >
+                      <Building2 className="mr-3 h-4 w-4 flex-shrink-0" />
+                      <span className="text-sm font-medium">
+                        Branch Management
+                      </span>
+                    </button>
+                  )}
 
-                {/* Settings */}
-                {hasAccess(["superadmin"]) && (
-                  <button
-                    onClick={() => {
-                      navigate("/settings");
-                      setMenuOpen(false);
-                    }}
-                    className={`w-full flex items-center px-3 py-2 lg:py-2.5 text-left rounded-lg transition-colors ml-4 ${
-                      isActiveRoute("/settings")
-                        ? "bg-primary text-white"
-                        : "text-gray-700 hover:bg-gray-100"
-                    }`}
-                  >
-                    <Settings className="mr-3 h-4 w-4 flex-shrink-0" />
-                    <span className="text-sm font-medium">Settings</span>
-                  </button>
-                )}
-              </div>
+                  {/* User Management */}
+                  {hasAccess(["superadmin"]) && (
+                    <button
+                      onClick={() => {
+                        navigate("/users");
+                        setMenuOpen(false);
+                      }}
+                      className={`w-full flex items-center px-3 py-2 lg:py-2.5 text-left rounded-lg transition-colors ml-4 ${
+                        isActiveRoute("/users")
+                          ? "bg-primary text-white"
+                          : "text-gray-700 hover:bg-gray-100"
+                      }`}
+                    >
+                      <UserCheck className="mr-3 h-4 w-4 flex-shrink-0" />
+                      <span className="text-sm font-medium">
+                        User Management
+                      </span>
+                    </button>
+                  )}
+
+                  {/* Settings */}
+                  {hasAccess(["superadmin"]) && (
+                    <button
+                      onClick={() => {
+                        navigate("/settings");
+                        setMenuOpen(false);
+                      }}
+                      className={`w-full flex items-center px-3 py-2 lg:py-2.5 text-left rounded-lg transition-colors ml-4 ${
+                        isActiveRoute("/settings")
+                          ? "bg-primary text-white"
+                          : "text-gray-700 hover:bg-gray-100"
+                      }`}
+                    >
+                      <Settings className="mr-3 h-4 w-4 flex-shrink-0" />
+                      <span className="text-sm font-medium">Settings</span>
+                    </button>
+                  )}
+
+                  {/* Profile */}
+                  {hasAccess(["superadmin", "branch-admin", "front-desk"]) && (
+                    <button
+                      onClick={() => {
+                        navigate("/profile");
+                        setMenuOpen(false);
+                      }}
+                      className={`w-full flex items-center px-3 py-2 lg:py-2.5 text-left rounded-lg transition-colors ml-4 ${
+                        isActiveRoute("/profile")
+                          ? "bg-primary text-white"
+                          : "text-gray-700 hover:bg-gray-100"
+                      }`}
+                    >
+                      <User className="mr-3 h-4 w-4 flex-shrink-0" />
+                      <span className="text-sm font-medium">Profile</span>
+                    </button>
+                  )}
+
+                  {/* Notifications */}
+                  {user &&
+                    ["superadmin", "branch-admin"].includes(
+                      (user as any).role,
+                    ) && (
+                      <div>
+                        <button
+                          onClick={() => {
+                            navigate("/notifications");
+                            setMenuOpen(false);
+                          }}
+                          className={`w-full flex items-center px-3 py-2 lg:py-2.5 text-left rounded-lg transition-colors ml-4 ${
+                            isActiveRoute("/notifications")
+                              ? "bg-primary text-white"
+                              : "text-gray-700 hover:bg-gray-100"
+                          }`}
+                        >
+                          <Bell className="mr-3 h-4 w-4 flex-shrink-0" />
+                          <span className="text-sm font-medium">
+                            Notifications
+                          </span>
+                        </button>
+
+                        {/* Notification Manager */}
+                        <div
+                          className="px-3 py-1 ml-4"
+                          style={{ pointerEvents: "auto" }}
+                        >
+                          <NotificationManager />
+                        </div>
+                      </div>
+                    )}
+                </CollapsibleContent>
+              </Collapsible>
             </div>
           </nav>
         </ScrollArea>
