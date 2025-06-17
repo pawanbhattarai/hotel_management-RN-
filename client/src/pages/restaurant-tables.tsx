@@ -271,6 +271,13 @@ export default function RestaurantTables() {
                 </Form>
               </DialogContent>
             </Dialog>
+            <BulkOperations 
+              type="tables" 
+              branches={branches || []} 
+              onSuccess={() => {
+                queryClient.invalidateQueries({ queryKey: ['/api/restaurant/tables'] });
+              }} 
+            />
           </div>
 
           <Card>
