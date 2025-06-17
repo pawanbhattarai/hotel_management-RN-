@@ -151,7 +151,8 @@ export default function RestaurantOrders() {
         dishId: item.dishId,
         quantity: item.quantity,
         unitPrice: item.unitPrice,
-        notes: item.notes,
+        totalPrice: (parseFloat(item.unitPrice) * item.quantity).toString(),
+        specialInstructions: item.notes,
       })),
     });
   };
