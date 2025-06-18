@@ -69,7 +69,7 @@ export default function Billing() {
     enabled: isAuthenticated,
   });
 
-  const { data: hotelSettings } = useQuery({
+  const { data: hotelSettings } = useQuery<HotelSettings>({
     queryKey: ["/api/hotel-settings"],
     enabled: isAuthenticated,
   });
@@ -650,12 +650,9 @@ export default function Billing() {
     return symbols[currency] || currency;
   };
 
-  const currencySymbol =
-    hotelSettings &&
-    typeof hotelSettings === "object" &&
-    "currency" in hotelSettings
-      ? getCurrencySymbol(hotelSettings.currency || "NPR")
-      : "Rs.";
+  const currencySymbol = hotelSettings?.currency
+    ? getCurrencySymbol(hotelSettings.currency)
+    : "Rs.";
 
   const calculateBillPreview = () => {
     if (!selectedReservation) return null;

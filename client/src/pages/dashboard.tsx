@@ -76,7 +76,7 @@ export default function Dashboard() {
         <main className="content-wrapper">
           {/* Super Admin Global Overview */}
           {isSuperAdmin && superAdminMetrics && (
-            <div className="mb-6">
+            <div className="mb-6" style={{ display: 'contents' }}>
 
               {/* Branch Performance Cards */}
               <Card className="mb-6">
@@ -91,7 +91,7 @@ export default function Dashboard() {
                 </CardHeader>
                 <CardContent>
                   <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-                    {superAdminMetrics.branchMetrics?.map((branch: any) => (
+                    {(superAdminMetrics as any)?.branchMetrics?.map((branch: any) => (
                       <Card key={branch.branchId} className="border-l-4 border-l-primary">
                         <CardHeader className="pb-3">
                           <div className="flex items-center justify-between">
@@ -132,7 +132,7 @@ export default function Dashboard() {
           <MetricsCards />
 
           {/* Show branch metrics only for super admin */}
-          {!isSuperAdmin && user?.role === "superadmin" && <BranchMetrics />}
+          {!isSuperAdmin && (user as any)?.role === "superadmin" && <BranchMetrics />}
 
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 lg:gap-6 mb-6 lg:mb-8">
             <RecentReservations />
