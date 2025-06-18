@@ -1003,7 +1003,7 @@ export default function Billing() {
                       <TableHead>Room</TableHead>
                       <TableHead>Dates</TableHead>
                       <TableHead>Nights</TableHead>
-                      <TableHead>                      <TableHead>Rate/Night</TableHead>
+                      <TableHead>Rate/Night</TableHead>
                       <TableHead>Amount</TableHead>
                     </TableRow>
                   </TableHeader>
