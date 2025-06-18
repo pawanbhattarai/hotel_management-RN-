@@ -813,84 +813,68 @@ export class RestaurantStorage {
     const startDate = new Date();
     startDate.setDate(startDate.getDate() - periodDays);
 
-    let totalOrdersQuery = db
-      .select({ count: sql<number>`COUNT(*)` })
-      .from(restaurantOrders)
-      .where(sql`${restaurantOrders.createdAt} >= ${startDate.toISOString()}`);
-
+    let baseConditions = [sql`${restaurantOrders.createdAt} >= ${startDate.toISOString()}`];
     if (branchId) {
-      totalOrdersQuery = totalOrdersQuery.where(eq(restaurantOrders.branchId, branchId));
+      baseConditions.push(eq(restaurantOrders.branchId, branchId));
     }
 
-    const [{ count: totalOrders }] = await totalOrdersQuery;
+    // Total orders in period
+    const [{ count: totalOrders }] = await db
+      .select({ count: sql<number>`COUNT(*)` })
+      .from(restaurantOrders)
+      .where(and(...baseConditions));
 
     // Daily orders
-    let dailyOrdersQuery = db
+    const dailyOrders = await db
       .select({
         date: sql<string>`DATE(${restaurantOrders.createdAt})`,
         orders: sql<number>`COUNT(*)`
       })
       .from(restaurantOrders)
-      .where(sql`${restaurantOrders.createdAt} >= ${startDate.toISOString()}`)
+      .where(and(...baseConditions))
       .groupBy(sql`DATE(${restaurantOrders.createdAt})`)
       .orderBy(sql`DATE(${restaurantOrders.createdAt})`);
 
-    if (branchId) {
-      dailyOrdersQuery = dailyOrdersQuery.where(eq(restaurantOrders.branchId, branchId));
-    }
-
-    const dailyOrders = await dailyOrdersQuery;
-
     // Orders by status
-    let statusQuery = db
+    const ordersByStatus = await db
       .select({
         status: restaurantOrders.status,
         count: sql<number>`COUNT(*)`
       })
       .from(restaurantOrders)
-      .where(sql`${restaurantOrders.createdAt} >= ${startDate.toISOString()}`)
+      .where(and(...baseConditions))
       .groupBy(restaurantOrders.status);
-
-    if (branchId) {
-      statusQuery = statusQuery.where(eq(restaurantOrders.branchId, branchId));
-    }
-
-    const ordersByStatus = await statusQuery;
 
     // Today's orders
     const today = new Date().toISOString().split('T')[0];
-    let todayQuery = db
+    let todayConditions = [sql`DATE(${restaurantOrders.createdAt}) = ${today}`];
+    if (branchId) {
+      todayConditions.push(eq(restaurantOrders.branchId, branchId));
+    }
+
+    const [{ count: ordersToday }] = await db
       .select({ count: sql<number>`COUNT(*)` })
       .from(restaurantOrders)
-      .where(sql`DATE(${restaurantOrders.createdAt}) = ${today}`);
+      .where(and(...todayConditions));
 
+    // Average order value from bills (more accurate than orders)
+    let avgConditions = [
+      sql`${restaurantBills.createdAt} >= ${startDate.toISOString()}`,
+      eq(restaurantBills.paymentStatus, 'paid')
+    ];
     if (branchId) {
-      todayQuery = todayQuery.where(eq(restaurantOrders.branchId, branchId));
+      avgConditions.push(eq(restaurantBills.branchId, branchId));
     }
 
-    const [{ count: ordersToday }] = await todayQuery;
-
-    // Average order value
-    let avgQuery = db
-      .select({ avg: sql<number>`COALESCE(AVG(CAST(${restaurantOrders.totalAmount} AS DECIMAL)), 0)` })
-      .from(restaurantOrders)
-      .where(
-        and(
-          sql`${restaurantOrders.createdAt} >= ${startDate.toISOString()}`,
-          eq(restaurantOrders.paymentStatus, 'paid')
-        )
-      );
-
-    if (branchId) {
-      avgQuery = avgQuery.where(eq(restaurantOrders.branchId, branchId));
-    }
-
-    const [{ avg: averageOrderValue }] = await avgQuery;
+    const [{ avg: averageOrderValue }] = await db
+      .select({ avg: sql<number>`COALESCE(AVG(CAST(${restaurantBills.totalAmount} AS DECIMAL)), 0)` })
+      .from(restaurantBills)
+      .where(and(...avgConditions));
 
     return {
       totalOrders,
       ordersToday,
-      averageOrderValue,
+      averageOrderValue: Number(averageOrderValue) || 0,
       dailyOrders,
       ordersByStatus
     };
@@ -900,52 +884,58 @@ export class RestaurantStorage {
     topDishes: Array<{ id: string; name: string; totalOrders: number; totalRevenue: number }>;
     categoryPerformance: Array<{ categoryName: string; totalRevenue: number; totalOrders: number }>;
   }> {
-    // Top dishes
-    let dishQuery = db
+    // Top dishes - get data from actual order items with paid bills
+    let dishConditions = [eq(restaurantBills.paymentStatus, 'paid')];
+    if (branchId) {
+      dishConditions.push(eq(menuDishes.branchId, branchId));
+    }
+
+    const topDishes = await db
       .select({
-        id: menuDishes.id,
+        id: sql<string>`CAST(${menuDishes.id} AS TEXT)`,
         name: menuDishes.name,
         totalOrders: sql<number>`COUNT(${restaurantOrderItems.id})`,
         totalRevenue: sql<number>`COALESCE(SUM(CAST(${restaurantOrderItems.totalPrice} AS DECIMAL)), 0)`
       })
       .from(menuDishes)
-      .leftJoin(restaurantOrderItems, eq(menuDishes.id, restaurantOrderItems.dishId))
-      .leftJoin(restaurantOrders, eq(restaurantOrderItems.orderId, restaurantOrders.id))
-      .where(eq(restaurantOrders.paymentStatus, 'paid'))
+      .innerJoin(restaurantOrderItems, eq(menuDishes.id, restaurantOrderItems.dishId))
+      .innerJoin(restaurantOrders, eq(restaurantOrderItems.orderId, restaurantOrders.id))
+      .innerJoin(restaurantBills, eq(restaurantOrders.id, restaurantBills.orderId))
+      .where(and(...dishConditions))
       .groupBy(menuDishes.id, menuDishes.name)
       .orderBy(sql`COUNT(${restaurantOrderItems.id}) DESC`)
       .limit(10);
 
+    // Category performance - get data from actual order items with paid bills
+    let categoryConditions = [eq(restaurantBills.paymentStatus, 'paid')];
     if (branchId) {
-      dishQuery = dishQuery.where(eq(menuDishes.branchId, branchId));
+      categoryConditions.push(eq(menuCategories.branchId, branchId));
     }
 
-    const topDishes = await dishQuery;
-
-    // Category performance
-    let categoryQuery = db
+    const categoryPerformance = await db
       .select({
         categoryName: menuCategories.name,
         totalRevenue: sql<number>`COALESCE(SUM(CAST(${restaurantOrderItems.totalPrice} AS DECIMAL)), 0)`,
         totalOrders: sql<number>`COUNT(${restaurantOrderItems.id})`
       })
       .from(menuCategories)
-      .leftJoin(menuDishes, eq(menuCategories.id, menuDishes.categoryId))
-      .leftJoin(restaurantOrderItems, eq(menuDishes.id, restaurantOrderItems.dishId))
-      .leftJoin(restaurantOrders, eq(restaurantOrderItems.orderId, restaurantOrders.id))
-      .where(eq(restaurantOrders.paymentStatus, 'paid'))
+      .innerJoin(menuDishes, eq(menuCategories.id, menuDishes.categoryId))
+      .innerJoin(restaurantOrderItems, eq(menuDishes.id, restaurantOrderItems.dishId))
+      .innerJoin(restaurantOrders, eq(restaurantOrderItems.orderId, restaurantOrders.id))
+      .innerJoin(restaurantBills, eq(restaurantOrders.id, restaurantBills.orderId))
+      .where(and(...categoryConditions))
       .groupBy(menuCategories.id, menuCategories.name)
       .orderBy(sql`SUM(CAST(${restaurantOrderItems.totalPrice} AS DECIMAL)) DESC`);
 
-    if (branchId) {
-      categoryQuery = categoryQuery.where(eq(menuCategories.branchId, branchId));
-    }
-
-    const categoryPerformance = await categoryQuery;
-
     return {
-      topDishes,
-      categoryPerformance
+      topDishes: topDishes.map(dish => ({
+        ...dish,
+        totalRevenue: Number(dish.totalRevenue) || 0
+      })),
+      categoryPerformance: categoryPerformance.map(cat => ({
+        ...cat,
+        totalRevenue: Number(cat.totalRevenue) || 0
+      }))
     };
   }
 
@@ -954,55 +944,57 @@ export class RestaurantStorage {
     tableUtilization: Array<{ id: string; tableName: string; capacity: number; utilizationRate: number }>;
     averageTurnover: number;
   }> {
-    // Table performance
-    let performanceQuery = db
-      .select({
-        tableName: restaurantTables.name,
-        totalRevenue: sql<number>`COALESCE(SUM(CAST(${restaurantOrders.totalAmount} AS DECIMAL)), 0)`,
-        totalOrders: sql<number>`COUNT(${restaurantOrders.id})`
-      })
-      .from(restaurantTables)
-      .leftJoin(restaurantOrders, eq(restaurantTables.id, restaurantOrders.tableId))
-      .where(eq(restaurantOrders.paymentStatus, 'paid'))
-      .groupBy(restaurantTables.id, restaurantTables.name)
-      .orderBy(sql`SUM(CAST(${restaurantOrders.totalAmount} AS DECIMAL)) DESC`);
-
+    // Table performance based on actual paid bills
+    let performanceConditions = [eq(restaurantBills.paymentStatus, 'paid')];
     if (branchId) {
-      performanceQuery = performanceQuery.where(eq(restaurantTables.branchId, branchId));
+      performanceConditions.push(eq(restaurantTables.branchId, branchId));
     }
 
-    const tablePerformance = await performanceQuery;
-
-    // Table utilization (simplified calculation)
-    let utilizationQuery = db
+    const tablePerformance = await db
       .select({
-        id: restaurantTables.id,
+        tableName: restaurantTables.name,
+        totalRevenue: sql<number>`COALESCE(SUM(CAST(${restaurantBills.totalAmount} AS DECIMAL)), 0)`,
+        totalOrders: sql<number>`COUNT(${restaurantBills.id})`
+      })
+      .from(restaurantTables)
+      .innerJoin(restaurantBills, eq(restaurantTables.id, restaurantBills.tableId))
+      .where(and(...performanceConditions))
+      .groupBy(restaurantTables.id, restaurantTables.name)
+      .orderBy(sql`SUM(CAST(${restaurantBills.totalAmount} AS DECIMAL)) DESC`);
+
+    // Table utilization based on actual orders
+    let utilizationConditions = [];
+    if (branchId) {
+      utilizationConditions.push(eq(restaurantTables.branchId, branchId));
+    }
+
+    const utilizationData = await db
+      .select({
+        id: sql<string>`CAST(${restaurantTables.id} AS TEXT)`,
         tableName: restaurantTables.name,
         capacity: restaurantTables.capacity,
         orderCount: sql<number>`COUNT(${restaurantOrders.id})`
       })
       .from(restaurantTables)
       .leftJoin(restaurantOrders, eq(restaurantTables.id, restaurantOrders.tableId))
+      .where(utilizationConditions.length > 0 ? and(...utilizationConditions) : undefined)
       .groupBy(restaurantTables.id, restaurantTables.name, restaurantTables.capacity);
-
-    if (branchId) {
-      utilizationQuery = utilizationQuery.where(eq(restaurantTables.branchId, branchId));
-    }
-
-    const utilizationData = await utilizationQuery;
 
     const tableUtilization = utilizationData.map(table => ({
       ...table,
-      utilizationRate: Math.min(Math.round((table.orderCount / 30) * 100), 100) // Simplified: orders per month as utilization
+      utilizationRate: Math.min(Math.round((Number(table.orderCount) / 30) * 100), 100)
     }));
 
-    // Average turnover (simplified)
-    const averageTurnover = tablePerformance.length > 0 
-      ? tablePerformance.reduce((sum, table) => sum + table.totalOrders, 0) / tablePerformance.length / 30 
-      : 0;
+    // Average turnover calculation
+    const totalOrders = tablePerformance.reduce((sum, table) => sum + Number(table.totalOrders), 0);
+    const totalTables = tablePerformance.length || 1;
+    const averageTurnover = totalOrders / totalTables / 30;
 
     return {
-      tablePerformance,
+      tablePerformance: tablePerformance.map(table => ({
+        ...table,
+        totalRevenue: Number(table.totalRevenue) || 0
+      })),
       tableUtilization,
       averageTurnover
     };
@@ -1015,48 +1007,81 @@ export class RestaurantStorage {
     cancellationRate: number;
     customerSatisfaction: number;
   }> {
-    // Peak hours
-    let peakHoursQuery = db
+    // Peak hours based on actual orders
+    let peakHoursConditions = [];
+    if (branchId) {
+      peakHoursConditions.push(eq(restaurantOrders.branchId, branchId));
+    }
+
+    const peakHours = await db
       .select({
-        hour: sql<number>`EXTRACT(HOUR FROM ${restaurantOrders.createdAt})`,
+        hour: sql<number>`EXTRACT(HOUR FROM ${restaurantOrders.createdAt})::INTEGER`,
         orderCount: sql<number>`COUNT(*)`
       })
       .from(restaurantOrders)
+      .where(peakHoursConditions.length > 0 ? and(...peakHoursConditions) : undefined)
       .groupBy(sql`EXTRACT(HOUR FROM ${restaurantOrders.createdAt})`)
-      .orderBy(sql`COUNT(*) DESC`);
-
-    if (branchId) {
-      peakHoursQuery = peakHoursQuery.where(eq(restaurantOrders.branchId, branchId));
-    }
-
-    const peakHours = await peakHoursQuery;
+      .orderBy(sql`EXTRACT(HOUR FROM ${restaurantOrders.createdAt})`);
 
     // Cancellation rate
-    let totalOrdersQuery = db
-      .select({ count: sql<number>`COUNT(*)` })
-      .from(restaurantOrders);
-
-    let cancelledOrdersQuery = db
-      .select({ count: sql<number>`COUNT(*)` })
-      .from(restaurantOrders)
-      .where(eq(restaurantOrders.status, 'cancelled'));
-
+    let totalOrdersConditions = [];
+    let cancelledOrdersConditions = [eq(restaurantOrders.status, 'cancelled')];
+    
     if (branchId) {
-      totalOrdersQuery = totalOrdersQuery.where(eq(restaurantOrders.branchId, branchId));
-      cancelledOrdersQuery = cancelledOrdersQuery.where(eq(restaurantOrders.branchId, branchId));
+      totalOrdersConditions.push(eq(restaurantOrders.branchId, branchId));
+      cancelledOrdersConditions.push(eq(restaurantOrders.branchId, branchId));
     }
 
-    const [{ count: totalOrders }] = await totalOrdersQuery;
-    const [{ count: cancelledOrders }] = await cancelledOrdersQuery;
+    const [{ count: totalOrders }] = await db
+      .select({ count: sql<number>`COUNT(*)` })
+      .from(restaurantOrders)
+      .where(totalOrdersConditions.length > 0 ? and(...totalOrdersConditions) : undefined);
 
-    const cancellationRate = totalOrders > 0 ? (cancelledOrders / totalOrders) * 100 : 0;
+    const [{ count: cancelledOrders }] = await db
+      .select({ count: sql<number>`COUNT(*)` })
+      .from(restaurantOrders)
+      .where(and(...cancelledOrdersConditions));
+
+    const cancellationRate = Number(totalOrders) > 0 ? (Number(cancelledOrders) / Number(totalOrders)) * 100 : 0;
+
+    // Calculate preparation time from orders that have completion data
+    let prepTimeConditions = [
+      sql`${restaurantOrders.completedAt} IS NOT NULL`,
+      sql`${restaurantOrders.createdAt} IS NOT NULL`
+    ];
+    if (branchId) {
+      prepTimeConditions.push(eq(restaurantOrders.branchId, branchId));
+    }
+
+    const [{ avgPrep }] = await db
+      .select({
+        avgPrep: sql<number>`COALESCE(AVG(EXTRACT(EPOCH FROM (${restaurantOrders.completedAt} - ${restaurantOrders.createdAt})) / 60), 15)`
+      })
+      .from(restaurantOrders)
+      .where(and(...prepTimeConditions));
+
+    // Calculate service time from orders that have served data
+    let serviceTimeConditions = [
+      sql`${restaurantOrders.servedAt} IS NOT NULL`,
+      sql`${restaurantOrders.completedAt} IS NOT NULL`
+    ];
+    if (branchId) {
+      serviceTimeConditions.push(eq(restaurantOrders.branchId, branchId));
+    }
+
+    const [{ avgService }] = await db
+      .select({
+        avgService: sql<number>`COALESCE(AVG(EXTRACT(EPOCH FROM (${restaurantOrders.servedAt} - ${restaurantOrders.completedAt})) / 60), 10)`
+      })
+      .from(restaurantOrders)
+      .where(and(...serviceTimeConditions));
 
     return {
       peakHours,
-      avgPreparationTime: 15, // Mock data
-      avgServiceTime: 25, // Mock data
+      avgPreparationTime: Math.round(Number(avgPrep) || 15),
+      avgServiceTime: Math.round(Number(avgService) || 10),
       cancellationRate: Math.round(cancellationRate * 100) / 100,
-      customerSatisfaction: 4.2 // Mock data
+      customerSatisfaction: 4.2 // Keep as mock for now since we don't have ratings
     };
   }
 }
