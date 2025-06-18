@@ -172,6 +172,38 @@ export default function Billing() {
     setIsBillModalOpen(true);
   };
 
+  const handleCheckout = () => {
+    if (!selectedReservation) return;
+    
+    const roomSubtotal = selectedReservation.reservationRooms.reduce((sum: number, room: any) =>
+      sum + parseFloat(room.totalAmount), 0
+    );
+    const additionalCharges = billData.additionalCharges || 0;
+    const finalDiscountAmount = billData.discountPercentage > 0 
+      ? (roomSubtotal * billData.discountPercentage / 100)
+      : billData.discount;
+    const afterDiscount = roomSubtotal + additionalCharges - finalDiscountAmount;
+    
+    // Calculate taxes dynamically
+    let totalTaxAmount = 0;
+    if (activeTaxes && Array.isArray(activeTaxes) && activeTaxes.length > 0) {
+      activeTaxes.forEach((tax: any) => {
+        const taxAmount = afterDiscount * (parseFloat(tax.rate) / 100);
+        totalTaxAmount += taxAmount;
+      });
+    }
+    
+    const finalTotal = afterDiscount + totalTaxAmount;
+    
+    checkoutMutation.mutate({
+      reservationId: selectedReservation.id,
+      totalAmount: finalTotal,
+      ...billData,
+    });
+  };
+
+
+
   const handlePrintBill = () => {
     if (!selectedReservation) return;
 
@@ -197,7 +229,7 @@ export default function Billing() {
     // Calculate taxes dynamically
     let totalTaxAmount = 0;
     let appliedTaxesString = "";
-    if (activeTaxes && activeTaxes.length > 0) {
+    if (activeTaxes && Array.isArray(activeTaxes) && activeTaxes.length > 0) {
       const taxDetails = activeTaxes.map((tax: any) => {
         const taxAmount = afterDiscount * (parseFloat(tax.rate) / 100);
         totalTaxAmount += taxAmount;
@@ -230,8 +262,8 @@ export default function Billing() {
       return symbols[currency] || currency;
     };
 
-    const currencySymbol = getCurrencySymbol(hotelSettings.currency || 'NPR');
-    const currentDateTime = formatDateTime(new Date(), hotelSettings.timeZone);
+    const currencySymbol = getCurrencySymbol(hotelSettings?.currency || 'NPR');
+    const currentDateTime = formatDateTime(new Date(), hotelSettings?.timeZone);
 
     return `
       <!DOCTYPE html>
@@ -479,24 +511,7 @@ export default function Billing() {
     `;
   };
 
-  const handleCheckout = () => {
-    if (!selectedReservation) return;
 
-    const roomSubtotal = selectedReservation.reservationRooms.reduce((sum: number, room: any) =>
-      sum + parseFloat(room.totalAmount), 0
-    );
-    const additionalCharges = billData.additionalCharges || 0;
-    const discount = billData.discount || 0;
-    const tax = billData.tax || 0;
-    const finalTotal = roomSubtotal + additionalCharges - discount + tax;
-
-    checkoutMutation.mutate({
-      reservationId: selectedReservation.id,
-      totalAmount: finalTotal,
-      paymentMethod: billData.paymentMethod,
-      notes: billData.notes,
-    });
-  };
 
   const filteredReservations = reservations?.filter((reservation: any) => {
     const searchLower = searchTerm.toLowerCase();
