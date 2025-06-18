@@ -1,3 +1,4 @@
+
 import { useEffect, useState } from "react";
 import { useAuth } from "@/hooks/useAuth";
 import { useToast } from "@/hooks/use-toast";
@@ -26,7 +27,7 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import { Search, Printer, CreditCard, Receipt } from "lucide-react";
+import { Search, Printer, CreditCard, Receipt, Eye } from "lucide-react";
 
 export default function Billing() {
   const { toast } = useToast();
@@ -34,6 +35,7 @@ export default function Billing() {
   const queryClient = useQueryClient();
   const [searchTerm, setSearchTerm] = useState("");
   const [isBillModalOpen, setIsBillModalOpen] = useState(false);
+  const [viewingBill, setViewingBill] = useState<any>(null);
   const [selectedReservation, setSelectedReservation] = useState<any>(null);
   const [isMobileSidebarOpen, setIsMobileSidebarOpen] = useState(false);
   const [billData, setBillData] = useState({
@@ -142,6 +144,16 @@ export default function Billing() {
     );
   };
 
+  const getPaymentMethodColor = (method: string) => {
+    switch (method) {
+      case 'cash': return 'bg-green-500';
+      case 'card': return 'bg-blue-500';
+      case 'digital': return 'bg-purple-500';
+      case 'bank-transfer': return 'bg-orange-500';
+      default: return 'bg-gray-500';
+    }
+  };
+
   const formatDate = (dateString: string) => {
     return new Date(dateString).toLocaleDateString("en-US", {
       month: "short",
@@ -175,6 +187,19 @@ export default function Billing() {
     setIsBillModalOpen(true);
   };
 
+  const handleViewBill = (reservation: any) => {
+    setViewingBill(reservation);
+  };
+
+  const resetForm = () => {
+    setBillData({
+      discount: 0,
+      discountPercentage: 0,
+      paymentMethod: "cash",
+      notes: "",
+    });
+  };
+
   const handleCheckout = () => {
     if (!selectedReservation) return;
 
@@ -206,20 +231,20 @@ export default function Billing() {
     });
   };
 
-  const handlePrintBill = () => {
-    if (!selectedReservation) return;
+  const handlePrintBill = (reservation: any) => {
+    if (!reservation) return;
 
     const billWindow = window.open("", "_blank");
-    const billContent = generateBillHTML();
+    const billContent = generateBillHTML(reservation);
     billWindow?.document.write(billContent);
     billWindow?.document.close();
     billWindow?.print();
   };
 
-  const generateBillHTML = () => {
-    if (!selectedReservation || !hotelSettings) return "";
+  const generateBillHTML = (reservation: any) => {
+    if (!reservation || !hotelSettings) return "";
 
-    const subtotal = selectedReservation.reservationRooms.reduce(
+    const subtotal = reservation.reservationRooms.reduce(
       (sum: number, room: any) => sum + parseFloat(room.totalAmount),
       0,
     );
@@ -246,7 +271,7 @@ export default function Billing() {
     }
 
     const finalTotal = afterDiscount + totalTaxAmount;
-    const isPaid = selectedReservation.status === "checked-out";
+    const isPaid = reservation.status === "checked-out";
 
     // Get currency symbol
     const getCurrencySymbol = (currency: string) => {
@@ -277,278 +302,225 @@ export default function Billing() {
       <!DOCTYPE html>
       <html>
       <head>
-        <title>Hotel Bill - ${selectedReservation.confirmationNumber}</title>
+        <title>Hotel Bill - ${reservation.confirmationNumber}</title>
         <style>
           body { 
-            font-family: Arial, sans-serif; 
-            padding: 20px; 
-            margin: 0;
-            line-height: 1.4;
+            font-family: 'Courier New', monospace; 
+            font-size: 12px; 
+            line-height: 1.2;
+            width: 80mm;
+            margin: 0 auto;
+            padding: 5mm;
+            background: white;
           }
-          .header { 
+          .receipt-header { 
             text-align: center; 
-            margin-bottom: 30px; 
-            border-bottom: 2px solid #333;
-            padding-bottom: 20px;
-          }
-          .hotel-logo {
-            max-width: 150px;
-            max-height: 80px;
+            border-bottom: 1px dashed #000;
+            padding-bottom: 8px;
             margin-bottom: 10px;
           }
-          .hotel-name {
-            font-size: 24px;
-            font-weight: bold;
-            color: #333;
+          .hotel-name { 
+            font-size: 16px; 
+            font-weight: bold; 
+            margin-bottom: 2px;
+          }
+          .bill-number { 
+            font-size: 14px; 
+            font-weight: bold; 
+            margin-top: 5px;
+          }
+          .info-section { 
+            margin-bottom: 10px;
+            font-size: 11px;
+          }
+          .info-row { 
+            display: flex; 
+            justify-content: space-between; 
+            margin-bottom: 2px;
+          }
+          .items-section { 
+            border-top: 1px dashed #000;
+            border-bottom: 1px dashed #000;
+            padding: 8px 0;
             margin: 10px 0;
           }
-          .hotel-details {
-            font-size: 12px;
-            color: #666;
-            margin: 5px 0;
+          .items-header { 
+            font-weight: bold; 
+            border-bottom: 1px solid #000;
+            padding-bottom: 2px;
+            margin-bottom: 5px;
           }
-          .bill-title {
-            font-size: 20px;
-            font-weight: bold;
-            margin: 20px 0 10px 0;
-            color: #333;
+          .item-row { 
+            display: flex; 
+            justify-content: space-between; 
+            margin-bottom: 3px;
+            font-size: 11px;
           }
-          .bill-info {
-            display: flex;
-            justify-content: space-between;
-            margin-bottom: 20px;
-            padding: 15px;
-            background-color: #f8f9fa;
-            border-radius: 5px;
-          }
-          .guest-details, .bill-details {
-            flex: 1;
-          }
-          .guest-details {
-            margin-right: 20px;
-          }
-          .detail-label {
-            font-weight: bold;
-            color: #333;
-          }
-          .table { 
-            width: 100%; 
-            border-collapse: collapse; 
-            margin: 20px 0;
-          }
-          .table th, .table td { 
-            border: 1px solid #ddd; 
-            padding: 12px; 
-            text-align: left; 
-          }
-          .table th { 
-            background-color: #f2f2f2; 
-            font-weight: bold;
-          }
-          .table td {
-            font-size: 14px;
-          }
-          .amount-cell {
-            text-align: right;
-            font-family: monospace;
-          }
-          .total-section { 
-            margin-top: 20px; 
-            text-align: right;
-            border-top: 2px solid #333;
-            padding-top: 15px;
+          .item-name { flex: 1; }
+          .item-nights { width: 25px; text-align: center; }
+          .item-rate { width: 50px; text-align: right; }
+          .item-total { width: 60px; text-align: right; }
+          .totals-section { 
+            margin-top: 8px;
+            border-top: 1px dashed #000;
+            padding-top: 5px;
           }
           .total-row { 
-            font-weight: bold; 
-            font-size: 1.2em; 
-            margin: 5px 0;
-            padding: 5px 0;
-          }
-          .subtotal-row {
-            margin: 3px 0;
-            font-size: 14px;
-          }
-          .tax-row {
-            margin: 2px 0;
-            font-size: 13px;
-            color: #555;
-          }
-          .payment-status {
-            text-align: center;
-            margin: 20px 0;
-            padding: 15px;
-            border-radius: 5px;
-            font-weight: bold;
-            font-size: 16px;
-          }
-          .paid {
-            background-color: #d4edda;
-            color: #155724;
-            border: 1px solid #c3e6cb;
-          }
-          .unpaid {
-            background-color: #f8d7da;
-            color: #721c24;
-            border: 1px solid #f5c6cb;
-          }
-          .footer {
-            margin-top: 30px;
-            text-align: center;
-            font-size: 12px;
-            color: #666;
-            border-top: 1px solid #ddd;
-            padding-top: 20px;
-          }
-          .terms-section {
-            margin-top: 20px;
+            display: flex; 
+            justify-content: space-between; 
+            margin-bottom: 2px;
             font-size: 11px;
-            color: #555;
           }
-          .notes-section {
-            margin: 20px 0;
-            padding: 10px;
-            background-color: #f8f9fa;
-            border-left: 4px solid #007bff;
+          .final-total { 
+            font-weight: bold; 
+            font-size: 13px;
+            border-top: 1px solid #000;
+            padding-top: 3px;
+            margin-top: 5px;
           }
-          @media print {
-            body { padding: 10px; }
+          .payment-info { 
+            margin-top: 10px;
+            text-align: center;
+            font-weight: bold;
+            font-size: 12px;
+          }
+          .footer { 
+            margin-top: 15px; 
+            text-align: center; 
+            font-size: 10px;
+            border-top: 1px dashed #000;
+            padding-top: 8px;
+          }
+          .divider { 
+            text-align: center; 
+            margin: 5px 0;
+            font-size: 10px;
+          }
+          @media print { 
+            body { margin: 0; padding: 2mm; }
             .no-print { display: none; }
           }
         </style>
       </head>
       <body>
-        <div class="header">
-          ${hotelSettings?.logo ? `<img src="${hotelSettings.logo}" alt="Hotel Logo" class="hotel-logo">` : ""}
-          <div class="hotel-name">${hotelSettings?.hotelName || "Hotel Name"}</div>
-          ${hotelSettings?.hotelChain ? `<div class="hotel-details"><strong>${hotelSettings.hotelChain}</strong></div>` : ""}
-          <div class="hotel-details">
-            ${hotelSettings?.address || ""}<br>
-            ${hotelSettings?.city || ""}, ${hotelSettings?.state || ""} ${hotelSettings?.postalCode || ""}<br>
-            ${hotelSettings?.country || ""}
-          </div>
-          <div class="hotel-details">
-            Phone: ${hotelSettings?.phone || ""} | Email: ${hotelSettings?.email || ""}
-            ${hotelSettings?.website ? ` | Website: ${hotelSettings.website}` : ""}
-          </div>
-          ${hotelSettings?.taxNumber ? `<div class="hotel-details">Tax Number: ${hotelSettings.taxNumber}</div>` : ""}
-          ${hotelSettings?.registrationNumber ? `<div class="hotel-details">Registration: ${hotelSettings.registrationNumber}</div>` : ""}
-
-          <div class="bill-title">HOTEL BILL / INVOICE</div>
+        <div class="receipt-header">
+          <div class="hotel-name">${hotelSettings?.hotelName || "HOTEL"}</div>
+          <div style="font-size: 10px;">${hotelSettings?.address || ""}</div>
+          <div style="font-size: 10px;">Phone: ${hotelSettings?.phone || ""}</div>
+          <div class="bill-number">Bill #${reservation.confirmationNumber}</div>
         </div>
 
-        <div class="bill-info">
-          <div class="guest-details">
-            <div><span class="detail-label">Guest Name:</span> ${selectedReservation.guest.firstName} ${selectedReservation.guest.lastName}</div>
-            <div><span class="detail-label">Email:</span> ${selectedReservation.guest.email || "N/A"}</div>
-            <div><span class="detail-label">Phone:</span> ${selectedReservation.guest.phone || "N/A"}</div>
-            ${selectedReservation.guest.address ? `<div><span class="detail-label">Address:</span> ${selectedReservation.guest.address}</div>` : ""}
+        <div class="info-section">
+          <div class="info-row">
+            <span>Date:</span>
+            <span>${currentDateTime}</span>
           </div>
-          <div class="bill-details">
-            <div><span class="detail-label">Confirmation Number:</span> ${selectedReservation.confirmationNumber}</div>
-            <div><span class="detail-label">Bill Date:</span> ${currentDateTime}</div>
-            <div><span class="detail-label">Payment Method:</span> ${billData.paymentMethod.toUpperCase()}</div>
-            <div><span class="detail-label">Currency:</span> ${hotelSettings?.currency || "NPR"} (${currencySymbol})</div>
+          <div class="info-row">
+            <span>Guest:</span>
+            <span>${reservation.guest.firstName} ${reservation.guest.lastName}</span>
+          </div>
+          <div class="info-row">
+            <span>Email:</span>
+            <span>${reservation.guest.email || 'N/A'}</span>
+          </div>
+          <div class="info-row">
+            <span>Phone:</span>
+            <span>${reservation.guest.phone || 'N/A'}</span>
+          </div>
+          <div class="info-row">
+            <span>Payment:</span>
+            <span>${billData.paymentMethod.toUpperCase()}</span>
           </div>
         </div>
 
-        <table class="table">
-          <thead>
-            <tr>
-              <th>Description</th>
-              <th>Check-in</th>
-              <th>Check-out</th>
-              <th style="text-align: center;">Nights</th>
-              <th style="text-align: right;">Rate/Night</th>
-              <th style="text-align: right;">Amount</th>
-            </tr>
-          </thead>
-          <tbody>
-            ${selectedReservation.reservationRooms
-              .map(
-                (room: any) => `
-              <tr>
-                <td>
-                  <strong>Room ${room.room.number}</strong><br>
-                  <small>${room.room.roomType.name}</small>
-                </td>
-                <td>${formatDate(room.checkInDate)}</td>
-                <td>${formatDate(room.checkOutDate)}</td>
-                <td style="text-align: center;">${calculateNights(room.checkInDate, room.checkOutDate)}</td>
-                <td class="amount-cell">${currencySymbol}${parseFloat(room.ratePerNight).toFixed(2)}</td>
-                <td class="amount-cell">${currencySymbol}${parseFloat(room.totalAmount).toFixed(2)}</td>
-              </tr>
-            `,
-              )
-              .join("")}
-          </tbody>
-        </table>
+        <div class="items-section">
+          <div class="items-header">
+            <div class="item-row">
+              <div class="item-name">ROOM</div>
+              <div class="item-nights">NIGHTS</div>
+              <div class="item-rate">RATE</div>
+              <div class="item-total">AMOUNT</div>
+            </div>
+          </div>
+          ${reservation.reservationRooms
+            .map(
+              (room: any) => `
+            <div class="item-row">
+              <div class="item-name">${room.room.number} (${room.room.roomType.name.substring(0, 8)})</div>
+              <div class="item-nights">${calculateNights(room.checkInDate, room.checkOutDate)}</div>
+              <div class="item-rate">${parseFloat(room.ratePerNight).toFixed(0)}</div>
+              <div class="item-total">${parseFloat(room.totalAmount).toFixed(2)}</div>
+            </div>
+          `,
+            )
+            .join("")}
+        </div>
 
-        <div class="total-section">
-          <div class="subtotal-row">Room Subtotal: ${currencySymbol}${subtotal.toFixed(2)}</div>
-
-          ${finalDiscountAmount > 0 ? `<div class="subtotal-row">Discount${billData.discountPercentage > 0 ? ` (${billData.discountPercentage}%)` : ""}: -${currencySymbol}${finalDiscountAmount.toFixed(2)}</div>` : ""}
-
-          <div class="subtotal-row">Subtotal after Discount: ${currencySymbol}${afterDiscount.toFixed(2)}</div>
-
-          ${appliedTaxes.length > 0 ? appliedTaxes.map((tax) => `<div class="tax-row">${tax.name} (${tax.rate}%): ${currencySymbol}${tax.amount.toFixed(2)}</div>`).join("") : ""}
-
-          ${totalTaxAmount > 0 ? `<div class="subtotal-row">Total Tax: ${currencySymbol}${totalTaxAmount.toFixed(2)}</div>` : ""}
-
+        <div class="totals-section">
           <div class="total-row">
-            <strong>TOTAL AMOUNT: ${currencySymbol}${finalTotal.toFixed(2)}</strong>
+            <span>Subtotal:</span>
+            <span>${currencySymbol}${subtotal.toFixed(2)}</span>
+          </div>
+          ${finalDiscountAmount > 0 ? `
+            <div class="total-row">
+              <span>Discount (${billData.discountPercentage || 0}%):</span>
+              <span>-${currencySymbol}${finalDiscountAmount.toFixed(2)}</span>
+            </div>
+          ` : ''}
+          ${appliedTaxes.length > 0 ? 
+            appliedTaxes.map((tax) => `
+              <div class="total-row">
+                <span>${tax.name} (${tax.rate}%):</span>
+                <span>${currencySymbol}${tax.amount.toFixed(2)}</span>
+              </div>
+            `).join('') : `
+              <div class="total-row">
+                <span>Tax:</span>
+                <span>${currencySymbol}${totalTaxAmount.toFixed(2)}</span>
+              </div>
+            `
+          }
+          <div class="total-row final-total">
+            <span>TOTAL AMOUNT:</span>
+            <span>${currencySymbol}${finalTotal.toFixed(2)}</span>
           </div>
         </div>
 
-        <div class="payment-status ${isPaid ? "paid" : "unpaid"}">
-          PAYMENT STATUS: ${isPaid ? "PAID IN FULL" : "PAYMENT PENDING"}
+        <div class="payment-info">
+          PAYMENT: ${billData.paymentMethod.toUpperCase()} - ${isPaid ? 'PAID' : 'PENDING'}
         </div>
 
-        ${
-          billData.notes
-            ? `
-          <div class="notes-section">
-            <strong>Notes:</strong><br>
-            ${billData.notes}
+        ${billData.notes ? `
+          <div style="margin-top: 10px; font-size: 10px; text-align: center;">
+            <strong>Notes:</strong> ${billData.notes}
           </div>
-        `
-            : ""
-        }
+        ` : ''}
 
-        ${
-          hotelSettings?.billingFooter
-            ? `
-          <div class="footer">
-            ${hotelSettings.billingFooter}
+        <div class="divider">================================</div>
+        <div class="footer">
+          <div>THANK YOU FOR STAYING WITH US!</div>
+          <div style="margin-top: 3px;">Visit Again Soon</div>
+          <div style="margin-top: 5px; font-size: 9px;">
+            Powered by HotelPro PMS
           </div>
-        `
-            : ""
-        }
+        </div>
+        <div class="divider">================================</div>
 
-        ${
-          hotelSettings?.termsAndConditions
-            ? `
-          <div class="terms-section">
-            <strong>Terms and Conditions:</strong><br>
-            <small>${hotelSettings.termsAndConditions}</small>
-          </div>
-        `
-            : ""
-        }
-
-        ${
-          hotelSettings?.cancellationPolicy
-            ? `
-          <div class="terms-section">
-            <strong>Cancellation Policy:</strong><br>
-            <small>${hotelSettings.cancellationPolicy}</small>
-          </div>
-        `
-            : ""
-        }
+        <script>
+          window.onload = function() {
+            setTimeout(function() {
+              window.print();
+              setTimeout(function() {
+                window.close();
+              }, 500);
+            }, 100);
+          }
+        </script>
       </body>
       </html>
     `;
   };
+
   const filteredReservations =
     reservations && Array.isArray(reservations)
       ? reservations.filter((reservation: any) => {
@@ -561,6 +533,18 @@ export default function Billing() {
           );
         })
       : [];
+
+  // Get ready for checkout reservations (checked-in status)
+  const getReadyForCheckoutReservations = () => {
+    return filteredReservations.filter((reservation: any) => 
+      reservation.status === "checked-in"
+    );
+  };
+
+  // Get all reservations (for viewing bills)
+  const getAllReservations = () => {
+    return filteredReservations;
+  };
 
   // Get currency symbol for display
   const getCurrencySymbol = (currency: string) => {
@@ -586,6 +570,47 @@ export default function Billing() {
       ? getCurrencySymbol(hotelSettings.currency || "NPR")
       : "Rs.";
 
+  const calculateBillPreview = () => {
+    if (!selectedReservation) return null;
+
+    const subtotal = selectedReservation.reservationRooms.reduce(
+      (sum: number, room: any) => sum + parseFloat(room.totalAmount),
+      0,
+    );
+    const finalDiscountAmount =
+      billData.discountPercentage > 0
+        ? (subtotal * billData.discountPercentage) / 100
+        : billData.discount;
+    const afterDiscount = subtotal - finalDiscountAmount;
+
+    // Calculate taxes dynamically
+    let totalTaxAmount = 0;
+    let appliedTaxes: any[] = [];
+    if (activeTaxes && Array.isArray(activeTaxes) && activeTaxes.length > 0) {
+      appliedTaxes = activeTaxes.map((tax: any) => {
+        const taxAmount = afterDiscount * (parseFloat(tax.rate) / 100);
+        totalTaxAmount += taxAmount;
+        return {
+          name: tax.taxName,
+          rate: tax.rate,
+          amount: taxAmount,
+        };
+      });
+    }
+
+    const finalTotal = afterDiscount + totalTaxAmount;
+
+    return {
+      subtotal,
+      discountAmount: finalDiscountAmount,
+      taxAmount: totalTaxAmount,
+      appliedTaxes,
+      totalAmount: finalTotal,
+    };
+  };
+
+  const billPreview = calculateBillPreview();
+
   if (isLoading) {
     return (
       <div className="min-h-screen flex items-center justify-center">
@@ -606,7 +631,7 @@ export default function Billing() {
       />
       <div className="main-content">
         <Header
-          title="Billing"
+          title="Hotel Billing"
           subtitle="Manage guest checkout and billing"
           onMobileMenuToggle={() =>
             setIsMobileSidebarOpen(!isMobileSidebarOpen)
@@ -626,9 +651,102 @@ export default function Billing() {
             </div>
           </div>
 
+          {/* Reservations Ready for Checkout */}
+          <Card className="mb-6">
+            <CardHeader>
+              <CardTitle>Reservations Ready for Checkout</CardTitle>
+            </CardHeader>
+            <CardContent>
+              {getReadyForCheckoutReservations().length > 0 ? (
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead>Guest</TableHead>
+                      <TableHead>Confirmation</TableHead>
+                      <TableHead>Rooms</TableHead>
+                      <TableHead>Check-out</TableHead>
+                      <TableHead>Total</TableHead>
+                      <TableHead>Actions</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {getReadyForCheckoutReservations().map((reservation: any) => (
+                      <TableRow key={reservation.id}>
+                        <TableCell>
+                          <div>
+                            <div className="font-medium">
+                              {reservation.guest.firstName}{" "}
+                              {reservation.guest.lastName}
+                            </div>
+                            <div className="text-sm text-gray-500">
+                              {reservation.guest.email}
+                            </div>
+                          </div>
+                        </TableCell>
+                        <TableCell className="font-mono text-sm">
+                          {reservation.confirmationNumber}
+                        </TableCell>
+                        <TableCell>
+                          <div>
+                            <div className="font-medium">
+                              {reservation.reservationRooms.length} Room
+                              {reservation.reservationRooms.length > 1 ? "s" : ""}
+                            </div>
+                            <div className="text-sm text-gray-500">
+                              {reservation.reservationRooms
+                                .map((rr: any) => rr.room.roomType.name)
+                                .join(", ")}
+                            </div>
+                          </div>
+                        </TableCell>
+                        <TableCell>
+                          {reservation.reservationRooms.length > 0 && (
+                            <div>
+                              <div>
+                                {formatDate(
+                                  reservation.reservationRooms[0].checkOutDate,
+                                )}
+                              </div>
+                              <div className="text-sm text-gray-500">
+                                {calculateNights(
+                                  reservation.reservationRooms[0].checkInDate,
+                                  reservation.reservationRooms[0].checkOutDate,
+                                )}{" "}
+                                nights
+                              </div>
+                            </div>
+                          )}
+                        </TableCell>
+                        <TableCell className="font-medium">
+                          {currencySymbol}
+                          {parseFloat(reservation.totalAmount).toFixed(2)}
+                        </TableCell>
+                        <TableCell>
+                          <Button
+                            onClick={() => handleCreateBill(reservation)}
+                            disabled={checkoutMutation.isPending}
+                            className="bg-green-600 hover:bg-green-700"
+                          >
+                            <CreditCard className="h-4 w-4 mr-2" />
+                            Checkout
+                          </Button>
+                        </TableCell>
+                      </TableRow>
+                    ))}
+                  </TableBody>
+                </Table>
+              ) : (
+                <div className="text-center py-8 text-gray-500">
+                  No reservations ready for checkout. Check-in guests to see them here.
+                </div>
+              )}
+            </CardContent>
+          </Card>
+
+          {/* All Reservations */}
           <Card>
             <CardHeader>
-              <CardTitle>Guest Reservations</CardTitle>
+              <CardTitle>All Guest Reservations</CardTitle>
             </CardHeader>
             <CardContent>
               {reservationsLoading ? (
@@ -649,8 +767,8 @@ export default function Billing() {
                     </TableRow>
                   </TableHeader>
                   <TableBody>
-                    {filteredReservations?.length ? (
-                      filteredReservations.map((reservation: any) => (
+                    {getAllReservations()?.length ? (
+                      getAllReservations().map((reservation: any) => (
                         <TableRow key={reservation.id}>
                           <TableCell>
                             <div>
@@ -670,9 +788,7 @@ export default function Billing() {
                             <div>
                               <div className="font-medium">
                                 {reservation.reservationRooms.length} Room
-                                {reservation.reservationRooms.length > 1
-                                  ? "s"
-                                  : ""}
+                                {reservation.reservationRooms.length > 1 ? "s" : ""}
                               </div>
                               <div className="text-sm text-gray-500">
                                 {reservation.reservationRooms
@@ -686,15 +802,13 @@ export default function Billing() {
                               <div>
                                 <div>
                                   {formatDate(
-                                    reservation.reservationRooms[0]
-                                      .checkOutDate,
+                                    reservation.reservationRooms[0].checkOutDate,
                                   )}
                                 </div>
                                 <div className="text-sm text-gray-500">
                                   {calculateNights(
                                     reservation.reservationRooms[0].checkInDate,
-                                    reservation.reservationRooms[0]
-                                      .checkOutDate,
+                                    reservation.reservationRooms[0].checkOutDate,
                                   )}{" "}
                                   nights
                                 </div>
@@ -711,17 +825,31 @@ export default function Billing() {
                           <TableCell>
                             <div className="flex space-x-2">
                               <Button
-                                variant="ghost"
+                                variant="outline"
                                 size="sm"
-                                onClick={() => handleCreateBill(reservation)}
-                                title={
-                                  reservation.status === "checked-out"
-                                    ? "View paid bill"
-                                    : "Create bill"
-                                }
+                                onClick={() => handleViewBill(reservation)}
+                                title="View Bill"
                               >
-                                <Receipt className="h-4 w-4" />
+                                <Eye className="h-4 w-4" />
                               </Button>
+                              <Button
+                                variant="outline"
+                                size="sm"
+                                onClick={() => handlePrintBill(reservation)}
+                                title="Print Bill"
+                              >
+                                <Printer className="h-4 w-4" />
+                              </Button>
+                              {reservation.status === "checked-in" && (
+                                <Button
+                                  variant="default"
+                                  size="sm"
+                                  onClick={() => handleCreateBill(reservation)}
+                                  title="Checkout"
+                                >
+                                  <Receipt className="h-4 w-4" />
+                                </Button>
+                              )}
                             </div>
                           </TableCell>
                         </TableRow>
@@ -744,15 +872,13 @@ export default function Billing() {
         </main>
       </div>
 
-      {/* Billing Modal */}
+      {/* Checkout Modal */}
       <Dialog open={isBillModalOpen} onOpenChange={setIsBillModalOpen}>
         <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle>
-              {selectedReservation?.status === "checked-out"
-                ? "View Bill"
-                : "Create Bill"}{" "}
-              - {selectedReservation?.confirmationNumber}
+              <Receipt className="mr-2 h-5 w-5 inline" />
+              Checkout - {selectedReservation?.confirmationNumber}
             </DialogTitle>
           </DialogHeader>
           {selectedReservation && (
@@ -815,38 +941,8 @@ export default function Billing() {
                 </Table>
               </div>
 
-              {/* Billing Details */}
+              {/* Billing Options */}
               <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <Label htmlFor="discount">Discount (Amount)</Label>
-                  <Input
-                    id="discount"
-                    type="number"
-                    step="0.01"
-                    value={billData.discount}
-                    onChange={(e) =>
-                      setBillData({
-                        ...billData,
-                        discount: parseFloat(e.target.value) || 0,
-                      })
-                    }
-                  />
-                </div>
-                <div>
-                  <Label htmlFor="discountPercentage">Discount (%)</Label>
-                  <Input
-                    id="discountPercentage"
-                    type="number"
-                    step="0.01"
-                    value={billData.discountPercentage}
-                    onChange={(e) =>
-                      setBillData({
-                        ...billData,
-                        discountPercentage: parseFloat(e.target.value) || 0,
-                      })
-                    }
-                  />
-                </div>
                 <div>
                   <Label htmlFor="paymentMethod">Payment Method</Label>
                   <select
@@ -866,148 +962,207 @@ export default function Billing() {
                     <option value="bank-transfer">Bank Transfer</option>
                   </select>
                 </div>
-              </div>
-
-              <div>
-                <Label htmlFor="notes">Notes</Label>
-                <Textarea
-                  id="notes"
-                  value={billData.notes}
-                  onChange={(e) =>
-                    setBillData({ ...billData, notes: e.target.value })
-                  }
-                  placeholder="Any additional notes..."
-                />
-              </div>
-
-              {/* Total Calculation */}
-              <div className="border-t pt-4">
-                <div className="text-right space-y-2">
-                  {(() => {
-                    const roomSubtotal =
-                      selectedReservation.reservationRooms.reduce(
-                        (sum: number, room: any) =>
-                          sum + parseFloat(room.totalAmount),
-                        0,
-                      );
-
-                    const finalDiscountAmount =
-                      billData.discountPercentage > 0
-                        ? (roomSubtotal * billData.discountPercentage) / 100
-                        : billData.discount;
-                    const afterDiscount = roomSubtotal - finalDiscountAmount;
-
-                    // Calculate taxes dynamically
-                    let totalTaxAmount = 0;
-                    let appliedTaxes: any[] = [];
-                    if (
-                      activeTaxes &&
-                      Array.isArray(activeTaxes) &&
-                      activeTaxes.length > 0
-                    ) {
-                      appliedTaxes = activeTaxes.map((tax: any) => {
-                        const taxAmount =
-                          afterDiscount * (parseFloat(tax.rate) / 100);
-                        totalTaxAmount += taxAmount;
-                        return {
-                          name: tax.taxName,
-                          rate: tax.rate,
-                          amount: taxAmount,
-                        };
-                      });
+                <div>
+                  <Label htmlFor="discountPercentage">Discount (%)</Label>
+                  <Input
+                    id="discountPercentage"
+                    type="number"
+                    step="0.1"
+                    min="0"
+                    max="100"
+                    value={billData.discountPercentage}
+                    onChange={(e) =>
+                      setBillData({
+                        ...billData,
+                        discountPercentage: parseFloat(e.target.value) || 0,
+                      })
                     }
-
-                    const finalTotal = afterDiscount + totalTaxAmount;
-
-                    return (
-                      <div>
-                        <div className="flex justify-between">
-                          <span>Room Charges:</span>
-                          <span>Rs. {roomSubtotal.toFixed(2)}</span>
-                        </div>
-
-                        {finalDiscountAmount > 0 && (
-                          <div className="flex justify-between text-red-600">
-                            <span>
-                              Discount{" "}
-                              {billData.discountPercentage > 0
-                                ? `(${billData.discountPercentage}%)`
-                                : ""}
-                              :
-                            </span>
-                            <span>-Rs. {finalDiscountAmount.toFixed(2)}</span>
-                          </div>
-                        )}
-                        <div className="flex justify-between font-medium">
-                          <span>Subtotal:</span>
-                          <span>Rs. {afterDiscount.toFixed(2)}</span>
-                        </div>
-                        {appliedTaxes.length > 0 && (
-                          <>
-                            {appliedTaxes.map((tax: any, index: number) => (
-                              <div key={index} className="flex justify-between">
-                                <span>
-                                  {tax.name} ({tax.rate}%):
-                                </span>
-                                <span>Rs. {tax.amount.toFixed(2)}</span>
-                              </div>
-                            ))}
-                          </>
-                        )}
-
-                        {billData.discount > 0 && (
-                          <div className="flex justify-between text-green-600">
-                            <span>Discount:</span>
-                            <span>
-                              -{currencySymbol} {billData.discount.toFixed(2)}
-                            </span>
-                          </div>
-                        )}
-                        <div className="flex justify-between font-bold text-lg border-t pt-2">
-                          <span>Total Amount:</span>
-                          <span>
-                            {currencySymbol} {finalTotal.toFixed(2)}
-                          </span>
-                        </div>
-                      </div>
-                    );
-                  })()}
+                  />
+                </div>
+                <div>
+                  <Label htmlFor="discount">Discount Amount</Label>
+                  <Input
+                    id="discount"
+                    type="number"
+                    step="0.01"
+                    min="0"
+                    value={billData.discount}
+                    onChange={(e) =>
+                      setBillData({
+                        ...billData,
+                        discount: parseFloat(e.target.value) || 0,
+                      })
+                    }
+                  />
+                </div>
+                <div>
+                  <Label htmlFor="notes">Notes</Label>
+                  <Textarea
+                    id="notes"
+                    value={billData.notes}
+                    onChange={(e) =>
+                      setBillData({ ...billData, notes: e.target.value })
+                    }
+                    placeholder="Additional notes..."
+                  />
                 </div>
               </div>
+
+              {/* Bill Preview */}
+              {billPreview && (
+                <div className="border rounded-lg p-4 bg-gray-50">
+                  <h3 className="font-semibold mb-3">Bill Preview</h3>
+                  <div className="space-y-2 text-sm">
+                    <div className="flex justify-between">
+                      <span>Room Charges:</span>
+                      <span>{currencySymbol} {billPreview.subtotal.toFixed(2)}</span>
+                    </div>
+                    {billPreview.discountAmount > 0 && (
+                      <div className="flex justify-between text-green-600">
+                        <span>
+                          Discount{" "}
+                          {billData.discountPercentage > 0
+                            ? `(${billData.discountPercentage}%)`
+                            : ""}
+                          :
+                        </span>
+                        <span>-{currencySymbol} {billPreview.discountAmount.toFixed(2)}</span>
+                      </div>
+                    )}
+                    {billPreview.appliedTaxes && billPreview.appliedTaxes.length > 0 ? (
+                      billPreview.appliedTaxes.map((tax: any, index: number) => (
+                        <div key={index} className="flex justify-between">
+                          <span>{tax.name} ({tax.rate}%):</span>
+                          <span>{currencySymbol} {tax.amount.toFixed(2)}</span>
+                        </div>
+                      ))
+                    ) : (
+                      <div className="flex justify-between">
+                        <span>Tax:</span>
+                        <span>{currencySymbol} {billPreview.taxAmount.toFixed(2)}</span>
+                      </div>
+                    )}
+                    <div className="flex justify-between text-lg font-bold border-t pt-2">
+                      <span>Total Amount:</span>
+                      <span>{currencySymbol} {billPreview.totalAmount.toFixed(2)}</span>
+                    </div>
+                  </div>
+                </div>
+              )}
 
               {/* Action Buttons */}
               <div className="flex justify-end space-x-2 pt-4">
                 <Button
                   variant="outline"
-                  onClick={() => setIsBillModalOpen(false)}
+                  onClick={() => {
+                    setIsBillModalOpen(false);
+                    resetForm();
+                  }}
                 >
                   Cancel
                 </Button>
-                <Button variant="outline" onClick={handlePrintBill}>
+                <Button
+                  variant="outline"
+                  onClick={() => handlePrintBill(selectedReservation)}
+                >
                   <Printer className="h-4 w-4 mr-2" />
                   Print Bill
                 </Button>
-                {selectedReservation?.status !== "checked-out" && (
-                  <Button
-                    onClick={handleCheckout}
-                    disabled={checkoutMutation.isPending}
-                  >
-                    <CreditCard className="h-4 w-4 mr-2" />
-                    {checkoutMutation.isPending
-                      ? "Processing..."
-                      : "Checkout & Pay"}
-                  </Button>
-                )}
-                {selectedReservation?.status === "checked-out" && (
-                  <div className="text-green-600 font-medium">
-                    ✓ Payment Completed
-                  </div>
-                )}
+                <Button
+                  onClick={handleCheckout}
+                  disabled={checkoutMutation.isPending}
+                >
+                  <CreditCard className="h-4 w-4 mr-2" />
+                  {checkoutMutation.isPending ? "Processing..." : "Complete Checkout"}
+                </Button>
               </div>
             </div>
           )}
         </DialogContent>
       </Dialog>
+
+      {/* View Bill Modal */}
+      {viewingBill && (
+        <Dialog open={!!viewingBill} onOpenChange={() => setViewingBill(null)}>
+          <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
+            <DialogHeader>
+              <DialogTitle className="flex items-center">
+                <Receipt className="mr-2 h-5 w-5" />
+                Bill Details - {viewingBill.confirmationNumber}
+              </DialogTitle>
+            </DialogHeader>
+            <div className="space-y-4">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <div>
+                  <span className="text-sm text-muted-foreground">Guest:</span>
+                  <p className="font-medium">
+                    {viewingBill.guest.firstName} {viewingBill.guest.lastName}
+                  </p>
+                </div>
+                <div>
+                  <span className="text-sm text-muted-foreground">Email:</span>
+                  <p className="font-medium">{viewingBill.guest.email || 'N/A'}</p>
+                </div>
+                <div>
+                  <span className="text-sm text-muted-foreground">Status:</span>
+                  {getStatusBadge(viewingBill.status)}
+                </div>
+                <div>
+                  <span className="text-sm text-muted-foreground">Total:</span>
+                  <p className="font-medium">
+                    {currencySymbol}{parseFloat(viewingBill.totalAmount).toFixed(2)}
+                  </p>
+                </div>
+              </div>
+
+              {viewingBill.reservationRooms && (
+                <div>
+                  <h3 className="text-lg font-semibold mb-2">Room Details</h3>
+                  <Table>
+                    <TableHeader>
+                      <TableRow>
+                        <TableHead>Room</TableHead>
+                        <TableHead>Dates</TableHead>
+                        <TableHead>Nights</TableHead>
+                        <TableHead>Rate</TableHead>
+                        <TableHead>Total</TableHead>
+                      </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                      {viewingBill.reservationRooms.map((room: any) => (
+                        <TableRow key={room.id}>
+                          <TableCell className="font-medium">
+                            {room.room.number} ({room.room.roomType.name})
+                          </TableCell>
+                          <TableCell>
+                            {formatDate(room.checkInDate)} - {formatDate(room.checkOutDate)}
+                          </TableCell>
+                          <TableCell>
+                            {calculateNights(room.checkInDate, room.checkOutDate)}
+                          </TableCell>
+                          <TableCell>
+                            {currencySymbol}{parseFloat(room.ratePerNight).toFixed(2)}
+                          </TableCell>
+                          <TableCell>
+                            {currencySymbol}{parseFloat(room.totalAmount).toFixed(2)}
+                          </TableCell>
+                        </TableRow>
+                      ))}
+                    </TableBody>
+                  </Table>
+                </div>
+              )}
+
+              <div className="flex justify-end space-x-2">
+                <Button onClick={() => handlePrintBill(viewingBill)}>
+                  <Printer className="mr-2 h-4 w-4" />
+                  Print Bill
+                </Button>
+              </div>
+            </div>
+          </DialogContent>
+        </Dialog>
+      )}
     </div>
   );
 }
