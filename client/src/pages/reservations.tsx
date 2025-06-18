@@ -274,8 +274,14 @@ export default function Reservations() {
     queryKey: ["/api/branches"],
   });
 
+  const { data: hotelSettings } = useQuery({
+    queryKey: ["/api/hotel-settings"],
+    enabled: isAuthenticated,
+  });
+
   const { data: activeTaxes } = useQuery({
-    queryKey: ['/api/taxes/reservation'],
+    queryKey: ["/api/taxes/reservation"],
+    enabled: isAuthenticated,
   });
 
   const handleCreateReservation = async (data: any) => {
