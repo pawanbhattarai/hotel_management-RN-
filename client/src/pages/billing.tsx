@@ -34,7 +34,7 @@ export default function Billing() {
   const [billData, setBillData] = useState({
     additionalCharges: 0,
     discount: 0,
-    tax: 0,
+    discountPercentage: 0,
     paymentMethod: "cash",
     notes: "",
   });
@@ -75,7 +75,7 @@ export default function Billing() {
       setBillData({
         additionalCharges: 0,
         discount: 0,
-        tax: 0,
+        discountPercentage: 0,
         paymentMethod: "cash",
         notes: "",
       });
@@ -189,9 +189,28 @@ export default function Billing() {
       sum + parseFloat(room.totalAmount), 0
     );
     const additionalCharges = billData.additionalCharges || 0;
-    const discount = billData.discount || 0;
-    const tax = billData.tax || 0;
-    const finalTotal = subtotal + additionalCharges - discount + tax;
+    const finalDiscountAmount = billData.discountPercentage > 0 
+      ? (subtotal * billData.discountPercentage / 100)
+      : billData.discount;
+    const afterDiscount = subtotal + additionalCharges - finalDiscountAmount;
+    
+    // Calculate taxes dynamically
+    let totalTaxAmount = 0;
+    let appliedTaxesString = "";
+    if (activeTaxes && activeTaxes.length > 0) {
+      const taxDetails = activeTaxes.map((tax: any) => {
+        const taxAmount = afterDiscount * (parseFloat(tax.rate) / 100);
+        totalTaxAmount += taxAmount;
+        return {
+          name: tax.taxName,
+          rate: tax.rate,
+          amount: taxAmount
+        };
+      });
+      appliedTaxesString = JSON.stringify(taxDetails);
+    }
+    
+    const finalTotal = afterDiscount + totalTaxAmount;
     const isPaid = selectedReservation.status === 'checked-out';
 
     // Get currency symbol
@@ -721,7 +740,7 @@ export default function Billing() {
                   />
                 </div>
                 <div>
-                  <Label htmlFor="discount">Discount</Label>
+                  <Label htmlFor="discount">Discount (Amount)</Label>
                   <Input
                     id="discount"
                     type="number"
@@ -731,13 +750,13 @@ export default function Billing() {
                   />
                 </div>
                 <div>
-                  <Label htmlFor="tax">Tax</Label>
+                  <Label htmlFor="discountPercentage">Discount (%)</Label>
                   <Input
-                    id="tax"
+                    id="discountPercentage"
                     type="number"
                     step="0.01"
-                    value={billData.tax}
-                    onChange={(e) => setBillData({ ...billData, tax: parseFloat(e.target.value) || 0 })}
+                    value={billData.discountPercentage}
+                    onChange={(e) => setBillData({ ...billData, discountPercentage: parseFloat(e.target.value) || 0 })}
                   />
                 </div>
                 <div>
@@ -750,7 +769,7 @@ export default function Billing() {
                   >
                     <option value="cash">Cash</option>
                     <option value="card">Card</option>
-                    <option value="esawa">eSawa</option>
+                    <option value="digital">Digital</option>
                     <option value="bank-transfer">Bank Transfer</option>
                   </select>
                 </div>
@@ -773,33 +792,62 @@ export default function Billing() {
                     const roomSubtotal = selectedReservation.reservationRooms.reduce((sum: number, room: any) =>
                       sum + parseFloat(room.totalAmount), 0
                     );
-                    const calculatedTaxes = activeTaxes ? activeTaxes.reduce((sum: number, tax: any) => {
-                        const taxAmount = roomSubtotal * (tax.rate / 100);
-                        return sum + taxAmount;
-                    }, 0) : 0;
-
-                    const finalTotal = roomSubtotal + billData.additionalCharges - billData.discount + calculatedTaxes;
+                    const additionalCharges = billData.additionalCharges || 0;
+                    const finalDiscountAmount = billData.discountPercentage > 0 
+                      ? (roomSubtotal * billData.discountPercentage / 100)
+                      : billData.discount;
+                    const afterDiscount = roomSubtotal + additionalCharges - finalDiscountAmount;
+                    
+                    // Calculate taxes dynamically
+                    let totalTaxAmount = 0;
+                    let appliedTaxes: any[] = [];
+                    if (activeTaxes && Array.isArray(activeTaxes) && activeTaxes.length > 0) {
+                      appliedTaxes = activeTaxes.map((tax: any) => {
+                        const taxAmount = afterDiscount * (parseFloat(tax.rate) / 100);
+                        totalTaxAmount += taxAmount;
+                        return {
+                          name: tax.taxName,
+                          rate: tax.rate,
+                          amount: taxAmount
+                        };
+                      });
+                    }
+                    
+                    const finalTotal = afterDiscount + totalTaxAmount;
 
                     return (
                       <div>
                         <div className="flex justify-between">
                           <span>Room Charges:</span>
-                          <span>{currencySymbol} {roomSubtotal.toFixed(2)}</span>
+                          <span>Rs. {roomSubtotal.toFixed(2)}</span>
                         </div>
-                        {activeTaxes && activeTaxes.length > 0 && (
+                        {additionalCharges > 0 && (
+                          <div className="flex justify-between">
+                            <span>Additional Charges:</span>
+                            <span>Rs. {additionalCharges.toFixed(2)}</span>
+                          </div>
+                        )}
+                        {finalDiscountAmount > 0 && (
+                          <div className="flex justify-between text-red-600">
+                            <span>Discount {billData.discountPercentage > 0 ? `(${billData.discountPercentage}%)` : ''}:</span>
+                            <span>-Rs. {finalDiscountAmount.toFixed(2)}</span>
+                          </div>
+                        )}
+                        <div className="flex justify-between font-medium">
+                          <span>Subtotal:</span>
+                          <span>Rs. {afterDiscount.toFixed(2)}</span>
+                        </div>
+                        {appliedTaxes.length > 0 && (
                           <>
-                            {activeTaxes.map((tax: any) => {
-                              const taxAmount = roomSubtotal * (tax.rate / 100);
-                              return (
-                                <div key={tax.id} className="flex justify-between">
-                                  <span>{tax.name} ({tax.rate}%):</span>
-                                  <span>{currencySymbol} {taxAmount.toFixed(2)}</span>
-                                </div>
-                              );
-                            })}
-                            <div className="flex justify-between">
+                            {appliedTaxes.map((tax: any, index: number) => (
+                              <div key={index} className="flex justify-between">
+                                <span>{tax.name} ({tax.rate}%):</span>
+                                <span>Rs. {tax.amount.toFixed(2)}</span>
+                              </div>
+                            ))}
+                            <div className="flex justify-between font-medium">
                               <span>Total Taxes & Fees:</span>
-                              <span>{currencySymbol} {calculatedTaxes.toFixed(2)}</span>
+                              <span>Rs. {totalTaxAmount.toFixed(2)}</span>
                             </div>
                           </>
                         )}
