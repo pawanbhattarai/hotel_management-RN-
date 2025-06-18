@@ -590,8 +590,8 @@ export class RestaurantStorage {
         .where(
           and(
             whereClause,
-            gte(restaurantOrders.createdAt, today.toISOString()),
-            lt(restaurantOrders.createdAt, tomorrow.toISOString())
+            gte(restaurantOrders.createdAt, today),
+            lt(restaurantOrders.createdAt, tomorrow)
           )
         ),
       // Current table status
@@ -612,8 +612,8 @@ export class RestaurantStorage {
         .where(
           and(
             whereClause,
-            gte(restaurantOrders.createdAt, today.toISOString()),
-            lt(restaurantOrders.createdAt, tomorrow.toISOString())
+            gte(restaurantOrders.createdAt, today),
+            lt(restaurantOrders.createdAt, tomorrow)
           )
         ),
     ]);
@@ -648,12 +648,12 @@ export class RestaurantStorage {
     const whereClause = branchId 
       ? and(
           eq(restaurantOrders.branchId, branchId),
-          gte(restaurantOrders.createdAt, today.toISOString()),
-          lt(restaurantOrders.createdAt, tomorrow.toISOString())
+          gte(restaurantOrders.createdAt, today),
+          lt(restaurantOrders.createdAt, tomorrow)
         )
       : and(
-          gte(restaurantOrders.createdAt, today.toISOString()),
-          lt(restaurantOrders.createdAt, tomorrow.toISOString())
+          gte(restaurantOrders.createdAt, today),
+          lt(restaurantOrders.createdAt, tomorrow)
         );
 
     const orders = await db
@@ -663,8 +663,7 @@ export class RestaurantStorage {
         status: restaurantOrders.status,
         totalAmount: restaurantOrders.totalAmount,
         createdAt: restaurantOrders.createdAt,
-        tableNumber: restaurantTables.tableNumber,
-        tableName: restaurantTables.tableName,
+        tableName: restaurantTables.name,
       })
       .from(restaurantOrders)
       .leftJoin(restaurantTables, eq(restaurantOrders.tableId, restaurantTables.id))

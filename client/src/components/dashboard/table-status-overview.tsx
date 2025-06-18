@@ -45,12 +45,12 @@ export default function TableStatusOverview() {
 
   const tableStatusItems = [
     {
-      key: "available",
+      key: "open",
       label: "Available",
       icon: CheckCircle,
       iconBg: "bg-success-50",
       iconColor: "text-success",
-      count: metrics?.tableStatusCounts?.available || 0,
+      count: metrics?.tableStatusCounts?.open || 0,
     },
     {
       key: "occupied",
@@ -103,7 +103,11 @@ export default function TableStatusOverview() {
           <div className="flex justify-between items-center">
             <span className="text-sm font-medium text-gray-600">Table Occupancy Rate</span>
             <span className="text-lg font-bold text-primary">
-              {metrics?.tableOccupancyRate || 0}%
+              {(() => {
+                const totalTables = tableStatusItems.reduce((sum, item) => sum + item.count, 0);
+                const occupiedTables = metrics?.tableStatusCounts?.occupied || 0;
+                return totalTables > 0 ? Math.round((occupiedTables / totalTables) * 100) : 0;
+              })()}%
             </span>
           </div>
         </div>

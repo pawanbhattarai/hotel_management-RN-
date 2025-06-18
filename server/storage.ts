@@ -669,7 +669,7 @@ export class DatabaseStorage implements IStorage {
   }
 
   // 24-hour specific methods
-  async getTodayReservations(branchId?: number): Promise<(Reservation & {
+  async getTodayReservations(branchId?: number, limit?: number): Promise<(Reservation & {
     guest: Guest;
     reservationRooms: (ReservationRoom & {
       room: Room & { roomType: RoomType };
@@ -693,7 +693,9 @@ export class DatabaseStorage implements IStorage {
         )
       );
 
-    const reservationResults = await reservationQuery.orderBy(desc(reservations.createdAt));
+    const reservationResults = await reservationQuery
+      .orderBy(desc(reservations.createdAt))
+      .limit(limit || 1000);
 
     const reservationsWithRooms = await Promise.all(
       reservationResults.map(async (result) => {
@@ -724,6 +726,151 @@ export class DatabaseStorage implements IStorage {
     );
 
     return reservationsWithRooms;
+  }
+
+  // Super admin dashboard metrics
+  async getSuperAdminDashboardMetrics(): Promise<{
+    totalBranches: number;
+    totalReservations: number;
+    totalRevenue: number;
+    totalRooms: number;
+    branchMetrics: Array<{
+      branchId: number;
+      branchName: string;
+      totalRooms: number;
+      bookedRooms: number;
+      availableRooms: number;
+      occupancyRate: number;
+      totalReservations: number;
+      revenue: number;
+    }>;
+  }> {
+    // Get today's date range
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    const tomorrow = new Date(today);
+    tomorrow.setDate(tomorrow.getDate() + 1);
+
+    // Get total branches
+    const [totalBranchesResult] = await db
+      .select({ count: sql<number>`count(*)` })
+      .from(branches);
+    const totalBranches = totalBranchesResult.count;
+
+    // Get total reservations (today)
+    const [totalReservationsResult] = await db
+      .select({ count: sql<number>`count(*)` })
+      .from(reservations)
+      .where(
+        and(
+          gte(reservations.createdAt, today),
+          lt(reservations.createdAt, tomorrow)
+        )
+      );
+    const totalReservations = totalReservationsResult.count;
+
+    // Get total revenue (today)
+    const [totalRevenueResult] = await db
+      .select({ 
+        revenue: sql<number>`coalesce(sum(cast(${reservations.totalAmount} as decimal)), 0)` 
+      })
+      .from(reservations)
+      .where(
+        and(
+          gte(reservations.createdAt, today),
+          lt(reservations.createdAt, tomorrow)
+        )
+      );
+    const totalRevenue = Number(totalRevenueResult.revenue);
+
+    // Get total rooms
+    const [totalRoomsResult] = await db
+      .select({ count: sql<number>`count(*)` })
+      .from(rooms);
+    const totalRooms = totalRoomsResult.count;
+
+    // Get branch metrics
+    const branchResults = await db
+      .select({
+        branchId: branches.id,
+        branchName: branches.name,
+      })
+      .from(branches);
+
+    const branchMetrics = await Promise.all(
+      branchResults.map(async (branch) => {
+        // Get total rooms for this branch
+        const [branchRoomsResult] = await db
+          .select({ count: sql<number>`count(*)` })
+          .from(rooms)
+          .where(eq(rooms.branchId, branch.branchId));
+        const branchTotalRooms = branchRoomsResult.count;
+
+        // Get booked rooms (currently occupied)
+        const [bookedRoomsResult] = await db
+          .select({ count: sql<number>`count(distinct ${rooms.id})` })
+          .from(rooms)
+          .leftJoin(reservationRooms, eq(rooms.id, reservationRooms.roomId))
+          .leftJoin(reservations, eq(reservationRooms.reservationId, reservations.id))
+          .where(
+            and(
+              eq(rooms.branchId, branch.branchId),
+              eq(reservations.status, 'checked-in')
+            )
+          );
+        const bookedRooms = bookedRoomsResult.count;
+
+        // Get today's reservations for this branch
+        const [branchReservationsResult] = await db
+          .select({ count: sql<number>`count(*)` })
+          .from(reservations)
+          .where(
+            and(
+              eq(reservations.branchId, branch.branchId),
+              gte(reservations.createdAt, today),
+              lt(reservations.createdAt, tomorrow)
+            )
+          );
+        const branchTotalReservations = branchReservationsResult.count;
+
+        // Get today's revenue for this branch
+        const [branchRevenueResult] = await db
+          .select({ 
+            revenue: sql<number>`coalesce(sum(cast(${reservations.totalAmount} as decimal)), 0)` 
+          })
+          .from(reservations)
+          .where(
+            and(
+              eq(reservations.branchId, branch.branchId),
+              gte(reservations.createdAt, today),
+              lt(reservations.createdAt, tomorrow)
+            )
+          );
+        const branchRevenue = Number(branchRevenueResult.revenue);
+
+        const availableRooms = branchTotalRooms - bookedRooms;
+        const occupancyRate = branchTotalRooms > 0 ? Math.round((bookedRooms / branchTotalRooms) * 100) : 0;
+
+        return {
+          branchId: branch.branchId,
+          branchName: branch.branchName,
+          totalRooms: branchTotalRooms,
+          bookedRooms,
+          availableRooms,
+          occupancyRate,
+          totalReservations: branchTotalReservations,
+          revenue: branchRevenue,
+        };
+      })
+    );
+
+    return {
+      totalBranches,
+      totalReservations,
+      totalRevenue,
+      totalRooms,
+      branchMetrics,
+    };
   }
 }
 
