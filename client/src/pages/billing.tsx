@@ -405,20 +405,20 @@ export default function Billing() {
       </head>
       <body>
         <div class="header">
-          ${hotelSettings.logo ? `<img src="${hotelSettings.logo}" alt="Hotel Logo" class="hotel-logo">` : ''}
-          <div class="hotel-name">${hotelSettings.hotelName || 'Hotel Name'}</div>
-          ${hotelSettings.hotelChain ? `<div class="hotel-details"><strong>${hotelSettings.hotelChain}</strong></div>` : ''}
+          ${hotelSettings?.logo ? `<img src="${hotelSettings.logo}" alt="Hotel Logo" class="hotel-logo">` : ''}
+          <div class="hotel-name">${hotelSettings?.hotelName || 'Hotel Name'}</div>
+          ${hotelSettings?.hotelChain ? `<div class="hotel-details"><strong>${hotelSettings.hotelChain}</strong></div>` : ''}
           <div class="hotel-details">
-            ${hotelSettings.address}<br>
-            ${hotelSettings.city}, ${hotelSettings.state} ${hotelSettings.postalCode}<br>
-            ${hotelSettings.country}
+            ${hotelSettings?.address || ''}<br>
+            ${hotelSettings?.city || ''}, ${hotelSettings?.state || ''} ${hotelSettings?.postalCode || ''}<br>
+            ${hotelSettings?.country || ''}
           </div>
           <div class="hotel-details">
-            Phone: ${hotelSettings.phone} | Email: ${hotelSettings.email}
-            ${hotelSettings.website ? ` | Website: ${hotelSettings.website}` : ''}
+            Phone: ${hotelSettings?.phone || ''} | Email: ${hotelSettings?.email || ''}
+            ${hotelSettings?.website ? ` | Website: ${hotelSettings.website}` : ''}
           </div>
-          ${hotelSettings.taxNumber ? `<div class="hotel-details">Tax Number: ${hotelSettings.taxNumber}</div>` : ''}
-          ${hotelSettings.registrationNumber ? `<div class="hotel-details">Registration: ${hotelSettings.registrationNumber}</div>` : ''}
+          ${hotelSettings?.taxNumber ? `<div class="hotel-details">Tax Number: ${hotelSettings.taxNumber}</div>` : ''}
+          ${hotelSettings?.registrationNumber ? `<div class="hotel-details">Registration: ${hotelSettings.registrationNumber}</div>` : ''}
 
           <div class="bill-title">HOTEL BILL / INVOICE</div>
         </div>
@@ -434,7 +434,7 @@ export default function Billing() {
             <div><span class="detail-label">Confirmation Number:</span> ${selectedReservation.confirmationNumber}</div>
             <div><span class="detail-label">Bill Date:</span> ${currentDateTime}</div>
             <div><span class="detail-label">Payment Method:</span> ${billData.paymentMethod.toUpperCase()}</div>
-            <div><span class="detail-label">Currency:</span> ${hotelSettings.currency} (${currencySymbol})</div>
+            <div><span class="detail-label">Currency:</span> ${hotelSettings?.currency || 'NPR'} (${currencySymbol})</div>
           </div>
         </div>
 
@@ -469,8 +469,8 @@ export default function Billing() {
         <div class="total-section">
           <div class="subtotal-row">Room Subtotal: ${currencySymbol}${subtotal.toFixed(2)}</div>
           ${additionalCharges > 0 ? `<div class="subtotal-row">Additional Charges: ${currencySymbol}${additionalCharges.toFixed(2)}</div>` : ''}
-          ${discount > 0 ? `<div class="subtotal-row">Discount: -${currencySymbol}${discount.toFixed(2)}</div>` : ''}
-          ${tax > 0 ? `<div class="subtotal-row">Tax: ${currencySymbol}${tax.toFixed(2)}</div>` : ''}
+          ${finalDiscountAmount > 0 ? `<div class="subtotal-row">Discount: -${currencySymbol}${finalDiscountAmount.toFixed(2)}</div>` : ''}
+          ${totalTaxAmount > 0 ? `<div class="subtotal-row">Tax: ${currencySymbol}${totalTaxAmount.toFixed(2)}</div>` : ''}
           <div class="total-row">
             <strong>TOTAL AMOUNT: ${currencySymbol}${finalTotal.toFixed(2)}</strong>
           </div>
@@ -487,20 +487,20 @@ export default function Billing() {
           </div>
         ` : ''}
 
-        ${hotelSettings.billingFooter ? `
+        ${hotelSettings?.billingFooter ? `
           <div class="footer">
             ${hotelSettings.billingFooter}
           </div>
         ` : ''}
 
-        ${hotelSettings.termsAndConditions ? `
+        ${hotelSettings?.termsAndConditions ? `
           <div class="terms-section">
             <strong>Terms and Conditions:</strong><br>
             <small>${hotelSettings.termsAndConditions}</small>
           </div>
         ` : ''}
 
-        ${hotelSettings.cancellationPolicy ? `
+        ${hotelSettings?.cancellationPolicy ? `
           <div class="terms-section">
             <strong>Cancellation Policy:</strong><br>
             <small>${hotelSettings.cancellationPolicy}</small>
@@ -513,7 +513,7 @@ export default function Billing() {
 
 
 
-  const filteredReservations = reservations?.filter((reservation: any) => {
+  const filteredReservations = reservations && Array.isArray(reservations) ? reservations.filter((reservation: any) => {
     const searchLower = searchTerm.toLowerCase();
     return (
       reservation.guest.firstName.toLowerCase().includes(searchLower) ||
@@ -521,7 +521,7 @@ export default function Billing() {
       reservation.guest.email?.toLowerCase().includes(searchLower) ||
       reservation.confirmationNumber.toLowerCase().includes(searchLower)
     );
-  });
+  }) : [];
 
   // Get currency symbol for display
   const getCurrencySymbol = (currency: string) => {
