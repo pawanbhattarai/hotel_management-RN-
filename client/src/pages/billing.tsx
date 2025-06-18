@@ -27,7 +27,17 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import { Search, Printer, CreditCard, Receipt, Eye } from "lucide-react";
+import { Search, Printer, CreditCard, Receipt, Eye, Trash2 } from "lucide-react";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 
 export default function Billing() {
   const { toast } = useToast();
@@ -44,6 +54,8 @@ export default function Billing() {
     paymentMethod: "cash",
     notes: "",
   });
+  const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
+  const [reservationToDelete, setReservationToDelete] = useState<any>(null);
 
   const { data: reservations, isLoading: reservationsLoading } = useQuery({
     queryKey: ["/api/reservations"],
@@ -100,6 +112,41 @@ export default function Billing() {
       toast({
         title: "Error",
         description: "Failed to process checkout. Please try again.",
+        variant: "destructive",
+      });
+    },
+  });
+
+  const deleteReservationMutation = useMutation({
+    mutationFn: async (id: string) => {
+      return await apiRequest("DELETE", `/api/reservations/${id}`);
+    },
+    onSuccess: () => {
+      toast({
+        title: "Success",
+        description: "Reservation cancelled successfully!",
+      });
+      queryClient.invalidateQueries({ queryKey: ["/api/reservations"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/rooms"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/dashboard/metrics"] });
+      setIsDeleteDialogOpen(false);
+      setReservationToDelete(null);
+    },
+    onError: (error) => {
+      if (isUnauthorizedError(error)) {
+        toast({
+          title: "Unauthorized",
+          description: "You are logged out. Logging in again...",
+          variant: "destructive",
+        });
+        setTimeout(() => {
+          window.location.href = "/api/login";
+        }, 500);
+        return;
+      }
+      toast({
+        title: "Error",
+        description: "Failed to cancel reservation. Please try again.",
         variant: "destructive",
       });
     },
@@ -239,6 +286,17 @@ export default function Billing() {
     billWindow?.document.write(billContent);
     billWindow?.document.close();
     billWindow?.print();
+  };
+
+  const handleDeleteReservation = (reservation: any) => {
+    setReservationToDelete(reservation);
+    setIsDeleteDialogOpen(true);
+  };
+
+  const confirmDeleteReservation = () => {
+    if (reservationToDelete) {
+      deleteReservationMutation.mutate(reservationToDelete.id);
+    }
   };
 
   const generateBillHTML = (reservation: any) => {
@@ -722,14 +780,26 @@ export default function Billing() {
                           {parseFloat(reservation.totalAmount).toFixed(2)}
                         </TableCell>
                         <TableCell>
-                          <Button
-                            onClick={() => handleCreateBill(reservation)}
-                            disabled={checkoutMutation.isPending}
-                            className="bg-green-600 hover:bg-green-700"
-                          >
-                            <CreditCard className="h-4 w-4 mr-2" />
-                            Checkout
-                          </Button>
+                          <div className="flex space-x-2">
+                            <Button
+                              onClick={() => handleCreateBill(reservation)}
+                              disabled={checkoutMutation.isPending}
+                              className="bg-green-600 hover:bg-green-700"
+                              size="sm"
+                            >
+                              <CreditCard className="h-4 w-4 mr-2" />
+                              Checkout
+                            </Button>
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              onClick={() => handleDeleteReservation(reservation)}
+                              className="text-red-600 hover:text-red-800 border-red-200 hover:border-red-300"
+                              title="Cancel Reservation"
+                            >
+                              <Trash2 className="h-4 w-4" />
+                            </Button>
+                          </div>
                         </TableCell>
                       </TableRow>
                     ))}
@@ -848,6 +918,17 @@ export default function Billing() {
                                   title="Checkout"
                                 >
                                   <Receipt className="h-4 w-4" />
+                                </Button>
+                              )}
+                              {reservation.status !== "checked-out" && reservation.status !== "cancelled" && (
+                                <Button
+                                  variant="outline"
+                                  size="sm"
+                                  onClick={() => handleDeleteReservation(reservation)}
+                                  className="text-red-600 hover:text-red-800 border-red-200 hover:border-red-300"
+                                  title="Cancel Reservation"
+                                >
+                                  <Trash2 className="h-4 w-4" />
                                 </Button>
                               )}
                             </div>
@@ -1163,6 +1244,29 @@ export default function Billing() {
           </DialogContent>
         </Dialog>
       )}
+
+      {/* Delete Confirmation Dialog */}
+      <AlertDialog open={isDeleteDialogOpen} onOpenChange={setIsDeleteDialogOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Cancel Reservation</AlertDialogTitle>
+            <AlertDialogDescription>
+              Are you sure you want to cancel reservation "{reservationToDelete?.confirmationNumber}"?
+              This will mark the reservation as cancelled and free up the associated rooms.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction 
+              onClick={confirmDeleteReservation} 
+              disabled={deleteReservationMutation.isPending}
+              className="bg-red-600 hover:bg-red-700"
+            >
+              {deleteReservationMutation.isPending ? "Cancelling..." : "Cancel Reservation"}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }
