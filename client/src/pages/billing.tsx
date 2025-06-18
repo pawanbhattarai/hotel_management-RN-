@@ -44,9 +44,13 @@ export default function Billing() {
     enabled: isAuthenticated,
   });
 
-  // Fetch hotel settings
-  const { data: hotelSettings } = useQuery({
+    const { data: hotelSettings } = useQuery({
     queryKey: ["/api/hotel-settings"],
+    enabled: isAuthenticated,
+  });
+
+  const { data: activeTaxes } = useQuery({
+    queryKey: ["/api/taxes/reservation"],
     enabled: isAuthenticated,
   });
 
@@ -769,48 +773,52 @@ export default function Billing() {
                     const roomSubtotal = selectedReservation.reservationRooms.reduce((sum: number, room: any) =>
                       sum + parseFloat(room.totalAmount), 0
                     );
-                    const existingTaxAmount = parseFloat(selectedReservation.taxAmount || '0');
-                    const finalTotal = roomSubtotal + billData.additionalCharges - billData.discount + existingTaxAmount;
+                    const calculatedTaxes = activeTaxes ? activeTaxes.reduce((sum: number, tax: any) => {
+                        const taxAmount = roomSubtotal * (tax.rate / 100);
+                        return sum + taxAmount;
+                    }, 0) : 0;
+
+                    const finalTotal = roomSubtotal + billData.additionalCharges - billData.discount + calculatedTaxes;
 
                     return (
                       <div>
                         <div className="flex justify-between">
                           <span>Room Charges:</span>
-                          <span>NPR {roomSubtotal.toFixed(2)}</span>
+                          <span>{currencySymbol} {roomSubtotal.toFixed(2)}</span>
                         </div>
-                        {existingTaxAmount > 0 && (
-                          <div className="flex justify-between">
-                            <span>Taxes & Charges:</span>
-                            <span>NPR {existingTaxAmount.toFixed(2)}</span>
-                          </div>
+                        {activeTaxes && activeTaxes.length > 0 && (
+                          <>
+                            {activeTaxes.map((tax: any) => {
+                              const taxAmount = roomSubtotal * (tax.rate / 100);
+                              return (
+                                <div key={tax.id} className="flex justify-between">
+                                  <span>{tax.name} ({tax.rate}%):</span>
+                                  <span>{currencySymbol} {taxAmount.toFixed(2)}</span>
+                                </div>
+                              );
+                            })}
+                            <div className="flex justify-between">
+                              <span>Total Taxes & Fees:</span>
+                              <span>{currencySymbol} {calculatedTaxes.toFixed(2)}</span>
+                            </div>
+                          </>
                         )}
                         {billData.additionalCharges > 0 && (
                           <div className="flex justify-between">
                             <span>Additional Charges:</span>
-                            <span>NPR {billData.additionalCharges.toFixed(2)}</span>
+                            <span>{currencySymbol} {billData.additionalCharges.toFixed(2)}</span>
                           </div>
                         )}
                         {billData.discount > 0 && (
                           <div className="flex justify-between text-green-600">
                             <span>Discount:</span>
-                            <span>-NPR {billData.discount.toFixed(2)}</span>
+                            <span>-{currencySymbol} {billData.discount.toFixed(2)}</span>
                           </div>
                         )}
                         <div className="flex justify-between font-bold text-lg border-t pt-2">
                           <span>Total Amount:</span>
-                          <span>NPR {finalTotal.toFixed(2)}</span>
+                          <span>{currencySymbol} {finalTotal.toFixed(2)}</span>
                         </div>
-                        {selectedReservation.appliedTaxes && (
-                          <div className="mt-2 text-xs text-gray-600">
-                            <p>Tax Details:</p>
-                            {JSON.parse(selectedReservation.appliedTaxes).map((tax: any, index: number) => (
-                              <div key={index} className="flex justify-between">
-                                <span>{tax.taxName} ({tax.rate}%):</span>
-                                <span>NPR {tax.amount}</span>
-                              </div>
-                            ))}
-                          </div>
-                        )}
                       </div>
                     );
                   })()}

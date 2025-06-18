@@ -274,8 +274,8 @@ export default function Reservations() {
     queryKey: ["/api/branches"],
   });
 
-  const { data: reservationTaxes } = useQuery({
-    queryKey: ["/api/taxes/reservation"],
+  const { data: activeTaxes } = useQuery({
+    queryKey: ['/api/taxes/reservation'],
   });
 
   const handleCreateReservation = async (data: any) => {
@@ -288,8 +288,8 @@ export default function Reservations() {
       let totalTaxAmount = 0;
       const appliedTaxes = [];
 
-      if (reservationTaxes) {
-        for (const tax of reservationTaxes) {
+      if (activeTaxes) {
+        for (const tax of activeTaxes) {
           const taxAmount = (subtotal * parseFloat(tax.rate)) / 100;
           totalTaxAmount += taxAmount;
           appliedTaxes.push({
