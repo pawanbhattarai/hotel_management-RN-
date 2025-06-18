@@ -100,23 +100,17 @@ export default function Dashboard() {
                           </div>
                         </CardHeader>
                         <CardContent className="space-y-3">
-                          <div className="flex justify-between items-center">
-                            <span className="text-sm font-medium">Occupancy Rate</span>
-                            <span className="text-sm text-muted-foreground">{branch.occupancyRate}%</span>
-                          </div>
-                          <Progress value={branch.occupancyRate} className="h-2" />
-
                           <div className="grid grid-cols-2 gap-4 text-sm">
                             <div>
                               <div className="text-muted-foreground">Reservations</div>
                               <div className="font-medium">{branch.totalReservations}</div>
                             </div>
                             <div>
-                              <div className="text-muted-foreground">Available</div>
-                              <div className="font-medium">{branch.availableRooms}</div>
+                              <div className="text-muted-foreground">Orders</div>
+                              <div className="font-medium">0</div>
                             </div>
                             <div className="col-span-2">
-                              <div className="text-muted-foreground">Today's Revenue</div>
+                              <div className="text-muted-foreground">Today's Revenue (Reservations, Orders)</div>
                               <div className="font-medium text-green-600">₨. {(branch.revenue || 0).toLocaleString()}</div>
                             </div>
                           </div>

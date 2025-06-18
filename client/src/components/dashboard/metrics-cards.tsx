@@ -1,10 +1,14 @@
 import { useQuery } from "@tanstack/react-query";
 import { Card, CardContent } from "@/components/ui/card";
-import { Calendar, Bed, TrendingUp, DoorOpen } from "lucide-react";
+import { Calendar, ShoppingCart, TrendingUp, DollarSign } from "lucide-react";
 
 export default function MetricsCards() {
   const { data: metrics, isLoading } = useQuery({
     queryKey: ["/api/dashboard/metrics"],
+  });
+
+  const { data: restaurantMetrics } = useQuery({
+    queryKey: ["/api/restaurant/dashboard/metrics"],
   });
 
   if (isLoading) {
@@ -24,35 +28,31 @@ export default function MetricsCards() {
   const metricsData = [
     {
       title: "Total Reservations",
-      value: metrics?.totalReservations || 0,
-      changeType: "positive" as const,
+      value: (metrics as any)?.todayReservations || 0,
       icon: Calendar,
       iconBg: "bg-primary-50",
       iconColor: "text-primary",
     },
     {
-      title: "Occupancy Rate",
-      value: `${metrics?.occupancyRate || 0}%`,
-      changeType: "positive" as const,
-      icon: Bed,
-      iconBg: "bg-success-50",
-      iconColor: "text-success",
+      title: "Total Orders",
+      value: (restaurantMetrics as any)?.totalOrders || 0,
+      icon: ShoppingCart,
+      iconBg: "bg-blue-50",
+      iconColor: "text-blue-600",
     },
     {
-      title: "Revenue Today",
-      value: `Rs. ${(metrics?.revenueToday || 0).toLocaleString()}`,
-      changeType: "negative" as const,
+      title: "Revenue (Reservations)",
+      value: `Rs. ${((metrics as any)?.todayRevenue || 0).toLocaleString()}`,
       icon: TrendingUp,
-      iconBg: "bg-warning-50",
-      iconColor: "text-warning",
+      iconBg: "bg-green-50",
+      iconColor: "text-green-600",
     },
     {
-      title: "Available Rooms",
-      value: metrics?.availableRooms || 0,
-      changeType: "negative" as const,
-      icon: DoorOpen,
-      iconBg: "bg-error-50",
-      iconColor: "text-error",
+      title: "Revenue (Orders)",
+      value: `Rs. ${((restaurantMetrics as any)?.totalRevenue || 0).toLocaleString()}`,
+      icon: DollarSign,
+      iconBg: "bg-yellow-50",
+      iconColor: "text-yellow-600",
     },
   ];
 
@@ -72,17 +72,7 @@ export default function MetricsCards() {
                 <p className="text-3xl font-bold text-gray-900 mt-1">
                   {metric.value}
                 </p>
-                <div className="flex items-center mt-2">
-                  <span
-                    className={`text-sm font-medium ${
-                      metric.changeType === "positive"
-                        ? "text-success"
-                        : "text-warning"
-                    }`}
-                  >
-                    {metric.change}
-                  </span>
-                </div>
+
               </div>
               <div
                 className={`w-12 h-12 ${metric.iconBg} rounded-xl flex items-center justify-center`}
