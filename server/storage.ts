@@ -848,6 +848,10 @@ export class DatabaseStorage implements IStorage {
           );
         const branchRevenue = Number(branchRevenueResult.revenue);
 
+        // Get restaurant data for this branch (using restaurant-storage import)
+        const { restaurantStorage } = await import('./restaurant-storage');
+        const restaurantMetrics = await restaurantStorage.getRestaurantDashboardMetrics(branch.branchId);
+
         const availableRooms = branchTotalRooms - bookedRooms;
         const occupancyRate = branchTotalRooms > 0 ? Math.round((bookedRooms / branchTotalRooms) * 100) : 0;
 
@@ -860,6 +864,8 @@ export class DatabaseStorage implements IStorage {
           occupancyRate,
           totalReservations: branchTotalReservations,
           revenue: branchRevenue,
+          totalOrders: restaurantMetrics.totalOrders,
+          restaurantRevenue: restaurantMetrics.totalRevenue,
         };
       })
     );

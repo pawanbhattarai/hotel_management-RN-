@@ -107,11 +107,11 @@ export default function Dashboard() {
                             </div>
                             <div>
                               <div className="text-muted-foreground">Orders</div>
-                              <div className="font-medium">0</div>
+                              <div className="font-medium">{branch.totalOrders || 0}</div>
                             </div>
                             <div className="col-span-2">
                               <div className="text-muted-foreground">Today's Revenue (Reservations, Orders)</div>
-                              <div className="font-medium text-green-600">₨. {(branch.revenue || 0).toLocaleString()}</div>
+                              <div className="font-medium text-green-600">₨. {((branch.revenue || 0) + (branch.restaurantRevenue || 0)).toLocaleString()}</div>
                             </div>
                           </div>
                         </CardContent>
