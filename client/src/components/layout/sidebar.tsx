@@ -406,7 +406,21 @@ export default function Sidebar({
                   }`}
                 >
                   <TrendingUp className="mr-3 h-4 w-4 flex-shrink-0" />
-                  <span className="text-sm font-medium">Analytics</span>
+                  <span className="text-sm font-medium">PMS Analytics</span>
+                </button>
+                <button
+                  onClick={() => {
+                    navigate("/restaurant/analytics");
+                    setMenuOpen(false);
+                  }}
+                  className={`w-full flex items-center px-3 py-2 lg:py-2.5 text-left rounded-lg transition-colors ml-4 ${
+                    isActiveRoute("/restaurant/analytics")
+                      ? "bg-primary text-white"
+                      : "text-gray-700 hover:bg-gray-100"
+                  }`}
+                >
+                  <ChefHat className="mr-3 h-4 w-4 flex-shrink-0" />
+                  <span className="text-sm font-medium">RMS Analytics</span>
                 </button>
               </div>
             )}

@@ -25,6 +25,7 @@ import RestaurantBilling from "@/pages/restaurant-billing";
 import RestaurantCategories from "@/pages/restaurant-categories";
 import RestaurantDishes from "@/pages/restaurant-dishes";
 import TaxManagement from "@/pages/tax-management";
+import { lazy } from "react";
 
 function Router() {
   const { isAuthenticated, isLoading, user } = useAuth();
@@ -44,9 +45,10 @@ function Router() {
           <Route path="/branches" component={Branches} />
           <Route path="/users" component={Users} />
           <Route path="/analytics" component={Analytics} />
-          <Route path="/billing" component={Billing} />
-          <Route path="/profile" component={Profile} />
+          <Route path="/restaurant/analytics" component={lazy(() => import("./pages/restaurant-analytics"))} />
           <Route path="/settings" component={Settings} />
+          <Route path="/profile" component={Profile} />
+          <Route path="/notifications" component={lazy(() => import("./pages/notifications"))} />
           <Route path="/restaurant/tables" component={RestaurantTables} />
           <Route path="/restaurant/menu" component={RestaurantMenu} />
           <Route path="/restaurant/categories" component={RestaurantCategories} />

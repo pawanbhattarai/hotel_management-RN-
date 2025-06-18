@@ -1008,6 +1008,79 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Restaurant Analytics Endpoints
+  app.get("/api/restaurant/analytics/revenue", isAuthenticated, async (req: any, res) => {
+    try {
+      const user = await storage.getUser(req.session.user.id);
+      if (!user) return res.status(401).json({ message: "User not found" });
+
+      const branchId = user.role === "superadmin" ? undefined : user.branchId!;
+      const period = req.query.period || '30d';
+      const analytics = await restaurantStorage.getRevenueAnalytics(branchId, period as string);
+      res.json(analytics);
+    } catch (error) {
+      console.error("Error fetching restaurant revenue analytics:", error);
+      res.status(500).json({ message: "Failed to fetch restaurant revenue analytics" });
+    }
+  });
+
+  app.get("/api/restaurant/analytics/orders", isAuthenticated, async (req: any, res) => {
+    try {
+      const user = await storage.getUser(req.session.user.id);
+      if (!user) return res.status(401).json({ message: "User not found" });
+
+      const branchId = user.role === "superadmin" ? undefined : user.branchId!;
+      const period = req.query.period || '30d';
+      const analytics = await restaurantStorage.getOrderAnalytics(branchId, period as string);
+      res.json(analytics);
+    } catch (error) {
+      console.error("Error fetching restaurant order analytics:", error);
+      res.status(500).json({ message: "Failed to fetch restaurant order analytics" });
+    }
+  });
+
+  app.get("/api/restaurant/analytics/dishes", isAuthenticated, async (req: any, res) => {
+    try {
+      const user = await storage.getUser(req.session.user.id);
+      if (!user) return res.status(401).json({ message: "User not found" });
+
+      const branchId = user.role === "superadmin" ? undefined : user.branchId!;
+      const analytics = await restaurantStorage.getDishAnalytics(branchId);
+      res.json(analytics);
+    } catch (error) {
+      console.error("Error fetching restaurant dish analytics:", error);
+      res.status(500).json({ message: "Failed to fetch restaurant dish analytics" });
+    }
+  });
+
+  app.get("/api/restaurant/analytics/tables", isAuthenticated, async (req: any, res) => {
+    try {
+      const user = await storage.getUser(req.session.user.id);
+      if (!user) return res.status(401).json({ message: "User not found" });
+
+      const branchId = user.role === "superadmin" ? undefined : user.branchId!;
+      const analytics = await restaurantStorage.getTableAnalytics(branchId);
+      res.json(analytics);
+    } catch (error) {
+      console.error("Error fetching restaurant table analytics:", error);
+      res.status(500).json({ message: "Failed to fetch restaurant table analytics" });
+    }
+  });
+
+  app.get("/api/restaurant/analytics/operations", isAuthenticated, async (req: any, res) => {
+    try {
+      const user = await storage.getUser(req.session.user.id);
+      if (!user) return res.status(401).json({ message: "User not found" });
+
+      const branchId = user.role === "superadmin" ? undefined : user.branchId!;
+      const analytics = await restaurantStorage.getOperationalAnalytics(branchId);
+      res.json(analytics);
+    } catch (error) {
+      console.error("Error fetching restaurant operational analytics:", error);
+      res.status(500).json({ message: "Failed to fetch restaurant operational analytics" });
+    }
+  });
+
   // Hotel settings
   app.get("/api/hotel-settings", isAuthenticated, async (req: any, res) => {
     try {
