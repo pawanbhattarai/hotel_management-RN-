@@ -774,7 +774,12 @@ export default function MultiRoomModal({
                 </span>
               </div>
               <div className="flex justify-between">
-                <span className="text-gray-600">Taxes & Fees (15%):</span>
+                <span className="text-gray-600">
+                  {activeTaxes && activeTaxes.length > 0 
+                    ? `Taxes & Fees (${activeTaxes.map((tax: any) => `${tax.taxName} ${tax.rate}%`).join(', ')}):`
+                    : 'Taxes & Fees:'
+                  }
+                </span>
                 <span className="font-medium">
                   Rs.{summary.taxes.toFixed(2)}
                 </span>
