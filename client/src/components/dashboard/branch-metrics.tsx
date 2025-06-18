@@ -1,11 +1,28 @@
 import { useQuery } from "@tanstack/react-query";
-import { Card, CardContent, CardHeader, CardDescription, CardTitle } from "@/components/ui/card";
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import {
+  Card,
+  CardContent,
+  CardHeader,
+  CardDescription,
+  CardTitle,
+} from "@/components/ui/card";
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
 import { Building2, TrendingUp } from "lucide-react";
 
 export default function BranchMetrics() {
-  const { data: metrics, isLoading, error } = useQuery({
+  const {
+    data: metrics,
+    isLoading,
+    error,
+  } = useQuery({
     queryKey: ["/api/dashboard/metrics"],
   });
 
@@ -13,7 +30,9 @@ export default function BranchMetrics() {
     return (
       <Card className="bg-white rounded-xl shadow-sm border border-gray-200 mb-8">
         <CardHeader className="p-6 border-b border-gray-200">
-          <CardTitle className="text-lg font-semibold text-gray-900">Branch Performance</CardTitle>
+          <CardTitle className="text-lg font-semibold text-gray-900">
+            Branch Performance
+          </CardTitle>
         </CardHeader>
         <CardContent className="p-6">
           <div className="flex items-center justify-center py-8">
@@ -28,11 +47,15 @@ export default function BranchMetrics() {
     return (
       <Card className="bg-white rounded-xl shadow-sm border border-gray-200 mb-8">
         <CardHeader className="p-6 border-b border-gray-200">
-          <CardTitle className="text-lg font-semibold text-gray-900">Branch Performance</CardTitle>
+          <CardTitle className="text-lg font-semibold text-gray-900">
+            Branch Performance
+          </CardTitle>
         </CardHeader>
         <CardContent className="p-6">
           <div className="text-center py-8">
-            <p className="text-gray-500">Failed to load branch metrics. Please try again.</p>
+            <p className="text-gray-500">
+              Failed to load branch metrics. Please try again.
+            </p>
           </div>
         </CardContent>
       </Card>
@@ -41,30 +64,14 @@ export default function BranchMetrics() {
 
   return (
     <div className="space-y-6 mb-8">
-      {/* Total Revenue Card */}
-      <Card className="bg-white rounded-xl shadow-sm border border-gray-200">
-        <CardContent className="p-6">
-          <div className="flex items-center justify-between">
-            <div>
-              <p className="text-sm font-medium text-gray-600">Total Revenue (All Branches, All Time)</p>
-              <p className="text-3xl font-bold text-gray-900 mt-1">
-                ₨{(metrics.totalRevenue || 0).toLocaleString()}
-              </p>
-              <p className="text-sm text-gray-500 mt-1">Cumulative revenue from all branches</p>
-            </div>
-            <div className="w-12 h-12 bg-green-50 rounded-xl flex items-center justify-center">
-              <TrendingUp className="text-green-600 h-6 w-6" />
-            </div>
-          </div>
-        </CardContent>
-      </Card>
-
       {/* Branch Performance Table */}
       <Card className="bg-white rounded-xl shadow-sm border border-gray-200">
         <CardHeader className="p-6 border-b border-gray-200">
           <div className="flex items-center gap-2">
             <Building2 className="h-5 w-5 text-gray-600" />
-            <CardTitle className="text-lg font-semibold text-gray-900">Branch Performance</CardTitle>
+            <CardTitle className="text-lg font-semibold text-gray-900">
+              Branch Performance
+            </CardTitle>
           </div>
         </CardHeader>
         <CardContent className="p-6">
@@ -81,33 +88,44 @@ export default function BranchMetrics() {
             </TableHeader>
             <TableBody>
               {metrics.branchMetrics.map((branch) => {
-                const occupancyRate = branch.totalRooms > 0 
-                  ? ((branch.bookedRooms / branch.totalRooms) * 100).toFixed(1)
-                  : "0";
+                const occupancyRate =
+                  branch.totalRooms > 0
+                    ? ((branch.bookedRooms / branch.totalRooms) * 100).toFixed(
+                        1,
+                      )
+                    : "0";
 
                 return (
                   <TableRow key={branch.branchId}>
-                    <TableCell className="font-medium">{branch.branchName}</TableCell>
+                    <TableCell className="font-medium">
+                      {branch.branchName}
+                    </TableCell>
                     <TableCell>{branch.totalRooms}</TableCell>
                     <TableCell>
-                      <Badge variant="secondary" className="bg-blue-50 text-blue-700">
+                      <Badge
+                        variant="secondary"
+                        className="bg-blue-50 text-blue-700"
+                      >
                         {branch.bookedRooms}
                       </Badge>
                     </TableCell>
                     <TableCell>
-                      <Badge variant="secondary" className="bg-green-50 text-green-700">
+                      <Badge
+                        variant="secondary"
+                        className="bg-green-50 text-green-700"
+                      >
                         {branch.availableRooms}
                       </Badge>
                     </TableCell>
                     <TableCell>
-                      <Badge 
-                        variant="secondary" 
+                      <Badge
+                        variant="secondary"
                         className={
-                          parseFloat(occupancyRate) >= 80 
+                          parseFloat(occupancyRate) >= 80
                             ? "bg-red-50 text-red-700"
                             : parseFloat(occupancyRate) >= 60
-                            ? "bg-yellow-50 text-yellow-700"
-                            : "bg-green-50 text-green-700"
+                              ? "bg-yellow-50 text-yellow-700"
+                              : "bg-green-50 text-green-700"
                         }
                       >
                         {occupancyRate}%

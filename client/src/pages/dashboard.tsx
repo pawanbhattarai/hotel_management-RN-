@@ -77,48 +77,6 @@ export default function Dashboard() {
           {/* Super Admin Global Overview */}
           {isSuperAdmin && superAdminMetrics && (
             <div className="mb-6">
-              <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
-                <Card>
-                  <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                    <CardTitle className="text-sm font-medium">Total Branches</CardTitle>
-                    <Building2 className="h-4 w-4 text-muted-foreground" />
-                  </CardHeader>
-                  <CardContent>
-                    <div className="text-2xl font-bold">{superAdminMetrics.totalBranches}</div>
-                  </CardContent>
-                </Card>
-
-                <Card>
-                  <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                    <CardTitle className="text-sm font-medium">Total Reservations</CardTitle>
-                    <Users className="h-4 w-4 text-muted-foreground" />
-                  </CardHeader>
-                  <CardContent>
-                    <div className="text-2xl font-bold">{superAdminMetrics.totalReservations}</div>
-                  </CardContent>
-                </Card>
-
-                <Card>
-                  <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                    <CardTitle className="text-sm font-medium">Total Revenue (All Time)</CardTitle>
-                    <RevenueIcon className="h-4 w-4 text-muted-foreground" />
-                  </CardHeader>
-                  <CardContent>
-                    <div className="text-2xl font-bold">₨. {(superAdminMetrics.totalRevenue || 0).toLocaleString()}</div>
-                    <p className="text-xs text-muted-foreground mt-1">Cumulative revenue from all branches</p>
-                  </CardContent>
-                </Card>
-
-                <Card>
-                  <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                    <CardTitle className="text-sm font-medium">Total Rooms</CardTitle>
-                    <Bed className="h-4 w-4 text-muted-foreground" />
-                  </CardHeader>
-                  <CardContent>
-                    <div className="text-2xl font-bold">{superAdminMetrics.totalRooms}</div>
-                  </CardContent>
-                </Card>
-              </div>
 
               {/* Branch Performance Cards */}
               <Card className="mb-6">
