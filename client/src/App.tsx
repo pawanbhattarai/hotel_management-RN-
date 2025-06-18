@@ -48,7 +48,6 @@ function Router() {
           <Route path="/restaurant/analytics" component={lazy(() => import("./pages/restaurant-analytics"))} />
           <Route path="/settings" component={Settings} />
           <Route path="/profile" component={Profile} />
-          <Route path="/notifications" component={lazy(() => import("./pages/notifications"))} />
           <Route path="/restaurant/tables" component={RestaurantTables} />
           <Route path="/restaurant/menu" component={RestaurantMenu} />
           <Route path="/restaurant/categories" component={RestaurantCategories} />
