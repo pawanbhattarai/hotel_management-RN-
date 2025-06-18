@@ -284,12 +284,12 @@ export default function Reservations() {
         return sum + (parseFloat(room.ratePerNight) * room.nights);
       }, 0);
 
-      // Calculate taxes for reservations
+      // Calculate taxes for reservations dynamically
       let totalTaxAmount = 0;
       const appliedTaxes = [];
 
-      if (activeTaxes) {
-        for (const tax of activeTaxes) {
+      if (activeTaxes && activeTaxes.length > 0) {
+        activeTaxes.forEach((tax: any) => {
           const taxAmount = (subtotal * parseFloat(tax.rate)) / 100;
           totalTaxAmount += taxAmount;
           appliedTaxes.push({
@@ -298,7 +298,7 @@ export default function Reservations() {
             rate: tax.rate,
             amount: taxAmount.toFixed(2)
           });
-        }
+        });
       }
 
       const totalAmount = subtotal + totalTaxAmount;

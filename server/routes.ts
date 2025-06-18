@@ -718,6 +718,31 @@ export async function registerRoutes(app: Express): Promise<Server> {
         });
       }
 
+      // Calculate taxes dynamically
+      const subtotal = roomsData.reduce((sum: number, room: any) => {
+        return sum + parseFloat(room.totalAmount);
+      }, 0);
+
+      let totalTaxAmount = 0;
+      let appliedTaxes = [];
+
+      // Get active reservation taxes
+      const activeTaxes = await restaurantStorage.getActiveReservationTaxes();
+      if (activeTaxes && activeTaxes.length > 0) {
+        activeTaxes.forEach((tax: any) => {
+          const taxAmount = (subtotal * parseFloat(tax.rate)) / 100;
+          totalTaxAmount += taxAmount;
+          appliedTaxes.push({
+            taxId: tax.id,
+            taxName: tax.taxName,
+            rate: tax.rate,
+            amount: taxAmount.toFixed(2)
+          });
+        });
+      }
+
+      const finalTotalAmount = subtotal + totalTaxAmount;
+
       // Generate confirmation number
       const confirmationNumber = `RES${Date.now().toString().slice(-8)}`;
       const reservationWithConfirmation = {
@@ -725,6 +750,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
         guestId: guest.id,
         confirmationNumber,
         createdById: user.id,
+        totalAmount: finalTotalAmount.toString(),
+        appliedTaxes: JSON.stringify(appliedTaxes),
+        taxAmount: totalTaxAmount.toString(),
       };
 
       const reservation = await storage.createReservation(

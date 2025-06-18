@@ -106,18 +106,23 @@ export const guests = pgTable("guests", {
 
 // Reservations table
 export const reservations = pgTable("reservations", {
-  id: uuid("id").defaultRandom().primaryKey(),
-  confirmationNumber: varchar("confirmation_number", { length: 20 }).notNull().unique(),
+  id: uuid("id").primaryKey().defaultRandom(),
   guestId: integer("guest_id").notNull(),
   branchId: integer("branch_id").notNull(),
+  confirmationNumber: varchar("confirmation_number", { length: 20 }).notNull().unique(),
   status: varchar("status", { 
-    enum: ["confirmed", "pending", "checked-in", "checked-out", "cancelled", "no-show"] 
+    enum: ["pending", "confirmed", "checked-in", "checked-out", "cancelled", "no-show"] 
   }).notNull().default("pending"),
   totalAmount: decimal("total_amount", { precision: 10, scale: 2 }).notNull(),
-  subtotal: decimal("subtotal", { precision: 10, scale: 2 }),
   taxAmount: decimal("tax_amount", { precision: 10, scale: 2 }).default("0"),
-  appliedTaxes: jsonb("applied_taxes"), // Store tax breakdown
+  appliedTaxes: text("applied_taxes"), // JSON string of applied taxes
   paidAmount: decimal("paid_amount", { precision: 10, scale: 2 }).default("0"),
+  paymentMethod: varchar("payment_method", { 
+    enum: ["cash", "card", "bank-transfer", "digital"] 
+  }),
+  paymentStatus: varchar("payment_status", { 
+    enum: ["pending", "partial", "paid"] 
+  }).notNull().default("pending"),
   notes: text("notes"),
   createdById: varchar("created_by_id").notNull(),
   createdAt: timestamp("created_at").defaultNow(),

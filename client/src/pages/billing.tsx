@@ -1278,6 +1278,34 @@ export default function Billing() {
                 </div>
               )}
 
+              {/* Bill Summary */}
+                <div>
+                  <h3 className="font-semibold mb-2">Bill Summary</h3>
+                  <div className="space-y-1 text-sm">
+                    <div className="flex justify-between">
+                      <span>Room Charges:</span>
+                      <span>{currencySymbol}{(parseFloat(viewingBill.totalAmount) - parseFloat(viewingBill.taxAmount || "0")).toFixed(2)}</span>
+                    </div>
+                    {viewingBill.appliedTaxes ? (
+                      JSON.parse(viewingBill.appliedTaxes).map((tax: any, index: number) => (
+                        <div key={index} className="flex justify-between">
+                          <span>{tax.taxName} ({tax.rate}%):</span>
+                          <span>{currencySymbol}{tax.amount}</span>
+                        </div>
+                      ))
+                    ) : parseFloat(viewingBill.taxAmount || "0") > 0 ? (
+                      <div className="flex justify-between">
+                        <span>Tax:</span>
+                        <span>{currencySymbol}{parseFloat(viewingBill.taxAmount || "0").toFixed(2)}</span>
+                      </div>
+                    ) : null}
+                    <div className="flex justify-between font-semibold border-t pt-2">
+                      <span>Total Amount:</span>
+                      <span>{currencySymbol}{parseFloat(viewingBill.totalAmount).toFixed(2)}</span>
+                    </div>
+                  </div>
+                </div>
+
               <div className="flex justify-end space-x-2">
                 <Button onClick={() => handlePrintBill(viewingBill)}>
                   <Printer className="mr-2 h-4 w-4" />
