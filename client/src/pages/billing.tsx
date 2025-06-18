@@ -9,7 +9,12 @@ import Header from "@/components/layout/header";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
@@ -32,7 +37,6 @@ export default function Billing() {
   const [selectedReservation, setSelectedReservation] = useState<any>(null);
   const [isMobileSidebarOpen, setIsMobileSidebarOpen] = useState(false);
   const [billData, setBillData] = useState({
-    additionalCharges: 0,
     discount: 0,
     discountPercentage: 0,
     paymentMethod: "cash",
@@ -44,7 +48,7 @@ export default function Billing() {
     enabled: isAuthenticated,
   });
 
-    const { data: hotelSettings } = useQuery({
+  const { data: hotelSettings } = useQuery({
     queryKey: ["/api/hotel-settings"],
     enabled: isAuthenticated,
   });
@@ -73,7 +77,6 @@ export default function Billing() {
       setIsBillModalOpen(false);
       setSelectedReservation(null);
       setBillData({
-        additionalCharges: 0,
         discount: 0,
         discountPercentage: 0,
         paymentMethod: "cash",
@@ -149,12 +152,12 @@ export default function Billing() {
 
   const formatDateTime = (date: Date, timeZone?: string) => {
     const options: Intl.DateTimeFormatOptions = {
-      year: 'numeric',
-      month: 'long',
-      day: 'numeric',
-      hour: '2-digit',
-      minute: '2-digit',
-      timeZone: timeZone || 'Asia/Kathmandu',
+      year: "numeric",
+      month: "long",
+      day: "numeric",
+      hour: "2-digit",
+      minute: "2-digit",
+      timeZone: timeZone || "Asia/Kathmandu",
     };
     return date.toLocaleDateString("en-US", options);
   };
@@ -174,16 +177,17 @@ export default function Billing() {
 
   const handleCheckout = () => {
     if (!selectedReservation) return;
-    
-    const roomSubtotal = selectedReservation.reservationRooms.reduce((sum: number, room: any) =>
-      sum + parseFloat(room.totalAmount), 0
+
+    const roomSubtotal = selectedReservation.reservationRooms.reduce(
+      (sum: number, room: any) => sum + parseFloat(room.totalAmount),
+      0,
     );
-    const additionalCharges = billData.additionalCharges || 0;
-    const finalDiscountAmount = billData.discountPercentage > 0 
-      ? (roomSubtotal * billData.discountPercentage / 100)
-      : billData.discount;
-    const afterDiscount = roomSubtotal + additionalCharges - finalDiscountAmount;
-    
+    const finalDiscountAmount =
+      billData.discountPercentage > 0
+        ? (roomSubtotal * billData.discountPercentage) / 100
+        : billData.discount;
+    const afterDiscount = roomSubtotal - finalDiscountAmount;
+
     // Calculate taxes dynamically
     let totalTaxAmount = 0;
     if (activeTaxes && Array.isArray(activeTaxes) && activeTaxes.length > 0) {
@@ -192,9 +196,9 @@ export default function Billing() {
         totalTaxAmount += taxAmount;
       });
     }
-    
+
     const finalTotal = afterDiscount + totalTaxAmount;
-    
+
     checkoutMutation.mutate({
       reservationId: selectedReservation.id,
       totalAmount: finalTotal,
@@ -202,12 +206,10 @@ export default function Billing() {
     });
   };
 
-
-
   const handlePrintBill = () => {
     if (!selectedReservation) return;
 
-    const billWindow = window.open('', '_blank');
+    const billWindow = window.open("", "_blank");
     const billContent = generateBillHTML();
     billWindow?.document.write(billContent);
     billWindow?.document.close();
@@ -217,53 +219,59 @@ export default function Billing() {
   const generateBillHTML = () => {
     if (!selectedReservation || !hotelSettings) return "";
 
-    const subtotal = selectedReservation.reservationRooms.reduce((sum: number, room: any) =>
-      sum + parseFloat(room.totalAmount), 0
+    const subtotal = selectedReservation.reservationRooms.reduce(
+      (sum: number, room: any) => sum + parseFloat(room.totalAmount),
+      0,
     );
-    const additionalCharges = billData.additionalCharges || 0;
-    const finalDiscountAmount = billData.discountPercentage > 0 
-      ? (subtotal * billData.discountPercentage / 100)
-      : billData.discount;
-    const afterDiscount = subtotal + additionalCharges - finalDiscountAmount;
-    
+
+    const finalDiscountAmount =
+      billData.discountPercentage > 0
+        ? (subtotal * billData.discountPercentage) / 100
+        : billData.discount;
+    const afterDiscount = subtotal - finalDiscountAmount;
+
     // Calculate taxes dynamically
     let totalTaxAmount = 0;
-    let appliedTaxesString = "";
+    let appliedTaxes: any[] = [];
     if (activeTaxes && Array.isArray(activeTaxes) && activeTaxes.length > 0) {
-      const taxDetails = activeTaxes.map((tax: any) => {
+      appliedTaxes = activeTaxes.map((tax: any) => {
         const taxAmount = afterDiscount * (parseFloat(tax.rate) / 100);
         totalTaxAmount += taxAmount;
         return {
           name: tax.taxName,
           rate: tax.rate,
-          amount: taxAmount
+          amount: taxAmount,
         };
       });
-      appliedTaxesString = JSON.stringify(taxDetails);
     }
-    
+
     const finalTotal = afterDiscount + totalTaxAmount;
-    const isPaid = selectedReservation.status === 'checked-out';
+    const isPaid = selectedReservation.status === "checked-out";
 
     // Get currency symbol
     const getCurrencySymbol = (currency: string) => {
       const symbols: { [key: string]: string } = {
-        'NPR': 'Rs.',
-        'USD': '$',
-        'EUR': '€',
-        'GBP': '£',
-        'JPY': '¥',
-        'CAD': 'C$',
-        'AUD': 'A$',
-        'CHF': 'CHF',
-        'CNY': '¥',
-        'INR': '₹'
+        NPR: "Rs.",
+        USD: "$",
+        EUR: "€",
+        GBP: "£",
+        JPY: "¥",
+        CAD: "C$",
+        AUD: "A$",
+        CHF: "CHF",
+        CNY: "¥",
+        INR: "₹",
       };
       return symbols[currency] || currency;
     };
 
-    const currencySymbol = getCurrencySymbol((hotelSettings as any)?.currency || 'NPR');
-    const currentDateTime = formatDateTime(new Date(), (hotelSettings as any)?.timeZone);
+    const currencySymbol = getCurrencySymbol(
+      (hotelSettings as any)?.currency || "NPR",
+    );
+    const currentDateTime = formatDateTime(
+      new Date(),
+      (hotelSettings as any)?.timeZone,
+    );
 
     return `
       <!DOCTYPE html>
@@ -360,6 +368,11 @@ export default function Billing() {
             margin: 3px 0;
             font-size: 14px;
           }
+          .tax-row {
+            margin: 2px 0;
+            font-size: 13px;
+            color: #555;
+          }
           .payment-status {
             text-align: center;
             margin: 20px 0;
@@ -405,20 +418,20 @@ export default function Billing() {
       </head>
       <body>
         <div class="header">
-          ${hotelSettings?.logo ? `<img src="${hotelSettings.logo}" alt="Hotel Logo" class="hotel-logo">` : ''}
-          <div class="hotel-name">${hotelSettings?.hotelName || 'Hotel Name'}</div>
-          ${hotelSettings?.hotelChain ? `<div class="hotel-details"><strong>${hotelSettings.hotelChain}</strong></div>` : ''}
+          ${hotelSettings?.logo ? `<img src="${hotelSettings.logo}" alt="Hotel Logo" class="hotel-logo">` : ""}
+          <div class="hotel-name">${hotelSettings?.hotelName || "Hotel Name"}</div>
+          ${hotelSettings?.hotelChain ? `<div class="hotel-details"><strong>${hotelSettings.hotelChain}</strong></div>` : ""}
           <div class="hotel-details">
-            ${hotelSettings?.address || ''}<br>
-            ${hotelSettings?.city || ''}, ${hotelSettings?.state || ''} ${hotelSettings?.postalCode || ''}<br>
-            ${hotelSettings?.country || ''}
+            ${hotelSettings?.address || ""}<br>
+            ${hotelSettings?.city || ""}, ${hotelSettings?.state || ""} ${hotelSettings?.postalCode || ""}<br>
+            ${hotelSettings?.country || ""}
           </div>
           <div class="hotel-details">
-            Phone: ${hotelSettings?.phone || ''} | Email: ${hotelSettings?.email || ''}
-            ${hotelSettings?.website ? ` | Website: ${hotelSettings.website}` : ''}
+            Phone: ${hotelSettings?.phone || ""} | Email: ${hotelSettings?.email || ""}
+            ${hotelSettings?.website ? ` | Website: ${hotelSettings.website}` : ""}
           </div>
-          ${hotelSettings?.taxNumber ? `<div class="hotel-details">Tax Number: ${hotelSettings.taxNumber}</div>` : ''}
-          ${hotelSettings?.registrationNumber ? `<div class="hotel-details">Registration: ${hotelSettings.registrationNumber}</div>` : ''}
+          ${hotelSettings?.taxNumber ? `<div class="hotel-details">Tax Number: ${hotelSettings.taxNumber}</div>` : ""}
+          ${hotelSettings?.registrationNumber ? `<div class="hotel-details">Registration: ${hotelSettings.registrationNumber}</div>` : ""}
 
           <div class="bill-title">HOTEL BILL / INVOICE</div>
         </div>
@@ -428,13 +441,13 @@ export default function Billing() {
             <div><span class="detail-label">Guest Name:</span> ${selectedReservation.guest.firstName} ${selectedReservation.guest.lastName}</div>
             <div><span class="detail-label">Email:</span> ${selectedReservation.guest.email || "N/A"}</div>
             <div><span class="detail-label">Phone:</span> ${selectedReservation.guest.phone || "N/A"}</div>
-            ${selectedReservation.guest.address ? `<div><span class="detail-label">Address:</span> ${selectedReservation.guest.address}</div>` : ''}
+            ${selectedReservation.guest.address ? `<div><span class="detail-label">Address:</span> ${selectedReservation.guest.address}</div>` : ""}
           </div>
           <div class="bill-details">
             <div><span class="detail-label">Confirmation Number:</span> ${selectedReservation.confirmationNumber}</div>
             <div><span class="detail-label">Bill Date:</span> ${currentDateTime}</div>
             <div><span class="detail-label">Payment Method:</span> ${billData.paymentMethod.toUpperCase()}</div>
-            <div><span class="detail-label">Currency:</span> ${hotelSettings?.currency || 'NPR'} (${currencySymbol})</div>
+            <div><span class="detail-label">Currency:</span> ${hotelSettings?.currency || "NPR"} (${currencySymbol})</div>
           </div>
         </div>
 
@@ -450,7 +463,9 @@ export default function Billing() {
             </tr>
           </thead>
           <tbody>
-            ${selectedReservation.reservationRooms.map((room: any) => `
+            ${selectedReservation.reservationRooms
+              .map(
+                (room: any) => `
               <tr>
                 <td>
                   <strong>Room ${room.room.number}</strong><br>
@@ -462,85 +477,114 @@ export default function Billing() {
                 <td class="amount-cell">${currencySymbol}${parseFloat(room.ratePerNight).toFixed(2)}</td>
                 <td class="amount-cell">${currencySymbol}${parseFloat(room.totalAmount).toFixed(2)}</td>
               </tr>
-            `).join('')}
+            `,
+              )
+              .join("")}
           </tbody>
         </table>
 
         <div class="total-section">
           <div class="subtotal-row">Room Subtotal: ${currencySymbol}${subtotal.toFixed(2)}</div>
-          ${additionalCharges > 0 ? `<div class="subtotal-row">Additional Charges: ${currencySymbol}${additionalCharges.toFixed(2)}</div>` : ''}
-          ${finalDiscountAmount > 0 ? `<div class="subtotal-row">Discount: -${currencySymbol}${finalDiscountAmount.toFixed(2)}</div>` : ''}
-          ${totalTaxAmount > 0 ? `<div class="subtotal-row">Tax: ${currencySymbol}${totalTaxAmount.toFixed(2)}</div>` : ''}
+
+          ${finalDiscountAmount > 0 ? `<div class="subtotal-row">Discount${billData.discountPercentage > 0 ? ` (${billData.discountPercentage}%)` : ""}: -${currencySymbol}${finalDiscountAmount.toFixed(2)}</div>` : ""}
+
+          <div class="subtotal-row">Subtotal after Discount: ${currencySymbol}${afterDiscount.toFixed(2)}</div>
+
+          ${appliedTaxes.length > 0 ? appliedTaxes.map((tax) => `<div class="tax-row">${tax.name} (${tax.rate}%): ${currencySymbol}${tax.amount.toFixed(2)}</div>`).join("") : ""}
+
+          ${totalTaxAmount > 0 ? `<div class="subtotal-row">Total Tax: ${currencySymbol}${totalTaxAmount.toFixed(2)}</div>` : ""}
+
           <div class="total-row">
             <strong>TOTAL AMOUNT: ${currencySymbol}${finalTotal.toFixed(2)}</strong>
           </div>
         </div>
 
-        <div class="payment-status ${isPaid ? 'paid' : 'unpaid'}">
-          PAYMENT STATUS: ${isPaid ? 'PAID IN FULL' : 'PAYMENT PENDING'}
+        <div class="payment-status ${isPaid ? "paid" : "unpaid"}">
+          PAYMENT STATUS: ${isPaid ? "PAID IN FULL" : "PAYMENT PENDING"}
         </div>
 
-        ${billData.notes ? `
+        ${
+          billData.notes
+            ? `
           <div class="notes-section">
             <strong>Notes:</strong><br>
             ${billData.notes}
           </div>
-        ` : ''}
+        `
+            : ""
+        }
 
-        ${hotelSettings?.billingFooter ? `
+        ${
+          hotelSettings?.billingFooter
+            ? `
           <div class="footer">
             ${hotelSettings.billingFooter}
           </div>
-        ` : ''}
+        `
+            : ""
+        }
 
-        ${hotelSettings?.termsAndConditions ? `
+        ${
+          hotelSettings?.termsAndConditions
+            ? `
           <div class="terms-section">
             <strong>Terms and Conditions:</strong><br>
             <small>${hotelSettings.termsAndConditions}</small>
           </div>
-        ` : ''}
+        `
+            : ""
+        }
 
-        ${hotelSettings?.cancellationPolicy ? `
+        ${
+          hotelSettings?.cancellationPolicy
+            ? `
           <div class="terms-section">
             <strong>Cancellation Policy:</strong><br>
             <small>${hotelSettings.cancellationPolicy}</small>
           </div>
-        ` : ''}
+        `
+            : ""
+        }
       </body>
       </html>
     `;
   };
-
-
-
-  const filteredReservations = reservations && Array.isArray(reservations) ? reservations.filter((reservation: any) => {
-    const searchLower = searchTerm.toLowerCase();
-    return (
-      reservation.guest.firstName.toLowerCase().includes(searchLower) ||
-      reservation.guest.lastName.toLowerCase().includes(searchLower) ||
-      reservation.guest.email?.toLowerCase().includes(searchLower) ||
-      reservation.confirmationNumber.toLowerCase().includes(searchLower)
-    );
-  }) : [];
+  const filteredReservations =
+    reservations && Array.isArray(reservations)
+      ? reservations.filter((reservation: any) => {
+          const searchLower = searchTerm.toLowerCase();
+          return (
+            reservation.guest.firstName.toLowerCase().includes(searchLower) ||
+            reservation.guest.lastName.toLowerCase().includes(searchLower) ||
+            reservation.guest.email?.toLowerCase().includes(searchLower) ||
+            reservation.confirmationNumber.toLowerCase().includes(searchLower)
+          );
+        })
+      : [];
 
   // Get currency symbol for display
   const getCurrencySymbol = (currency: string) => {
     const symbols: { [key: string]: string } = {
-      'NPR': 'Rs.',
-      'USD': '$',
-      'EUR': '€',
-      'GBP': '£',
-      'JPY': '¥',
-      'CAD': 'C$',
-      'AUD': 'A$',
-      'CHF': 'CHF',
-      'CNY': '¥',
-      'INR': '₹'
+      NPR: "Rs.",
+      USD: "$",
+      EUR: "€",
+      GBP: "£",
+      JPY: "¥",
+      CAD: "C$",
+      AUD: "A$",
+      CHF: "CHF",
+      CNY: "¥",
+      INR: "₹",
     };
     return symbols[currency] || currency;
   };
 
-  const currencySymbol = hotelSettings && typeof hotelSettings === 'object' && 'currency' in hotelSettings ? getCurrencySymbol(hotelSettings.currency || 'NPR') : 'Rs.';
+  const currencySymbol =
+    hotelSettings &&
+    typeof hotelSettings === "object" &&
+    "currency" in hotelSettings
+      ? getCurrencySymbol(hotelSettings.currency || "NPR")
+      : "Rs.";
 
   if (isLoading) {
     return (
@@ -661,7 +705,8 @@ export default function Billing() {
                             {getStatusBadge(reservation.status)}
                           </TableCell>
                           <TableCell className="font-medium">
-                            {currencySymbol}{parseFloat(reservation.totalAmount).toFixed(2)}
+                            {currencySymbol}
+                            {parseFloat(reservation.totalAmount).toFixed(2)}
                           </TableCell>
                           <TableCell>
                             <div className="flex space-x-2">
@@ -669,7 +714,11 @@ export default function Billing() {
                                 variant="ghost"
                                 size="sm"
                                 onClick={() => handleCreateBill(reservation)}
-                                title={reservation.status === 'checked-out' ? 'View paid bill' : 'Create bill'}
+                                title={
+                                  reservation.status === "checked-out"
+                                    ? "View paid bill"
+                                    : "Create bill"
+                                }
                               >
                                 <Receipt className="h-4 w-4" />
                               </Button>
@@ -700,7 +749,10 @@ export default function Billing() {
         <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle>
-              {selectedReservation?.status === 'checked-out' ? 'View Bill' : 'Create Bill'} - {selectedReservation?.confirmationNumber}
+              {selectedReservation?.status === "checked-out"
+                ? "View Bill"
+                : "Create Bill"}{" "}
+              - {selectedReservation?.confirmationNumber}
             </DialogTitle>
           </DialogHeader>
           {selectedReservation && (
@@ -708,10 +760,13 @@ export default function Billing() {
               {/* Guest Information */}
               <div className="grid grid-cols-2 gap-4 text-sm">
                 <div>
-                  <span className="font-medium">Guest:</span> {selectedReservation.guest.firstName} {selectedReservation.guest.lastName}
+                  <span className="font-medium">Guest:</span>{" "}
+                  {selectedReservation.guest.firstName}{" "}
+                  {selectedReservation.guest.lastName}
                 </div>
                 <div>
-                  <span className="font-medium">Email:</span> {selectedReservation.guest.email || "N/A"}
+                  <span className="font-medium">Email:</span>{" "}
+                  {selectedReservation.guest.email || "N/A"}
                 </div>
               </div>
 
@@ -729,15 +784,33 @@ export default function Billing() {
                     </TableRow>
                   </TableHeader>
                   <TableBody>
-                    {selectedReservation.reservationRooms.map((room: any, index: number) => (
-                      <TableRow key={index}>
-                        <TableCell>{room.room.number} ({room.room.roomType.name})</TableCell>
-                        <TableCell>{formatDate(room.checkInDate)} - {formatDate(room.checkOutDate)}</TableCell>
-                        <TableCell>{calculateNights(room.checkInDate, room.checkOutDate)}</TableCell>
-                        <TableCell>{currencySymbol}{parseFloat(room.ratePerNight).toFixed(2)}</TableCell>
-                        <TableCell>{currencySymbol}{parseFloat(room.totalAmount).toFixed(2)}</TableCell>
-                      </TableRow>
-                    ))}
+                    {selectedReservation.reservationRooms.map(
+                      (room: any, index: number) => (
+                        <TableRow key={index}>
+                          <TableCell>
+                            {room.room.number} ({room.room.roomType.name})
+                          </TableCell>
+                          <TableCell>
+                            {formatDate(room.checkInDate)} -{" "}
+                            {formatDate(room.checkOutDate)}
+                          </TableCell>
+                          <TableCell>
+                            {calculateNights(
+                              room.checkInDate,
+                              room.checkOutDate,
+                            )}
+                          </TableCell>
+                          <TableCell>
+                            {currencySymbol}
+                            {parseFloat(room.ratePerNight).toFixed(2)}
+                          </TableCell>
+                          <TableCell>
+                            {currencySymbol}
+                            {parseFloat(room.totalAmount).toFixed(2)}
+                          </TableCell>
+                        </TableRow>
+                      ),
+                    )}
                   </TableBody>
                 </Table>
               </div>
@@ -745,23 +818,18 @@ export default function Billing() {
               {/* Billing Details */}
               <div className="grid grid-cols-2 gap-4">
                 <div>
-                  <Label htmlFor="additionalCharges">Additional Charges</Label>
-                  <Input
-                    id="additionalCharges"
-                    type="number"
-                    step="0.01"
-                    value={billData.additionalCharges}
-                    onChange={(e) => setBillData({ ...billData, additionalCharges: parseFloat(e.target.value) || 0 })}
-                  />
-                </div>
-                <div>
                   <Label htmlFor="discount">Discount (Amount)</Label>
                   <Input
                     id="discount"
                     type="number"
                     step="0.01"
                     value={billData.discount}
-                    onChange={(e) => setBillData({ ...billData, discount: parseFloat(e.target.value) || 0 })}
+                    onChange={(e) =>
+                      setBillData({
+                        ...billData,
+                        discount: parseFloat(e.target.value) || 0,
+                      })
+                    }
                   />
                 </div>
                 <div>
@@ -771,7 +839,12 @@ export default function Billing() {
                     type="number"
                     step="0.01"
                     value={billData.discountPercentage}
-                    onChange={(e) => setBillData({ ...billData, discountPercentage: parseFloat(e.target.value) || 0 })}
+                    onChange={(e) =>
+                      setBillData({
+                        ...billData,
+                        discountPercentage: parseFloat(e.target.value) || 0,
+                      })
+                    }
                   />
                 </div>
                 <div>
@@ -780,7 +853,12 @@ export default function Billing() {
                     id="paymentMethod"
                     className="w-full p-2 border border-gray-300 rounded-md"
                     value={billData.paymentMethod}
-                    onChange={(e) => setBillData({ ...billData, paymentMethod: e.target.value })}
+                    onChange={(e) =>
+                      setBillData({
+                        ...billData,
+                        paymentMethod: e.target.value,
+                      })
+                    }
                   >
                     <option value="cash">Cash</option>
                     <option value="card">Card</option>
@@ -795,7 +873,9 @@ export default function Billing() {
                 <Textarea
                   id="notes"
                   value={billData.notes}
-                  onChange={(e) => setBillData({ ...billData, notes: e.target.value })}
+                  onChange={(e) =>
+                    setBillData({ ...billData, notes: e.target.value })
+                  }
                   placeholder="Any additional notes..."
                 />
               </div>
@@ -804,30 +884,39 @@ export default function Billing() {
               <div className="border-t pt-4">
                 <div className="text-right space-y-2">
                   {(() => {
-                    const roomSubtotal = selectedReservation.reservationRooms.reduce((sum: number, room: any) =>
-                      sum + parseFloat(room.totalAmount), 0
-                    );
-                    const additionalCharges = billData.additionalCharges || 0;
-                    const finalDiscountAmount = billData.discountPercentage > 0 
-                      ? (roomSubtotal * billData.discountPercentage / 100)
-                      : billData.discount;
-                    const afterDiscount = roomSubtotal + additionalCharges - finalDiscountAmount;
-                    
+                    const roomSubtotal =
+                      selectedReservation.reservationRooms.reduce(
+                        (sum: number, room: any) =>
+                          sum + parseFloat(room.totalAmount),
+                        0,
+                      );
+
+                    const finalDiscountAmount =
+                      billData.discountPercentage > 0
+                        ? (roomSubtotal * billData.discountPercentage) / 100
+                        : billData.discount;
+                    const afterDiscount = roomSubtotal - finalDiscountAmount;
+
                     // Calculate taxes dynamically
                     let totalTaxAmount = 0;
                     let appliedTaxes: any[] = [];
-                    if (activeTaxes && Array.isArray(activeTaxes) && activeTaxes.length > 0) {
+                    if (
+                      activeTaxes &&
+                      Array.isArray(activeTaxes) &&
+                      activeTaxes.length > 0
+                    ) {
                       appliedTaxes = activeTaxes.map((tax: any) => {
-                        const taxAmount = afterDiscount * (parseFloat(tax.rate) / 100);
+                        const taxAmount =
+                          afterDiscount * (parseFloat(tax.rate) / 100);
                         totalTaxAmount += taxAmount;
                         return {
                           name: tax.taxName,
                           rate: tax.rate,
-                          amount: taxAmount
+                          amount: taxAmount,
                         };
                       });
                     }
-                    
+
                     const finalTotal = afterDiscount + totalTaxAmount;
 
                     return (
@@ -836,15 +925,16 @@ export default function Billing() {
                           <span>Room Charges:</span>
                           <span>Rs. {roomSubtotal.toFixed(2)}</span>
                         </div>
-                        {additionalCharges > 0 && (
-                          <div className="flex justify-between">
-                            <span>Additional Charges:</span>
-                            <span>Rs. {additionalCharges.toFixed(2)}</span>
-                          </div>
-                        )}
+
                         {finalDiscountAmount > 0 && (
                           <div className="flex justify-between text-red-600">
-                            <span>Discount {billData.discountPercentage > 0 ? `(${billData.discountPercentage}%)` : ''}:</span>
+                            <span>
+                              Discount{" "}
+                              {billData.discountPercentage > 0
+                                ? `(${billData.discountPercentage}%)`
+                                : ""}
+                              :
+                            </span>
                             <span>-Rs. {finalDiscountAmount.toFixed(2)}</span>
                           </div>
                         )}
@@ -856,31 +946,28 @@ export default function Billing() {
                           <>
                             {appliedTaxes.map((tax: any, index: number) => (
                               <div key={index} className="flex justify-between">
-                                <span>{tax.name} ({tax.rate}%):</span>
+                                <span>
+                                  {tax.name} ({tax.rate}%):
+                                </span>
                                 <span>Rs. {tax.amount.toFixed(2)}</span>
                               </div>
                             ))}
-                            <div className="flex justify-between font-medium">
-                              <span>Total Taxes & Fees:</span>
-                              <span>Rs. {totalTaxAmount.toFixed(2)}</span>
-                            </div>
                           </>
                         )}
-                        {billData.additionalCharges > 0 && (
-                          <div className="flex justify-between">
-                            <span>Additional Charges:</span>
-                            <span>{currencySymbol} {billData.additionalCharges.toFixed(2)}</span>
-                          </div>
-                        )}
+
                         {billData.discount > 0 && (
                           <div className="flex justify-between text-green-600">
                             <span>Discount:</span>
-                            <span>-{currencySymbol} {billData.discount.toFixed(2)}</span>
+                            <span>
+                              -{currencySymbol} {billData.discount.toFixed(2)}
+                            </span>
                           </div>
                         )}
                         <div className="flex justify-between font-bold text-lg border-t pt-2">
                           <span>Total Amount:</span>
-                          <span>{currencySymbol} {finalTotal.toFixed(2)}</span>
+                          <span>
+                            {currencySymbol} {finalTotal.toFixed(2)}
+                          </span>
                         </div>
                       </div>
                     );
@@ -890,20 +977,28 @@ export default function Billing() {
 
               {/* Action Buttons */}
               <div className="flex justify-end space-x-2 pt-4">
-                <Button variant="outline" onClick={() => setIsBillModalOpen(false)}>
+                <Button
+                  variant="outline"
+                  onClick={() => setIsBillModalOpen(false)}
+                >
                   Cancel
                 </Button>
                 <Button variant="outline" onClick={handlePrintBill}>
                   <Printer className="h-4 w-4 mr-2" />
                   Print Bill
                 </Button>
-                {selectedReservation?.status !== 'checked-out' && (
-                  <Button onClick={handleCheckout} disabled={checkoutMutation.isPending}>
+                {selectedReservation?.status !== "checked-out" && (
+                  <Button
+                    onClick={handleCheckout}
+                    disabled={checkoutMutation.isPending}
+                  >
                     <CreditCard className="h-4 w-4 mr-2" />
-                    {checkoutMutation.isPending ? "Processing..." : "Checkout & Pay"}
+                    {checkoutMutation.isPending
+                      ? "Processing..."
+                      : "Checkout & Pay"}
                   </Button>
                 )}
-                {selectedReservation?.status === 'checked-out' && (
+                {selectedReservation?.status === "checked-out" && (
                   <div className="text-green-600 font-medium">
                     ✓ Payment Completed
                   </div>
