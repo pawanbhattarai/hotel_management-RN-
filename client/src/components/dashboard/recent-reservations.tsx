@@ -7,8 +7,8 @@ import { Eye, Edit } from "lucide-react";
 
 export default function RecentReservations() {
   const { data: reservations, isLoading, error } = useQuery({
-    queryKey: ["/api/reservations"],
-    select: (data: any[]) => data?.slice(0, 5) || [], // Only show recent 5
+    queryKey: ["/api/dashboard/today-reservations"],
+    queryFn: () => fetch("/api/dashboard/today-reservations?limit=5").then(res => res.json()),
   });
 
   const getStatusBadge = (status: string) => {
@@ -59,7 +59,7 @@ export default function RecentReservations() {
     <Card className="bg-white rounded-xl shadow-sm border border-gray-200">
       <CardHeader className="p-6 border-b border-gray-200">
         <div className="flex items-center justify-between">
-          <CardTitle className="text-lg font-semibold text-gray-900">Recent Reservations</CardTitle>
+          <CardTitle className="text-lg font-semibold text-gray-900">Today's Reservations</CardTitle>
           <a href="/reservations" className="text-primary text-sm font-medium hover:text-primary/80">
             View All
           </a>
@@ -77,7 +77,7 @@ export default function RecentReservations() {
           </div>
         ) : !reservations?.length ? (
           <div className="px-6 py-8 text-center">
-            <p className="text-gray-500">No reservations found. Create your first reservation to get started.</p>
+            <p className="text-gray-500">No reservations made today. Create your first reservation to get started.</p>
           </div>
         ) : (
           <div className="overflow-x-auto">

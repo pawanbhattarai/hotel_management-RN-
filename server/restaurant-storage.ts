@@ -22,7 +22,7 @@ import {
   type InsertTax,
 } from "@shared/schema";
 import { db } from "./db";
-import { eq, and, or, desc, sql, ilike } from "drizzle-orm";
+import { eq, and, or, desc, sql, ilike, count, sum, gte, lt } from "drizzle-orm";
 
 export class RestaurantStorage {
   // Restaurant Tables
@@ -570,79 +570,109 @@ export class RestaurantStorage {
     });
   }
 
-  // Restaurant Dashboard Metrics
-  async getRestaurantDashboardMetrics(branchId?: number): Promise<{
-    totalOrders: number;
-    totalRevenue: number;
-    activeOrders: number;
-    availableTables: number;
-    tableStatusCounts: Record<string, number>;
-  }> {
-    const today = new Date().toISOString().split('T')[0];
+  async getRestaurantDashboardMetrics(branchId?: number) {
+    const whereClause = branchId ? eq(restaurantOrders.branchId, branchId) : undefined;
+    const tableWhereClause = branchId ? eq(restaurantTables.branchId, branchId) : undefined;
 
-    // Total orders today
-    let totalOrdersConditions = [sql`DATE(${restaurantOrders.createdAt}) = ${today}`];
-    if (branchId) {
-      totalOrdersConditions.push(eq(restaurantOrders.branchId, branchId));
-    }
+    // Get today's date range
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    const tomorrow = new Date(today);
+    tomorrow.setDate(tomorrow.getDate() + 1);
 
-    const [{ count: totalOrders }] = await db
-      .select({ count: sql<number>`COUNT(*)` })
-      .from(restaurantOrders)
-      .where(and(...totalOrdersConditions));
+    const [todayOrderStats, tableStats, todayRevenue] = await Promise.all([
+      // Today's orders only
+      db
+        .select({
+          total: count(),
+        })
+        .from(restaurantOrders)
+        .where(
+          and(
+            whereClause,
+            gte(restaurantOrders.createdAt, today.toISOString()),
+            lt(restaurantOrders.createdAt, tomorrow.toISOString())
+          )
+        ),
+      // Current table status
+      db
+        .select({
+          status: restaurantTables.status,
+          count: count(),
+        })
+        .from(restaurantTables)
+        .where(tableWhereClause)
+        .groupBy(restaurantTables.status),
+      // Today's revenue from orders
+      db
+        .select({
+          totalRevenue: sum(restaurantOrders.totalAmount),
+        })
+        .from(restaurantOrders)
+        .where(
+          and(
+            whereClause,
+            gte(restaurantOrders.createdAt, today.toISOString()),
+            lt(restaurantOrders.createdAt, tomorrow.toISOString())
+          )
+        ),
+    ]);
 
-    // Total revenue today
-    let totalRevenueConditions = [
-      sql`DATE(${restaurantOrders.createdAt}) = ${today}`,
-      eq(restaurantOrders.paymentStatus, 'paid')
-    ];
-    if (branchId) {
-      totalRevenueConditions.push(eq(restaurantOrders.branchId, branchId));
-    }
+    const totalOrdersToday = todayOrderStats[0]?.total || 0;
+    const totalRevenueToday = parseFloat(todayRevenue[0]?.totalRevenue || "0");
 
-    const [{ sum: totalRevenue }] = await db
-      .select({ sum: sql<number>`COALESCE(SUM(${restaurantOrders.totalAmount}), 0)` })
-      .from(restaurantOrders)
-      .where(and(...totalRevenueConditions));
-
-    // Active orders (not completed or cancelled)
-    let activeOrdersConditions = [sql`${restaurantOrders.status} NOT IN ('completed', 'cancelled')`];
-    if (branchId) {
-      activeOrdersConditions.push(eq(restaurantOrders.branchId, branchId));
-    }
-
-    const [{ count: activeOrders }] = await db
-      .select({ count: sql<number>`COUNT(*)` })
-      .from(restaurantOrders)
-      .where(and(...activeOrdersConditions));
-
-    // Table status counts
-    let tableConditions = [eq(restaurantTables.isActive, true)];
-    if (branchId) {
-      tableConditions.push(eq(restaurantTables.branchId, branchId));
-    }
-
-    const tableStatusResults = await db
-      .select({
-        status: restaurantTables.status,
-        count: sql<number>`COUNT(*)`,
-      })
-      .from(restaurantTables)
-      .where(and(...tableConditions))
-      .groupBy(restaurantTables.status);
-
-    const tableStatusCounts = tableStatusResults.reduce((acc, row) => {
-      acc[row.status] = row.count;
+    const tableStatusCounts = tableStats.reduce((acc, stat) => {
+      acc[stat.status] = stat.count;
       return acc;
     }, {} as Record<string, number>);
 
+    const totalTables = Object.values(tableStatusCounts).reduce((sum, count) => sum + count, 0);
+    const occupiedTables = tableStatusCounts.occupied || 0;
+    const tableOccupancyRate = totalTables > 0 ? Math.round((occupiedTables / totalTables) * 100) : 0;
+
     return {
-      totalOrders,
-      totalRevenue: totalRevenue || 0,
-      activeOrders,
+      totalOrders: totalOrdersToday,
+      totalRevenue: totalRevenueToday,
+      tableOccupancyRate,
       availableTables: tableStatusCounts.open || 0,
       tableStatusCounts,
     };
+  }
+
+  async getTodayOrders(branchId?: number, limit: number = 5) {
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    const tomorrow = new Date(today);
+    tomorrow.setDate(tomorrow.getDate() + 1);
+
+    const whereClause = branchId 
+      ? and(
+          eq(restaurantOrders.branchId, branchId),
+          gte(restaurantOrders.createdAt, today.toISOString()),
+          lt(restaurantOrders.createdAt, tomorrow.toISOString())
+        )
+      : and(
+          gte(restaurantOrders.createdAt, today.toISOString()),
+          lt(restaurantOrders.createdAt, tomorrow.toISOString())
+        );
+
+    const orders = await db
+      .select({
+        id: restaurantOrders.id,
+        orderNumber: restaurantOrders.orderNumber,
+        status: restaurantOrders.status,
+        totalAmount: restaurantOrders.totalAmount,
+        createdAt: restaurantOrders.createdAt,
+        tableNumber: restaurantTables.tableNumber,
+        tableName: restaurantTables.tableName,
+      })
+      .from(restaurantOrders)
+      .leftJoin(restaurantTables, eq(restaurantOrders.tableId, restaurantTables.id))
+      .where(whereClause)
+      .orderBy(desc(restaurantOrders.createdAt))
+      .limit(limit);
+
+    return orders;
   }
 
   async deleteBill(id: string): Promise<void> {
@@ -1026,7 +1056,7 @@ export class RestaurantStorage {
     // Cancellation rate
     let totalOrdersConditions = [];
     let cancelledOrdersConditions = [eq(restaurantOrders.status, 'cancelled')];
-    
+
     if (branchId) {
       totalOrdersConditions.push(eq(restaurantOrders.branchId, branchId));
       cancelledOrdersConditions.push(eq(restaurantOrders.branchId, branchId));

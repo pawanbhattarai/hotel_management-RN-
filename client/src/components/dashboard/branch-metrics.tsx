@@ -1,6 +1,5 @@
-
 import { useQuery } from "@tanstack/react-query";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent, CardHeader, CardDescription, CardTitle } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
 import { Building2, TrendingUp } from "lucide-react";
@@ -85,7 +84,7 @@ export default function BranchMetrics() {
                 const occupancyRate = branch.totalRooms > 0 
                   ? ((branch.bookedRooms / branch.totalRooms) * 100).toFixed(1)
                   : "0";
-                
+
                 return (
                   <TableRow key={branch.branchId}>
                     <TableCell className="font-medium">{branch.branchName}</TableCell>

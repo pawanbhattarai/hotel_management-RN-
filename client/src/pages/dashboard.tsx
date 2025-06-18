@@ -6,8 +6,10 @@ import Sidebar from "@/components/layout/sidebar";
 import Header from "@/components/layout/header";
 import MetricsCards from "@/components/dashboard/metrics-cards";
 import RecentReservations from "@/components/dashboard/recent-reservations";
+import RecentOrders from "@/components/dashboard/recent-orders";
 import QuickActions from "@/components/dashboard/quick-actions";
 import RoomStatusOverview from "@/components/dashboard/room-status-overview";
+import TableStatusOverview from "@/components/dashboard/table-status-overview";
 import BranchMetrics from "@/components/dashboard/branch-metrics";
 import { useQuery } from "@tanstack/react-query";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -68,7 +70,7 @@ export default function Dashboard() {
       <div className="main-content">
         <Header 
           title="Dashboard"
-          subtitle={isSuperAdmin ? "Super Admin - All Branches Overview" : "Overview of hotel operations"}
+          subtitle={isSuperAdmin ? "Super Admin - Today's Overview (24 Hours)" : "Today's Hotel Operations Overview (24 Hours)"}
           onMobileMenuToggle={() => setIsMobileSidebarOpen(!isMobileSidebarOpen)}
         />
         <main className="content-wrapper">
@@ -174,14 +176,17 @@ export default function Dashboard() {
           {/* Show branch metrics only for super admin */}
           {!isSuperAdmin && user?.role === "superadmin" && <BranchMetrics />}
 
-          <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 lg:gap-6 mb-6 lg:mb-8">
-            <div className="lg:col-span-2">
-              <RecentReservations />
-            </div>
-            <QuickActions />
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 lg:gap-6 mb-6 lg:mb-8">
+            <RecentReservations />
+            <RecentOrders />
           </div>
 
-          <RoomStatusOverview />
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 lg:gap-6 mb-6 lg:mb-8">
+            <RoomStatusOverview />
+            <TableStatusOverview />
+          </div>
+
+          <QuickActions />
         </main>
       </div>
     </div>

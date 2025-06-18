@@ -952,6 +952,38 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Today's reservations
+  app.get("/api/dashboard/today-reservations", isAuthenticated, async (req: any, res) => {
+    try {
+      const user = await storage.getUser(req.session.user.id);
+      if (!user) return res.status(401).json({ message: "User not found" });
+
+      const branchId = user.role === "superadmin" ? undefined : user.branchId!;
+      const limit = parseInt(req.query.limit as string) || 5;
+      const reservations = await storage.getTodayReservations(branchId, limit);
+      res.json(reservations);
+    } catch (error) {
+      console.error("Error fetching today's reservations:", error);
+      res.status(500).json({ message: "Failed to fetch today's reservations" });
+    }
+  });
+
+  // Today's restaurant orders
+  app.get("/api/restaurant/dashboard/today-orders", isAuthenticated, async (req: any, res) => {
+    try {
+      const user = await storage.getUser(req.session.user.id);
+      if (!user) return res.status(401).json({ message: "User not found" });
+
+      const branchId = user.role === "superadmin" ? undefined : user.branchId!;
+      const limit = parseInt(req.query.limit as string) || 5;
+      const orders = await restaurantStorage.getTodayOrders(branchId, limit);
+      res.json(orders);
+    } catch (error) {
+      console.error("Error fetching today's orders:", error);
+      res.status(500).json({ message: "Failed to fetch today's orders" });
+    }
+  });
+
   // Super admin dashboard metrics
   app.get("/api/dashboard/super-admin-metrics", isAuthenticated, async (req: any, res) => {
     try {
