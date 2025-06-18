@@ -93,6 +93,7 @@ export default function Billing() {
         description: "Guest checked out successfully!",
       });
       queryClient.invalidateQueries({ queryKey: ["/api/reservations"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/rooms"] });
       queryClient.invalidateQueries({ queryKey: ["/api/dashboard/metrics"] });
       setIsBillModalOpen(false);
       setSelectedReservation(null);

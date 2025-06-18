@@ -844,10 +844,15 @@ export async function registerRoutes(app: Express): Promise<Server> {
             case 'cancelled':
               newRoomStatus = 'available';
               break;
+            case 'confirmed':
+            case 'pending':
+              newRoomStatus = 'reserved';
+              break;
             default:
               newRoomStatus = 'reserved';
           }
-          await storage.updateRoom(roomReservation.roomId, { status: newRoomStatus as any });
+          await storage.updateRoom(roomReservation.roomId, { status: newRoomStatus });
+          broadcastChange('rooms', 'updated', { id: roomReservation.roomId, status: newRoomStatus });
         }
 
         // Send notifications for status changes
@@ -919,10 +924,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
       await storage.updateReservation(reservationId, { status: "cancelled" });
       broadcastChange('reservations', 'deleted', { id: reservationId }); // Broadcast change
 
-
       // Update room status back to available
       for (const roomReservation of existingReservation.reservationRooms) {
         await storage.updateRoom(roomReservation.roomId, { status: "available" });
+        broadcastChange('rooms', 'updated', { id: roomReservation.roomId, status: "available" });
       }
 
       res.status(204).send();
