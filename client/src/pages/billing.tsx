@@ -823,7 +823,7 @@ export default function Billing() {
                               className="bg-green-600 hover:bg-green-700"
                               size="sm"
                             >
-                              <CrediteSewa className="h-4 w-4 mr-2" />
+                              <CreditCard className="h-4 w-4 mr-2" />
                               Checkout
                             </Button>
                           </TableCell>
@@ -1191,7 +1191,7 @@ export default function Billing() {
                   onClick={handleCheckout}
                   disabled={checkoutMutation.isPending}
                 >
-                  <CrediteSewa className="h-4 w-4 mr-2" />
+                  <CreditCard className="h-4 w-4 mr-2" />
                   {checkoutMutation.isPending
                     ? "Processing..."
                     : "Complete Checkout"}
