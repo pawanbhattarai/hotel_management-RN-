@@ -599,9 +599,11 @@ export default function Billing() {
     );
   };
 
-  // Get all reservations (for viewing bills)
+  // Get all checked-out reservations (for viewing bills)
   const getAllReservations = () => {
-    return filteredReservations;
+    return filteredReservations.filter((reservation: any) => 
+      reservation.status === "checked-out"
+    );
   };
 
   // Get currency symbol for display
@@ -780,26 +782,15 @@ export default function Billing() {
                           {parseFloat(reservation.totalAmount).toFixed(2)}
                         </TableCell>
                         <TableCell>
-                          <div className="flex space-x-2">
-                            <Button
-                              onClick={() => handleCreateBill(reservation)}
-                              disabled={checkoutMutation.isPending}
-                              className="bg-green-600 hover:bg-green-700"
-                              size="sm"
-                            >
-                              <CreditCard className="h-4 w-4 mr-2" />
-                              Checkout
-                            </Button>
-                            <Button
-                              variant="outline"
-                              size="sm"
-                              onClick={() => handleDeleteReservation(reservation)}
-                              className="text-red-600 hover:text-red-800 border-red-200 hover:border-red-300"
-                              title="Cancel Reservation"
-                            >
-                              <Trash2 className="h-4 w-4" />
-                            </Button>
-                          </div>
+                          <Button
+                            onClick={() => handleCreateBill(reservation)}
+                            disabled={checkoutMutation.isPending}
+                            className="bg-green-600 hover:bg-green-700"
+                            size="sm"
+                          >
+                            <CreditCard className="h-4 w-4 mr-2" />
+                            Checkout
+                          </Button>
                         </TableCell>
                       </TableRow>
                     ))}
@@ -910,27 +901,15 @@ export default function Billing() {
                               >
                                 <Printer className="h-4 w-4" />
                               </Button>
-                              {reservation.status === "checked-in" && (
-                                <Button
-                                  variant="default"
-                                  size="sm"
-                                  onClick={() => handleCreateBill(reservation)}
-                                  title="Checkout"
-                                >
-                                  <Receipt className="h-4 w-4" />
-                                </Button>
-                              )}
-                              {reservation.status !== "checked-out" && reservation.status !== "cancelled" && (
-                                <Button
-                                  variant="outline"
-                                  size="sm"
-                                  onClick={() => handleDeleteReservation(reservation)}
-                                  className="text-red-600 hover:text-red-800 border-red-200 hover:border-red-300"
-                                  title="Cancel Reservation"
-                                >
-                                  <Trash2 className="h-4 w-4" />
-                                </Button>
-                              )}
+                              <Button
+                                variant="outline"
+                                size="sm"
+                                onClick={() => handleDeleteReservation(reservation)}
+                                className="text-red-600 hover:text-red-800 border-red-200 hover:border-red-300"
+                                title="Delete Reservation"
+                              >
+                                <Trash2 className="h-4 w-4" />
+                              </Button>
                             </div>
                           </TableCell>
                         </TableRow>
@@ -941,7 +920,7 @@ export default function Billing() {
                           colSpan={7}
                           className="text-center py-8 text-gray-500"
                         >
-                          No reservations found.
+                          No checked-out reservations found.
                         </TableCell>
                       </TableRow>
                     )}
