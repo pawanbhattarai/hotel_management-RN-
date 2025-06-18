@@ -7,12 +7,6 @@ import { apiRequest } from "@/lib/queryClient";
 import Sidebar from "@/components/layout/sidebar";
 import Header from "@/components/layout/header";
 import { Button } from "@/components/ui/button";
-import {
-  eSewa,
-  eSewaContent,
-  eSewaHeader,
-  eSewaTitle,
-} from "@/components/ui/esewa";
 import { Badge } from "@/components/ui/badge";
 import {
   Dialog,
@@ -49,6 +43,7 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 
 export default function Billing() {
   const { toast } = useToast();
@@ -742,11 +737,11 @@ export default function Billing() {
           </div>
 
           {/* Reservations Ready for Checkout */}
-          <eSewa className="mb-6">
-            <eSewaHeader>
-              <eSewaTitle>Reservations Ready for Checkout</eSewaTitle>
-            </eSewaHeader>
-            <eSewaContent>
+          <Card className="mb-6">
+            <CardHeader>
+              <CardTitle>Reservations Ready for Checkout</CardTitle>
+            </CardHeader>
+            <CardContent>
               {getReadyForCheckoutReservations().length > 0 ? (
                 <Table>
                   <TableHeader>
@@ -838,15 +833,15 @@ export default function Billing() {
                   them here.
                 </div>
               )}
-            </eSewaContent>
-          </eSewa>
+            </CardContent>
+          </Card>
 
           {/* All Reservations */}
-          <eSewa>
-            <eSewaHeader>
-              <eSewaTitle>All Guest Reservations</eSewaTitle>
-            </eSewaHeader>
-            <eSewaContent>
+          <Card>
+            <CardHeader>
+              <CardTitle>All Guest Reservations</CardTitle>
+            </CardHeader>
+            <CardContent>
               {reservationsLoading ? (
                 <div className="flex items-center justify-center py-8">
                   <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
@@ -970,8 +965,8 @@ export default function Billing() {
                   </TableBody>
                 </Table>
               )}
-            </eSewaContent>
-          </eSewa>
+            </CardContent>
+          </Card>
         </main>
       </div>
 
@@ -1008,7 +1003,7 @@ export default function Billing() {
                       <TableHead>Room</TableHead>
                       <TableHead>Dates</TableHead>
                       <TableHead>Nights</TableHead>
-                      <TableHead>Rate/Night</TableHead>
+                      <TableHead>                      <TableHead>Rate/Night</TableHead>
                       <TableHead>Amount</TableHead>
                     </TableRow>
                   </TableHeader>
