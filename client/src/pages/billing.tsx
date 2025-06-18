@@ -1,4 +1,3 @@
-
 import { useEffect, useState } from "react";
 import { useAuth } from "@/hooks/useAuth";
 import { useToast } from "@/hooks/use-toast";
@@ -8,7 +7,12 @@ import { apiRequest } from "@/lib/queryClient";
 import Sidebar from "@/components/layout/sidebar";
 import Header from "@/components/layout/header";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import {
+  eSewa,
+  eSewaContent,
+  eSewaHeader,
+  eSewaTitle,
+} from "@/components/ui/esewa";
 import { Badge } from "@/components/ui/badge";
 import {
   Dialog,
@@ -27,7 +31,14 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import { Search, Printer, CreditCard, Receipt, Eye, Trash2 } from "lucide-react";
+import {
+  Search,
+  Printer,
+  CrediteSewa,
+  Receipt,
+  Eye,
+  Trash2,
+} from "lucide-react";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -193,11 +204,16 @@ export default function Billing() {
 
   const getPaymentMethodColor = (method: string) => {
     switch (method) {
-      case 'cash': return 'bg-green-500';
-      case 'card': return 'bg-blue-500';
-      case 'digital': return 'bg-purple-500';
-      case 'bank-transfer': return 'bg-orange-500';
-      default: return 'bg-gray-500';
+      case "cash":
+        return "bg-green-500";
+      case "esewa":
+        return "bg-blue-500";
+      case "khalti":
+        return "bg-purple-500";
+      case "bank-transfer":
+        return "bg-orange-500";
+      default:
+        return "bg-gray-500";
     }
   };
 
@@ -479,11 +495,11 @@ export default function Billing() {
           </div>
           <div class="info-row">
             <span>Email:</span>
-            <span>${reservation.guest.email || 'N/A'}</span>
+            <span>${reservation.guest.email || "N/A"}</span>
           </div>
           <div class="info-row">
             <span>Phone:</span>
-            <span>${reservation.guest.phone || 'N/A'}</span>
+            <span>${reservation.guest.phone || "N/A"}</span>
           </div>
           <div class="info-row">
             <span>Payment:</span>
@@ -519,19 +535,29 @@ export default function Billing() {
             <span>Subtotal:</span>
             <span>${currencySymbol}${subtotal.toFixed(2)}</span>
           </div>
-          ${finalDiscountAmount > 0 ? `
+          ${
+            finalDiscountAmount > 0
+              ? `
             <div class="total-row">
               <span>Discount (${billData.discountPercentage || 0}%):</span>
               <span>-${currencySymbol}${finalDiscountAmount.toFixed(2)}</span>
             </div>
-          ` : ''}
-          ${appliedTaxes.length > 0 ? 
-            appliedTaxes.map((tax) => `
+          `
+              : ""
+          }
+          ${
+            appliedTaxes.length > 0
+              ? appliedTaxes
+                  .map(
+                    (tax) => `
               <div class="total-row">
                 <span>${tax.name} (${tax.rate}%):</span>
                 <span>${currencySymbol}${tax.amount.toFixed(2)}</span>
               </div>
-            `).join('') : `
+            `,
+                  )
+                  .join("")
+              : `
               <div class="total-row">
                 <span>Tax:</span>
                 <span>${currencySymbol}${totalTaxAmount.toFixed(2)}</span>
@@ -545,14 +571,18 @@ export default function Billing() {
         </div>
 
         <div class="payment-info">
-          PAYMENT: ${billData.paymentMethod.toUpperCase()} - ${isPaid ? 'PAID' : 'PENDING'}
+          PAYMENT: ${billData.paymentMethod.toUpperCase()} - ${isPaid ? "PAID" : "PENDING"}
         </div>
 
-        ${billData.notes ? `
+        ${
+          billData.notes
+            ? `
           <div style="margin-top: 10px; font-size: 10px; text-align: center;">
             <strong>Notes:</strong> ${billData.notes}
           </div>
-        ` : ''}
+        `
+            : ""
+        }
 
         <div class="divider">================================</div>
         <div class="footer">
@@ -594,15 +624,15 @@ export default function Billing() {
 
   // Get ready for checkout reservations (checked-in status)
   const getReadyForCheckoutReservations = () => {
-    return filteredReservations.filter((reservation: any) => 
-      reservation.status === "checked-in"
+    return filteredReservations.filter(
+      (reservation: any) => reservation.status === "checked-in",
     );
   };
 
   // Get all checked-out reservations (for viewing bills)
   const getAllReservations = () => {
-    return filteredReservations.filter((reservation: any) => 
-      reservation.status === "checked-out"
+    return filteredReservations.filter(
+      (reservation: any) => reservation.status === "checked-out",
     );
   };
 
@@ -712,11 +742,11 @@ export default function Billing() {
           </div>
 
           {/* Reservations Ready for Checkout */}
-          <Card className="mb-6">
-            <CardHeader>
-              <CardTitle>Reservations Ready for Checkout</CardTitle>
-            </CardHeader>
-            <CardContent>
+          <eSewa className="mb-6">
+            <eSewaHeader>
+              <eSewaTitle>Reservations Ready for Checkout</eSewaTitle>
+            </eSewaHeader>
+            <eSewaContent>
               {getReadyForCheckoutReservations().length > 0 ? (
                 <Table>
                   <TableHeader>
@@ -730,86 +760,93 @@ export default function Billing() {
                     </TableRow>
                   </TableHeader>
                   <TableBody>
-                    {getReadyForCheckoutReservations().map((reservation: any) => (
-                      <TableRow key={reservation.id}>
-                        <TableCell>
-                          <div>
-                            <div className="font-medium">
-                              {reservation.guest.firstName}{" "}
-                              {reservation.guest.lastName}
-                            </div>
-                            <div className="text-sm text-gray-500">
-                              {reservation.guest.email}
-                            </div>
-                          </div>
-                        </TableCell>
-                        <TableCell className="font-mono text-sm">
-                          {reservation.confirmationNumber}
-                        </TableCell>
-                        <TableCell>
-                          <div>
-                            <div className="font-medium">
-                              {reservation.reservationRooms.length} Room
-                              {reservation.reservationRooms.length > 1 ? "s" : ""}
-                            </div>
-                            <div className="text-sm text-gray-500">
-                              {reservation.reservationRooms
-                                .map((rr: any) => rr.room.roomType.name)
-                                .join(", ")}
-                            </div>
-                          </div>
-                        </TableCell>
-                        <TableCell>
-                          {reservation.reservationRooms.length > 0 && (
+                    {getReadyForCheckoutReservations().map(
+                      (reservation: any) => (
+                        <TableRow key={reservation.id}>
+                          <TableCell>
                             <div>
-                              <div>
-                                {formatDate(
-                                  reservation.reservationRooms[0].checkOutDate,
-                                )}
+                              <div className="font-medium">
+                                {reservation.guest.firstName}{" "}
+                                {reservation.guest.lastName}
                               </div>
                               <div className="text-sm text-gray-500">
-                                {calculateNights(
-                                  reservation.reservationRooms[0].checkInDate,
-                                  reservation.reservationRooms[0].checkOutDate,
-                                )}{" "}
-                                nights
+                                {reservation.guest.email}
                               </div>
                             </div>
-                          )}
-                        </TableCell>
-                        <TableCell className="font-medium">
-                          {currencySymbol}
-                          {parseFloat(reservation.totalAmount).toFixed(2)}
-                        </TableCell>
-                        <TableCell>
-                          <Button
-                            onClick={() => handleCreateBill(reservation)}
-                            disabled={checkoutMutation.isPending}
-                            className="bg-green-600 hover:bg-green-700"
-                            size="sm"
-                          >
-                            <CreditCard className="h-4 w-4 mr-2" />
-                            Checkout
-                          </Button>
-                        </TableCell>
-                      </TableRow>
-                    ))}
+                          </TableCell>
+                          <TableCell className="font-mono text-sm">
+                            {reservation.confirmationNumber}
+                          </TableCell>
+                          <TableCell>
+                            <div>
+                              <div className="font-medium">
+                                {reservation.reservationRooms.length} Room
+                                {reservation.reservationRooms.length > 1
+                                  ? "s"
+                                  : ""}
+                              </div>
+                              <div className="text-sm text-gray-500">
+                                {reservation.reservationRooms
+                                  .map((rr: any) => rr.room.roomType.name)
+                                  .join(", ")}
+                              </div>
+                            </div>
+                          </TableCell>
+                          <TableCell>
+                            {reservation.reservationRooms.length > 0 && (
+                              <div>
+                                <div>
+                                  {formatDate(
+                                    reservation.reservationRooms[0]
+                                      .checkOutDate,
+                                  )}
+                                </div>
+                                <div className="text-sm text-gray-500">
+                                  {calculateNights(
+                                    reservation.reservationRooms[0].checkInDate,
+                                    reservation.reservationRooms[0]
+                                      .checkOutDate,
+                                  )}{" "}
+                                  nights
+                                </div>
+                              </div>
+                            )}
+                          </TableCell>
+                          <TableCell className="font-medium">
+                            {currencySymbol}
+                            {parseFloat(reservation.totalAmount).toFixed(2)}
+                          </TableCell>
+                          <TableCell>
+                            <Button
+                              onClick={() => handleCreateBill(reservation)}
+                              disabled={checkoutMutation.isPending}
+                              className="bg-green-600 hover:bg-green-700"
+                              size="sm"
+                            >
+                              <CrediteSewa className="h-4 w-4 mr-2" />
+                              Checkout
+                            </Button>
+                          </TableCell>
+                        </TableRow>
+                      ),
+                    )}
                   </TableBody>
                 </Table>
               ) : (
                 <div className="text-center py-8 text-gray-500">
-                  No reservations ready for checkout. Check-in guests to see them here.
+                  No reservations ready for checkout. Check-in guests to see
+                  them here.
                 </div>
               )}
-            </CardContent>
-          </Card>
+            </eSewaContent>
+          </eSewa>
 
           {/* All Reservations */}
-          <Card>
-            <CardHeader>
-              <CardTitle>All Guest Reservations</CardTitle>
-            </CardHeader>
-            <CardContent>
+          <eSewa>
+            <eSewaHeader>
+              <eSewaTitle>All Guest Reservations</eSewaTitle>
+            </eSewaHeader>
+            <eSewaContent>
               {reservationsLoading ? (
                 <div className="flex items-center justify-center py-8">
                   <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
@@ -849,7 +886,9 @@ export default function Billing() {
                             <div>
                               <div className="font-medium">
                                 {reservation.reservationRooms.length} Room
-                                {reservation.reservationRooms.length > 1 ? "s" : ""}
+                                {reservation.reservationRooms.length > 1
+                                  ? "s"
+                                  : ""}
                               </div>
                               <div className="text-sm text-gray-500">
                                 {reservation.reservationRooms
@@ -863,13 +902,15 @@ export default function Billing() {
                               <div>
                                 <div>
                                   {formatDate(
-                                    reservation.reservationRooms[0].checkOutDate,
+                                    reservation.reservationRooms[0]
+                                      .checkOutDate,
                                   )}
                                 </div>
                                 <div className="text-sm text-gray-500">
                                   {calculateNights(
                                     reservation.reservationRooms[0].checkInDate,
-                                    reservation.reservationRooms[0].checkOutDate,
+                                    reservation.reservationRooms[0]
+                                      .checkOutDate,
                                   )}{" "}
                                   nights
                                 </div>
@@ -904,7 +945,9 @@ export default function Billing() {
                               <Button
                                 variant="outline"
                                 size="sm"
-                                onClick={() => handleDeleteReservation(reservation)}
+                                onClick={() =>
+                                  handleDeleteReservation(reservation)
+                                }
                                 className="text-red-600 hover:text-red-800 border-red-200 hover:border-red-300"
                                 title="Delete Reservation"
                               >
@@ -927,8 +970,8 @@ export default function Billing() {
                   </TableBody>
                 </Table>
               )}
-            </CardContent>
-          </Card>
+            </eSewaContent>
+          </eSewa>
         </main>
       </div>
 
@@ -1017,8 +1060,8 @@ export default function Billing() {
                     }
                   >
                     <option value="cash">Cash</option>
-                    <option value="card">Card</option>
-                    <option value="digital">Digital</option>
+                    <option value="esewa">eSewa</option>
+                    <option value="khalti">Khalti</option>
                     <option value="bank-transfer">Bank Transfer</option>
                   </select>
                 </div>
@@ -1075,7 +1118,9 @@ export default function Billing() {
                   <div className="space-y-2 text-sm">
                     <div className="flex justify-between">
                       <span>Room Charges:</span>
-                      <span>{currencySymbol} {billPreview.subtotal.toFixed(2)}</span>
+                      <span>
+                        {currencySymbol} {billPreview.subtotal.toFixed(2)}
+                      </span>
                     </div>
                     {billPreview.discountAmount > 0 && (
                       <div className="flex justify-between text-green-600">
@@ -1086,25 +1131,39 @@ export default function Billing() {
                             : ""}
                           :
                         </span>
-                        <span>-{currencySymbol} {billPreview.discountAmount.toFixed(2)}</span>
+                        <span>
+                          -{currencySymbol}{" "}
+                          {billPreview.discountAmount.toFixed(2)}
+                        </span>
                       </div>
                     )}
-                    {billPreview.appliedTaxes && billPreview.appliedTaxes.length > 0 ? (
-                      billPreview.appliedTaxes.map((tax: any, index: number) => (
-                        <div key={index} className="flex justify-between">
-                          <span>{tax.name} ({tax.rate}%):</span>
-                          <span>{currencySymbol} {tax.amount.toFixed(2)}</span>
-                        </div>
-                      ))
+                    {billPreview.appliedTaxes &&
+                    billPreview.appliedTaxes.length > 0 ? (
+                      billPreview.appliedTaxes.map(
+                        (tax: any, index: number) => (
+                          <div key={index} className="flex justify-between">
+                            <span>
+                              {tax.name} ({tax.rate}%):
+                            </span>
+                            <span>
+                              {currencySymbol} {tax.amount.toFixed(2)}
+                            </span>
+                          </div>
+                        ),
+                      )
                     ) : (
                       <div className="flex justify-between">
                         <span>Tax:</span>
-                        <span>{currencySymbol} {billPreview.taxAmount.toFixed(2)}</span>
+                        <span>
+                          {currencySymbol} {billPreview.taxAmount.toFixed(2)}
+                        </span>
                       </div>
                     )}
                     <div className="flex justify-between text-lg font-bold border-t pt-2">
                       <span>Total Amount:</span>
-                      <span>{currencySymbol} {billPreview.totalAmount.toFixed(2)}</span>
+                      <span>
+                        {currencySymbol} {billPreview.totalAmount.toFixed(2)}
+                      </span>
                     </div>
                   </div>
                 </div>
@@ -1132,8 +1191,10 @@ export default function Billing() {
                   onClick={handleCheckout}
                   disabled={checkoutMutation.isPending}
                 >
-                  <CreditCard className="h-4 w-4 mr-2" />
-                  {checkoutMutation.isPending ? "Processing..." : "Complete Checkout"}
+                  <CrediteSewa className="h-4 w-4 mr-2" />
+                  {checkoutMutation.isPending
+                    ? "Processing..."
+                    : "Complete Checkout"}
                 </Button>
               </div>
             </div>
@@ -1161,7 +1222,9 @@ export default function Billing() {
                 </div>
                 <div>
                   <span className="text-sm text-muted-foreground">Email:</span>
-                  <p className="font-medium">{viewingBill.guest.email || 'N/A'}</p>
+                  <p className="font-medium">
+                    {viewingBill.guest.email || "N/A"}
+                  </p>
                 </div>
                 <div>
                   <span className="text-sm text-muted-foreground">Status:</span>
@@ -1170,7 +1233,8 @@ export default function Billing() {
                 <div>
                   <span className="text-sm text-muted-foreground">Total:</span>
                   <p className="font-medium">
-                    {currencySymbol}{parseFloat(viewingBill.totalAmount).toFixed(2)}
+                    {currencySymbol}
+                    {parseFloat(viewingBill.totalAmount).toFixed(2)}
                   </p>
                 </div>
               </div>
@@ -1195,16 +1259,22 @@ export default function Billing() {
                             {room.room.number} ({room.room.roomType.name})
                           </TableCell>
                           <TableCell>
-                            {formatDate(room.checkInDate)} - {formatDate(room.checkOutDate)}
+                            {formatDate(room.checkInDate)} -{" "}
+                            {formatDate(room.checkOutDate)}
                           </TableCell>
                           <TableCell>
-                            {calculateNights(room.checkInDate, room.checkOutDate)}
+                            {calculateNights(
+                              room.checkInDate,
+                              room.checkOutDate,
+                            )}
                           </TableCell>
                           <TableCell>
-                            {currencySymbol}{parseFloat(room.ratePerNight).toFixed(2)}
+                            {currencySymbol}
+                            {parseFloat(room.ratePerNight).toFixed(2)}
                           </TableCell>
                           <TableCell>
-                            {currencySymbol}{parseFloat(room.totalAmount).toFixed(2)}
+                            {currencySymbol}
+                            {parseFloat(room.totalAmount).toFixed(2)}
                           </TableCell>
                         </TableRow>
                       ))}
@@ -1225,23 +1295,29 @@ export default function Billing() {
       )}
 
       {/* Delete Confirmation Dialog */}
-      <AlertDialog open={isDeleteDialogOpen} onOpenChange={setIsDeleteDialogOpen}>
+      <AlertDialog
+        open={isDeleteDialogOpen}
+        onOpenChange={setIsDeleteDialogOpen}
+      >
         <AlertDialogContent>
           <AlertDialogHeader>
             <AlertDialogTitle>Cancel Reservation</AlertDialogTitle>
             <AlertDialogDescription>
-              Are you sure you want to cancel reservation "{reservationToDelete?.confirmationNumber}"?
-              This will mark the reservation as cancelled and free up the associated rooms.
+              Are you sure you want to cancel reservation "
+              {reservationToDelete?.confirmationNumber}"? This will mark the
+              reservation as cancelled and free up the associated rooms.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
             <AlertDialogCancel>Cancel</AlertDialogCancel>
-            <AlertDialogAction 
-              onClick={confirmDeleteReservation} 
+            <AlertDialogAction
+              onClick={confirmDeleteReservation}
               disabled={deleteReservationMutation.isPending}
               className="bg-red-600 hover:bg-red-700"
             >
-              {deleteReservationMutation.isPending ? "Cancelling..." : "Cancel Reservation"}
+              {deleteReservationMutation.isPending
+                ? "Cancelling..."
+                : "Cancel Reservation"}
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
