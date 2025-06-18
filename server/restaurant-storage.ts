@@ -720,6 +720,7 @@ export class RestaurantStorage {
     const periodDays = period === '7d' ? 7 : period === '30d' ? 30 : 90;
     const startDate = new Date();
     startDate.setDate(startDate.getDate() - periodDays);
+    startDate.setHours(0, 0, 0, 0); // Ensure start date is at the beginning of the day
 
     let baseQuery = db
       .select({
@@ -764,14 +765,37 @@ export class RestaurantStorage {
 
     const hourlyRevenue = await hourlyQuery;
 
-    const totalRevenue = dailyRevenue.reduce((sum, day) => sum + day.revenue, 0);
+    const currentRevenue = dailyRevenue.reduce((sum, day) => sum + Number(day.revenue), 0);
 
-    // Calculate growth (simple implementation)
-    const revenueGrowth = dailyRevenue.length > 1 ? 
-      ((dailyRevenue[dailyRevenue.length - 1].revenue - dailyRevenue[0].revenue) / dailyRevenue[0].revenue) * 100 : 0;
+    // Calculate growth (comparing current period to the previous period of the same length)
+    const previousStartDate = new Date(startDate);
+    previousStartDate.setDate(previousStartDate.getDate() - periodDays);
+
+    let previousRevenueQuery = db
+      .select({
+        revenue: sql<number>`COALESCE(SUM(CAST(${restaurantOrders.totalAmount} AS DECIMAL)), 0)`
+      })
+      .from(restaurantOrders)
+      .where(
+        and(
+          sql`${restaurantOrders.createdAt} >= ${previousStartDate.toISOString()}`,
+          sql`${restaurantOrders.createdAt} < ${startDate.toISOString()}`,
+          eq(restaurantOrders.paymentStatus, 'paid')
+        )
+      );
+
+    if (branchId) {
+      previousRevenueQuery = previousRevenueQuery.where(eq(restaurantOrders.branchId, branchId));
+    }
+
+    const [{ revenue: previousRevenue }] = await previousRevenueQuery;
+
+    const revenueGrowth = previousRevenue
+      ? ((currentRevenue - Number(previousRevenue)) / Number(previousRevenue)) * 100
+      : 0;
 
     return {
-      totalRevenue,
+      totalRevenue: currentRevenue,
       dailyRevenue,
       hourlyRevenue,
       revenueGrowth
