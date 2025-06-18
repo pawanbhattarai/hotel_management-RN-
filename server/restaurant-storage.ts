@@ -724,21 +724,21 @@ export class RestaurantStorage {
 
     let baseQuery = db
       .select({
-        date: sql<string>`DATE(${restaurantOrders.createdAt})`,
-        revenue: sql<number>`COALESCE(SUM(CAST(${restaurantOrders.totalAmount} AS DECIMAL)), 0)`
+        date: sql<string>`DATE(${restaurantBills.createdAt})`,
+        revenue: sql<number>`COALESCE(SUM(CAST(${restaurantBills.totalAmount} AS DECIMAL)), 0)`
       })
-      .from(restaurantOrders)
+      .from(restaurantBills)
       .where(
         and(
-          sql`${restaurantOrders.createdAt} >= ${startDate.toISOString()}`,
-          eq(restaurantOrders.paymentStatus, 'paid')
+          sql`${restaurantBills.createdAt} >= ${startDate.toISOString()}`,
+          eq(restaurantBills.paymentStatus, 'paid')
         )
       )
-      .groupBy(sql`DATE(${restaurantOrders.createdAt})`)
-      .orderBy(sql`DATE(${restaurantOrders.createdAt})`);
+      .groupBy(sql`DATE(${restaurantBills.createdAt})`)
+      .orderBy(sql`DATE(${restaurantBills.createdAt})`);
 
     if (branchId) {
-      baseQuery = baseQuery.where(eq(restaurantOrders.branchId, branchId));
+      baseQuery = baseQuery.where(eq(restaurantBills.branchId, branchId));
     }
 
     const dailyRevenue = await baseQuery;
@@ -746,21 +746,21 @@ export class RestaurantStorage {
     // Hourly revenue
     let hourlyQuery = db
       .select({
-        hour: sql<number>`EXTRACT(HOUR FROM ${restaurantOrders.createdAt})`,
-        revenue: sql<number>`COALESCE(SUM(CAST(${restaurantOrders.totalAmount} AS DECIMAL)), 0)`
+        hour: sql<number>`EXTRACT(HOUR FROM ${restaurantBills.createdAt})`,
+        revenue: sql<number>`COALESCE(SUM(CAST(${restaurantBills.totalAmount} AS DECIMAL)), 0)`
       })
-      .from(restaurantOrders)
+      .from(restaurantBills)
       .where(
         and(
-          sql`${restaurantOrders.createdAt} >= ${startDate.toISOString()}`,
-          eq(restaurantOrders.paymentStatus, 'paid')
+          sql`${restaurantBills.createdAt} >= ${startDate.toISOString()}`,
+          eq(restaurantBills.paymentStatus, 'paid')
         )
       )
-      .groupBy(sql`EXTRACT(HOUR FROM ${restaurantOrders.createdAt})`)
-      .orderBy(sql`EXTRACT(HOUR FROM ${restaurantOrders.createdAt})`);
+      .groupBy(sql`EXTRACT(HOUR FROM ${restaurantBills.createdAt})`)
+      .orderBy(sql`EXTRACT(HOUR FROM ${restaurantBills.createdAt})`);
 
     if (branchId) {
-      hourlyQuery = hourlyQuery.where(eq(restaurantOrders.branchId, branchId));
+      hourlyQuery = hourlyQuery.where(eq(restaurantBills.branchId, branchId));
     }
 
     const hourlyRevenue = await hourlyQuery;
@@ -773,19 +773,19 @@ export class RestaurantStorage {
 
     let previousRevenueQuery = db
       .select({
-        revenue: sql<number>`COALESCE(SUM(CAST(${restaurantOrders.totalAmount} AS DECIMAL)), 0)`
+        revenue: sql<number>`COALESCE(SUM(CAST(${restaurantBills.totalAmount} AS DECIMAL)), 0)`
       })
-      .from(restaurantOrders)
+      .from(restaurantBills)
       .where(
         and(
-          sql`${restaurantOrders.createdAt} >= ${previousStartDate.toISOString()}`,
-          sql`${restaurantOrders.createdAt} < ${startDate.toISOString()}`,
-          eq(restaurantOrders.paymentStatus, 'paid')
+          sql`${restaurantBills.createdAt} >= ${previousStartDate.toISOString()}`,
+          sql`${restaurantBills.createdAt} < ${startDate.toISOString()}`,
+          eq(restaurantBills.paymentStatus, 'paid')
         )
       );
 
     if (branchId) {
-      previousRevenueQuery = previousRevenueQuery.where(eq(restaurantOrders.branchId, branchId));
+      previousRevenueQuery = previousRevenueQuery.where(eq(restaurantBills.branchId, branchId));
     }
 
     const [{ revenue: previousRevenue }] = await previousRevenueQuery;
@@ -857,7 +857,7 @@ export class RestaurantStorage {
       .from(restaurantOrders)
       .where(and(...todayConditions));
 
-    // Average order value from bills (more accurate than orders)
+    // Average order value from bills (more accurate than orders) - only for the period
     let avgConditions = [
       sql`${restaurantBills.createdAt} >= ${startDate.toISOString()}`,
       eq(restaurantBills.paymentStatus, 'paid')
@@ -872,8 +872,8 @@ export class RestaurantStorage {
       .where(and(...avgConditions));
 
     return {
-      totalOrders,
-      ordersToday,
+      totalOrders: Number(totalOrders),
+      ordersToday: Number(ordersToday),
       averageOrderValue: Number(averageOrderValue) || 0,
       dailyOrders,
       ordersByStatus
