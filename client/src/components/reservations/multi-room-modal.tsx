@@ -75,7 +75,10 @@ export default function MultiRoomModal({
 
   const { data: branches } = useQuery({
     queryKey: ["/api/branches"],
-    enabled: isOpen && !!user && user?.role === "superadmin",
+  });
+
+  const { data: activeTaxes } = useQuery({
+    queryKey: ["/api/taxes/reservation"],
   });
 
   const {
@@ -290,7 +293,10 @@ export default function MultiRoomModal({
       return sum;
     }, 0);
     const subtotal = rooms.reduce((sum, room) => sum + room.totalAmount, 0);
-    const taxes = subtotal * 0.0; // 15% tax
+    // Calculate taxes dynamically from active taxes
+    const taxes = activeTaxes ? activeTaxes.reduce((sum: number, tax: any) => {
+      return sum + (subtotal * parseFloat(tax.rate)) / 100;
+    }, 0) : 0;
     const total = subtotal + taxes;
 
     return { totalRooms, totalNights, subtotal, taxes, total };
