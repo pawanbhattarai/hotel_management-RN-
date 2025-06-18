@@ -46,6 +46,7 @@ function Router() {
           <Route path="/guests" component={Guests} />
           <Route path="/branches" component={Branches} />
           <Route path="/users" component={Users} />
+          <Route path="/billing" component={Billing} />
           <Route path="/analytics" component={Analytics} />
           <Route path="/restaurant/analytics" component={() => (
             <Suspense fallback={

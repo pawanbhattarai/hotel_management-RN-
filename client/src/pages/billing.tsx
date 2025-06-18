@@ -34,7 +34,7 @@ import {
 import {
   Search,
   Printer,
-  CrediteSewa,
+  CreditCard,
   Receipt,
   Eye,
   Trash2,
