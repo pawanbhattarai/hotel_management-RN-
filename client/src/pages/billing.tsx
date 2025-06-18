@@ -262,8 +262,8 @@ export default function Billing() {
       return symbols[currency] || currency;
     };
 
-    const currencySymbol = getCurrencySymbol(hotelSettings?.currency || 'NPR');
-    const currentDateTime = formatDateTime(new Date(), hotelSettings?.timeZone);
+    const currencySymbol = getCurrencySymbol((hotelSettings as any)?.currency || 'NPR');
+    const currentDateTime = formatDateTime(new Date(), (hotelSettings as any)?.timeZone);
 
     return `
       <!DOCTYPE html>
@@ -540,7 +540,7 @@ export default function Billing() {
     return symbols[currency] || currency;
   };
 
-  const currencySymbol = hotelSettings ? getCurrencySymbol(hotelSettings.currency || 'NPR') : 'Rs.';
+  const currencySymbol = hotelSettings && typeof hotelSettings === 'object' && 'currency' in hotelSettings ? getCurrencySymbol(hotelSettings.currency || 'NPR') : 'Rs.';
 
   if (isLoading) {
     return (
