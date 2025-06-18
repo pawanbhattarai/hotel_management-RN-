@@ -23,7 +23,6 @@ const checkoutSchema = z.object({
   paymentMethod: z.enum(["cash", "card", "upi", "online"]),
   discountAmount: z.number().min(0).optional(),
   discountPercentage: z.number().min(0).max(100).optional(),
-  serviceChargePercentage: z.number().min(0).max(100).optional(),
   notes: z.string().optional(),
   customerName: z.string().optional(),
   customerPhone: z.string().optional(),
@@ -101,7 +100,6 @@ export default function RestaurantBilling() {
       const subtotal = parseFloat(order.subtotal || order.totalAmount || "0");
       const discountAmount = data.discountAmount || 0;
       const discountPercentage = data.discountPercentage || 0;
-      const serviceChargePercentage = data.serviceChargePercentage || 10;
 
       // Calculate discount
       const finalDiscountAmount = discountPercentage > 0 
@@ -110,13 +108,12 @@ export default function RestaurantBilling() {
 
       // Calculate amounts
       const afterDiscount = subtotal - finalDiscountAmount;
-      const serviceChargeAmount = afterDiscount * serviceChargePercentage / 100;
-      
+
       // Calculate taxes dynamically from tax management system
-      const baseAmountForTax = afterDiscount + serviceChargeAmount;
+      const baseAmountForTax = afterDiscount;
       let totalTaxAmount = 0;
       let appliedTaxes = [];
-      
+
       if (activeTaxes && activeTaxes.length > 0) {
         activeTaxes.forEach((tax: any) => {
           const taxAmount = baseAmountForTax * (parseFloat(tax.rate) / 100);
@@ -128,8 +125,8 @@ export default function RestaurantBilling() {
           });
         });
       }
-      
-      const totalAmount = afterDiscount + serviceChargeAmount + totalTaxAmount;
+
+      const totalAmount = afterDiscount + totalTaxAmount;
 
       const billData = {
         orderId: data.orderId,
@@ -142,8 +139,6 @@ export default function RestaurantBilling() {
         appliedTaxes: JSON.stringify(appliedTaxes),
         discountAmount: finalDiscountAmount.toString(),
         discountPercentage: (data.discountPercentage || 0).toString(),
-        serviceChargeAmount: serviceChargeAmount.toString(),
-        serviceChargePercentage: serviceChargePercentage.toString(),
         totalAmount: totalAmount.toString(),
         paidAmount: totalAmount.toString(),
         changeAmount: "0",
@@ -207,7 +202,6 @@ export default function RestaurantBilling() {
       paymentMethod: "cash",
       discountAmount: 0,
       discountPercentage: 0,
-      serviceChargePercentage: 10,
       notes: "",
       customerName: "",
       customerPhone: "",
@@ -219,7 +213,6 @@ export default function RestaurantBilling() {
       paymentMethod: "cash",
       discountAmount: 0,
       discountPercentage: 0,
-      serviceChargePercentage: 10,
       notes: "",
       customerName: "",
       customerPhone: "",
@@ -259,7 +252,6 @@ export default function RestaurantBilling() {
   const calculateBillPreview = () => {
     const discountAmount = form.watch('discountAmount') || 0;
     const discountPercentage = form.watch('discountPercentage') || 0;
-    const serviceChargePercentage = form.watch('serviceChargePercentage') || 10;
 
     if (!selectedOrder) return null;
 
@@ -269,13 +261,12 @@ export default function RestaurantBilling() {
       : discountAmount;
 
     const afterDiscount = subtotal - finalDiscountAmount;
-    const serviceChargeAmount = afterDiscount * serviceChargePercentage / 100;
-    
+
     // Calculate taxes dynamically
-    const baseAmountForTax = afterDiscount + serviceChargeAmount;
+    const baseAmountForTax = afterDiscount;
     let totalTaxAmount = 0;
     let appliedTaxes = [];
-    
+
     if (activeTaxes && activeTaxes.length > 0) {
       activeTaxes.forEach((tax: any) => {
         const taxAmount = baseAmountForTax * (parseFloat(tax.rate) / 100);
@@ -287,13 +278,12 @@ export default function RestaurantBilling() {
         });
       });
     }
-    
-    const totalAmount = afterDiscount + serviceChargeAmount + totalTaxAmount;
+
+    const totalAmount = afterDiscount + totalTaxAmount;
 
     return {
       subtotal,
       discountAmount: finalDiscountAmount,
-      serviceChargeAmount,
       taxAmount: totalTaxAmount,
       appliedTaxes,
       totalAmount,
@@ -485,12 +475,6 @@ export default function RestaurantBilling() {
               <div class="total-row">
                 <span>Discount (${bill.discountPercentage}%):</span>
                 <span>-Rs. ${parseFloat(bill.discountAmount).toFixed(2)}</span>
-              </div>
-            ` : ''}
-            ${parseFloat(bill.serviceChargeAmount) > 0 ? `
-              <div class="total-row">
-                <span>Service Charge (${bill.serviceChargePercentage}%):</span>
-                <span>Rs. ${parseFloat(bill.serviceChargeAmount).toFixed(2)}</span>
               </div>
             ` : ''}
             ${bill.appliedTaxes ? 
@@ -781,26 +765,6 @@ export default function RestaurantBilling() {
                       )}
                     />
 
-                    <FormField
-                      control={form.control}
-                      name="serviceChargePercentage"
-                      render={({ field }) => (
-                        <FormItem>
-                          <FormLabel>Service Charge (%)</FormLabel>
-                          <FormControl>
-                            <Input 
-                              {...field} 
-                              type="number" 
-                              step="0.1"
-                              min="0"
-                              max="100"
-                              onChange={(e) => field.onChange(parseFloat(e.target.value) || 0)}
-                            />
-                          </FormControl>
-                          <FormMessage />
-                        </FormItem>
-                      )}
-                    />
 
                     <FormField
                       control={form.control}
@@ -902,10 +866,6 @@ export default function RestaurantBilling() {
                             <span>- Rs. {billPreview.discountAmount.toFixed(2)}</span>
                           </div>
                         )}
-                        <div className="flex justify-between">
-                          <span>Service Charge:</span>
-                          <span>Rs. {billPreview.serviceChargeAmount.toFixed(2)}</span>
-                        </div>
                         {billPreview.appliedTaxes && billPreview.appliedTaxes.length > 0 ? (
                           billPreview.appliedTaxes.map((tax: any, index: number) => (
                             <div key={index} className="flex justify-between">
@@ -1009,7 +969,7 @@ export default function RestaurantBilling() {
                   )}
 
                   {/* Bill Details */}
-              
+
                 <div>
                   <h3 className="font-semibold mb-2">Order Summary</h3>
                   <div className="space-y-1 text-sm">
@@ -1021,12 +981,6 @@ export default function RestaurantBilling() {
                       <div className="flex justify-between">
                         <span>Discount:</span>
                         <span>NPR {parseFloat(viewingBill.discountAmount).toFixed(2)}</span>
-                      </div>
-                    )}
-                    {parseFloat(viewingBill.serviceChargeAmount) > 0 && (
-                      <div className="flex justify-between">
-                        <span>Service Charge:</span>
-                        <span>NPR {parseFloat(viewingBill.serviceChargeAmount).toFixed(2)}</span>
                       </div>
                     )}
                     {viewingBill.appliedTaxes ? (
@@ -1049,7 +1003,7 @@ export default function RestaurantBilling() {
                   </div>
                 </div>
 
-                 
+
 
                   {viewingBill.notes && (
                     <div>
