@@ -9,11 +9,31 @@ import Header from "@/components/layout/header";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 import {
   Table,
   TableBody,
@@ -79,7 +99,9 @@ export default function Reservations() {
 
   const checkInMutation = useMutation({
     mutationFn: async (id: string) => {
-      return await apiRequest("PATCH", `/api/reservations/${id}`, { status: "checked-in" });
+      return await apiRequest("PATCH", `/api/reservations/${id}`, {
+        status: "checked-in",
+      });
     },
     onSuccess: () => {
       toast({
@@ -251,7 +273,9 @@ export default function Reservations() {
 
   // Check if reservation can be checked in
   const canCheckIn = (reservation: any) => {
-    return reservation.status === "confirmed" || reservation.status === "pending";
+    return (
+      reservation.status === "confirmed" || reservation.status === "pending"
+    );
   };
 
   if (isLoading) {
@@ -287,7 +311,7 @@ export default function Reservations() {
   const handleCreateReservation = async (data: any) => {
     try {
       const subtotal = data.rooms.reduce((sum: number, room: any) => {
-        return sum + (parseFloat(room.ratePerNight) * room.nights);
+        return sum + parseFloat(room.ratePerNight) * room.nights;
       }, 0);
 
       // Calculate taxes for reservations dynamically
@@ -302,7 +326,7 @@ export default function Reservations() {
             taxId: tax.id,
             taxName: tax.taxName,
             rate: tax.rate,
-            amount: taxAmount.toFixed(2)
+            amount: taxAmount.toFixed(2),
           });
         });
       }
@@ -457,7 +481,9 @@ export default function Reservations() {
                               <Button
                                 variant="ghost"
                                 size="sm"
-                                onClick={() => handleViewReservation(reservation)}
+                                onClick={() =>
+                                  handleViewReservation(reservation)
+                                }
                                 title="View Details"
                               >
                                 <Eye className="h-4 w-4" />
@@ -477,7 +503,9 @@ export default function Reservations() {
                               <Button
                                 variant="ghost"
                                 size="sm"
-                                onClick={() => handleEditReservation(reservation)}
+                                onClick={() =>
+                                  handleEditReservation(reservation)
+                                }
                                 title="Edit Reservation"
                               >
                                 <Edit className="h-4 w-4" />
@@ -485,7 +513,9 @@ export default function Reservations() {
                               <Button
                                 variant="ghost"
                                 size="sm"
-                                onClick={() => handleDeleteReservation(reservation)}
+                                onClick={() =>
+                                  handleDeleteReservation(reservation)
+                                }
                                 className="text-red-600 hover:text-red-800"
                                 title="Cancel Reservation"
                               >
@@ -540,16 +570,23 @@ export default function Reservations() {
                 <h3 className="font-semibold mb-2">Guest Information</h3>
                 <div className="grid grid-cols-2 gap-4 text-sm">
                   <div>
-                    <span className="font-medium">Name:</span> {selectedReservation.guest.firstName} {selectedReservation.guest.lastName}
+                    <span className="font-medium">Name:</span>{" "}
+                    {selectedReservation.guest.firstName}{" "}
+                    {selectedReservation.guest.lastName}
                   </div>
                   <div>
-                    <span className="font-medium">Email:</span> {selectedReservation.guest.email || "N/A"}
+                    <span className="font-medium">Email:</span>{" "}
+                    {selectedReservation.guest.email || "N/A"}
                   </div>
                   <div>
-                    <span className="font-medium">Phone:</span> {selectedReservation.guest.phone || "N/A"}
+                    <span className="font-medium">Phone:</span>{" "}
+                    {selectedReservation.guest.phone || "N/A"}
                   </div>
                   <div>
-                    <span className="font-medium">ID Type:</span> {selectedReservation.guest.idType?.replace("-", " ").toUpperCase() || "N/A"}
+                    <span className="font-medium">ID Type:</span>{" "}
+                    {selectedReservation.guest.idType
+                      ?.replace("-", " ")
+                      .toUpperCase() || "N/A"}
                   </div>
                 </div>
               </div>
@@ -559,19 +596,24 @@ export default function Reservations() {
                 <h3 className="font-semibold mb-2">Reservation Information</h3>
                 <div className="grid grid-cols-2 gap-4 text-sm">
                   <div>
-                    <span className="font-medium">Confirmation:</span> {selectedReservation.confirmationNumber}
+                    <span className="font-medium">Confirmation:</span>{" "}
+                    {selectedReservation.confirmationNumber}
                   </div>
                   <div>
-                    <span className="font-medium">Status:</span> {getStatusBadge(selectedReservation.status)}
+                    <span className="font-medium">Status:</span>{" "}
+                    {getStatusBadge(selectedReservation.status)}
                   </div>
                   <div>
-                    <span className="font-medium">Total Amount:</span> Rs.{parseFloat(selectedReservation.totalAmount).toFixed(2)}
+                    <span className="font-medium">Total Amount:</span> Rs.
+                    {parseFloat(selectedReservation.totalAmount).toFixed(2)}
                   </div>
                   <div>
-                    <span className="font-medium">Paid Amount:</span> Rs.{parseFloat(selectedReservation.paidAmount || 0).toFixed(2)}
+                    <span className="font-medium">Paid Amount:</span> Rs.
+                    {parseFloat(selectedReservation.paidAmount || 0).toFixed(2)}
                   </div>
                   <div>
-                    <span className="font-medium">Created:</span> {formatDateTime(selectedReservation.createdAt)}
+                    <span className="font-medium">Created:</span>{" "}
+                    {formatDateTime(selectedReservation.createdAt)}
                   </div>
                 </div>
               </div>
@@ -580,35 +622,50 @@ export default function Reservations() {
               <div>
                 <h3 className="font-semibold mb-2">Room Information</h3>
                 <div className="space-y-3">
-                  {selectedReservation.reservationRooms.map((roomReservation: any, index: number) => (
-                    <div key={index} className="border rounded p-3 text-sm">
-                      <div className="grid grid-cols-2 gap-4">
-                        <div>
-                          <span className="font-medium">Room:</span> {roomReservation.room.number} ({roomReservation.room.roomType.name})
-                        </div>
-                        <div>
-                          <span className="font-medium">Guests:</span> {roomReservation.adults} Adults, {roomReservation.children} Children
-                        </div>
-                        <div>
-                          <span className="font-medium">Check-in:</span> {formatDate(roomReservation.checkInDate)}
-                        </div>
-                        <div>
-                          <span className="font-medium">Check-out:</span> {formatDate(roomReservation.checkOutDate)}
-                        </div>
-                        <div>
-                          <span className="font-medium">Rate/Night:</span> Rs.{parseFloat(roomReservation.ratePerNight).toFixed(2)}
-                        </div>
-                        <div>
-                          <span className="font-medium">Total:</span> Rs.{parseFloat(roomReservation.totalAmount).toFixed(2)}
-                        </div>
-                        {roomReservation.specialRequests && (
-                          <div className="col-span-2">
-                            <span className="font-medium">Special Requests:</span> {roomReservation.specialRequests}
+                  {selectedReservation.reservationRooms.map(
+                    (roomReservation: any, index: number) => (
+                      <div key={index} className="border rounded p-3 text-sm">
+                        <div className="grid grid-cols-2 gap-4">
+                          <div>
+                            <span className="font-medium">Room:</span>{" "}
+                            {roomReservation.room.number} (
+                            {roomReservation.room.roomType.name})
                           </div>
-                        )}
+                          <div>
+                            <span className="font-medium">Guests:</span>{" "}
+                            {roomReservation.adults} Adults,{" "}
+                            {roomReservation.children} Children
+                          </div>
+                          <div>
+                            <span className="font-medium">Check-in:</span>{" "}
+                            {formatDate(roomReservation.checkInDate)}
+                          </div>
+                          <div>
+                            <span className="font-medium">Check-out:</span>{" "}
+                            {formatDate(roomReservation.checkOutDate)}
+                          </div>
+                          <div>
+                            <span className="font-medium">Rate/Night:</span> Rs.
+                            {parseFloat(roomReservation.ratePerNight).toFixed(
+                              2,
+                            )}
+                          </div>
+                          <div>
+                            <span className="font-medium">Total:</span> Rs.
+                            {parseFloat(roomReservation.totalAmount).toFixed(2)}
+                          </div>
+                          {roomReservation.specialRequests && (
+                            <div className="col-span-2">
+                              <span className="font-medium">
+                                Special Requests:
+                              </span>{" "}
+                              {roomReservation.specialRequests}
+                            </div>
+                          )}
+                        </div>
                       </div>
-                    </div>
-                  ))}
+                    ),
+                  )}
                 </div>
               </div>
 
@@ -624,7 +681,10 @@ export default function Reservations() {
       </Dialog>
 
       {/* Edit Status Modal */}
-      <Dialog open={isEditStatusModalOpen} onOpenChange={setIsEditStatusModalOpen}>
+      <Dialog
+        open={isEditStatusModalOpen}
+        onOpenChange={setIsEditStatusModalOpen}
+      >
         <DialogContent className="max-w-md">
           <DialogHeader>
             <DialogTitle>Update Reservation Status</DialogTitle>
@@ -647,11 +707,19 @@ export default function Reservations() {
               </Select>
             </div>
             <div className="flex justify-end space-x-2 pt-4">
-              <Button variant="outline" onClick={() => setIsEditStatusModalOpen(false)}>
+              <Button
+                variant="outline"
+                onClick={() => setIsEditStatusModalOpen(false)}
+              >
                 Cancel
               </Button>
-              <Button onClick={handleUpdateStatus} disabled={updateReservationMutation.isPending}>
-                {updateReservationMutation.isPending ? "Updating..." : "Update Status"}
+              <Button
+                onClick={handleUpdateStatus}
+                disabled={updateReservationMutation.isPending}
+              >
+                {updateReservationMutation.isPending
+                  ? "Updating..."
+                  : "Update Status"}
               </Button>
             </div>
           </div>
@@ -659,19 +727,28 @@ export default function Reservations() {
       </Dialog>
 
       {/* Delete Confirmation Dialog */}
-      <AlertDialog open={isDeleteDialogOpen} onOpenChange={setIsDeleteDialogOpen}>
+      <AlertDialog
+        open={isDeleteDialogOpen}
+        onOpenChange={setIsDeleteDialogOpen}
+      >
         <AlertDialogContent>
           <AlertDialogHeader>
             <AlertDialogTitle>Cancel Reservation</AlertDialogTitle>
             <AlertDialogDescription>
-              Are you sure you want to cancel reservation "{selectedReservation?.confirmationNumber}"?
-              This will mark the reservation as cancelled and free up the associated rooms.
+              Are you sure you want to cancel reservation "
+              {selectedReservation?.confirmationNumber}"? This will mark the
+              reservation as cancelled and free up the associated rooms.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
             <AlertDialogCancel>Cancel</AlertDialogCancel>
-            <AlertDialogAction onClick={confirmDeleteReservation} disabled={deleteReservationMutation.isPending}>
-              {deleteReservationMutation.isPending ? "Cancelling..." : "Cancel Reservation"}
+            <AlertDialogAction
+              onClick={confirmDeleteReservation}
+              disabled={deleteReservationMutation.isPending}
+            >
+              {deleteReservationMutation.isPending
+                ? "Cancelling..."
+                : "Cancel Reservation"}
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
