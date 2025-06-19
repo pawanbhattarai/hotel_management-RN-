@@ -2259,7 +2259,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const user = await storage.getUser(req.session.user.id);
       if (!user) return res.status(401).json({ message: "User not found" });
 
-      const branchId = user.role === "superadmin" ? undefined : user.branchId!;
+      // For superadmin, show all categories. For branch admin/staff, show their branch categories
+      const branchId = user.role === "superadmin" ? undefined : user.branchId;
       const categories = await inventoryStorage.getStockCategories(branchId);
       res.json(categories);
     } catch (error) {
@@ -2285,6 +2286,20 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.post("/api/inventory/stock-categories", isAuthenticated, async (req: any, res) => {
     try {
       const user = await storage.getUser(req.session.user.id);
+      if (!user) return res.status(401).json({ message: "User not found" });
+
+      const validatedData = insertStockCategorySchema.parse({
+        ...req.body,
+        branchId: user.role === "superadmin" ? req.body.branchId || null : user.branchId,
+      });
+
+      const category = await inventoryStorage.createStockCategory(validatedData);
+      res.status(201).json(category);
+    } catch (error) {
+      console.error("Error creating stock category:", error);
+      res.status(500).json({ message: "Failed to create stock category" });
+    }
+  });d);
       if (!user) return res.status(401).json({ message: "User not found" });
 
       const validatedData = insertStockCategorySchema.parse({

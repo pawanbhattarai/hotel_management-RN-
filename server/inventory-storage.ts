@@ -50,7 +50,7 @@ export class InventoryStorage {
   // Stock Categories
   async getStockCategories(branchId?: number): Promise<StockCategory[]> {
     const conditions = [eq(stockCategories.isActive, true)];
-    if (branchId) {
+    if (branchId !== undefined) {
       conditions.push(eq(stockCategories.branchId, branchId));
     }
     return await db.select().from(stockCategories).where(and(...conditions)).orderBy(stockCategories.name);
@@ -58,7 +58,7 @@ export class InventoryStorage {
 
   async getMenuStockCategories(branchId?: number): Promise<StockCategory[]> {
     const conditions = [eq(stockCategories.isActive, true), eq(stockCategories.showInMenu, true)];
-    if (branchId) {
+    if (branchId !== undefined) {
       conditions.push(eq(stockCategories.branchId, branchId));
     }
     return await db.select().from(stockCategories).where(and(...conditions)).orderBy(stockCategories.name);
