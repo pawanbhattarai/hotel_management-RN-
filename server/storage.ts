@@ -95,7 +95,7 @@ export interface IStorage {
       room: Room & { roomType: RoomType };
     })[];
   }) | undefined>;
-  createReservation(reservation: InsertReservation): Promise<Reservation>;
+  createReservation(reservation: InsertReservation, roomsData?: InsertReservationRoom[]): Promise<Reservation>;
   updateReservation(id: string, reservation: Partial<InsertReservation>): Promise<Reservation>;
   deleteReservation(id: string): Promise<void>;
 
@@ -114,10 +114,18 @@ export interface IStorage {
   getPushSubscriptions(userId?: string): Promise<PushSubscription[]>;
   removePushSubscription(endpoint: string): Promise<void>;
   clearAllPushSubscriptions(): Promise<void>;
+  createPushSubscription(subscription: InsertPushSubscription): Promise<PushSubscription>;
+  getPushSubscription(userId: string, endpoint: string): Promise<PushSubscription | undefined>;
+  deletePushSubscription(userId: string, endpoint: string): Promise<void>;
+  getAllAdminSubscriptions(): Promise<(PushSubscription & { user?: User })[]>;
 
   // Notification History operations
   saveNotificationHistory(notification: InsertNotificationHistory): Promise<void>;
   getNotificationHistory(userId?: string, limit?: number): Promise<NotificationHistory[]>;
+  createNotificationHistory(notification: InsertNotificationHistory): Promise<NotificationHistory>;
+  markNotificationAsRead(notificationId: number, userId: string): Promise<void>;
+  markAllNotificationsAsRead(userId: string): Promise<void>;
+  getUnreadNotificationCount(userId: string): Promise<number>;
 
   // Tax operations
   getTaxes(applicationType?: string): Promise<Tax[]>;
@@ -450,9 +458,31 @@ export class DatabaseStorage implements IStorage {
     };
   }
 
-  async createReservation(reservation: InsertReservation): Promise<Reservation> {
-    const [result] = await db.insert(reservations).values(reservation).returning();
-    return result;
+  async createReservation(reservation: InsertReservation, roomsData?: InsertReservationRoom[]): Promise<Reservation> {
+    return await db.transaction(async (tx) => {
+      const [newReservation] = await tx.insert(reservations).values(reservation).returning();
+
+      if (roomsData && roomsData.length > 0) {
+        const roomsWithReservationId = roomsData.map(room => ({
+          ...room,
+          reservationId: newReservation.id,
+        }));
+
+        await tx.insert(reservationRooms).values(roomsWithReservationId);
+
+        // Update guest reservation count if guest exists
+        if (reservation.guestId) {
+          await tx
+            .update(guests)
+            .set({ 
+              reservationCount: sql`${guests.reservationCount} + 1`
+            })
+            .where(eq(guests.id, reservation.guestId));
+        }
+      }
+
+      return newReservation;
+    });
   }
 
   async updateReservation(id: string, reservation: Partial<InsertReservation>): Promise<Reservation> {
@@ -546,6 +576,71 @@ export class DatabaseStorage implements IStorage {
     await db.delete(pushSubscriptions);
   }
 
+  async createPushSubscription(subscription: InsertPushSubscription): Promise<PushSubscription> {
+    const [result] = await db
+      .insert(pushSubscriptions)
+      .values({
+        userId: subscription.userId,
+        endpoint: subscription.endpoint,
+        p256dhKey: subscription.p256dh,
+        authKey: subscription.auth,
+      })
+      .onConflictDoUpdate({
+        target: [pushSubscriptions.userId, pushSubscriptions.endpoint],
+        set: {
+          p256dhKey: subscription.p256dh,
+          authKey: subscription.auth,
+          updatedAt: new Date(),
+        },
+      })
+      .returning();
+    return result;
+  }
+
+  async getPushSubscription(userId: string, endpoint: string): Promise<PushSubscription | undefined> {
+    const [subscription] = await db
+      .select()
+      .from(pushSubscriptions)
+      .where(
+        and(
+          eq(pushSubscriptions.userId, userId),
+          eq(pushSubscriptions.endpoint, endpoint)
+        )
+      );
+    return subscription;
+  }
+
+  async deletePushSubscription(userId: string, endpoint: string): Promise<void> {
+    await db
+      .delete(pushSubscriptions)
+      .where(
+        and(
+          eq(pushSubscriptions.userId, userId),
+          eq(pushSubscriptions.endpoint, endpoint)
+        )
+      );
+  }
+
+  async getAllAdminSubscriptions(): Promise<(PushSubscription & { user?: User })[]> {
+    const results = await db
+      .select()
+      .from(pushSubscriptions)
+      .leftJoin(users, eq(pushSubscriptions.userId, users.id))
+      .where(
+        or(
+          eq(users.role, 'superadmin'),
+          eq(users.role, 'branch-admin')
+        )
+      );
+
+    return results.map(result => ({
+      ...result.push_subscriptions,
+      p256dh: result.push_subscriptions.p256dhKey,
+      auth: result.push_subscriptions.authKey,
+      user: result.users || undefined,
+    }));
+  }
+
   // Notification History operations
   async saveNotificationHistory(notification: InsertNotificationHistory): Promise<void> {
     await db.insert(notificationHistory).values(notification);
@@ -557,6 +652,43 @@ export class DatabaseStorage implements IStorage {
       query = query.where(eq(notificationHistory.userId, userId));
     }
     return await query.orderBy(desc(notificationHistory.createdAt)).limit(limit);
+  }
+
+  async createNotificationHistory(notification: InsertNotificationHistory): Promise<NotificationHistory> {
+    const [result] = await db.insert(notificationHistory).values(notification).returning();
+    return result;
+  }
+
+  async markNotificationAsRead(notificationId: number, userId: string): Promise<void> {
+    await db
+      .update(notificationHistory)
+      .set({ isRead: true, readAt: new Date() })
+      .where(
+        and(
+          eq(notificationHistory.id, notificationId),
+          eq(notificationHistory.userId, userId)
+        )
+      );
+  }
+
+  async markAllNotificationsAsRead(userId: string): Promise<void> {
+    await db
+      .update(notificationHistory)
+      .set({ isRead: true, readAt: new Date() })
+      .where(eq(notificationHistory.userId, userId));
+  }
+
+  async getUnreadNotificationCount(userId: string): Promise<number> {
+    const [result] = await db
+      .select({ count: sql<number>`count(*)` })
+      .from(notificationHistory)
+      .where(
+        and(
+          eq(notificationHistory.userId, userId),
+          eq(notificationHistory.isRead, false)
+        )
+      );
+    return result.count;
   }
 
   // Tax operations
