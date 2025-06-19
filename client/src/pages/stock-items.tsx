@@ -168,6 +168,7 @@ export default function StockItems() {
       categoryId: Number(data.categoryId),
       measuringUnitId: Number(data.measuringUnitId),
       supplierId: data.supplierId ? Number(data.supplierId) : undefined,
+      branchId: user?.role === "superadmin" ? (data as any).branchId || user.branchId : user?.branchId,
     };
 
     if (editingItem) {

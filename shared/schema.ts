@@ -849,6 +849,21 @@ export const insertStockItemSchema = createInsertSchema(stockItems).omit({
   ).optional(),
 });
 
+export const insertStockConsumptionSchema = createInsertSchema(stockConsumption).omit({
+  id: true,
+  createdAt: true,
+}).extend({
+  quantity: z.union([z.string(), z.number()]).transform((val) => 
+    typeof val === 'number' ? val.toString() : val
+  ),
+  unitPrice: z.union([z.string(), z.number()]).transform((val) => 
+    typeof val === 'number' ? val.toString() : val
+  ).optional(),
+  totalCost: z.union([z.string(), z.number()]).transform((val) => 
+    typeof val === 'number' ? val.toString() : val
+  ).optional(),
+});
+
 
 
 // Inventory Types
