@@ -37,8 +37,16 @@ import {
   FormLabel,
   FormMessage,
 } from "@/components/ui/form";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { insertStockCategorySchema } from "@shared/schema";
 import { z } from "zod";
+import { useAuth } from "@/hooks/useAuth";
 
 type StockCategory = {
   id: number;
@@ -62,6 +70,7 @@ export default function StockCategories() {
   const [editingCategory, setEditingCategory] = useState<StockCategory | null>(
     null,
   );
+  const { user } = useAuth();
 
   const form = useForm<z.infer<typeof formSchema>>({
     resolver: zodResolver(formSchema),
@@ -74,6 +83,11 @@ export default function StockCategories() {
 
   const { data: categories = [], isLoading } = useQuery({
     queryKey: ["/api/inventory/stock-categories"],
+  });
+
+  const { data: branches = [] } = useQuery({
+    queryKey: ["/api/branches"],
+    enabled: user?.role === "superadmin",
   });
 
   const createMutation = useMutation({
@@ -149,6 +163,7 @@ export default function StockCategories() {
       name: category.name,
       description: category.description || "",
       showInMenu: category.showInMenu,
+      branchId: category.branchId,
     });
     setDialogOpen(true);
   };
@@ -165,6 +180,7 @@ export default function StockCategories() {
       name: "",
       description: "",
       showInMenu: false,
+      branchId: user?.role === "superadmin" ? null : user?.branchId,
     });
     setDialogOpen(true);
   };
@@ -261,6 +277,36 @@ export default function StockCategories() {
                         </FormItem>
                       )}
                     />
+                    {user?.role === "superadmin" && (
+                      <FormField
+                        control={form.control}
+                        name="branchId"
+                        render={({ field }) => (
+                          <FormItem>
+                            <FormLabel>Branch</FormLabel>
+                            <FormControl>
+                              <Select 
+                                value={field.value?.toString()} 
+                                onValueChange={(value) => field.onChange(value === "null" ? null : parseInt(value))}
+                              >
+                                <SelectTrigger>
+                                  <SelectValue placeholder="Select branch (optional for global category)" />
+                                </SelectTrigger>
+                                <SelectContent>
+                                  <SelectItem value="null">All Branches (Global)</SelectItem>
+                                  {Array.isArray(branches) && branches.map((branch: any) => (
+                                    <SelectItem key={branch.id} value={branch.id.toString()}>
+                                      {branch.name}
+                                    </SelectItem>
+                                  ))}
+                                </SelectContent>
+                              </Select>
+                            </FormControl>
+                            <FormMessage />
+                          </FormItem>
+                        )}
+                      />
+                    )}
                     <div className="flex justify-end space-x-2">
                       <Button
                         type="button"
@@ -302,6 +348,7 @@ export default function StockCategories() {
                     <TableRow>
                       <TableHead>Name</TableHead>
                       <TableHead>Description</TableHead>
+                      <TableHead>Branch</TableHead>
                       <TableHead>Show in Menu</TableHead>
                       <TableHead>Status</TableHead>
                       <TableHead>Actions</TableHead>
@@ -314,6 +361,15 @@ export default function StockCategories() {
                           {category.name}
                         </TableCell>
                         <TableCell>{category.description || "-"}</TableCell>
+                        <TableCell>
+                          {category.branchId ? (
+                            <Badge variant="outline">
+                              {branches.find((b: any) => b.id === category.branchId)?.name || `Branch ${category.branchId}`}
+                            </Badge>
+                          ) : (
+                            <Badge variant="secondary">All Branches</Badge>
+                          )}
+                        </TableCell>
                         <TableCell>
                           {category.showInMenu ? (
                             <Badge variant="secondary">Yes</Badge>
@@ -353,7 +409,7 @@ export default function StockCategories() {
                     ))}
                     {categories.length === 0 && (
                       <TableRow>
-                        <TableCell colSpan={5} className="text-center py-8">
+                        <TableCell colSpan={6} className="text-center py-8">
                           No stock categories found. Create your first category
                           to get started.
                         </TableCell>

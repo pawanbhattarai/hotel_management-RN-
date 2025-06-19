@@ -36,8 +36,16 @@ import {
   FormLabel,
   FormMessage,
 } from "@/components/ui/form";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { insertSupplierSchema } from "@shared/schema";
 import { z } from "zod";
+import { useAuth } from "@/hooks/useAuth";
 
 const formSchema = insertSupplierSchema.extend({
   name: z.string().min(1, "Supplier name is required"),
@@ -48,6 +56,7 @@ export default function Suppliers() {
   const queryClient = useQueryClient();
   const [dialogOpen, setDialogOpen] = useState(false);
   const [editingSupplier, setEditingSupplier] = useState<any>(null);
+  const { user } = useAuth();
 
   const form = useForm<z.infer<typeof formSchema>>({
     resolver: zodResolver(formSchema),
@@ -63,6 +72,11 @@ export default function Suppliers() {
 
   const { data: suppliers = [], isLoading } = useQuery({
     queryKey: ["/api/inventory/suppliers"],
+  });
+
+  const { data: branches = [] } = useQuery({
+    queryKey: ["/api/branches"],
+    enabled: user?.role === "superadmin",
   });
 
   const createMutation = useMutation({
@@ -243,6 +257,36 @@ export default function Suppliers() {
                         </FormItem>
                       )}
                     />
+                    {user?.role === "superadmin" && (
+                      <FormField
+                        control={form.control}
+                        name="branchId"
+                        render={({ field }) => (
+                          <FormItem>
+                            <FormLabel>Branch</FormLabel>
+                            <FormControl>
+                              <Select 
+                                value={field.value?.toString()} 
+                                onValueChange={(value) => field.onChange(value === "null" ? null : parseInt(value))}
+                              >
+                                <SelectTrigger>
+                                  <SelectValue placeholder="Select branch (optional for global supplier)" />
+                                </SelectTrigger>
+                                <SelectContent>
+                                  <SelectItem value="null">All Branches (Global)</SelectItem>
+                                  {Array.isArray(branches) && branches.map((branch: any) => (
+                                    <SelectItem key={branch.id} value={branch.id.toString()}>
+                                      {branch.name}
+                                    </SelectItem>
+                                  ))}
+                                </SelectContent>
+                              </Select>
+                            </FormControl>
+                            <FormMessage />
+                          </FormItem>
+                        )}
+                      />
+                    )}
                     <div className="flex justify-end space-x-2">
                       <Button
                         type="button"
