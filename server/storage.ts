@@ -134,6 +134,13 @@ export interface IStorage {
   updateTax(id: number, tax: Partial<InsertTax>): Promise<Tax>;
   deleteTax(id: number): Promise<void>;
 
+  // Analytics operations
+  getRevenueAnalytics(branchId?: number, period?: string): Promise<any>;
+  getOccupancyAnalytics(branchId?: number, period?: string): Promise<any>;
+  getGuestAnalytics(branchId?: number): Promise<any>;
+  getRoomPerformanceAnalytics(branchId?: number): Promise<any>;
+  getOperationalAnalytics(branchId?: number): Promise<any>;
+
   // Dashboard metrics - updated for 24-hour specific data
   getDashboardMetrics(branchId?: number): Promise<{
     totalRooms: number;
@@ -724,6 +731,230 @@ export class DatabaseStorage implements IStorage {
 
   async deleteTax(id: number): Promise<void> {
     await db.delete(taxes).where(eq(taxes.id, id));
+  }
+
+  // Analytics operations
+  async getRevenueAnalytics(branchId?: number, period: string = '30d'): Promise<any> {
+    const days = parseInt(period.replace('d', ''));
+    const startDate = new Date();
+    startDate.setDate(startDate.getDate() - days);
+
+    let query = db
+      .select({
+        date: sql<string>`DATE(${reservations.createdAt})`,
+        revenue: sql<number>`SUM(CAST(${reservations.totalAmount} AS DECIMAL))`,
+      })
+      .from(reservations)
+      .where(
+        and(
+          gte(reservations.createdAt, startDate),
+          branchId ? eq(reservations.branchId, branchId) : undefined
+        )
+      )
+      .groupBy(sql`DATE(${reservations.createdAt})`)
+      .orderBy(sql`DATE(${reservations.createdAt})`);
+
+    const dailyRevenue = await query;
+
+    const totalRevenue = dailyRevenue.reduce((sum, day) => sum + (Number(day.revenue) || 0), 0);
+
+    return {
+      dailyRevenue: dailyRevenue.map(day => ({
+        date: day.date,
+        revenue: Number(day.revenue) || 0
+      })),
+      totalRevenue,
+      period: `${days} days`
+    };
+  }
+
+  async getOccupancyAnalytics(branchId?: number, period: string = '30d'): Promise<any> {
+    const days = parseInt(period.replace('d', ''));
+    const startDate = new Date();
+    startDate.setDate(startDate.getDate() - days);
+
+    // Get total rooms
+    let totalRoomsQuery = db.select({ count: sql<number>`count(*)` }).from(rooms);
+    if (branchId) {
+      totalRoomsQuery = totalRoomsQuery.where(eq(rooms.branchId, branchId));
+    }
+    const [totalRoomsResult] = await totalRoomsQuery;
+    const totalRooms = totalRoomsResult.count;
+
+    // Get daily occupancy
+    let occupancyQuery = db
+      .select({
+        date: sql<string>`DATE(${reservationRooms.checkInDate})`,
+        occupiedRooms: sql<number>`COUNT(DISTINCT ${reservationRooms.roomId})`,
+      })
+      .from(reservationRooms)
+      .leftJoin(reservations, eq(reservationRooms.reservationId, reservations.id))
+      .where(
+        and(
+          gte(reservationRooms.checkInDate, startDate),
+          branchId ? eq(reservations.branchId, branchId) : undefined
+        )
+      )
+      .groupBy(sql`DATE(${reservationRooms.checkInDate})`)
+      .orderBy(sql`DATE(${reservationRooms.checkInDate})`);
+
+    const dailyOccupancy = await occupancyQuery;
+
+    return {
+      dailyOccupancy: dailyOccupancy.map(day => ({
+        date: day.date,
+        occupiedRooms: day.occupiedRooms,
+        occupancyRate: totalRooms > 0 ? Math.round((day.occupiedRooms / totalRooms) * 100) : 0
+      })),
+      totalRooms,
+      averageOccupancy: dailyOccupancy.length > 0 
+        ? Math.round(dailyOccupancy.reduce((sum, day) => sum + day.occupiedRooms, 0) / dailyOccupancy.length)
+        : 0
+    };
+  }
+
+  async getGuestAnalytics(branchId?: number): Promise<any> {
+    // Guest demographics
+    let guestQuery = db.select().from(guests);
+    if (branchId) {
+      guestQuery = guestQuery.where(eq(guests.branchId, branchId));
+    }
+    const allGuests = await guestQuery;
+
+    // Top guests by reservation count
+    let topGuestsQuery = db
+      .select({
+        guestId: guests.id,
+        firstName: guests.firstName,
+        lastName: guests.lastName,
+        email: guests.email,
+        reservationCount: guests.reservationCount,
+      })
+      .from(guests)
+      .orderBy(desc(guests.reservationCount))
+      .limit(10);
+
+    if (branchId) {
+      topGuestsQuery = topGuestsQuery.where(eq(guests.branchId, branchId));
+    }
+
+    const topGuests = await topGuestsQuery;
+
+    return {
+      totalGuests: allGuests.length,
+      topGuests,
+      repeatGuestRate: allGuests.length > 0 
+        ? Math.round((allGuests.filter(g => g.reservationCount > 1).length / allGuests.length) * 100)
+        : 0
+    };
+  }
+
+  async getRoomPerformanceAnalytics(branchId?: number): Promise<any> {
+    // Room type performance
+    let roomTypeQuery = db
+      .select({
+        roomTypeId: roomTypes.id,
+        roomTypeName: roomTypes.name,
+        totalRooms: sql<number>`COUNT(${rooms.id})`,
+        totalReservations: sql<number>`COUNT(${reservationRooms.id})`,
+      })
+      .from(roomTypes)
+      .leftJoin(rooms, eq(roomTypes.id, rooms.roomTypeId))
+      .leftJoin(reservationRooms, eq(rooms.id, reservationRooms.roomId))
+      .groupBy(roomTypes.id, roomTypes.name)
+      .orderBy(desc(sql`COUNT(${reservationRooms.id})`));
+
+    if (branchId) {
+      roomTypeQuery = roomTypeQuery.where(eq(rooms.branchId, branchId));
+    }
+
+    const roomTypePerformance = await roomTypeQuery;
+
+    // Room status distribution
+    let statusQuery = db
+      .select({
+        status: rooms.status,
+        count: sql<number>`COUNT(*)`,
+      })
+      .from(rooms)
+      .groupBy(rooms.status);
+
+    if (branchId) {
+      statusQuery = statusQuery.where(eq(rooms.branchId, branchId));
+    }
+
+    const roomStatusDistribution = await statusQuery;
+
+    return {
+      roomTypePerformance: roomTypePerformance.map(rt => ({
+        roomTypeId: rt.roomTypeId,
+        roomTypeName: rt.roomTypeName,
+        totalRooms: rt.totalRooms,
+        totalReservations: rt.totalReservations,
+        utilizationRate: rt.totalRooms > 0 
+          ? Math.round((rt.totalReservations / rt.totalRooms) * 100)
+          : 0
+      })),
+      roomStatusDistribution
+    };
+  }
+
+  async getOperationalAnalytics(branchId?: number): Promise<any> {
+    // Reservation status distribution
+    let statusQuery = db
+      .select({
+        status: reservations.status,
+        count: sql<number>`COUNT(*)`,
+      })
+      .from(reservations)
+      .groupBy(reservations.status);
+
+    if (branchId) {
+      statusQuery = statusQuery.where(eq(reservations.branchId, branchId));
+    }
+
+    const reservationStatusDistribution = await statusQuery;
+
+    // Average length of stay
+    let avgStayQuery = db
+      .select({
+        avgStay: sql<number>`AVG(DATE_PART('day', ${reservationRooms.checkOutDate} - ${reservationRooms.checkInDate}))`,
+      })
+      .from(reservationRooms)
+      .leftJoin(reservations, eq(reservationRooms.reservationId, reservations.id));
+
+    if (branchId) {
+      avgStayQuery = avgStayQuery.where(eq(reservations.branchId, branchId));
+    }
+
+    const [avgStayResult] = await avgStayQuery;
+
+    // Check-in/out times analysis
+    let checkInTimesQuery = db
+      .select({
+        hour: sql<number>`EXTRACT(HOUR FROM ${reservationRooms.actualCheckIn})`,
+        count: sql<number>`COUNT(*)`,
+      })
+      .from(reservationRooms)
+      .leftJoin(reservations, eq(reservationRooms.reservationId, reservations.id))
+      .where(sql`${reservationRooms.actualCheckIn} IS NOT NULL`)
+      .groupBy(sql`EXTRACT(HOUR FROM ${reservationRooms.actualCheckIn})`)
+      .orderBy(sql`EXTRACT(HOUR FROM ${reservationRooms.actualCheckIn})`);
+
+    if (branchId) {
+      checkInTimesQuery = checkInTimesQuery.where(eq(reservations.branchId, branchId));
+    }
+
+    const checkInTimes = await checkInTimesQuery;
+
+    return {
+      reservationStatusDistribution,
+      averageLengthOfStay: Math.round(Number(avgStayResult?.avgStay) || 0),
+      checkInTimes: checkInTimes.map(ct => ({
+        hour: ct.hour,
+        count: ct.count
+      }))
+    };
   }
 
   // Dashboard metrics - updated for 24-hour specific data

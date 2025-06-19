@@ -820,9 +820,15 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
 
       const bodyData = req.body;
-      // Convert paidAmount to string if it's a number
+      // Convert numeric fields to strings if they're numbers
       if (bodyData.paidAmount && typeof bodyData.paidAmount === 'number') {
         bodyData.paidAmount = bodyData.paidAmount.toString();
+      }
+      if (bodyData.totalAmount && typeof bodyData.totalAmount === 'number') {
+        bodyData.totalAmount = bodyData.totalAmount.toString();
+      }
+      if (bodyData.taxAmount && typeof bodyData.taxAmount === 'number') {
+        bodyData.taxAmount = bodyData.taxAmount.toString();
       }
       const validatedData = insertReservationSchema.partial().parse(bodyData);
       const reservation = await storage.updateReservation(
