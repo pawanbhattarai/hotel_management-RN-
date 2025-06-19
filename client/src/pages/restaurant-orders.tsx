@@ -388,20 +388,25 @@ export default function RestaurantOrders() {
     
     // Add regular menu dishes
     const menuDishes = dishes || [];
+    console.log("Menu dishes:", menuDishes);
     allItems.push(...menuDishes);
     
     // Add stock items from categories marked as "Show in Menu"
     const stockItems = menuStockItems || [];
+    console.log("Menu stock items:", stockItems);
     const stockItemsForMenu = stockItems.map((item: any) => ({
       id: `stock-${item.id}`, // Prefix to distinguish from regular dishes
       name: item.name,
-      price: item.price || 0,
+      price: item.defaultPrice || item.price || 0,
       description: `${item.description || ''} (Stock Item)`,
       categoryId: `stock-${item.categoryId}`, // Map to stock category
       isStockItem: true,
       stockItemId: item.id
     }));
+    console.log("Transformed stock items:", stockItemsForMenu);
     allItems.push(...stockItemsForMenu);
+    
+    console.log("All items combined:", allItems);
     
     // Filter by category if selected
     if (!selectedCategory || selectedCategory === "all") {
