@@ -51,6 +51,10 @@ const formSchema = insertStockItemSchema.extend({
   name: z.string().min(1, "Item name is required"),
   categoryId: z.number().min(1, "Category is required"),
   measuringUnitId: z.number().min(1, "Measuring unit is required"),
+}).omit({
+  branchId: true,
+  sku: true,
+  isActive: true,
 });
 
 export default function StockItems() {
@@ -70,6 +74,9 @@ export default function StockItems() {
       defaultPrice: "0",
       currentStock: "0",
       minimumStock: "0",
+      maximumStock: "",
+      reorderLevel: "",
+      reorderQuantity: "",
       description: "",
     },
   });
@@ -96,8 +103,10 @@ export default function StockItems() {
   });
 
   const createMutation = useMutation({
-    mutationFn: (data: z.infer<typeof formSchema>) =>
-      apiRequest("/api/inventory/stock-items", "POST", data),
+    mutationFn: (data: z.infer<typeof formSchema>) => {
+      console.log("Creating stock item with data:", data);
+      return apiRequest("/api/inventory/stock-items", "POST", data);
+    },
     onSuccess: () => {
       queryClient.invalidateQueries({
         queryKey: ["/api/inventory/stock-items"],
@@ -151,10 +160,20 @@ export default function StockItems() {
   });
 
   const onSubmit = (data: z.infer<typeof formSchema>) => {
+    console.log("Form submission data:", data);
+    
+    // Ensure required fields are properly set
+    const submitData = {
+      ...data,
+      categoryId: Number(data.categoryId),
+      measuringUnitId: Number(data.measuringUnitId),
+      supplierId: data.supplierId ? Number(data.supplierId) : undefined,
+    };
+    
     if (editingItem) {
-      updateMutation.mutate({ id: editingItem.id, ...data });
+      updateMutation.mutate({ id: editingItem.id, ...submitData });
     } else {
-      createMutation.mutate(data);
+      createMutation.mutate(submitData);
     }
   };
 
