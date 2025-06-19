@@ -1,5 +1,5 @@
 import { db } from "./db";
-import { eq, and, desc, sql } from "drizzle-orm";
+import { eq, and, desc, sql, or, isNull } from "drizzle-orm";
 import {
   measuringUnits,
   stockCategories,
@@ -51,16 +51,30 @@ export class InventoryStorage {
   async getStockCategories(branchId?: number): Promise<StockCategory[]> {
     const conditions = [eq(stockCategories.isActive, true)];
     if (branchId !== undefined) {
-      conditions.push(eq(stockCategories.branchId, branchId));
+      // For branch users, show both branch-specific and global categories (branchId = null)
+      conditions.push(
+        or(
+          eq(stockCategories.branchId, branchId),
+          isNull(stockCategories.branchId)
+        )
+      );
     }
+    // For superadmin (branchId is undefined), show all categories
     return await db.select().from(stockCategories).where(and(...conditions)).orderBy(stockCategories.name);
   }
 
   async getMenuStockCategories(branchId?: number): Promise<StockCategory[]> {
     const conditions = [eq(stockCategories.isActive, true), eq(stockCategories.showInMenu, true)];
     if (branchId !== undefined) {
-      conditions.push(eq(stockCategories.branchId, branchId));
+      // For branch users, show both branch-specific and global categories (branchId = null)
+      conditions.push(
+        or(
+          eq(stockCategories.branchId, branchId),
+          isNull(stockCategories.branchId)
+        )
+      );
     }
+    // For superadmin (branchId is undefined), show all categories
     return await db.select().from(stockCategories).where(and(...conditions)).orderBy(stockCategories.name);
   }
 

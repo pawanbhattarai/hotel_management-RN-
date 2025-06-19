@@ -831,7 +831,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
         bodyData.paidAmount = bodyData.paidAmount.toString();
       }
       if (bodyData.totalAmount && typeof bodyData.totalAmount === 'number') {
-        bodyData.totalAmount = bodyData.totalAmount.toString();
+        ```text
+bodyData.totalAmount = bodyData.totalAmount.toString();
       }
       if (bodyData.taxAmount && typeof bodyData.taxAmount === 'number') {
         bodyData.taxAmount = bodyData.taxAmount.toString();
@@ -1530,7 +1531,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
 
       const validatedTables = tables.map(table => insertRestaurantTableSchema.parse(table));
-      
+
       // Check permissions for all tables
       for (const table of validatedTables) {
         if (!checkBranchPermissions(user.role, user.branchId, table.branchId)) {
@@ -1633,7 +1634,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
 
       const validatedCategories = categories.map(category => insertMenuCategorySchema.parse(category));
-      
+
       // Check permissions for all categories
       for (const category of validatedCategories) {
         if (!checkBranchPermissions(user.role, user.branchId, category.branchId)) {
@@ -1737,7 +1738,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
 
       const validatedDishes = dishes.map(dish => insertMenuDishSchema.parse(dish));
-      
+
       // Check permissions for all dishes
       for (const dish of validatedDishes) {
         if (!checkBranchPermissions(user.role, user.branchId, dish.branchId)) {
@@ -1803,7 +1804,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const branchId = user.role === "superadmin" ? undefined : user.branchId!;
       const status = req.query.status as string;
       const orders = await restaurantStorage.getRestaurantOrders(branchId, status);
-      
+
       // Get order items for each order
       const ordersWithItems = await Promise.all(
         orders.map(async (order) => {
@@ -1811,7 +1812,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
           return { ...order, items };
         })
       );
-      
+
       res.json(ordersWithItems);
     } catch (error) {
       console.error("Error fetching restaurant orders:", error);
@@ -1913,7 +1914,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       const orderId = req.params.id;
       const existingOrder = await restaurantStorage.getRestaurantOrder(orderId);
-      
+
       if (!existingOrder) {
         return res.status(404).json({ message: "Order not found" });
       }
@@ -1937,7 +1938,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       const orderId = req.params.id;
       const existingOrder = await restaurantStorage.getRestaurantOrder(orderId);
-      
+
       if (!existingOrder) {
         return res.status(404).json({ message: "Order not found" });
       }
@@ -1987,7 +1988,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // Check if bill already exists for this order
       const existingBills = await restaurantStorage.getRestaurantBills(billData.branchId);
       const duplicateBill = existingBills.find((bill: any) => bill.orderId === billData.orderId);
-      
+
       if (duplicateBill) {
         return res.status(400).json({ message: "Bill already exists for this order" });
       }
@@ -2177,7 +2178,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
 
       const taxId = parseInt(req.params.id);
-      
+
       const existingTax = await restaurantStorage.getTax(taxId);
       if (!existingTax) {
         return res.status(404).json({ message: "Tax not found" });
