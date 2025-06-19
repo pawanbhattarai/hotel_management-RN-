@@ -101,6 +101,14 @@ export default function RestaurantOrders() {
     queryKey: ["/api/restaurant/categories"],
   });
 
+  const { data: menuStockCategories } = useQuery({
+    queryKey: ["/api/inventory/menu-stock-categories"],
+  });
+
+  const { data: menuStockItems } = useQuery({
+    queryKey: ["/api/inventory/menu-stock-items"],
+  });
+
   const { data: orderTaxes } = useQuery({
     queryKey: ["/api/taxes/order"],
   });
@@ -297,50 +305,62 @@ export default function RestaurantOrders() {
   };
 
   const addItem = (dish: any) => {
-    if (!dish || !dish.id || !dish.price) {
+    if (!dish || !dish.id || dish.price === undefined) {
       toast({
         title: "Error",
-        description: "Invalid dish data",
+        description: "Invalid item data",
         variant: "destructive",
       });
       return;
     }
 
-    const existingItem = selectedItems.find((item) => item.dishId === dish.id);
+    // For stock items, use stockItemId for identification
+    const itemId = dish.isStockItem ? dish.stockItemId : dish.id;
+    const existingItem = selectedItems.find((item) => 
+      dish.isStockItem ? item.stockItemId === itemId : item.dishId === itemId
+    );
+    
     if (existingItem) {
       setSelectedItems((items) =>
-        items.map((item) =>
-          item.dishId === dish.id
-            ? { ...item, quantity: item.quantity + 1 }
-            : item,
-        ),
+        items.map((item) => {
+          const matches = dish.isStockItem 
+            ? item.stockItemId === itemId 
+            : item.dishId === itemId;
+          return matches ? { ...item, quantity: item.quantity + 1 } : item;
+        }),
       );
     } else {
-      setSelectedItems((items) => [
-        ...items,
-        {
-          dishId: dish.id,
-          dishName: dish.name,
-          quantity: 1,
-          unitPrice: dish.price.toString(),
-          notes: "",
-        },
-      ]);
+      const newItem = {
+        dishName: dish.name,
+        quantity: 1,
+        unitPrice: dish.price.toString(),
+        notes: "",
+        ...(dish.isStockItem 
+          ? { stockItemId: itemId, isStockItem: true }
+          : { dishId: itemId }
+        )
+      };
+      setSelectedItems((items) => [...items, newItem]);
     }
   };
 
-  const removeItem = (dishId: number) => {
-    setSelectedItems((items) => items.filter((item) => item.dishId !== dishId));
+  const removeItem = (itemId: number | string, isStockItem = false) => {
+    setSelectedItems((items) => 
+      items.filter((item) => 
+        isStockItem ? item.stockItemId !== itemId : item.dishId !== itemId
+      )
+    );
   };
 
-  const updateItemQuantity = (dishId: number, quantity: number) => {
+  const updateItemQuantity = (itemId: number | string, quantity: number, isStockItem = false) => {
     if (quantity <= 0) {
-      removeItem(dishId);
+      removeItem(itemId, isStockItem);
     } else {
       setSelectedItems((items) =>
-        items.map((item) =>
-          item.dishId === dishId ? { ...item, quantity } : item,
-        ),
+        items.map((item) => {
+          const matches = isStockItem ? item.stockItemId === itemId : item.dishId === itemId;
+          return matches ? { ...item, quantity } : item;
+        }),
       );
     }
   };
@@ -364,14 +384,38 @@ export default function RestaurantOrders() {
   };
 
   const getFilteredDishes = () => {
+    let allItems = [];
+    
+    // Add regular menu dishes
+    const menuDishes = dishes || [];
+    allItems.push(...menuDishes);
+    
+    // Add stock items from categories marked as "Show in Menu"
+    const stockItems = menuStockItems || [];
+    const stockItemsForMenu = stockItems.map((item: any) => ({
+      id: `stock-${item.id}`, // Prefix to distinguish from regular dishes
+      name: item.name,
+      price: item.price || 0,
+      description: `${item.description || ''} (Stock Item)`,
+      categoryId: `stock-${item.categoryId}`, // Map to stock category
+      isStockItem: true,
+      stockItemId: item.id
+    }));
+    allItems.push(...stockItemsForMenu);
+    
+    // Filter by category if selected
     if (!selectedCategory || selectedCategory === "all") {
-      return dishes || [];
+      return allItems;
     }
-    return (
-      dishes?.filter(
-        (dish: any) => dish.categoryId === parseInt(selectedCategory),
-      ) || []
-    );
+    
+    return allItems.filter((item: any) => {
+      // Handle regular menu dishes
+      if (!item.isStockItem) {
+        return item.categoryId === parseInt(selectedCategory);
+      }
+      // Handle stock items
+      return item.categoryId === selectedCategory;
+    });
   };
 
   const getTableOrder = (tableId: number) => {
@@ -574,6 +618,14 @@ export default function RestaurantOrders() {
                               {category.name}
                             </SelectItem>
                           ))}
+                          {menuStockCategories?.map((category: any) => (
+                            <SelectItem
+                              key={`stock-${category.id}`}
+                              value={`stock-${category.id}`}
+                            >
+                              {category.name} (Stock)
+                            </SelectItem>
+                          ))}
                         </SelectContent>
                       </Select>
                     </div>
@@ -635,60 +687,67 @@ export default function RestaurantOrders() {
                     ) : (
                       <>
                         <div className="space-y-3 mb-4 max-h-64 overflow-y-auto">
-                          {selectedItems.map((item) => (
-                            <div
-                              key={item.dishId}
-                              className="flex items-center justify-between p-2 bg-gray-50 rounded"
-                            >
-                              <div className="flex-1">
-                                <h4 className="font-medium text-sm">
-                                  {item.dishName}
-                                </h4>
-                                <p className="text-xs text-gray-600">
-                                  Rs. {item.unitPrice} each
-                                </p>
+                          {selectedItems.map((item, index) => {
+                            const itemId = item.isStockItem ? item.stockItemId : item.dishId;
+                            const itemKey = item.isStockItem ? `stock-${item.stockItemId}` : `dish-${item.dishId}`;
+                            return (
+                              <div
+                                key={itemKey || index}
+                                className="flex items-center justify-between p-2 bg-gray-50 rounded"
+                              >
+                                <div className="flex-1">
+                                  <h4 className="font-medium text-sm">
+                                    {item.dishName}
+                                    {item.isStockItem && <span className="text-xs text-blue-600 ml-1">(Stock)</span>}
+                                  </h4>
+                                  <p className="text-xs text-gray-600">
+                                    Rs. {item.unitPrice} each
+                                  </p>
+                                </div>
+                                <div className="flex items-center space-x-2">
+                                  <Button
+                                    size="sm"
+                                    variant="outline"
+                                    onClick={() =>
+                                      updateItemQuantity(
+                                        itemId,
+                                        item.quantity - 1,
+                                        item.isStockItem
+                                      )
+                                    }
+                                    className="h-6 w-6 p-0"
+                                  >
+                                    <Minus className="h-3 w-3" />
+                                  </Button>
+                                  <span className="w-6 text-center text-sm">
+                                    {item.quantity}
+                                  </span>
+                                  <Button
+                                    size="sm"
+                                    variant="outline"
+                                    onClick={() =>
+                                      updateItemQuantity(
+                                        itemId,
+                                        item.quantity + 1,
+                                        item.isStockItem
+                                      )
+                                    }
+                                    className="h-6 w-6 p-0"
+                                  >
+                                    <Plus className="h-3 w-3" />
+                                  </Button>
+                                  <Button
+                                    size="sm"
+                                    variant="ghost"
+                                    onClick={() => removeItem(itemId, item.isStockItem)}
+                                    className="h-6 w-6 p-0 text-red-500"
+                                  >
+                                    <Trash2 className="h-3 w-3" />
+                                  </Button>
+                                </div>
                               </div>
-                              <div className="flex items-center space-x-2">
-                                <Button
-                                  size="sm"
-                                  variant="outline"
-                                  onClick={() =>
-                                    updateItemQuantity(
-                                      item.dishId,
-                                      item.quantity - 1,
-                                    )
-                                  }
-                                  className="h-6 w-6 p-0"
-                                >
-                                  <Minus className="h-3 w-3" />
-                                </Button>
-                                <span className="w-6 text-center text-sm">
-                                  {item.quantity}
-                                </span>
-                                <Button
-                                  size="sm"
-                                  variant="outline"
-                                  onClick={() =>
-                                    updateItemQuantity(
-                                      item.dishId,
-                                      item.quantity + 1,
-                                    )
-                                  }
-                                  className="h-6 w-6 p-0"
-                                >
-                                  <Plus className="h-3 w-3" />
-                                </Button>
-                                <Button
-                                  size="sm"
-                                  variant="ghost"
-                                  onClick={() => removeItem(item.dishId)}
-                                  className="h-6 w-6 p-0 text-red-500"
-                                >
-                                  <Trash2 className="h-3 w-3" />
-                                </Button>
-                              </div>
-                            </div>
-                          ))}
+                            );
+                          })}
                         </div>
 
                         <div className="border-t pt-4 space-y-2">

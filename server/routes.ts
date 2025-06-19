@@ -2335,6 +2335,43 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Menu Stock Categories (for restaurant orders)
+  app.get("/api/inventory/menu-stock-categories", isAuthenticated, async (req: any, res) => {
+    try {
+      const user = await storage.getUser(req.session.user.id);
+      if (!user) return res.status(401).json({ message: "User not found" });
+
+      const branchId = user.role === "superadmin" ? undefined : user.branchId;
+      const categories = await inventoryStorage.getMenuStockCategories(branchId);
+      res.json(categories);
+    } catch (error) {
+      console.error("Error fetching menu stock categories:", error);
+      res.status(500).json({ message: "Failed to fetch menu stock categories" });
+    }
+  });
+
+  // Menu Stock Items (for restaurant orders)
+  app.get("/api/inventory/menu-stock-items", isAuthenticated, async (req: any, res) => {
+    try {
+      const user = await storage.getUser(req.session.user.id);
+      if (!user) return res.status(401).json({ message: "User not found" });
+
+      const branchId = user.role === "superadmin" ? undefined : user.branchId;
+      const items = await inventoryStorage.getMenuStockItems(branchId);
+      
+      // Transform items to include price from defaultPrice field
+      const transformedItems = items.map(item => ({
+        ...item,
+        price: item.defaultPrice || 0
+      }));
+      
+      res.json(transformedItems);
+    } catch (error) {
+      console.error("Error fetching menu stock items:", error);
+      res.status(500).json({ message: "Failed to fetch menu stock items" });
+    }
+  });
+
   // Suppliers
   app.get("/api/inventory/suppliers", isAuthenticated, async (req: any, res) => {
     try {
