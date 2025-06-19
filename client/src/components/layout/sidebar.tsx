@@ -47,10 +47,11 @@ export default function Sidebar({
   const [location, navigate] = useLocation();
   const [internalMobileMenuOpen, setInternalMobileMenuOpen] = useState(false);
 
-  // Smart expansion based on current route
-  const [isPMSExpanded, setIsPMSExpanded] = useState(true);
+  // Smart expansion based on current route - DEFAULT ALL TO FALSE
+  const [isPMSExpanded, setIsPMSExpanded] = useState(false);
   const [isSetupExpanded, setIsSetupExpanded] = useState(false);
   const [isRMSExpanded, setIsRMSExpanded] = useState(false);
+  const [isReportsExpanded, setIsReportsExpanded] = useState(false);
 
   // Use props if provided, otherwise use internal state
   const isMenuOpen = setIsMobileMenuOpen
@@ -63,8 +64,23 @@ export default function Sidebar({
     const currentPath = location;
 
     if (currentPath.startsWith("/restaurant/")) {
-      setIsRMSExpanded(true);
+      // RMS routes
+      if (currentPath.includes("/analytics")) {
+        setIsReportsExpanded(true);
+        setIsRMSExpanded(false);
+        setIsPMSExpanded(false);
+        setIsSetupExpanded(false);
+      } else {
+        setIsRMSExpanded(true);
+        setIsPMSExpanded(false);
+        setIsSetupExpanded(false);
+        setIsReportsExpanded(false);
+      }
+    } else if (currentPath === "/analytics") {
+      // PMS Analytics
+      setIsReportsExpanded(true);
       setIsPMSExpanded(false);
+      setIsRMSExpanded(false);
       setIsSetupExpanded(false);
     } else if (
       [
@@ -73,19 +89,32 @@ export default function Sidebar({
         "/settings",
         "/profile",
         "/notifications",
+        "/tax-management",
       ].includes(currentPath)
     ) {
       setIsSetupExpanded(true);
       setIsPMSExpanded(false);
       setIsRMSExpanded(false);
-    } else if (currentPath === "/room-types") {
+      setIsReportsExpanded(false);
+    } else if (
+      [
+        "/reservations",
+        "/rooms",
+        "/guests",
+        "/billing",
+        "/room-types",
+      ].includes(currentPath)
+    ) {
       setIsPMSExpanded(true);
       setIsSetupExpanded(false);
       setIsRMSExpanded(false);
+      setIsReportsExpanded(false);
     } else {
-      setIsPMSExpanded(true);
+      // Dashboard or other routes - collapse all
+      setIsPMSExpanded(false);
       setIsRMSExpanded(false);
       setIsSetupExpanded(false);
+      setIsReportsExpanded(false);
     }
   }, [location]);
 
@@ -159,9 +188,27 @@ export default function Sidebar({
       <div className="flex-1 overflow-hidden">
         <ScrollArea className="h-full px-2 lg:px-3">
           <nav className="py-3 space-y-1">
+            {/* Dashboard */}
+            {hasAccess(["superadmin", "branch-admin", "front-desk"]) && (
+              <button
+                onClick={() => {
+                  navigate("/");
+                  setMenuOpen(false);
+                }}
+                className={`w-full flex items-center px-3 py-2 lg:py-2.5 text-left rounded-lg mx-2 transition-colors ${
+                  isActiveRoute("/")
+                    ? "bg-primary text-white"
+                    : "text-gray-700 hover:bg-gray-100"
+                }`}
+              >
+                <BarChart3 className="mr-3 h-4 w-4 flex-shrink-0" />
+                <span className="text-sm font-medium">Dashboard</span>
+              </button>
+            )}
+
             {/* PMS Section */}
             <Collapsible open={isPMSExpanded} onOpenChange={setIsPMSExpanded}>
-              <CollapsibleTrigger className="w-full flex items-center justify-between px-3 py-2 text-left hover:bg-gray-100 rounded-lg">
+              <CollapsibleTrigger className="w-full flex items-center justify-between px-3 py-2 text-left hover:bg-gray-100 rounded-lg mx-2">
                 <span className="text-xs font-semibold text-gray-500 uppercase tracking-wide">
                   PMS
                 </span>
@@ -172,24 +219,6 @@ export default function Sidebar({
                 )}
               </CollapsibleTrigger>
               <CollapsibleContent className="space-y-1 mt-2">
-                {/* Dashboard */}
-                {hasAccess(["superadmin", "branch-admin", "front-desk"]) && (
-                  <button
-                    onClick={() => {
-                      navigate("/");
-                      setMenuOpen(false);
-                    }}
-                    className={`w-full flex items-center px-3 py-2 lg:py-2.5 text-left rounded-lg transition-colors ml-4 ${
-                      isActiveRoute("/")
-                        ? "bg-primary text-white"
-                        : "text-gray-700 hover:bg-gray-100"
-                    }`}
-                  >
-                    <BarChart3 className="mr-3 h-4 w-4 flex-shrink-0" />
-                    <span className="text-sm font-medium">Dashboard</span>
-                  </button>
-                )}
-
                 {/* Reservations */}
                 {hasAccess(["superadmin", "branch-admin", "front-desk"]) && (
                   <button
@@ -197,7 +226,7 @@ export default function Sidebar({
                       navigate("/reservations");
                       setMenuOpen(false);
                     }}
-                    className={`w-full flex items-center px-3 py-2 lg:py-2.5 text-left rounded-lg transition-colors ml-4 ${
+                    className={`w-full flex items-center px-3 py-2 lg:py-2.5 text-left rounded-lg mx-6 transition-colors ${
                       isActiveRoute("/reservations")
                         ? "bg-primary text-white"
                         : "text-gray-700 hover:bg-gray-100"
@@ -215,7 +244,7 @@ export default function Sidebar({
                       navigate("/rooms");
                       setMenuOpen(false);
                     }}
-                    className={`w-full flex items-center px-3 py-2 lg:py-2.5 text-left rounded-lg transition-colors ml-4 ${
+                    className={`w-full flex items-center px-3 py-2 lg:py-2.5 text-left rounded-lg mx-6 transition-colors ${
                       isActiveRoute("/rooms")
                         ? "bg-primary text-white"
                         : "text-gray-700 hover:bg-gray-100"
@@ -233,7 +262,7 @@ export default function Sidebar({
                       navigate("/guests");
                       setMenuOpen(false);
                     }}
-                    className={`w-full flex items-center px-3 py-2 lg:py-2.5 text-left rounded-lg transition-colors ml-4 ${
+                    className={`w-full flex items-center px-3 py-2 lg:py-2.5 text-left rounded-lg mx-6 transition-colors ${
                       isActiveRoute("/guests")
                         ? "bg-primary text-white"
                         : "text-gray-700 hover:bg-gray-100"
@@ -253,7 +282,7 @@ export default function Sidebar({
                       navigate("/billing");
                       setMenuOpen(false);
                     }}
-                    className={`w-full flex items-center px-3 py-2 lg:py-2.5 text-left rounded-lg transition-colors ml-4 ${
+                    className={`w-full flex items-center px-3 py-2 lg:py-2.5 text-left rounded-lg mx-6 transition-colors ${
                       isActiveRoute("/billing")
                         ? "bg-primary text-white"
                         : "text-gray-700 hover:bg-gray-100"
@@ -271,7 +300,7 @@ export default function Sidebar({
                       navigate("/room-types");
                       setMenuOpen(false);
                     }}
-                    className={`w-full flex items-center px-3 py-2 lg:py-2.5 text-left rounded-lg transition-colors ml-4 ${
+                    className={`w-full flex items-center px-3 py-2 lg:py-2.5 text-left rounded-lg mx-6 transition-colors ${
                       isActiveRoute("/room-types")
                         ? "bg-primary text-white"
                         : "text-gray-700 hover:bg-gray-100"
@@ -291,7 +320,7 @@ export default function Sidebar({
                   open={isRMSExpanded}
                   onOpenChange={setIsRMSExpanded}
                 >
-                  <CollapsibleTrigger className="w-full flex items-center justify-between px-3 py-2 text-left hover:bg-gray-100 rounded-lg">
+                  <CollapsibleTrigger className="w-full flex items-center justify-between px-3 py-2 text-left hover:bg-gray-100 rounded-lg mx-2">
                     <span className="text-xs font-semibold text-gray-500 uppercase tracking-wide">
                       RMS
                     </span>
@@ -308,7 +337,7 @@ export default function Sidebar({
                         navigate("/restaurant/tables");
                         setMenuOpen(false);
                       }}
-                      className={`w-full flex items-center px-3 py-2 lg:py-2.5 text-left rounded-lg transition-colors ml-4 ${
+                      className={`w-full flex items-center px-3 py-2 lg:py-2.5 text-left rounded-lg mx-6 transition-colors ${
                         isActiveRoute("/restaurant/tables")
                           ? "bg-primary text-white"
                           : "text-gray-700 hover:bg-gray-100"
@@ -324,7 +353,7 @@ export default function Sidebar({
                         navigate("/restaurant/categories");
                         setMenuOpen(false);
                       }}
-                      className={`w-full flex items-center px-3 py-2 lg:py-2.5 text-left rounded-lg transition-colors ml-4 ${
+                      className={`w-full flex items-center px-3 py-2 lg:py-2.5 text-left rounded-lg mx-6 transition-colors ${
                         isActiveRoute("/restaurant/categories")
                           ? "bg-primary text-white"
                           : "text-gray-700 hover:bg-gray-100"
@@ -340,7 +369,7 @@ export default function Sidebar({
                         navigate("/restaurant/dishes");
                         setMenuOpen(false);
                       }}
-                      className={`w-full flex items-center px-3 py-2 lg:py-2.5 text-left rounded-lg transition-colors ml-4 ${
+                      className={`w-full flex items-center px-3 py-2 lg:py-2.5 text-left rounded-lg mx-6 transition-colors ${
                         isActiveRoute("/restaurant/dishes")
                           ? "bg-primary text-white"
                           : "text-gray-700 hover:bg-gray-100"
@@ -356,7 +385,7 @@ export default function Sidebar({
                         navigate("/restaurant/orders");
                         setMenuOpen(false);
                       }}
-                      className={`w-full flex items-center px-3 py-2 lg:py-2.5 text-left rounded-lg transition-colors ml-4 ${
+                      className={`w-full flex items-center px-3 py-2 lg:py-2.5 text-left rounded-lg mx-6 transition-colors ${
                         isActiveRoute("/restaurant/orders")
                           ? "bg-primary text-white"
                           : "text-gray-700 hover:bg-gray-100"
@@ -372,7 +401,7 @@ export default function Sidebar({
                         navigate("/restaurant/billing");
                         setMenuOpen(false);
                       }}
-                      className={`w-full flex items-center px-3 py-2 lg:py-2.5 text-left rounded-lg transition-colors ml-4 ${
+                      className={`w-full flex items-center px-3 py-2 lg:py-2.5 text-left rounded-lg mx-6 transition-colors ${
                         isActiveRoute("/restaurant/billing")
                           ? "bg-primary text-white"
                           : "text-gray-700 hover:bg-gray-100"
@@ -386,42 +415,54 @@ export default function Sidebar({
               </div>
             )}
 
-            {/* Reports */}
+            {/* Reports Section */}
             {hasAccess(["superadmin"]) && (
               <div className="border-t border-gray-200 pt-4 mt-4">
-                <div className="px-3 py-2">
-                  <span className="text-xs font-semibold text-gray-500 uppercase tracking-wide">
-                    Reports
-                  </span>
-                </div>
-                <button
-                  onClick={() => {
-                    navigate("/analytics");
-                    setMenuOpen(false);
-                  }}
-                  className={`w-full flex items-center px-3 py-2 lg:py-2.5 text-left rounded-lg transition-colors ml-4 ${
-                    isActiveRoute("/analytics")
-                      ? "bg-primary text-white"
-                      : "text-gray-700 hover:bg-gray-100"
-                  }`}
+                <Collapsible
+                  open={isReportsExpanded}
+                  onOpenChange={setIsReportsExpanded}
                 >
-                  <TrendingUp className="mr-3 h-4 w-4 flex-shrink-0" />
-                  <span className="text-sm font-medium">PMS Analytics</span>
-                </button>
-                <button
-                  onClick={() => {
-                    navigate("/restaurant/analytics");
-                    setMenuOpen(false);
-                  }}
-                  className={`w-full flex items-center px-3 py-2 lg:py-2.5 text-left rounded-lg transition-colors ml-4 ${
-                    isActiveRoute("/restaurant/analytics")
-                      ? "bg-primary text-white"
-                      : "text-gray-700 hover:bg-gray-100"
-                  }`}
-                >
-                  <ChefHat className="mr-3 h-4 w-4 flex-shrink-0" />
-                  <span className="text-sm font-medium">RMS Analytics</span>
-                </button>
+                  <CollapsibleTrigger className="w-full flex items-center justify-between px-3 py-2 text-left hover:bg-gray-100 rounded-lg mx-2">
+                    <span className="text-xs font-semibold text-gray-500 uppercase tracking-wide">
+                      Reports
+                    </span>
+                    {isReportsExpanded ? (
+                      <ChevronDown className="h-4 w-4 text-gray-500" />
+                    ) : (
+                      <ChevronRight className="h-4 w-4 text-gray-500" />
+                    )}
+                  </CollapsibleTrigger>
+                  <CollapsibleContent className="space-y-1 mt-2">
+                    <button
+                      onClick={() => {
+                        navigate("/analytics");
+                        setMenuOpen(false);
+                      }}
+                      className={`w-full flex items-center px-3 py-2 lg:py-2.5 text-left rounded-lg mx-6 transition-colors ${
+                        isActiveRoute("/analytics")
+                          ? "bg-primary text-white"
+                          : "text-gray-700 hover:bg-gray-100"
+                      }`}
+                    >
+                      <TrendingUp className="mr-3 h-4 w-4 flex-shrink-0" />
+                      <span className="text-sm font-medium">PMS Analytics</span>
+                    </button>
+                    <button
+                      onClick={() => {
+                        navigate("/restaurant/analytics");
+                        setMenuOpen(false);
+                      }}
+                      className={`w-full flex items-center px-3 py-2 lg:py-2.5 text-left rounded-lg mx-6 transition-colors ${
+                        isActiveRoute("/restaurant/analytics")
+                          ? "bg-primary text-white"
+                          : "text-gray-700 hover:bg-gray-100"
+                      }`}
+                    >
+                      <ChefHat className="mr-3 h-4 w-4 flex-shrink-0" />
+                      <span className="text-sm font-medium">RMS Analytics</span>
+                    </button>
+                  </CollapsibleContent>
+                </Collapsible>
               </div>
             )}
 
@@ -431,7 +472,7 @@ export default function Sidebar({
                 open={isSetupExpanded}
                 onOpenChange={setIsSetupExpanded}
               >
-                <CollapsibleTrigger className="w-full flex items-center justify-between px-3 py-2 text-left hover:bg-gray-100 rounded-lg">
+                <CollapsibleTrigger className="w-full flex items-center justify-between px-3 py-2 text-left hover:bg-gray-100 rounded-lg mx-2">
                   <span className="text-xs font-semibold text-gray-500 uppercase tracking-wide">
                     Setup
                   </span>
@@ -449,7 +490,7 @@ export default function Sidebar({
                         navigate("/branches");
                         setMenuOpen(false);
                       }}
-                      className={`w-full flex items-center px-3 py-2 lg:py-2.5 text-left rounded-lg transition-colors ml-4 ${
+                      className={`w-full flex items-center px-3 py-2 lg:py-2.5 text-left rounded-lg mx-6 transition-colors ${
                         isActiveRoute("/branches")
                           ? "bg-primary text-white"
                           : "text-gray-700 hover:bg-gray-100"
@@ -469,7 +510,7 @@ export default function Sidebar({
                         navigate("/users");
                         setMenuOpen(false);
                       }}
-                      className={`w-full flex items-center px-3 py-2 lg:py-2.5 text-left rounded-lg transition-colors ml-4 ${
+                      className={`w-full flex items-center px-3 py-2 lg:py-2.5 text-left rounded-lg mx-6 transition-colors ${
                         isActiveRoute("/users")
                           ? "bg-primary text-white"
                           : "text-gray-700 hover:bg-gray-100"
@@ -489,16 +530,14 @@ export default function Sidebar({
                         navigate("/tax-management");
                         setMenuOpen(false);
                       }}
-                      className={`w-full flex items-center px-3 py-2 lg:py-2.5 text-left rounded-lg transition-colors ml-4 ${
+                      className={`w-full flex items-center px-3 py-2 lg:py-2.5 text-left rounded-lg mx-6 transition-colors ${
                         isActiveRoute("/tax-management")
                           ? "bg-primary text-white"
                           : "text-gray-700 hover:bg-gray-100"
                       }`}
                     >
                       <Receipt className="mr-3 h-4 w-4 flex-shrink-0" />
-                      <span className="text-sm font-medium">
-                        Tax/Charges
-                      </span>
+                      <span className="text-sm font-medium">Tax/Charges</span>
                     </button>
                   )}
 
@@ -509,7 +548,7 @@ export default function Sidebar({
                         navigate("/settings");
                         setMenuOpen(false);
                       }}
-                      className={`w-full flex items-center px-3 py-2 lg:py-2.5 text-left rounded-lg transition-colors ml-4 ${
+                      className={`w-full flex items-center px-3 py-2 lg:py-2.5 text-left rounded-lg mx-6 transition-colors ${
                         isActiveRoute("/settings")
                           ? "bg-primary text-white"
                           : "text-gray-700 hover:bg-gray-100"
@@ -527,7 +566,7 @@ export default function Sidebar({
                         navigate("/profile");
                         setMenuOpen(false);
                       }}
-                      className={`w-full flex items-center px-3 py-2 lg:py-2.5 text-left rounded-lg transition-colors ml-4 ${
+                      className={`w-full flex items-center px-3 py-2 lg:py-2.5 text-left rounded-lg mx-6 transition-colors ${
                         isActiveRoute("/profile")
                           ? "bg-primary text-white"
                           : "text-gray-700 hover:bg-gray-100"
@@ -549,7 +588,7 @@ export default function Sidebar({
                             navigate("/notifications");
                             setMenuOpen(false);
                           }}
-                          className={`w-full flex items-center px-3 py-2 lg:py-2.5 text-left rounded-lg transition-colors ml-4 ${
+                          className={`w-full flex items-center px-3 py-2 lg:py-2.5 text-left rounded-lg mx-6 transition-colors ${
                             isActiveRoute("/notifications")
                               ? "bg-primary text-white"
                               : "text-gray-700 hover:bg-gray-100"
@@ -563,7 +602,7 @@ export default function Sidebar({
 
                         {/* Notification Manager */}
                         <div
-                          className="px-3 py-1 ml-4"
+                          className="px-3 py-1 mx-6"
                           style={{ pointerEvents: "auto" }}
                         >
                           <NotificationManager />

@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Plus, LogIn, LogOut, DoorOpen } from "lucide-react";
+import { Plus, UtensilsCrossed } from "lucide-react";
 import MultiRoomModal from "@/components/reservations/multi-room-modal";
 
 export default function QuickActions() {
@@ -11,19 +11,9 @@ export default function QuickActions() {
     setIsReservationModalOpen(true);
   };
 
-  const handleCheckInGuest = () => {
-    // In a real implementation, this would open check-in modal or navigate to check-in page
-    console.log("Opening check-in process");
-  };
-
-  const handleCheckOutGuest = () => {
-    // In a real implementation, this would open check-out modal or navigate to check-out page
-    console.log("Opening check-out process");
-  };
-
-  const handleViewRoomStatus = () => {
-    // In a real implementation, this would navigate to room management page
-    window.location.href = "/rooms";
+  const handleDiningOrders = () => {
+    // Navigate to dining orders page
+    window.location.href = "/restaurant/orders";
   };
 
   const quickActionItems = [
@@ -36,52 +26,41 @@ export default function QuickActions() {
       action: handleNewReservation,
     },
     {
-      title: "Check-In Guest",
-      description: "Process arrival",
-      icon: LogIn,
-      iconBg: "bg-success-50",
-      iconColor: "text-success",
-      action: handleCheckInGuest,
-    },
-    {
-      title: "Check-Out Guest",
-      description: "Process departure",
-      icon: LogOut,
-      iconBg: "bg-warning-50",
-      iconColor: "text-warning",
-      action: handleCheckOutGuest,
-    },
-    {
-      title: "Room Status",
-      description: "View availability",
-      icon: DoorOpen,
-      iconBg: "bg-gray-100",
-      iconColor: "text-gray-600",
-      action: handleViewRoomStatus,
+      title: "Dining Orders",
+      description: "Create dining order",
+      icon: UtensilsCrossed,
+      iconBg: "bg-orange-50",
+      iconColor: "text-orange-600",
+      action: handleDiningOrders,
     },
   ];
 
   return (
     <>
       <Card className="bg-white rounded-xl shadow-sm border border-gray-200">
-        <CardHeader className="p-6">
-          <CardTitle className="text-lg font-semibold text-gray-900">Quick Actions</CardTitle>
+        <CardHeader className="p-4">
+          <CardTitle className="text-base font-semibold text-gray-900">
+            Quick Actions
+          </CardTitle>
         </CardHeader>
-        
-        <CardContent className="p-6 pt-0">
-          <div className="space-y-3">
+        <CardContent className="p-4 pt-0">
+          <div className="flex space-x-2">
             {quickActionItems.map((item, index) => (
               <Button
                 key={index}
                 variant="ghost"
                 onClick={item.action}
-                className="w-full flex items-center p-3 text-left border border-gray-200 rounded-lg hover:bg-gray-50 transition-colors h-auto justify-start"
+                className="flex-1 flex flex-col items-center p-3 text-center border border-gray-200 rounded-lg hover:bg-gray-50 transition-colors h-auto"
               >
-                <div className={`w-10 h-10 ${item.iconBg} rounded-lg flex items-center justify-center mr-3 flex-shrink-0`}>
-                  <item.icon className={`${item.iconColor} h-5 w-5`} />
+                <div
+                  className={`w-8 h-8 ${item.iconBg} rounded-lg flex items-center justify-center mb-2`}
+                >
+                  <item.icon className={`${item.iconColor} h-4 w-4`} />
                 </div>
-                <div className="text-left">
-                  <p className="font-medium text-gray-900">{item.title}</p>
+                <div className="text-center">
+                  <p className="font-medium text-gray-900 text-sm mb-1">
+                    {item.title}
+                  </p>
                   <p className="text-xs text-gray-500">{item.description}</p>
                 </div>
               </Button>
@@ -89,7 +68,6 @@ export default function QuickActions() {
           </div>
         </CardContent>
       </Card>
-
       <MultiRoomModal
         isOpen={isReservationModalOpen}
         onClose={() => setIsReservationModalOpen(false)}
