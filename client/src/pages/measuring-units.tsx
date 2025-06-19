@@ -6,14 +6,34 @@ import Header from "@/components/layout/header";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+} from "@/components/ui/dialog";
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
 import { useToast } from "@/hooks/use-toast";
 import { Plus, Edit, Trash2, Ruler } from "lucide-react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
+import {
+  Form,
+  FormControl,
+  FormField,
+  FormItem,
+  FormLabel,
+  FormMessage,
+} from "@/components/ui/form";
 import { insertMeasuringUnitSchema } from "@shared/schema";
 import { z } from "zod";
 
@@ -57,28 +77,41 @@ export default function MeasuringUnits() {
     mutationFn: (data: z.infer<typeof formSchema>) =>
       apiRequest("/api/inventory/measuring-units", "POST", data),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["/api/inventory/measuring-units"] });
+      queryClient.invalidateQueries({
+        queryKey: ["/api/inventory/measuring-units"],
+      });
       setDialogOpen(false);
       form.reset();
       toast({ title: "Measuring unit created successfully" });
     },
     onError: () => {
-      toast({ title: "Failed to create measuring unit", variant: "destructive" });
+      toast({
+        title: "Failed to create measuring unit",
+        variant: "destructive",
+      });
     },
   });
 
   const updateMutation = useMutation({
-    mutationFn: ({ id, ...data }: { id: number } & Partial<z.infer<typeof formSchema>>) =>
+    mutationFn: ({
+      id,
+      ...data
+    }: { id: number } & Partial<z.infer<typeof formSchema>>) =>
       apiRequest(`/api/inventory/measuring-units/${id}`, "PUT", data),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["/api/inventory/measuring-units"] });
+      queryClient.invalidateQueries({
+        queryKey: ["/api/inventory/measuring-units"],
+      });
       setDialogOpen(false);
       setEditingUnit(null);
       form.reset();
       toast({ title: "Measuring unit updated successfully" });
     },
     onError: () => {
-      toast({ title: "Failed to update measuring unit", variant: "destructive" });
+      toast({
+        title: "Failed to update measuring unit",
+        variant: "destructive",
+      });
     },
   });
 
@@ -86,11 +119,16 @@ export default function MeasuringUnits() {
     mutationFn: (id: number) =>
       apiRequest(`/api/inventory/measuring-units/${id}`, "DELETE"),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["/api/inventory/measuring-units"] });
+      queryClient.invalidateQueries({
+        queryKey: ["/api/inventory/measuring-units"],
+      });
       toast({ title: "Measuring unit deleted successfully" });
     },
     onError: () => {
-      toast({ title: "Failed to delete measuring unit", variant: "destructive" });
+      toast({
+        title: "Failed to delete measuring unit",
+        variant: "destructive",
+      });
     },
   });
 
@@ -137,171 +175,183 @@ export default function MeasuringUnits() {
         <Header
           title="Measuring Units"
           subtitle="Manage inventory measuring units"
-          onMobileMenuToggle={() => setIsMobileSidebarOpen(!isMobileSidebarOpen)}
+          onMobileMenuToggle={() =>
+            setIsMobileSidebarOpen(!isMobileSidebarOpen)
+          }
         />
         <main className="p-6">
-        <div className="flex justify-between items-center mb-6">
-          <div>
-            <h1 className="text-3xl font-bold">Measuring Units</h1>
-            <p className="text-muted-foreground">Manage inventory measuring units</p>
+          <div className="flex justify-between items-center mb-6">
+            <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
+              <DialogTrigger asChild>
+                <Button onClick={openCreateDialog}>
+                  <Plus className="mr-2 h-4 w-4" />
+                  Add Unit
+                </Button>
+              </DialogTrigger>
+              <DialogContent className="max-w-md">
+                <DialogHeader>
+                  <DialogTitle>
+                    {editingUnit
+                      ? "Edit Measuring Unit"
+                      : "Create Measuring Unit"}
+                  </DialogTitle>
+                </DialogHeader>
+                <Form {...form}>
+                  <form
+                    onSubmit={form.handleSubmit(onSubmit)}
+                    className="space-y-4"
+                  >
+                    <FormField
+                      control={form.control}
+                      name="name"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>Unit Name</FormLabel>
+                          <FormControl>
+                            <Input placeholder="e.g., Kilogram" {...field} />
+                          </FormControl>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+                    <FormField
+                      control={form.control}
+                      name="symbol"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>Symbol</FormLabel>
+                          <FormControl>
+                            <Input placeholder="e.g., kg" {...field} />
+                          </FormControl>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+                    <FormField
+                      control={form.control}
+                      name="baseUnit"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>Base Unit (Optional)</FormLabel>
+                          <FormControl>
+                            <Input placeholder="e.g., Gram" {...field} />
+                          </FormControl>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+                    <FormField
+                      control={form.control}
+                      name="conversionFactor"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>Conversion Factor</FormLabel>
+                          <FormControl>
+                            <Input placeholder="1" {...field} />
+                          </FormControl>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+                    <div className="flex justify-end space-x-2">
+                      <Button
+                        type="button"
+                        variant="outline"
+                        onClick={() => setDialogOpen(false)}
+                      >
+                        Cancel
+                      </Button>
+                      <Button
+                        type="submit"
+                        disabled={
+                          createMutation.isPending || updateMutation.isPending
+                        }
+                      >
+                        {editingUnit ? "Update" : "Create"}
+                      </Button>
+                    </div>
+                  </form>
+                </Form>
+              </DialogContent>
+            </Dialog>
           </div>
-          <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
-            <DialogTrigger asChild>
-              <Button onClick={openCreateDialog}>
-                <Plus className="mr-2 h-4 w-4" />
-                Add Unit
-              </Button>
-            </DialogTrigger>
-            <DialogContent className="max-w-md">
-              <DialogHeader>
-                <DialogTitle>
-                  {editingUnit ? "Edit Measuring Unit" : "Create Measuring Unit"}
-                </DialogTitle>
-              </DialogHeader>
-              <Form {...form}>
-                <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
-                  <FormField
-                    control={form.control}
-                    name="name"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>Unit Name</FormLabel>
-                        <FormControl>
-                          <Input placeholder="e.g., Kilogram" {...field} />
-                        </FormControl>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
-                  <FormField
-                    control={form.control}
-                    name="symbol"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>Symbol</FormLabel>
-                        <FormControl>
-                          <Input placeholder="e.g., kg" {...field} />
-                        </FormControl>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
-                  <FormField
-                    control={form.control}
-                    name="baseUnit"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>Base Unit (Optional)</FormLabel>
-                        <FormControl>
-                          <Input placeholder="e.g., Gram" {...field} />
-                        </FormControl>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
-                  <FormField
-                    control={form.control}
-                    name="conversionFactor"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>Conversion Factor</FormLabel>
-                        <FormControl>
-                          <Input placeholder="1" {...field} />
-                        </FormControl>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
-                  <div className="flex justify-end space-x-2">
-                    <Button
-                      type="button"
-                      variant="outline"
-                      onClick={() => setDialogOpen(false)}
-                    >
-                      Cancel
-                    </Button>
-                    <Button
-                      type="submit"
-                      disabled={createMutation.isPending || updateMutation.isPending}
-                    >
-                      {editingUnit ? "Update" : "Create"}
-                    </Button>
-                  </div>
-                </form>
-              </Form>
-            </DialogContent>
-          </Dialog>
-        </div>
 
-        <Card>
-          <CardHeader>
-            <CardTitle className="flex items-center">
-              <Ruler className="mr-2 h-5 w-5" />
-              Units List
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            {isLoading ? (
-              <div className="flex justify-center p-8">
-                <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
-              </div>
-            ) : (
-              <Table>
-                <TableHeader>
-                  <TableRow>
-                    <TableHead>Name</TableHead>
-                    <TableHead>Symbol</TableHead>
-                    <TableHead>Base Unit</TableHead>
-                    <TableHead>Conversion Factor</TableHead>
-                    <TableHead>Status</TableHead>
-                    <TableHead>Actions</TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {units.map((unit: MeasuringUnit) => (
-                    <TableRow key={unit.id}>
-                      <TableCell className="font-medium">{unit.name}</TableCell>
-                      <TableCell>{unit.symbol}</TableCell>
-                      <TableCell>{unit.baseUnit || "-"}</TableCell>
-                      <TableCell>{unit.conversionFactor}</TableCell>
-                      <TableCell>
-                        <Badge variant={unit.isActive ? "secondary" : "destructive"}>
-                          {unit.isActive ? "Active" : "Inactive"}
-                        </Badge>
-                      </TableCell>
-                      <TableCell>
-                        <div className="flex space-x-2">
-                          <Button
-                            variant="outline"
-                            size="sm"
-                            onClick={() => handleEdit(unit)}
-                          >
-                            <Edit className="h-4 w-4" />
-                          </Button>
-                          <Button
-                            variant="outline"
-                            size="sm"
-                            onClick={() => handleDelete(unit.id)}
-                            disabled={deleteMutation.isPending}
-                          >
-                            <Trash2 className="h-4 w-4" />
-                          </Button>
-                        </div>
-                      </TableCell>
-                    </TableRow>
-                  ))}
-                  {units.length === 0 && (
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center">
+                <Ruler className="mr-2 h-5 w-5" />
+                Units List
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              {isLoading ? (
+                <div className="flex justify-center p-8">
+                  <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
+                </div>
+              ) : (
+                <Table>
+                  <TableHeader>
                     <TableRow>
-                      <TableCell colSpan={6} className="text-center py-8">
-                        No measuring units found. Create your first unit to get started.
-                      </TableCell>
+                      <TableHead>Name</TableHead>
+                      <TableHead>Symbol</TableHead>
+                      <TableHead>Base Unit</TableHead>
+                      <TableHead>Conversion Factor</TableHead>
+                      <TableHead>Status</TableHead>
+                      <TableHead>Actions</TableHead>
                     </TableRow>
-                  )}
-                </TableBody>
-              </Table>
-            )}
-          </CardContent>
-        </Card>
+                  </TableHeader>
+                  <TableBody>
+                    {units.map((unit: MeasuringUnit) => (
+                      <TableRow key={unit.id}>
+                        <TableCell className="font-medium">
+                          {unit.name}
+                        </TableCell>
+                        <TableCell>{unit.symbol}</TableCell>
+                        <TableCell>{unit.baseUnit || "-"}</TableCell>
+                        <TableCell>{unit.conversionFactor}</TableCell>
+                        <TableCell>
+                          <Badge
+                            variant={
+                              unit.isActive ? "secondary" : "destructive"
+                            }
+                          >
+                            {unit.isActive ? "Active" : "Inactive"}
+                          </Badge>
+                        </TableCell>
+                        <TableCell>
+                          <div className="flex space-x-2">
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              onClick={() => handleEdit(unit)}
+                            >
+                              <Edit className="h-4 w-4" />
+                            </Button>
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              onClick={() => handleDelete(unit.id)}
+                              disabled={deleteMutation.isPending}
+                            >
+                              <Trash2 className="h-4 w-4" />
+                            </Button>
+                          </div>
+                        </TableCell>
+                      </TableRow>
+                    ))}
+                    {units.length === 0 && (
+                      <TableRow>
+                        <TableCell colSpan={6} className="text-center py-8">
+                          No measuring units found. Create your first unit to
+                          get started.
+                        </TableCell>
+                      </TableRow>
+                    )}
+                  </TableBody>
+                </Table>
+              )}
+            </CardContent>
+          </Card>
         </main>
       </div>
     </div>

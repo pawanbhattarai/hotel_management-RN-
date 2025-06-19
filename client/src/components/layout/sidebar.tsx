@@ -565,11 +565,11 @@ export default function Sidebar({
                     {/* Stock Consumption */}
                     <button
                       onClick={() => {
-                        navigate("/inventory/stock-consumption");
+                        navigate("/inventory/consumption");
                         setMenuOpen(false);
                       }}
                       className={`w-full flex items-center px-3 py-2 lg:py-2.5 text-left rounded-lg mx-6 transition-colors ${
-                        isActiveRoute("/inventory/stock-consumption")
+                        isActiveRoute("/inventory/consumption")
                           ? "bg-primary text-white"
                           : "text-gray-700 hover:bg-gray-100"
                       }`}
