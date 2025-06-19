@@ -103,9 +103,22 @@ export default function StockItems() {
   });
 
   const createMutation = useMutation({
-    mutationFn: (data: z.infer<typeof formSchema>) => {
+    mutationFn: async (data: z.infer<typeof formSchema>) => {
       console.log("Creating stock item with data:", data);
-      return apiRequest("/api/inventory/stock-items", "POST", data);
+      const response = await fetch("/api/inventory/stock-items", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify(data),
+      });
+      
+      if (!response.ok) {
+        const error = await response.json();
+        throw new Error(error.message || "Failed to create stock item");
+      }
+      
+      return response.json();
     },
     onSuccess: () => {
       queryClient.invalidateQueries({
@@ -126,11 +139,25 @@ export default function StockItems() {
   });
 
   const updateMutation = useMutation({
-    mutationFn: ({
+    mutationFn: async ({
       id,
       ...data
-    }: { id: number } & Partial<z.infer<typeof formSchema>>) =>
-      apiRequest(`/api/inventory/stock-items/${id}`, "PUT", data),
+    }: { id: number } & Partial<z.infer<typeof formSchema>>) => {
+      const response = await fetch(`/api/inventory/stock-items/${id}`, {
+        method: "PUT",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify(data),
+      });
+      
+      if (!response.ok) {
+        const error = await response.json();
+        throw new Error(error.message || "Failed to update stock item");
+      }
+      
+      return response.json();
+    },
     onSuccess: () => {
       queryClient.invalidateQueries({
         queryKey: ["/api/inventory/stock-items"],
@@ -146,8 +173,18 @@ export default function StockItems() {
   });
 
   const deleteMutation = useMutation({
-    mutationFn: (id: number) =>
-      apiRequest(`/api/inventory/stock-items/${id}`, "DELETE"),
+    mutationFn: async (id: number) => {
+      const response = await fetch(`/api/inventory/stock-items/${id}`, {
+        method: "DELETE",
+      });
+      
+      if (!response.ok) {
+        const error = await response.json();
+        throw new Error(error.message || "Failed to delete stock item");
+      }
+      
+      return response.json();
+    },
     onSuccess: () => {
       queryClient.invalidateQueries({
         queryKey: ["/api/inventory/stock-items"],
