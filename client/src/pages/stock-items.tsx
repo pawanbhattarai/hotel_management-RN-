@@ -51,6 +51,30 @@ const formSchema = insertStockItemSchema.extend({
   name: z.string().min(1, "Item name is required"),
   categoryId: z.number().min(1, "Category is required"),
   measuringUnitId: z.number().min(1, "Measuring unit is required"),
+  defaultPrice: z.union([z.string(), z.number()]).transform((val) => {
+    if (val === "" || val === null || val === undefined) return "0";
+    return typeof val === 'number' ? val.toString() : val;
+  }),
+  currentStock: z.union([z.string(), z.number()]).transform((val) => {
+    if (val === "" || val === null || val === undefined) return "0";
+    return typeof val === 'number' ? val.toString() : val;
+  }),
+  minimumStock: z.union([z.string(), z.number()]).transform((val) => {
+    if (val === "" || val === null || val === undefined) return "0";
+    return typeof val === 'number' ? val.toString() : val;
+  }),
+  maximumStock: z.union([z.string(), z.number()]).transform((val) => {
+    if (val === "" || val === null || val === undefined) return undefined;
+    return typeof val === 'number' ? val.toString() : val;
+  }).optional(),
+  reorderLevel: z.union([z.string(), z.number()]).transform((val) => {
+    if (val === "" || val === null || val === undefined) return undefined;
+    return typeof val === 'number' ? val.toString() : val;
+  }).optional(),
+  reorderQuantity: z.union([z.string(), z.number()]).transform((val) => {
+    if (val === "" || val === null || val === undefined) return undefined;
+    return typeof val === 'number' ? val.toString() : val;
+  }).optional(),
 }).omit({
   branchId: true,
   sku: true,
