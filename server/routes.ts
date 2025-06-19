@@ -2288,16 +2288,28 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const user = await storage.getUser(req.session.user.id);
       if (!user) return res.status(401).json({ message: "User not found" });
 
+      console.log("Creating stock category - User:", user.role, "Request body:", req.body);
+
       const validatedData = insertStockCategorySchema.parse({
         ...req.body,
         branchId: user.role === "superadmin" ? req.body.branchId || null : user.branchId,
       });
 
+      console.log("Validated data:", validatedData);
+
       const category = await inventoryStorage.createStockCategory(validatedData);
+      console.log("Category created:", category);
       res.status(201).json(category);
     } catch (error) {
       console.error("Error creating stock category:", error);
-      res.status(500).json({ message: "Failed to create stock category" });
+      if (error instanceof Error) {
+        res.status(400).json({ 
+          message: "Failed to create stock category", 
+          error: error.message 
+        });
+      } else {
+        res.status(500).json({ message: "Failed to create stock category" });
+      }
     }
   });
 

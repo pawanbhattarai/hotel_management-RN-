@@ -91,9 +91,12 @@ export default function StockCategories() {
   });
 
   const createMutation = useMutation({
-    mutationFn: (data: z.infer<typeof formSchema>) =>
-      apiRequest("/api/inventory/stock-categories", "POST", data),
-    onSuccess: () => {
+    mutationFn: (data: z.infer<typeof formSchema>) => {
+      console.log("API request data:", data);
+      return apiRequest("/api/inventory/stock-categories", "POST", data);
+    },
+    onSuccess: (response) => {
+      console.log("Category created successfully:", response);
       queryClient.invalidateQueries({
         queryKey: ["/api/inventory/stock-categories"],
       });
@@ -101,9 +104,11 @@ export default function StockCategories() {
       form.reset();
       toast({ title: "Stock category created successfully" });
     },
-    onError: () => {
+    onError: (error: any) => {
+      console.error("Error creating category:", error);
       toast({
         title: "Failed to create stock category",
+        description: error?.message || "Please try again",
         variant: "destructive",
       });
     },
@@ -150,10 +155,17 @@ export default function StockCategories() {
   });
 
   const onSubmit = (data: z.infer<typeof formSchema>) => {
+    console.log("Form data being submitted:", data);
     if (editingCategory) {
       updateMutation.mutate({ id: editingCategory.id, ...data });
     } else {
-      createMutation.mutate(data);
+      // Ensure branchId is properly set for non-superadmin users
+      const categoryData = {
+        ...data,
+        branchId: user?.role === "superadmin" ? data.branchId : user?.branchId || null,
+      };
+      console.log("Creating category with data:", categoryData);
+      createMutation.mutate(categoryData);
     }
   };
 
@@ -180,7 +192,7 @@ export default function StockCategories() {
       name: "",
       description: "",
       showInMenu: false,
-      branchId: user?.role === "superadmin" ? null : user?.branchId,
+      branchId: user?.role === "superadmin" ? undefined : user?.branchId,
     });
     setDialogOpen(true);
   };
@@ -286,8 +298,14 @@ export default function StockCategories() {
                             <FormLabel>Branch</FormLabel>
                             <FormControl>
                               <Select 
-                                value={field.value?.toString()} 
-                                onValueChange={(value) => field.onChange(value === "null" ? null : parseInt(value))}
+                                value={field.value === null ? "null" : field.value?.toString() || ""} 
+                                onValueChange={(value) => {
+                                  if (value === "null") {
+                                    field.onChange(null);
+                                  } else {
+                                    field.onChange(parseInt(value));
+                                  }
+                                }}
                               >
                                 <SelectTrigger>
                                   <SelectValue placeholder="Select branch (optional for global category)" />
