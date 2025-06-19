@@ -80,6 +80,7 @@ export interface IStorage {
   createGuest(guest: InsertGuest): Promise<Guest>;
   updateGuest(id: number, guest: Partial<InsertGuest>): Promise<Guest>;
   deleteGuest(id: number): Promise<void>;
+  searchGuests(query: string, branchId?: number): Promise<Guest[]>;
 
   // Reservation operations
   getReservations(branchId?: number): Promise<(Reservation & {
@@ -342,6 +343,23 @@ export class DatabaseStorage implements IStorage {
 
   async deleteGuest(id: number): Promise<void> {
     await db.delete(guests).where(eq(guests.id, id));
+  }
+
+  async searchGuests(query: string, branchId?: number): Promise<Guest[]> {
+    let searchQuery = db.select().from(guests).where(
+      and(
+        eq(guests.isActive, true),
+        or(
+          sql`${guests.firstName} ILIKE ${`%${query}%`}`,
+          sql`${guests.lastName} ILIKE ${`%${query}%`}`,
+          sql`${guests.phone} ILIKE ${`%${query}%`}`,
+          sql`${guests.email} ILIKE ${`%${query}%`}`
+        ),
+        branchId ? eq(guests.branchId, branchId) : undefined
+      )
+    );
+
+    return await searchQuery.orderBy(desc(guests.createdAt)).limit(10);
   }
 
   // Reservation operations
