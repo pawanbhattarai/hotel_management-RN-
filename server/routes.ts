@@ -2,6 +2,7 @@ import type { Express } from "express";
 import { createServer, type Server } from "http";
 import { storage } from "./storage";
 import { restaurantStorage } from "./restaurant-storage";
+import { inventoryStorage } from "./inventory-storage";
 import { NotificationService } from "./notifications";
 import {
   insertBranchSchema,
@@ -21,6 +22,11 @@ import {
   insertRestaurantBillSchema,
   insertTaxSchema,
   updateTaxSchema,
+  insertMeasuringUnitSchema,
+  insertStockCategorySchema,
+  insertSupplierSchema,
+  insertStockItemSchema,
+  insertStockConsumptionSchema,
 } from "@shared/schema";
 import { z } from "zod";
 import { broadcastChange } from "./middleware/websocket";
@@ -2197,6 +2203,280 @@ export async function registerRoutes(app: Express): Promise<Server> {
     } catch (error) {
       console.error("Error fetching restaurant dashboard metrics:", error);
       res.status(500).json({ message: "Failed to fetch restaurant dashboard metrics" });
+    }
+  });
+
+  // Inventory Management Routes
+
+  // Measuring Units
+  app.get("/api/inventory/measuring-units", isAuthenticated, async (req: any, res) => {
+    try {
+      const units = await inventoryStorage.getMeasuringUnits();
+      res.json(units);
+    } catch (error) {
+      console.error("Error fetching measuring units:", error);
+      res.status(500).json({ message: "Failed to fetch measuring units" });
+    }
+  });
+
+  app.post("/api/inventory/measuring-units", isAuthenticated, async (req: any, res) => {
+    try {
+      const validatedData = insertMeasuringUnitSchema.parse(req.body);
+      const unit = await inventoryStorage.createMeasuringUnit(validatedData);
+      res.status(201).json(unit);
+    } catch (error) {
+      console.error("Error creating measuring unit:", error);
+      res.status(500).json({ message: "Failed to create measuring unit" });
+    }
+  });
+
+  app.put("/api/inventory/measuring-units/:id", isAuthenticated, async (req: any, res) => {
+    try {
+      const unitId = parseInt(req.params.id);
+      const validatedData = insertMeasuringUnitSchema.partial().parse(req.body);
+      const unit = await inventoryStorage.updateMeasuringUnit(unitId, validatedData);
+      res.json(unit);
+    } catch (error) {
+      console.error("Error updating measuring unit:", error);
+      res.status(500).json({ message: "Failed to update measuring unit" });
+    }
+  });
+
+  app.delete("/api/inventory/measuring-units/:id", isAuthenticated, async (req: any, res) => {
+    try {
+      const unitId = parseInt(req.params.id);
+      await inventoryStorage.deleteMeasuringUnit(unitId);
+      res.json({ message: "Measuring unit deleted successfully" });
+    } catch (error) {
+      console.error("Error deleting measuring unit:", error);
+      res.status(500).json({ message: "Failed to delete measuring unit" });
+    }
+  });
+
+  // Stock Categories
+  app.get("/api/inventory/stock-categories", isAuthenticated, async (req: any, res) => {
+    try {
+      const user = await storage.getUser(req.session.user.id);
+      if (!user) return res.status(401).json({ message: "User not found" });
+
+      const branchId = user.role === "superadmin" ? undefined : user.branchId!;
+      const categories = await inventoryStorage.getStockCategories(branchId);
+      res.json(categories);
+    } catch (error) {
+      console.error("Error fetching stock categories:", error);
+      res.status(500).json({ message: "Failed to fetch stock categories" });
+    }
+  });
+
+  app.get("/api/inventory/stock-categories/menu", isAuthenticated, async (req: any, res) => {
+    try {
+      const user = await storage.getUser(req.session.user.id);
+      if (!user) return res.status(401).json({ message: "User not found" });
+
+      const branchId = user.role === "superadmin" ? undefined : user.branchId!;
+      const categories = await inventoryStorage.getMenuStockCategories(branchId);
+      res.json(categories);
+    } catch (error) {
+      console.error("Error fetching menu stock categories:", error);
+      res.status(500).json({ message: "Failed to fetch menu stock categories" });
+    }
+  });
+
+  app.post("/api/inventory/stock-categories", isAuthenticated, async (req: any, res) => {
+    try {
+      const user = await storage.getUser(req.session.user.id);
+      if (!user) return res.status(401).json({ message: "User not found" });
+
+      const validatedData = insertStockCategorySchema.parse({
+        ...req.body,
+        branchId: user.role === "superadmin" ? req.body.branchId : user.branchId!,
+      });
+
+      const category = await inventoryStorage.createStockCategory(validatedData);
+      res.status(201).json(category);
+    } catch (error) {
+      console.error("Error creating stock category:", error);
+      res.status(500).json({ message: "Failed to create stock category" });
+    }
+  });
+
+  app.put("/api/inventory/stock-categories/:id", isAuthenticated, async (req: any, res) => {
+    try {
+      const categoryId = parseInt(req.params.id);
+      const validatedData = insertStockCategorySchema.partial().parse(req.body);
+      const category = await inventoryStorage.updateStockCategory(categoryId, validatedData);
+      res.json(category);
+    } catch (error) {
+      console.error("Error updating stock category:", error);
+      res.status(500).json({ message: "Failed to update stock category" });
+    }
+  });
+
+  app.delete("/api/inventory/stock-categories/:id", isAuthenticated, async (req: any, res) => {
+    try {
+      const categoryId = parseInt(req.params.id);
+      await inventoryStorage.deleteStockCategory(categoryId);
+      res.json({ message: "Stock category deleted successfully" });
+    } catch (error) {
+      console.error("Error deleting stock category:", error);
+      res.status(500).json({ message: "Failed to delete stock category" });
+    }
+  });
+
+  // Suppliers
+  app.get("/api/inventory/suppliers", isAuthenticated, async (req: any, res) => {
+    try {
+      const user = await storage.getUser(req.session.user.id);
+      if (!user) return res.status(401).json({ message: "User not found" });
+
+      const branchId = user.role === "superadmin" ? undefined : user.branchId!;
+      const suppliers = await inventoryStorage.getSuppliers(branchId);
+      res.json(suppliers);
+    } catch (error) {
+      console.error("Error fetching suppliers:", error);
+      res.status(500).json({ message: "Failed to fetch suppliers" });
+    }
+  });
+
+  app.post("/api/inventory/suppliers", isAuthenticated, async (req: any, res) => {
+    try {
+      const user = await storage.getUser(req.session.user.id);
+      if (!user) return res.status(401).json({ message: "User not found" });
+
+      const validatedData = insertSupplierSchema.parse({
+        ...req.body,
+        branchId: user.role === "superadmin" ? req.body.branchId : user.branchId!,
+      });
+
+      const supplier = await inventoryStorage.createSupplier(validatedData);
+      res.status(201).json(supplier);
+    } catch (error) {
+      console.error("Error creating supplier:", error);
+      res.status(500).json({ message: "Failed to create supplier" });
+    }
+  });
+
+  app.put("/api/inventory/suppliers/:id", isAuthenticated, async (req: any, res) => {
+    try {
+      const supplierId = parseInt(req.params.id);
+      const validatedData = insertSupplierSchema.partial().parse(req.body);
+      const supplier = await inventoryStorage.updateSupplier(supplierId, validatedData);
+      res.json(supplier);
+    } catch (error) {
+      console.error("Error updating supplier:", error);
+      res.status(500).json({ message: "Failed to update supplier" });
+    }
+  });
+
+  app.delete("/api/inventory/suppliers/:id", isAuthenticated, async (req: any, res) => {
+    try {
+      const supplierId = parseInt(req.params.id);
+      await inventoryStorage.deleteSupplier(supplierId);
+      res.json({ message: "Supplier deleted successfully" });
+    } catch (error) {
+      console.error("Error deleting supplier:", error);
+      res.status(500).json({ message: "Failed to delete supplier" });
+    }
+  });
+
+  // Stock Items
+  app.get("/api/inventory/stock-items", isAuthenticated, async (req: any, res) => {
+    try {
+      const user = await storage.getUser(req.session.user.id);
+      if (!user) return res.status(401).json({ message: "User not found" });
+
+      const branchId = user.role === "superadmin" ? undefined : user.branchId!;
+      const categoryId = req.query.categoryId ? parseInt(req.query.categoryId as string) : undefined;
+      const items = await inventoryStorage.getStockItems(branchId, categoryId);
+      res.json(items);
+    } catch (error) {
+      console.error("Error fetching stock items:", error);
+      res.status(500).json({ message: "Failed to fetch stock items" });
+    }
+  });
+
+  app.get("/api/inventory/stock-items/menu", isAuthenticated, async (req: any, res) => {
+    try {
+      const user = await storage.getUser(req.session.user.id);
+      if (!user) return res.status(401).json({ message: "User not found" });
+
+      const branchId = user.role === "superadmin" ? undefined : user.branchId!;
+      const items = await inventoryStorage.getMenuStockItems(branchId);
+      res.json(items);
+    } catch (error) {
+      console.error("Error fetching menu stock items:", error);
+      res.status(500).json({ message: "Failed to fetch menu stock items" });
+    }
+  });
+
+  app.post("/api/inventory/stock-items", isAuthenticated, async (req: any, res) => {
+    try {
+      const user = await storage.getUser(req.session.user.id);
+      if (!user) return res.status(401).json({ message: "User not found" });
+
+      const validatedData = insertStockItemSchema.parse({
+        ...req.body,
+        branchId: user.role === "superadmin" ? req.body.branchId : user.branchId!,
+      });
+
+      const item = await inventoryStorage.createStockItem(validatedData);
+      res.status(201).json(item);
+    } catch (error) {
+      console.error("Error creating stock item:", error);
+      res.status(500).json({ message: "Failed to create stock item" });
+    }
+  });
+
+  app.put("/api/inventory/stock-items/:id", isAuthenticated, async (req: any, res) => {
+    try {
+      const itemId = parseInt(req.params.id);
+      const validatedData = insertStockItemSchema.partial().parse(req.body);
+      const item = await inventoryStorage.updateStockItem(itemId, validatedData);
+      res.json(item);
+    } catch (error) {
+      console.error("Error updating stock item:", error);
+      res.status(500).json({ message: "Failed to update stock item" });
+    }
+  });
+
+  app.delete("/api/inventory/stock-items/:id", isAuthenticated, async (req: any, res) => {
+    try {
+      const itemId = parseInt(req.params.id);
+      await inventoryStorage.deleteStockItem(itemId);
+      res.json({ message: "Stock item deleted successfully" });
+    } catch (error) {
+      console.error("Error deleting stock item:", error);
+      res.status(500).json({ message: "Failed to delete stock item" });
+    }
+  });
+
+  // Stock Consumption
+  app.get("/api/inventory/consumption", isAuthenticated, async (req: any, res) => {
+    try {
+      const user = await storage.getUser(req.session.user.id);
+      if (!user) return res.status(401).json({ message: "User not found" });
+
+      const branchId = user.role === "superadmin" ? undefined : user.branchId!;
+      const orderId = req.query.orderId as string;
+      const consumptions = await inventoryStorage.getStockConsumptions(branchId, orderId);
+      res.json(consumptions);
+    } catch (error) {
+      console.error("Error fetching stock consumptions:", error);
+      res.status(500).json({ message: "Failed to fetch stock consumptions" });
+    }
+  });
+
+  app.get("/api/inventory/low-stock", isAuthenticated, async (req: any, res) => {
+    try {
+      const user = await storage.getUser(req.session.user.id);
+      if (!user) return res.status(401).json({ message: "User not found" });
+
+      const branchId = user.role === "superadmin" ? undefined : user.branchId!;
+      const items = await inventoryStorage.getLowStockItems(branchId);
+      res.json(items);
+    } catch (error) {
+      console.error("Error fetching low stock items:", error);
+      res.status(500).json({ message: "Failed to fetch low stock items" });
     }
   });
 

@@ -699,3 +699,183 @@ export const updateTaxSchema = z.object({
 export type Tax = typeof taxes.$inferSelect;
 export type InsertTax = z.infer<typeof insertTaxSchema>;
 export type UpdateTax = z.infer<typeof updateTaxSchema>;
+
+// Inventory Management Tables
+
+// Measuring Units
+export const measuringUnits = pgTable("measuring_units", {
+  id: serial("id").primaryKey(),
+  name: varchar("name", { length: 100 }).notNull(),
+  symbol: varchar("symbol", { length: 20 }).notNull(),
+  baseUnit: varchar("base_unit", { length: 100 }),
+  conversionFactor: decimal("conversion_factor", { precision: 10, scale: 4 }).default("1"),
+  isActive: boolean("is_active").default(true),
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+});
+
+// Stock Categories
+export const stockCategories = pgTable("stock_categories", {
+  id: serial("id").primaryKey(),
+  name: varchar("name", { length: 255 }).notNull(),
+  description: text("description"),
+  showInMenu: boolean("show_in_menu").default(false),
+  branchId: integer("branch_id").references(() => branches.id),
+  isActive: boolean("is_active").default(true),
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+});
+
+// Suppliers
+export const suppliers = pgTable("suppliers", {
+  id: serial("id").primaryKey(),
+  name: varchar("name", { length: 255 }).notNull(),
+  email: varchar("email", { length: 255 }),
+  phone: varchar("phone", { length: 50 }),
+  address: text("address"),
+  contactPerson: varchar("contact_person", { length: 255 }),
+  taxNumber: varchar("tax_number", { length: 100 }),
+  branchId: integer("branch_id").references(() => branches.id),
+  isActive: boolean("is_active").default(true),
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+});
+
+// Stock Items
+export const stockItems = pgTable("stock_items", {
+  id: serial("id").primaryKey(),
+  name: varchar("name", { length: 255 }).notNull(),
+  sku: varchar("sku", { length: 100 }).unique(),
+  categoryId: integer("category_id").references(() => stockCategories.id),
+  measuringUnitId: integer("measuring_unit_id").references(() => measuringUnits.id),
+  supplierId: integer("supplier_id").references(() => suppliers.id),
+  defaultPrice: decimal("default_price", { precision: 10, scale: 2 }).default("0"),
+  currentStock: decimal("current_stock", { precision: 10, scale: 3 }).default("0"),
+  minimumStock: decimal("minimum_stock", { precision: 10, scale: 3 }).default("0"),
+  maximumStock: decimal("maximum_stock", { precision: 10, scale: 3 }),
+  reorderLevel: decimal("reorder_level", { precision: 10, scale: 3 }),
+  reorderQuantity: decimal("reorder_quantity", { precision: 10, scale: 3 }),
+  description: text("description"),
+  branchId: integer("branch_id").references(() => branches.id),
+  isActive: boolean("is_active").default(true),
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+});
+
+// Stock Consumption
+export const stockConsumption = pgTable("stock_consumption", {
+  id: serial("id").primaryKey(),
+  stockItemId: integer("stock_item_id").references(() => stockItems.id),
+  orderId: varchar("order_id", { length: 255 }),
+  orderType: varchar("order_type", { length: 50 }).default("restaurant"), // restaurant, hotel, etc
+  quantity: decimal("quantity", { precision: 10, scale: 3 }).notNull(),
+  unitPrice: decimal("unit_price", { precision: 10, scale: 2 }),
+  totalCost: decimal("total_cost", { precision: 10, scale: 2 }),
+  consumedBy: text("consumed_by"),
+  notes: text("notes"),
+  branchId: integer("branch_id").references(() => branches.id),
+  createdAt: timestamp("created_at").defaultNow(),
+});
+
+// Inventory Relations
+export const measuringUnitsRelations = relations(measuringUnits, ({ many }) => ({
+  stockItems: many(stockItems),
+}));
+
+export const stockCategoriesRelations = relations(stockCategories, ({ one, many }) => ({
+  branch: one(branches, { fields: [stockCategories.branchId], references: [branches.id] }),
+  stockItems: many(stockItems),
+}));
+
+export const suppliersRelations = relations(suppliers, ({ one, many }) => ({
+  branch: one(branches, { fields: [suppliers.branchId], references: [branches.id] }),
+  stockItems: many(stockItems),
+}));
+
+export const stockItemsRelations = relations(stockItems, ({ one, many }) => ({
+  category: one(stockCategories, { fields: [stockItems.categoryId], references: [stockCategories.id] }),
+  measuringUnit: one(measuringUnits, { fields: [stockItems.measuringUnitId], references: [measuringUnits.id] }),
+  supplier: one(suppliers, { fields: [stockItems.supplierId], references: [suppliers.id] }),
+  branch: one(branches, { fields: [stockItems.branchId], references: [branches.id] }),
+  consumptions: many(stockConsumption),
+}));
+
+export const stockConsumptionRelations = relations(stockConsumption, ({ one }) => ({
+  stockItem: one(stockItems, { fields: [stockConsumption.stockItemId], references: [stockItems.id] }),
+  branch: one(branches, { fields: [stockConsumption.branchId], references: [branches.id] }),
+}));
+
+// Inventory Insert Schemas
+export const insertMeasuringUnitSchema = createInsertSchema(measuringUnits).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
+
+export const insertStockCategorySchema = createInsertSchema(stockCategories).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
+
+export const insertSupplierSchema = createInsertSchema(suppliers).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
+
+export const insertStockItemSchema = createInsertSchema(stockItems).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+}).extend({
+  defaultPrice: z.union([z.string(), z.number()]).transform((val) => 
+    typeof val === 'number' ? val.toString() : val
+  ),
+  currentStock: z.union([z.string(), z.number()]).transform((val) => 
+    typeof val === 'number' ? val.toString() : val
+  ),
+  minimumStock: z.union([z.string(), z.number()]).transform((val) => 
+    typeof val === 'number' ? val.toString() : val
+  ),
+  maximumStock: z.union([z.string(), z.number()]).transform((val) => 
+    typeof val === 'number' ? val.toString() : val
+  ).optional(),
+  reorderLevel: z.union([z.string(), z.number()]).transform((val) => 
+    typeof val === 'number' ? val.toString() : val
+  ).optional(),
+  reorderQuantity: z.union([z.string(), z.number()]).transform((val) => 
+    typeof val === 'number' ? val.toString() : val
+  ).optional(),
+});
+
+export const insertStockConsumptionSchema = createInsertSchema(stockConsumption).omit({
+  id: true,
+  createdAt: true,
+}).extend({
+  quantity: z.union([z.string(), z.number()]).transform((val) => 
+    typeof val === 'number' ? val.toString() : val
+  ),
+  unitPrice: z.union([z.string(), z.number()]).transform((val) => 
+    typeof val === 'number' ? val.toString() : val
+  ).optional(),
+  totalCost: z.union([z.string(), z.number()]).transform((val) => 
+    typeof val === 'number' ? val.toString() : val
+  ).optional(),
+});
+
+// Inventory Types
+export type MeasuringUnit = typeof measuringUnits.$inferSelect;
+export type InsertMeasuringUnit = z.infer<typeof insertMeasuringUnitSchema>;
+
+export type StockCategory = typeof stockCategories.$inferSelect;
+export type InsertStockCategory = z.infer<typeof insertStockCategorySchema>;
+
+export type Supplier = typeof suppliers.$inferSelect;
+export type InsertSupplier = z.infer<typeof insertSupplierSchema>;
+
+export type StockItem = typeof stockItems.$inferSelect;
+export type InsertStockItem = z.infer<typeof insertStockItemSchema>;
+
+export type StockConsumption = typeof stockConsumption.$inferSelect;
+export type InsertStockConsumption = z.infer<typeof insertStockConsumptionSchema>;

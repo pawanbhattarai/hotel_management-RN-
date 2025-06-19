@@ -25,6 +25,11 @@ import RestaurantBilling from "@/pages/restaurant-billing";
 import RestaurantCategories from "@/pages/restaurant-categories";
 import RestaurantDishes from "@/pages/restaurant-dishes";
 import TaxManagement from "@/pages/tax-management";
+import StockCategories from "@/pages/stock-categories";
+import StockItems from "@/pages/stock-items";
+import MeasuringUnits from "@/pages/measuring-units";
+import Suppliers from "@/pages/suppliers";
+import StockConsumption from "@/pages/stock-consumption";
 import { lazy, Suspense } from "react";
 
 const RestaurantAnalytics = lazy(() => import("./pages/restaurant-analytics"));
@@ -66,6 +71,11 @@ function Router() {
           <Route path="/restaurant/orders" component={RestaurantOrders} />
           <Route path="/restaurant/billing" component={RestaurantBilling} />
           <Route path="/tax-management" component={TaxManagement} />
+          <Route path="/inventory/stock-categories" component={StockCategories} />
+          <Route path="/inventory/stock-items" component={StockItems} />
+          <Route path="/inventory/measuring-units" component={MeasuringUnits} />
+          <Route path="/inventory/suppliers" component={Suppliers} />
+          <Route path="/inventory/consumption" component={StockConsumption} />
         </>
       )}
       <Route component={NotFound} />

@@ -22,6 +22,12 @@ import {
   Utensils,
   User,
   Bell,
+  Package,
+  Ruler,
+  Truck,
+  TrendingDown,
+  Layers,
+  Scale,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { ScrollArea } from "@/components/ui/scroll-area";
@@ -52,6 +58,7 @@ export default function Sidebar({
   const [isSetupExpanded, setIsSetupExpanded] = useState(false);
   const [isRMSExpanded, setIsRMSExpanded] = useState(false);
   const [isReportsExpanded, setIsReportsExpanded] = useState(false);
+  const [isInventoryExpanded, setIsInventoryExpanded] = useState(false);
 
   // Use props if provided, otherwise use internal state
   const isMenuOpen = setIsMobileMenuOpen
@@ -96,6 +103,13 @@ export default function Sidebar({
       setIsPMSExpanded(false);
       setIsRMSExpanded(false);
       setIsReportsExpanded(false);
+      setIsInventoryExpanded(false);
+    } else if (currentPath.startsWith("/inventory/")) {
+      setIsInventoryExpanded(true);
+      setIsPMSExpanded(false);
+      setIsRMSExpanded(false);
+      setIsReportsExpanded(false);
+      setIsSetupExpanded(false);
     } else if (
       [
         "/reservations",
@@ -460,6 +474,108 @@ export default function Sidebar({
                     >
                       <ChefHat className="mr-3 h-4 w-4 flex-shrink-0" />
                       <span className="text-sm font-medium">RMS Analytics</span>
+                    </button>
+                  </CollapsibleContent>
+                </Collapsible>
+              </div>
+            )}
+
+            {/* Inventory Section */}
+            {hasAccess(["superadmin", "branch-admin", "inventory-manager"]) && (
+              <div className="border-t border-gray-200 pt-4 mt-4">
+                <Collapsible
+                  open={isInventoryExpanded}
+                  onOpenChange={setIsInventoryExpanded}
+                >
+                  <CollapsibleTrigger className="w-full flex items-center justify-between px-3 py-2 text-left hover:bg-gray-100 rounded-lg mx-2">
+                    <span className="text-xs font-semibold text-gray-500 uppercase tracking-wide">
+                      Inventory
+                    </span>
+                    {isInventoryExpanded ? (
+                      <ChevronDown className="h-4 w-4 text-gray-500" />
+                    ) : (
+                      <ChevronRight className="h-4 w-4 text-gray-500" />
+                    )}
+                  </CollapsibleTrigger>
+                  <CollapsibleContent className="space-y-1 mt-2">
+                    {/* Stock Categories */}
+                    <button
+                      onClick={() => {
+                        navigate("/inventory/stock-categories");
+                        setMenuOpen(false);
+                      }}
+                      className={`w-full flex items-center px-3 py-2 lg:py-2.5 text-left rounded-lg mx-6 transition-colors ${
+                        isActiveRoute("/inventory/stock-categories")
+                          ? "bg-primary text-white"
+                          : "text-gray-700 hover:bg-gray-100"
+                      }`}
+                    >
+                      <Layers className="mr-3 h-4 w-4 flex-shrink-0" />
+                      <span className="text-sm font-medium">Stock Categories</span>
+                    </button>
+
+                    {/* Stock Items */}
+                    <button
+                      onClick={() => {
+                        navigate("/inventory/stock-items");
+                        setMenuOpen(false);
+                      }}
+                      className={`w-full flex items-center px-3 py-2 lg:py-2.5 text-left rounded-lg mx-6 transition-colors ${
+                        isActiveRoute("/inventory/stock-items")
+                          ? "bg-primary text-white"
+                          : "text-gray-700 hover:bg-gray-100"
+                      }`}
+                    >
+                      <Package className="mr-3 h-4 w-4 flex-shrink-0" />
+                      <span className="text-sm font-medium">Stock Items</span>
+                    </button>
+
+                    {/* Measuring Units */}
+                    <button
+                      onClick={() => {
+                        navigate("/inventory/measuring-units");
+                        setMenuOpen(false);
+                      }}
+                      className={`w-full flex items-center px-3 py-2 lg:py-2.5 text-left rounded-lg mx-6 transition-colors ${
+                        isActiveRoute("/inventory/measuring-units")
+                          ? "bg-primary text-white"
+                          : "text-gray-700 hover:bg-gray-100"
+                      }`}
+                    >
+                      <Scale className="mr-3 h-4 w-4 flex-shrink-0" />
+                      <span className="text-sm font-medium">Measuring Units</span>
+                    </button>
+
+                    {/* Suppliers */}
+                    <button
+                      onClick={() => {
+                        navigate("/inventory/suppliers");
+                        setMenuOpen(false);
+                      }}
+                      className={`w-full flex items-center px-3 py-2 lg:py-2.5 text-left rounded-lg mx-6 transition-colors ${
+                        isActiveRoute("/inventory/suppliers")
+                          ? "bg-primary text-white"
+                          : "text-gray-700 hover:bg-gray-100"
+                      }`}
+                    >
+                      <Users className="mr-3 h-4 w-4 flex-shrink-0" />
+                      <span className="text-sm font-medium">Suppliers</span>
+                    </button>
+
+                    {/* Stock Consumption */}
+                    <button
+                      onClick={() => {
+                        navigate("/inventory/stock-consumption");
+                        setMenuOpen(false);
+                      }}
+                      className={`w-full flex items-center px-3 py-2 lg:py-2.5 text-left rounded-lg mx-6 transition-colors ${
+                        isActiveRoute("/inventory/stock-consumption")
+                          ? "bg-primary text-white"
+                          : "text-gray-700 hover:bg-gray-100"
+                      }`}
+                    >
+                      <TrendingDown className="mr-3 h-4 w-4 flex-shrink-0" />
+                      <span className="text-sm font-medium">Stock Consumption</span>
                     </button>
                   </CollapsibleContent>
                 </Collapsible>
