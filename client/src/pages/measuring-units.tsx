@@ -76,8 +76,22 @@ export default function MeasuringUnits() {
   });
 
   const createMutation = useMutation({
-    mutationFn: (data: z.infer<typeof formSchema>) =>
-      apiRequest("/api/inventory/measuring-units", "POST", data),
+    mutationFn: async (data: z.infer<typeof formSchema>) => {
+      const response = await fetch("/api/inventory/measuring-units", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify(data),
+      });
+      
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({}));
+        throw new Error(errorData.message || `HTTP error! status: ${response.status}`);
+      }
+      
+      return response.json();
+    },
     onSuccess: () => {
       queryClient.invalidateQueries({
         queryKey: ["/api/inventory/measuring-units"],
@@ -97,11 +111,25 @@ export default function MeasuringUnits() {
   });
 
   const updateMutation = useMutation({
-    mutationFn: ({
+    mutationFn: async ({
       id,
       ...data
-    }: { id: number } & Partial<z.infer<typeof formSchema>>) =>
-      apiRequest(`/api/inventory/measuring-units/${id}`, "PUT", data),
+    }: { id: number } & Partial<z.infer<typeof formSchema>>) => {
+      const response = await fetch(`/api/inventory/measuring-units/${id}`, {
+        method: "PUT",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify(data),
+      });
+      
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({}));
+        throw new Error(errorData.message || `HTTP error! status: ${response.status}`);
+      }
+      
+      return response.json();
+    },
     onSuccess: () => {
       queryClient.invalidateQueries({
         queryKey: ["/api/inventory/measuring-units"],
@@ -111,26 +139,43 @@ export default function MeasuringUnits() {
       form.reset();
       toast({ title: "Measuring unit updated successfully" });
     },
-    onError: () => {
+    onError: (error: any) => {
+      console.error("Error updating measuring unit:", error);
       toast({
         title: "Failed to update measuring unit",
+        description: error?.message || "Please try again",
         variant: "destructive",
       });
     },
   });
 
   const deleteMutation = useMutation({
-    mutationFn: (id: number) =>
-      apiRequest(`/api/inventory/measuring-units/${id}`, "DELETE"),
+    mutationFn: async (id: number) => {
+      const response = await fetch(`/api/inventory/measuring-units/${id}`, {
+        method: "DELETE",
+        headers: {
+          "Content-Type": "application/json",
+        },
+      });
+      
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({}));
+        throw new Error(errorData.message || `HTTP error! status: ${response.status}`);
+      }
+      
+      return response.json();
+    },
     onSuccess: () => {
       queryClient.invalidateQueries({
         queryKey: ["/api/inventory/measuring-units"],
       });
       toast({ title: "Measuring unit deleted successfully" });
     },
-    onError: () => {
+    onError: (error: any) => {
+      console.error("Error deleting measuring unit:", error);
       toast({
         title: "Failed to delete measuring unit",
+        description: error?.message || "Please try again",
         variant: "destructive",
       });
     },
