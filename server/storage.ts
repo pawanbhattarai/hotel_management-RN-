@@ -738,6 +738,7 @@ export class DatabaseStorage implements IStorage {
     const days = parseInt(period.replace('d', ''));
     const startDate = new Date();
     startDate.setDate(startDate.getDate() - days);
+    const startDateString = startDate.toISOString().split('T')[0];
 
     let query = db
       .select({
@@ -747,7 +748,7 @@ export class DatabaseStorage implements IStorage {
       .from(reservations)
       .where(
         and(
-          gte(reservations.createdAt, startDate),
+          sql`DATE(${reservations.createdAt}) >= ${startDateString}`,
           branchId ? eq(reservations.branchId, branchId) : undefined
         )
       )
@@ -772,6 +773,7 @@ export class DatabaseStorage implements IStorage {
     const days = parseInt(period.replace('d', ''));
     const startDate = new Date();
     startDate.setDate(startDate.getDate() - days);
+    const startDateString = startDate.toISOString().split('T')[0];
 
     // Get total rooms
     let totalRoomsQuery = db.select({ count: sql<number>`count(*)` }).from(rooms);
@@ -791,7 +793,7 @@ export class DatabaseStorage implements IStorage {
       .leftJoin(reservations, eq(reservationRooms.reservationId, reservations.id))
       .where(
         and(
-          gte(reservationRooms.checkInDate, startDate),
+          sql`DATE(${reservationRooms.checkInDate}) >= ${startDateString}`,
           branchId ? eq(reservations.branchId, branchId) : undefined
         )
       )
@@ -918,13 +920,25 @@ export class DatabaseStorage implements IStorage {
     // Average length of stay
     let avgStayQuery = db
       .select({
-        avgStay: sql<number>`AVG(DATE_PART('day', ${reservationRooms.checkOutDate} - ${reservationRooms.checkInDate}))`,
+        avgStay: sql<number>`AVG(EXTRACT(DAY FROM (${reservationRooms.checkOutDate}::timestamp - ${reservationRooms.checkInDate}::timestamp)))`,
       })
       .from(reservationRooms)
-      .leftJoin(reservations, eq(reservationRooms.reservationId, reservations.id));
+      .leftJoin(reservations, eq(reservationRooms.reservationId, reservations.id))
+      .where(
+        and(
+          sql`${reservationRooms.checkOutDate} IS NOT NULL`,
+          sql`${reservationRooms.checkInDate} IS NOT NULL`
+        )
+      );
 
     if (branchId) {
-      avgStayQuery = avgStayQuery.where(eq(reservations.branchId, branchId));
+      avgStayQuery = avgStayQuery.where(
+        and(
+          eq(reservations.branchId, branchId),
+          sql`${reservationRooms.checkOutDate} IS NOT NULL`,
+          sql`${reservationRooms.checkInDate} IS NOT NULL`
+        )
+      );
     }
 
     const [avgStayResult] = await avgStayQuery;
@@ -932,14 +946,14 @@ export class DatabaseStorage implements IStorage {
     // Check-in/out times analysis
     let checkInTimesQuery = db
       .select({
-        hour: sql<number>`EXTRACT(HOUR FROM ${reservationRooms.actualCheckIn})`,
+        hour: sql<number>`EXTRACT(HOUR FROM ${reservationRooms.actualCheckIn}::timestamp)`,
         count: sql<number>`COUNT(*)`,
       })
       .from(reservationRooms)
       .leftJoin(reservations, eq(reservationRooms.reservationId, reservations.id))
       .where(sql`${reservationRooms.actualCheckIn} IS NOT NULL`)
-      .groupBy(sql`EXTRACT(HOUR FROM ${reservationRooms.actualCheckIn})`)
-      .orderBy(sql`EXTRACT(HOUR FROM ${reservationRooms.actualCheckIn})`);
+      .groupBy(sql`EXTRACT(HOUR FROM ${reservationRooms.actualCheckIn}::timestamp)`)
+      .orderBy(sql`EXTRACT(HOUR FROM ${reservationRooms.actualCheckIn}::timestamp)`);
 
     if (branchId) {
       checkInTimesQuery = checkInTimesQuery.where(eq(reservations.branchId, branchId));
