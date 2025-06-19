@@ -51,6 +51,8 @@ type MeasuringUnit = {
 const formSchema = insertMeasuringUnitSchema.extend({
   name: z.string().min(1, "Unit name is required"),
   symbol: z.string().min(1, "Symbol is required"),
+  baseUnit: z.string().optional(),
+  conversionFactor: z.string().default("1"),
 });
 
 export default function MeasuringUnits() {
@@ -84,9 +86,11 @@ export default function MeasuringUnits() {
       form.reset();
       toast({ title: "Measuring unit created successfully" });
     },
-    onError: () => {
+    onError: (error: any) => {
+      console.error("Error creating measuring unit:", error);
       toast({
         title: "Failed to create measuring unit",
+        description: error?.message || "Please try again",
         variant: "destructive",
       });
     },

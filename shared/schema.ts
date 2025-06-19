@@ -826,6 +826,18 @@ export const insertSupplierSchema = createInsertSchema(suppliers).omit({
 
 export const insertStockItemSchema = createInsertSchema(stockItems).omit({
   id: true,
+  sku: true,
+  createdAt: true,
+  updatedAt: true,
+});
+
+export const insertStockConsumptionSchema = createInsertSchema(stockConsumption).omit({
+  id: true,
+  createdAt: true,
+});
+
+export const insertStockItemSchema = createInsertSchema(stockItems).omit({
+  id: true,
   createdAt: true,
   updatedAt: true,
 }).extend({

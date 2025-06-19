@@ -106,8 +106,13 @@ export default function StockItems() {
       form.reset();
       toast({ title: "Stock item created successfully" });
     },
-    onError: () => {
-      toast({ title: "Failed to create stock item", variant: "destructive" });
+    onError: (error: any) => {
+      console.error("Error creating stock item:", error);
+      toast({ 
+        title: "Failed to create stock item", 
+        description: error?.message || "Please try again",
+        variant: "destructive" 
+      });
     },
   });
 

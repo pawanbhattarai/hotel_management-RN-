@@ -88,8 +88,13 @@ export default function Suppliers() {
       form.reset();
       toast({ title: "Supplier created successfully" });
     },
-    onError: () => {
-      toast({ title: "Failed to create supplier", variant: "destructive" });
+    onError: (error: any) => {
+      console.error("Error creating supplier:", error);
+      toast({ 
+        title: "Failed to create supplier", 
+        description: error?.message || "Please try again",
+        variant: "destructive" 
+      });
     },
   });
 
