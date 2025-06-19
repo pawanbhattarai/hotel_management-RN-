@@ -823,16 +823,21 @@ export class DatabaseStorage implements IStorage {
     }
     const allGuests = await guestQuery;
 
-    // Top guests by reservation count
+    // Top guests by reservation count with total spent
     let topGuestsQuery = db
       .select({
-        guestId: guests.id,
-        firstName: guests.firstName,
-        lastName: guests.lastName,
-        email: guests.email,
-        reservationCount: guests.reservationCount,
+        guest: {
+          id: guests.id,
+          firstName: guests.firstName,
+          lastName: guests.lastName,
+          email: guests.email,
+        },
+        totalBookings: guests.reservationCount,
+        totalSpent: sql<number>`COALESCE(SUM(CAST(${reservations.totalAmount} AS DECIMAL)), 0)`,
       })
       .from(guests)
+      .leftJoin(reservations, eq(guests.id, reservations.guestId))
+      .groupBy(guests.id, guests.firstName, guests.lastName, guests.email, guests.reservationCount)
       .orderBy(desc(guests.reservationCount))
       .limit(10);
 
@@ -842,9 +847,45 @@ export class DatabaseStorage implements IStorage {
 
     const topGuests = await topGuestsQuery;
 
+    // Guest nationality demographics
+    const guestsByNationality = await db
+      .select({
+        nationality: guests.nationality,
+        count: sql<number>`COUNT(*)`,
+      })
+      .from(guests)
+      .where(branchId ? eq(guests.branchId, branchId) : undefined)
+      .groupBy(guests.nationality)
+      .orderBy(desc(sql`COUNT(*)`))
+      .limit(10);
+
+    // New guests this month
+    const currentMonth = new Date();
+    currentMonth.setDate(1);
+    currentMonth.setHours(0, 0, 0, 0);
+
+    const [newGuestsResult] = await db
+      .select({ count: sql<number>`COUNT(*)` })
+      .from(guests)
+      .where(
+        and(
+          gte(guests.createdAt, currentMonth),
+          branchId ? eq(guests.branchId, branchId) : undefined
+        )
+      );
+
     return {
       totalGuests: allGuests.length,
-      topGuests,
+      topGuests: topGuests.map(guest => ({
+        guest: guest.guest,
+        totalBookings: guest.totalBookings,
+        totalSpent: Number(guest.totalSpent) || 0,
+      })),
+      guestsByNationality: guestsByNationality.filter(g => g.nationality).map(g => ({
+        nationality: g.nationality || 'Unknown',
+        count: g.count,
+      })),
+      newGuestsThisMonth: newGuestsResult.count,
       repeatGuestRate: allGuests.length > 0 
         ? Math.round((allGuests.filter(g => g.reservationCount > 1).length / allGuests.length) * 100)
         : 0
