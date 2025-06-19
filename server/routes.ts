@@ -442,6 +442,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const user = await storage.getUser(req.session.user.id);
       if (!user) return res.status(401).json({ message: "User not found" });
 
+      // For superadmin, return all room types. For branch users, return room types for their branch + unassigned ones
       const branchId = user.role === "superadmin" ? undefined : user.branchId!;
       const roomTypes = await storage.getRoomTypes(branchId);
       res.json(roomTypes);

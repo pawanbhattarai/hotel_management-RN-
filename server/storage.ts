@@ -1,7 +1,6 @@
-
 import { drizzle } from "drizzle-orm/postgres-js";
 import postgres from "postgres";
-import { eq, and, gte, lt, desc, sql } from "drizzle-orm";
+import { eq, and, gte, lt, desc, sql, isNull, or } from "drizzle-orm";
 import {
   users,
   branches,
@@ -221,9 +220,16 @@ export class DatabaseStorage implements IStorage {
   // Room Type operations
   async getRoomTypes(branchId?: number): Promise<RoomType[]> {
     let query = db.select().from(roomTypes);
+
     if (branchId) {
-      query = query.where(eq(roomTypes.branchId, branchId));
+      query = query.where(
+        or(
+          eq(roomTypes.branchId, branchId),
+          isNull(roomTypes.branchId)
+        )
+      );
     }
+
     return await query.orderBy(roomTypes.name);
   }
 
@@ -263,7 +269,7 @@ export class DatabaseStorage implements IStorage {
     }
 
     const results = await query.orderBy(rooms.number);
-    
+
     return results.map(result => ({
       ...result.rooms,
       roomType: result.room_types!,
@@ -477,7 +483,7 @@ export class DatabaseStorage implements IStorage {
 
   async upsertHotelSettings(settings: InsertHotelSettings): Promise<HotelSettings> {
     const existingSettings = await this.getHotelSettings();
-    
+
     if (existingSettings) {
       const [result] = await db
         .update(hotelSettings)
@@ -604,7 +610,7 @@ export class DatabaseStorage implements IStorage {
           branchId ? eq(rooms.branchId, branchId) : undefined
         )
       );
-    
+
     const [occupiedRoomsResult] = await occupiedQuery;
     const occupiedRooms = occupiedRoomsResult.count;
 
@@ -619,7 +625,7 @@ export class DatabaseStorage implements IStorage {
           branchId ? eq(reservations.branchId, branchId) : undefined
         )
       );
-    
+
     const [todayReservationsResult] = await todayReservationsQuery;
     const todayReservations = todayReservationsResult.count;
 
@@ -636,7 +642,7 @@ export class DatabaseStorage implements IStorage {
           branchId ? eq(reservations.branchId, branchId) : undefined
         )
       );
-    
+
     const [todayRevenueResult] = await todayRevenueQuery;
     const todayRevenue = Number(todayRevenueResult.revenue);
 
@@ -648,11 +654,11 @@ export class DatabaseStorage implements IStorage {
       })
       .from(rooms)
       .groupBy(rooms.status);
-    
+
     if (branchId) {
       statusQuery = statusQuery.where(eq(rooms.branchId, branchId));
     }
-    
+
     const statusResults = await statusQuery;
     const roomStatusCounts = statusResults.reduce((acc, result) => {
       acc[result.status] = result.count;
