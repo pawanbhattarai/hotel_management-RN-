@@ -91,9 +91,22 @@ export default function StockCategories() {
   });
 
   const createMutation = useMutation({
-    mutationFn: (data: z.infer<typeof formSchema>) => {
+    mutationFn: async (data: z.infer<typeof formSchema>) => {
       console.log("API request data:", data);
-      return apiRequest("/api/inventory/stock-categories", "POST", data);
+      const response = await fetch("/api/inventory/stock-categories", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify(data),
+      });
+      
+      if (!response.ok) {
+        const error = await response.json();
+        throw new Error(error.message || "Failed to create stock category");
+      }
+      
+      return response.json();
     },
     onSuccess: (response) => {
       console.log("Category created successfully:", response);
@@ -115,11 +128,25 @@ export default function StockCategories() {
   });
 
   const updateMutation = useMutation({
-    mutationFn: ({
+    mutationFn: async ({
       id,
       ...data
-    }: { id: number } & Partial<z.infer<typeof formSchema>>) =>
-      apiRequest(`/api/inventory/stock-categories/${id}`, "PUT", data),
+    }: { id: number } & Partial<z.infer<typeof formSchema>>) => {
+      const response = await fetch(`/api/inventory/stock-categories/${id}`, {
+        method: "PUT",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify(data),
+      });
+      
+      if (!response.ok) {
+        const error = await response.json();
+        throw new Error(error.message || "Failed to update stock category");
+      }
+      
+      return response.json();
+    },
     onSuccess: () => {
       queryClient.invalidateQueries({
         queryKey: ["/api/inventory/stock-categories"],
@@ -138,8 +165,18 @@ export default function StockCategories() {
   });
 
   const deleteMutation = useMutation({
-    mutationFn: (id: number) =>
-      apiRequest(`/api/inventory/stock-categories/${id}`, "DELETE"),
+    mutationFn: async (id: number) => {
+      const response = await fetch(`/api/inventory/stock-categories/${id}`, {
+        method: "DELETE",
+      });
+      
+      if (!response.ok) {
+        const error = await response.json();
+        throw new Error(error.message || "Failed to delete stock category");
+      }
+      
+      return response.json();
+    },
     onSuccess: () => {
       queryClient.invalidateQueries({
         queryKey: ["/api/inventory/stock-categories"],
