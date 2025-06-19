@@ -833,7 +833,6 @@ export async function registerRoutes(app: Express): Promise<Server> {
       if (bodyData.totalAmount && typeof bodyData.totalAmount === 'number') {
         bodyData.totalAmount = bodyData.totalAmount.toString();
       }
-```text
       if (bodyData.taxAmount && typeof bodyData.taxAmount === 'number') {
         bodyData.taxAmount = bodyData.taxAmount.toString();
       }
