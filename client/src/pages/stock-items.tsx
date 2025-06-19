@@ -161,7 +161,7 @@ export default function StockItems() {
 
   const onSubmit = (data: z.infer<typeof formSchema>) => {
     console.log("Form submission data:", data);
-    
+
     // Ensure required fields are properly set
     const submitData = {
       ...data,
@@ -169,7 +169,7 @@ export default function StockItems() {
       measuringUnitId: Number(data.measuringUnitId),
       supplierId: data.supplierId ? Number(data.supplierId) : undefined,
     };
-    
+
     if (editingItem) {
       updateMutation.mutate({ id: editingItem.id, ...submitData });
     } else {

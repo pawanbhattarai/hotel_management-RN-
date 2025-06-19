@@ -833,6 +833,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       if (bodyData.totalAmount && typeof bodyData.totalAmount === 'number') {
         bodyData.totalAmount = bodyData.totalAmount.toString();
       }
+```text
       if (bodyData.taxAmount && typeof bodyData.taxAmount === 'number') {
         bodyData.taxAmount = bodyData.taxAmount.toString();
       }
@@ -1590,8 +1591,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Menu Categories
   app.get("/api/restaurant/categories", isAuthenticated, async (req: any, res) => {
     try {
-      const user = await storage.getUser(req.session.user.id);
-      if (!user) return res.status(401).json({ message: "User not found" });
+      const user = await storage.getUser(req.session.user.id);      if (!user) return res.status(401).json({ message: "User not found" });
 
       const branchId = user.role === "superadmin" ? undefined : user.branchId!;
       const categories = await restaurantStorage.getMenuCategories(branchId);
@@ -2392,7 +2392,26 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  // Stock Items
+  // Stock items
+  app.post("/api/inventory/stock-items", isAuthenticated, async (req: any, res) => {
+    try {
+      const user = await storage.getUser(req.session.user.id);
+      if (!user) return res.status(401).json({ message: "User not found" });
+
+      const stockItemData = insertStockItemSchema.parse(req.body);
+
+      if (!checkBranchPermissions(user.role, user.branchId, stockItemData.branchId)) {
+        return res.status(403).json({ message: "Insufficient permissions" });
+      }
+
+      const stockItem = await inventoryStorage.createStockItem(stockItemData);
+      res.status(201).json(stockItem);
+    } catch (error) {
+      console.error("Error creating stock item:", error);
+      res.status(500).json({ message: "Failed to create stock item" });
+    }
+  });
+
   app.get("/api/inventory/stock-items", isAuthenticated, async (req: any, res) => {
     try {
       const user = await storage.getUser(req.session.user.id);
@@ -2419,24 +2438,6 @@ export async function registerRoutes(app: Express): Promise<Server> {
     } catch (error) {
       console.error("Error fetching menu stock items:", error);
       res.status(500).json({ message: "Failed to fetch menu stock items" });
-    }
-  });
-
-  app.post("/api/inventory/stock-items", isAuthenticated, async (req: any, res) => {
-    try {
-      const user = await storage.getUser(req.session.user.id);
-      if (!user) return res.status(401).json({ message: "User not found" });
-
-      const validatedData = insertStockItemSchema.parse({
-        ...req.body,
-        branchId: user.role === "superadmin" ? req.body.branchId : user.branchId!,
-      });
-
-      const item = await inventoryStorage.createStockItem(validatedData);
-      res.status(201).json(item);
-    } catch (error) {
-      console.error("Error creating stock item:", error);
-      res.status(500).json({ message: "Failed to create stock item" });
     }
   });
 
