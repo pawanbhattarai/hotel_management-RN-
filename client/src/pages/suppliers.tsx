@@ -80,8 +80,22 @@ export default function Suppliers() {
   });
 
   const createMutation = useMutation({
-    mutationFn: (data: z.infer<typeof formSchema>) =>
-      apiRequest("/api/inventory/suppliers", "POST", data),
+    mutationFn: async (data: z.infer<typeof formSchema>) => {
+      const response = await fetch("/api/inventory/suppliers", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify(data),
+      });
+      
+      if (!response.ok) {
+        const error = await response.json();
+        throw new Error(error.message || "Failed to create supplier");
+      }
+      
+      return response.json();
+    },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/inventory/suppliers"] });
       setDialogOpen(false);
@@ -99,11 +113,25 @@ export default function Suppliers() {
   });
 
   const updateMutation = useMutation({
-    mutationFn: ({
+    mutationFn: async ({
       id,
       ...data
-    }: { id: number } & Partial<z.infer<typeof formSchema>>) =>
-      apiRequest(`/api/inventory/suppliers/${id}`, "PUT", data),
+    }: { id: number } & Partial<z.infer<typeof formSchema>>) => {
+      const response = await fetch(`/api/inventory/suppliers/${id}`, {
+        method: "PUT",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify(data),
+      });
+      
+      if (!response.ok) {
+        const error = await response.json();
+        throw new Error(error.message || "Failed to update supplier");
+      }
+      
+      return response.json();
+    },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/inventory/suppliers"] });
       setDialogOpen(false);
@@ -117,8 +145,18 @@ export default function Suppliers() {
   });
 
   const deleteMutation = useMutation({
-    mutationFn: (id: number) =>
-      apiRequest(`/api/inventory/suppliers/${id}`, "DELETE"),
+    mutationFn: async (id: number) => {
+      const response = await fetch(`/api/inventory/suppliers/${id}`, {
+        method: "DELETE",
+      });
+      
+      if (!response.ok) {
+        const error = await response.json();
+        throw new Error(error.message || "Failed to delete supplier");
+      }
+      
+      return response.json();
+    },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/inventory/suppliers"] });
       toast({ title: "Supplier deleted successfully" });
