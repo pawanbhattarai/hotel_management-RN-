@@ -426,12 +426,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
               branch,
               roomData.status
             );
-            console.log(`✅ Maintenance notification sent for room ${existingRoom.number}`);
+            console.log(`Maintenance notification sent for room ${existingRoom.number}`);
           } else {
-            console.warn(`⚠️ Missing branch or room type data for maintenance notification`);
+            console.warn(` Missing branch or room type data for maintenance notification`);
           }
         } catch (notificationError) {
-          console.error("❌ Failed to send maintenance notification:", notificationError);
+          console.error("Failed to send maintenance notification:", notificationError);
         }
       }
 
@@ -831,8 +831,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         bodyData.paidAmount = bodyData.paidAmount.toString();
       }
       if (bodyData.totalAmount && typeof bodyData.totalAmount === 'number') {
-        ```text
-bodyData.totalAmount = bodyData.totalAmount.toString();
+        bodyData.totalAmount = bodyData.totalAmount.toString();
       }
       if (bodyData.taxAmount && typeof bodyData.taxAmount === 'number') {
         bodyData.taxAmount = bodyData.taxAmount.toString();
@@ -871,36 +870,36 @@ bodyData.totalAmount = bodyData.totalAmount.toString();
 
         // Send notifications for status changes
         try {
-          console.log(`📋 Reservation ${reservationId} status changed to ${validatedData.status}, sending notification...`);
+          console.log(`Reservation ${reservationId} status changed to ${validatedData.status}, sending notification...`);
 
           const branch = await storage.getBranch(existingReservation.branchId);
           const firstRoom = existingReservation.reservationRooms[0];
 
           if (branch && firstRoom) {
             if (validatedData.status === 'checked-in') {
-              console.log(`🏨 Sending check-in notification for reservation ${reservationId}`);
+              console.log(`Sending check-in notification for reservation ${reservationId}`);
               await NotificationService.sendCheckInNotification(
                 existingReservation.guest,
                 firstRoom.room,
                 branch,
                 reservationId
               );
-              console.log(`✅ Check-in notification sent for reservation ${reservationId}`);
+              console.log(`Check-in notification sent for reservation ${reservationId}`);
             } else if (validatedData.status === 'checked-out') {
-              console.log(`🚪 Sending check-out notification for reservation ${reservationId}`);
+              console.log(`Sending check-out notification for reservation ${reservationId}`);
               await NotificationService.sendCheckOutNotification(
                 existingReservation.guest,
                 firstRoom.room,
                 branch,
                 reservationId
               );
-              console.log(`✅ Check-out notification sent for reservation ${reservationId}`);
+              console.log(`Check-out notification sent for reservation ${reservationId}`);
             }
           } else {
-            console.warn(`⚠️ Missing branch or room data for status change notification`);
+            console.warn(`Missing branch or room data for status change notification`);
           }
         } catch (notificationError) {
-          console.error("❌ Failed to send status change notification:", notificationError);
+          console.error("Failed to send status change notification:", notificationError);
         }
       }
 
@@ -1284,7 +1283,7 @@ bodyData.totalAmount = bodyData.totalAmount.toString();
     try {
       const user = await storage.getUser(req.session.user.id);
       if (!user) {
-        console.error("❌ User not found during subscription");
+        console.error(" User not found during subscription");
         return res.status(401).json({ message: "User not found" });
       }
 
@@ -1292,14 +1291,14 @@ bodyData.totalAmount = bodyData.totalAmount.toString();
 
       // Only allow admin users to subscribe to notifications
       if (user.role !== 'superadmin' && user.role !== 'branch-admin') {
-        console.warn(`❌ Non-admin user ${user.id} (${user.role}) tried to subscribe to notifications`);
+        console.warn(` Non-admin user ${user.id} (${user.role}) tried to subscribe to notifications`);
         return res.status(403).json({ message: "Only admin users can subscribe to notifications" });
       }
 
       const { endpoint, p256dh, auth } = req.body;
 
       if (!endpoint || !p256dh || !auth) {
-        console.error("❌ Missing subscription data:", { 
+        console.error(" Missing subscription data:", { 
           endpoint: !!endpoint, 
           p256dh: !!p256dh, 
           auth: !!auth,
@@ -1312,7 +1311,7 @@ bodyData.totalAmount = bodyData.totalAmount.toString();
 
       // Validate subscription data format
       if (typeof endpoint !== 'string' || typeof p256dh !== 'string' || typeof auth !== 'string') {
-        console.error("❌ Invalid subscription data types");
+        console.error(" Invalid subscription data types");
         return res.status(400).json({ message: "Invalid subscription data format" });
       }
 
@@ -1334,12 +1333,12 @@ bodyData.totalAmount = bodyData.totalAmount.toString();
           // Verify it's still in the admin subscriptions list
           const allSubscriptions = await storage.getAllAdminSubscriptions();
           const isInAdminList = allSubscriptions.some(sub => sub.userId === user.id && sub.endpoint === endpoint);
-          console.log(`📋 Subscription found in admin list: ${isInAdminList}`);
+          console.log(` Subscription found in admin list: ${isInAdminList}`);
 
           return res.json(existingSubscription);
         }
       } catch (error) {
-        console.error("❌ Error checking existing subscription:", error);
+        console.error(" Error checking existing subscription:", error);
         // Continue with creating new subscription
       }
 
@@ -1351,12 +1350,12 @@ bodyData.totalAmount = bodyData.totalAmount.toString();
         auth,
       });
 
-      console.log(`✅ Push subscription created successfully for user ${user.id} (${user.email})`);
+      console.log(` Push subscription created successfully for user ${user.id} (${user.email})`);
 
       // Verify the subscription was saved and is accessible
       try {
         const allSubscriptions = await storage.getAllAdminSubscriptions();
-        console.log(`📊 Total admin subscriptions after creation: ${allSubscriptions.length}`);
+        console.log(` Total admin subscriptions after creation: ${allSubscriptions.length}`);
 
         const userSubscriptions = allSubscriptions.filter(sub => sub.userId === user.id);
         console.log(`👤 Subscriptions for user ${user.id}: ${userSubscriptions.length}`);
@@ -1372,13 +1371,13 @@ bodyData.totalAmount = bodyData.totalAmount.toString();
         const newSubInList = allSubscriptions.some(sub => 
           sub.userId === user.id && sub.endpoint === endpoint
         );
-        console.log(`✅ New subscription found in admin list: ${newSubInList}`);
+        console.log(` New subscription found in admin list: ${newSubInList}`);
 
         if (!newSubInList) {
-          console.error(`❌ CRITICAL: New subscription not found in admin list!`);
+          console.error(` CRITICAL: New subscription not found in admin list!`);
         }
       } catch (verifyError) {
-        console.error("❌ Error verifying subscription creation:", verifyError);
+        console.error(" Error verifying subscription creation:", verifyError);
       }
 
       res.json({
@@ -1386,7 +1385,7 @@ bodyData.totalAmount = bodyData.totalAmount.toString();
         message: "Subscription created successfully"
       });
     } catch (error) {
-      console.error("❌ Error creating push subscription:", error);
+      console.error(" Error creating push subscription:", error);
       res.status(500).json({ 
         message: "Failed to create push subscription",
         error: error instanceof Error ? error.message : "Unknown error"
@@ -1406,7 +1405,7 @@ bodyData.totalAmount = bodyData.totalAmount.toString();
       }
 
       await storage.deletePushSubscription(user.id, endpoint);
-      console.log(`✅ Push subscription deleted for user ${user.id}`);
+      console.log(` Push subscription deleted for user ${user.id}`);
       res.json({ message: "Unsubscribed successfully" });
     } catch (error) {
       console.error("Error deleting push subscription:", error);
