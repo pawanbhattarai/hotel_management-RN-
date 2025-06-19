@@ -826,18 +826,6 @@ export const insertSupplierSchema = createInsertSchema(suppliers).omit({
 
 export const insertStockItemSchema = createInsertSchema(stockItems).omit({
   id: true,
-  sku: true,
-  createdAt: true,
-  updatedAt: true,
-});
-
-export const insertStockConsumptionSchema = createInsertSchema(stockConsumption).omit({
-  id: true,
-  createdAt: true,
-});
-
-export const insertStockItemSchema = createInsertSchema(stockItems).omit({
-  id: true,
   createdAt: true,
   updatedAt: true,
 }).extend({
@@ -861,20 +849,7 @@ export const insertStockItemSchema = createInsertSchema(stockItems).omit({
   ).optional(),
 });
 
-export const insertStockConsumptionSchema = createInsertSchema(stockConsumption).omit({
-  id: true,
-  createdAt: true,
-}).extend({
-  quantity: z.union([z.string(), z.number()]).transform((val) => 
-    typeof val === 'number' ? val.toString() : val
-  ),
-  unitPrice: z.union([z.string(), z.number()]).transform((val) => 
-    typeof val === 'number' ? val.toString() : val
-  ).optional(),
-  totalCost: z.union([z.string(), z.number()]).transform((val) => 
-    typeof val === 'number' ? val.toString() : val
-  ).optional(),
-});
+
 
 // Inventory Types
 export type MeasuringUnit = typeof measuringUnits.$inferSelect;
