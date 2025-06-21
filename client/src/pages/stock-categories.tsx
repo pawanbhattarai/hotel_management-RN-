@@ -52,7 +52,6 @@ type StockCategory = {
   id: number;
   name: string;
   description: string | null;
-  showInMenu: boolean;
   branchId: number | null;
   isActive: boolean;
   createdAt: Date;
@@ -77,7 +76,6 @@ export default function StockCategories() {
     defaultValues: {
       name: "",
       description: "",
-      showInMenu: false,
     },
   });
 
@@ -211,7 +209,6 @@ export default function StockCategories() {
     form.reset({
       name: category.name,
       description: category.description || "",
-      showInMenu: category.showInMenu,
       branchId: category.branchId,
     });
     setDialogOpen(true);
@@ -228,7 +225,6 @@ export default function StockCategories() {
     form.reset({
       name: "",
       description: "",
-      showInMenu: false,
       branchId: user?.role === "superadmin" ? undefined : user?.branchId,
     });
     setDialogOpen(true);
@@ -304,28 +300,7 @@ export default function StockCategories() {
                         </FormItem>
                       )}
                     />
-                    <FormField
-                      control={form.control}
-                      name="showInMenu"
-                      render={({ field }) => (
-                        <FormItem className="flex flex-row items-center justify-between rounded-lg border p-4">
-                          <div className="space-y-0.5">
-                            <FormLabel className="text-base">
-                              Show in Menu
-                            </FormLabel>
-                            <div className="text-sm text-muted-foreground">
-                              Make this category available in restaurant menu
-                            </div>
-                          </div>
-                          <FormControl>
-                            <Switch
-                              checked={field.value}
-                              onCheckedChange={field.onChange}
-                            />
-                          </FormControl>
-                        </FormItem>
-                      )}
-                    />
+
                     {user?.role === "superadmin" && (
                       <FormField
                         control={form.control}
@@ -404,7 +379,7 @@ export default function StockCategories() {
                       <TableHead>Name</TableHead>
                       <TableHead>Description</TableHead>
                       <TableHead>Branch</TableHead>
-                      <TableHead>Show in Menu</TableHead>
+
                       <TableHead>Status</TableHead>
                       <TableHead>Actions</TableHead>
                     </TableRow>
@@ -425,13 +400,7 @@ export default function StockCategories() {
                             <Badge variant="secondary">All Branches</Badge>
                           )}
                         </TableCell>
-                        <TableCell>
-                          {category.showInMenu ? (
-                            <Badge variant="secondary">Yes</Badge>
-                          ) : (
-                            <Badge variant="outline">No</Badge>
-                          )}
-                        </TableCell>
+
                         <TableCell>
                           <Badge
                             variant={
@@ -464,7 +433,7 @@ export default function StockCategories() {
                     ))}
                     {categories.length === 0 && (
                       <TableRow>
-                        <TableCell colSpan={6} className="text-center py-8">
+                        <TableCell colSpan={5} className="text-center py-8">
                           No stock categories found. Create your first category
                           to get started.
                         </TableCell>

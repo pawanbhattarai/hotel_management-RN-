@@ -2335,14 +2335,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  // Menu Stock Categories (for restaurant orders)
+  // Menu Stock Categories (for restaurant orders) - now returns all active categories
   app.get("/api/inventory/menu-stock-categories", isAuthenticated, async (req: any, res) => {
     try {
       const user = await storage.getUser(req.session.user.id);
       if (!user) return res.status(401).json({ message: "User not found" });
 
       const branchId = user.role === "superadmin" ? undefined : user.branchId;
-      const categories = await inventoryStorage.getMenuStockCategories(branchId);
+      const categories = await inventoryStorage.getStockCategories(branchId);
       res.json(categories);
     } catch (error) {
       console.error("Error fetching menu stock categories:", error);
@@ -2350,14 +2350,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  // Menu Stock Items (for restaurant orders)
+  // Menu Stock Items (for restaurant orders) - now returns all active items
   app.get("/api/inventory/menu-stock-items", isAuthenticated, async (req: any, res) => {
     try {
       const user = await storage.getUser(req.session.user.id);
       if (!user) return res.status(401).json({ message: "User not found" });
 
       const branchId = user.role === "superadmin" ? undefined : user.branchId;
-      const items = await inventoryStorage.getMenuStockItems(branchId);
+      const items = await inventoryStorage.getStockItems(branchId);
       
       // Transform items to include price from defaultPrice field
       const transformedItems = items.map(item => ({

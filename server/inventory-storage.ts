@@ -63,20 +63,7 @@ export class InventoryStorage {
     return await db.select().from(stockCategories).where(and(...conditions)).orderBy(stockCategories.name);
   }
 
-  async getMenuStockCategories(branchId?: number): Promise<StockCategory[]> {
-    const conditions = [eq(stockCategories.isActive, true), eq(stockCategories.showInMenu, true)];
-    if (branchId !== undefined) {
-      // For branch users, show both branch-specific and global categories (branchId = null)
-      conditions.push(
-        or(
-          eq(stockCategories.branchId, branchId),
-          isNull(stockCategories.branchId)
-        )
-      );
-    }
-    // For superadmin (branchId is undefined), show all categories
-    return await db.select().from(stockCategories).where(and(...conditions)).orderBy(stockCategories.name);
-  }
+
 
   async getStockCategory(id: number): Promise<StockCategory | undefined> {
     const [category] = await db.select().from(stockCategories).where(eq(stockCategories.id, id));
@@ -177,8 +164,7 @@ export class InventoryStorage {
   async getMenuStockItems(branchId?: number): Promise<any[]> {
     const conditions = [
       eq(stockItems.isActive, true),
-      eq(stockCategories.isActive, true),
-      eq(stockCategories.showInMenu, true)
+      eq(stockCategories.isActive, true)
     ];
     if (branchId) {
       conditions.push(eq(stockItems.branchId, branchId));

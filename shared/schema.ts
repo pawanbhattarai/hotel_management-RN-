@@ -719,7 +719,6 @@ export const stockCategories = pgTable("stock_categories", {
   id: serial("id").primaryKey(),
   name: varchar("name", { length: 255 }).notNull(),
   description: text("description"),
-  showInMenu: boolean("show_in_menu").default(false),
   branchId: integer("branch_id").references(() => branches.id),
   isActive: boolean("is_active").default(true),
   createdAt: timestamp("created_at").defaultNow(),
