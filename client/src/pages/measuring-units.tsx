@@ -36,6 +36,8 @@ import {
 } from "@/components/ui/form";
 import { insertMeasuringUnitSchema } from "@shared/schema";
 import { z } from "zod";
+import { useAuth } from "@/hooks/useAuth";
+import BulkOperations from "@/components/bulk-operations";
 
 type MeasuringUnit = {
   id: number;
@@ -58,8 +60,10 @@ const formSchema = insertMeasuringUnitSchema.extend({
 export default function MeasuringUnits() {
   const { toast } = useToast();
   const queryClient = useQueryClient();
+  const { user } = useAuth();
   const [dialogOpen, setDialogOpen] = useState(false);
   const [editingUnit, setEditingUnit] = useState<MeasuringUnit | null>(null);
+  const [isMobileSidebarOpen, setIsMobileSidebarOpen] = useState(false);
 
   const form = useForm<z.infer<typeof formSchema>>({
     resolver: zodResolver(formSchema),
@@ -73,6 +77,10 @@ export default function MeasuringUnits() {
 
   const { data: units = [], isLoading } = useQuery({
     queryKey: ["/api/inventory/measuring-units"],
+  });
+
+  const { data: branches } = useQuery({
+    queryKey: ['/api/branches'],
   });
 
   const createMutation = useMutation({
@@ -211,8 +219,6 @@ export default function MeasuringUnits() {
     form.reset();
     setDialogOpen(true);
   };
-
-  const [isMobileSidebarOpen, setIsMobileSidebarOpen] = useState(false);
 
   return (
     <div className="min-h-screen bg-gray-50">
