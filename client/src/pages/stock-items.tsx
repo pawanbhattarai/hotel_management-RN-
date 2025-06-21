@@ -122,11 +122,11 @@ export default function StockItems() {
     queryKey: ["/api/inventory/stock-items"],
   });
 
-  const { data: categories = [] } = useQuery({
+  const { data: stockCategories = [] } = useQuery({
     queryKey: ["/api/inventory/stock-categories"],
   });
 
-  const { data: units = [] } = useQuery({
+  const { data: measuringUnits = [] } = useQuery({
     queryKey: ["/api/inventory/measuring-units"],
   });
 
@@ -358,7 +358,7 @@ export default function StockItems() {
                                 </SelectTrigger>
                               </FormControl>
                               <SelectContent>
-                                {units.map((unit: any) => (
+                                {measuringUnits.map((unit: any) => (
                                   <SelectItem
                                     key={unit.id}
                                     value={unit.id.toString()}
@@ -416,7 +416,7 @@ export default function StockItems() {
                                 </SelectTrigger>
                               </FormControl>
                               <SelectContent>
-                                {categories.map((category: any) => (
+                                {stockCategories.map((category: any) => (
                                   <SelectItem
                                     key={category.id}
                                     value={category.id.toString()}
