@@ -353,16 +353,34 @@ export default function Suppliers() {
                 </Form>
               </DialogContent>
             </Dialog>
-            <BulkOperations 
-              type="suppliers" 
-              branches={Array.isArray(branches) ? branches : []} 
-              onSuccess={() => {
-                queryClient.invalidateQueries({ queryKey: ['/api/inventory/suppliers'] });
-                toast({ title: "Suppliers created successfully" });
-              }} 
-            />
+              <Button 
+                variant="outline" 
+                onClick={() => setIsBulkDialogOpen(true)}
+              >
+                <Plus className="mr-2 h-4 w-4" />
+                Add Bulk
+              </Button>
             </div>
           </div>
+
+          {/* Bulk Suppliers Dialog */}
+          <Dialog open={isBulkDialogOpen} onOpenChange={setIsBulkDialogOpen}>
+            <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
+              <DialogHeader>
+                <DialogTitle>Add Suppliers in Bulk</DialogTitle>
+              </DialogHeader>
+              <BulkOperations 
+                type="suppliers" 
+                branches={Array.isArray(branches) ? branches : []} 
+                onSuccess={() => {
+                  queryClient.invalidateQueries({ queryKey: ['/api/inventory/suppliers'] });
+                  setIsBulkDialogOpen(false);
+                  toast({ title: "Suppliers created successfully" });
+                }} 
+                isDirectForm={true}
+              />
+            </DialogContent>
+          </Dialog>
 
           <Card>
             <CardHeader>

@@ -109,6 +109,7 @@ HotelPro PMS is a comprehensive hotel property management system built with mode
 - June 21, 2025: Successfully migrated project from Replit Agent to Replit environment
 - June 21, 2025: Removed showInMenu condition from inventory categories to allow all stock items to be available for restaurant orders
 - June 21, 2025: Updated Stock Item creation form with new layout including Opening Stock section with Quantity, Rate, and Value fields for better inventory management
+- June 21, 2025: Implemented bulk add functionality for all inventory management following RMS pattern - Stock Categories, Measuring Units, Suppliers, and Stock Items now have dedicated bulk dialogs with proper state management
 ```
 
 ## User Preferences

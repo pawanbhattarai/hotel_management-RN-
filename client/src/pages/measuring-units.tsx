@@ -62,6 +62,7 @@ export default function MeasuringUnits() {
   const queryClient = useQueryClient();
   const { user } = useAuth();
   const [dialogOpen, setDialogOpen] = useState(false);
+  const [isBulkDialogOpen, setIsBulkDialogOpen] = useState(false);
   const [editingUnit, setEditingUnit] = useState<MeasuringUnit | null>(null);
   const [isMobileSidebarOpen, setIsMobileSidebarOpen] = useState(false);
 
@@ -330,16 +331,34 @@ export default function MeasuringUnits() {
                 </Form>
               </DialogContent>
             </Dialog>
-            <BulkOperations 
-              type="measuring-units" 
-              branches={Array.isArray(branches) ? branches : []} 
-              onSuccess={() => {
-                queryClient.invalidateQueries({ queryKey: ['/api/inventory/measuring-units'] });
-                toast({ title: "Measuring units created successfully" });
-              }} 
-            />
+              <Button 
+                variant="outline" 
+                onClick={() => setIsBulkDialogOpen(true)}
+              >
+                <Plus className="mr-2 h-4 w-4" />
+                Add Bulk
+              </Button>
             </div>
           </div>
+
+          {/* Bulk Measuring Units Dialog */}
+          <Dialog open={isBulkDialogOpen} onOpenChange={setIsBulkDialogOpen}>
+            <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
+              <DialogHeader>
+                <DialogTitle>Add Measuring Units in Bulk</DialogTitle>
+              </DialogHeader>
+              <BulkOperations 
+                type="measuring-units" 
+                branches={Array.isArray(branches) ? branches : []} 
+                onSuccess={() => {
+                  queryClient.invalidateQueries({ queryKey: ['/api/inventory/measuring-units'] });
+                  setIsBulkDialogOpen(false);
+                  toast({ title: "Measuring units created successfully" });
+                }} 
+                isDirectForm={true}
+              />
+            </DialogContent>
+          </Dialog>
 
           <Card>
             <CardHeader>

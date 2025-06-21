@@ -360,16 +360,34 @@ export default function StockCategories() {
                 </Form>
               </DialogContent>
             </Dialog>
-            <BulkOperations 
-              type="stock-categories" 
-              branches={Array.isArray(branches) ? branches : []} 
-              onSuccess={() => {
-                queryClient.invalidateQueries({ queryKey: ['/api/inventory/stock-categories'] });
-                toast({ title: "Stock categories created successfully" });
-              }} 
-            />
+              <Button 
+                variant="outline" 
+                onClick={() => setIsBulkDialogOpen(true)}
+              >
+                <Plus className="mr-2 h-4 w-4" />
+                Add Bulk
+              </Button>
             </div>
           </div>
+
+          {/* Bulk Stock Categories Dialog */}
+          <Dialog open={isBulkDialogOpen} onOpenChange={setIsBulkDialogOpen}>
+            <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
+              <DialogHeader>
+                <DialogTitle>Add Stock Categories in Bulk</DialogTitle>
+              </DialogHeader>
+              <BulkOperations 
+                type="stock-categories" 
+                branches={Array.isArray(branches) ? branches : []} 
+                onSuccess={() => {
+                  queryClient.invalidateQueries({ queryKey: ['/api/inventory/stock-categories'] });
+                  setIsBulkDialogOpen(false);
+                  toast({ title: "Stock categories created successfully" });
+                }} 
+                isDirectForm={true}
+              />
+            </DialogContent>
+          </Dialog>
 
           <Card>
             <CardHeader>

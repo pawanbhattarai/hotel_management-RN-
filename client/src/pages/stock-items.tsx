@@ -622,19 +622,37 @@ export default function StockItems() {
                 </Form>
               </DialogContent>
             </Dialog>
-            <BulkOperations 
-              type="stock-items" 
-              branches={Array.isArray(branches) ? branches : []} 
-              stockCategories={Array.isArray(stockCategories) ? stockCategories : []}
-              measuringUnits={Array.isArray(measuringUnits) ? measuringUnits : []}
-              suppliers={Array.isArray(suppliers) ? suppliers : []}
-              onSuccess={() => {
-                queryClient.invalidateQueries({ queryKey: ['/api/inventory/stock-items'] });
-                toast({ title: "Stock items created successfully" });
-              }} 
-            />
+              <Button 
+                variant="outline" 
+                onClick={() => setIsBulkDialogOpen(true)}
+              >
+                <Plus className="mr-2 h-4 w-4" />
+                Add Bulk
+              </Button>
             </div>
           </div>
+
+          {/* Bulk Stock Items Dialog */}
+          <Dialog open={isBulkDialogOpen} onOpenChange={setIsBulkDialogOpen}>
+            <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
+              <DialogHeader>
+                <DialogTitle>Add Stock Items in Bulk</DialogTitle>
+              </DialogHeader>
+              <BulkOperations 
+                type="stock-items" 
+                branches={Array.isArray(branches) ? branches : []} 
+                stockCategories={Array.isArray(stockCategories) ? stockCategories : []}
+                measuringUnits={Array.isArray(measuringUnits) ? measuringUnits : []}
+                suppliers={Array.isArray(suppliers) ? suppliers : []}
+                onSuccess={() => {
+                  queryClient.invalidateQueries({ queryKey: ['/api/inventory/stock-items'] });
+                  setIsBulkDialogOpen(false);
+                  toast({ title: "Stock items created successfully" });
+                }} 
+                isDirectForm={true}
+              />
+            </DialogContent>
+          </Dialog>
 
           <Card>
             <CardHeader>
