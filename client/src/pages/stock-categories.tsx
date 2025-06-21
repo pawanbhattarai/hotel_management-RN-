@@ -67,6 +67,7 @@ export default function StockCategories() {
   const { toast } = useToast();
   const queryClient = useQueryClient();
   const [dialogOpen, setDialogOpen] = useState(false);
+  const [isBulkDialogOpen, setIsBulkDialogOpen] = useState(false);
   const [editingCategory, setEditingCategory] = useState<StockCategory | null>(
     null,
   );

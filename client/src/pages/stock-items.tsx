@@ -95,6 +95,7 @@ export default function StockItems() {
   const { toast } = useToast();
   const queryClient = useQueryClient();
   const [dialogOpen, setDialogOpen] = useState(false);
+  const [isBulkDialogOpen, setIsBulkDialogOpen] = useState(false);
   const [editingItem, setEditingItem] = useState<any>(null);
   const { user } = useAuth();
 
