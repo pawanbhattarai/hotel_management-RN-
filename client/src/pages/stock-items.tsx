@@ -311,7 +311,7 @@ export default function StockItems() {
                   Add Item
                 </Button>
               </DialogTrigger>
-              <DialogContent className="max-w-2xl">
+              <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
                 <DialogHeader>
                   <DialogTitle>
                     {editingItem ? "Edit Stock Item" : "Create Stock Item"}
@@ -323,7 +323,7 @@ export default function StockItems() {
                     className="space-y-4"
                   >
                     {/* Row 1: Item Name and Measuring Unit */}
-                    <div className="grid grid-cols-2 gap-4">
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                       <FormField
                         control={form.control}
                         name="name"
@@ -372,7 +372,7 @@ export default function StockItems() {
                     </div>
 
                     {/* Row 2: Default Price and Group (Category) */}
-                    <div className="grid grid-cols-2 gap-4">
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                       <FormField
                         control={form.control}
                         name="defaultPrice"
@@ -432,7 +432,7 @@ export default function StockItems() {
                     {/* Opening Stock Section */}
                     <div className="space-y-4">
                       <h3 className="text-sm font-medium">Opening Stock</h3>
-                      <div className="grid grid-cols-3 gap-4">
+                      <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
                         <FormField
                           control={form.control}
                           name="openingQuantity"
@@ -521,7 +521,7 @@ export default function StockItems() {
                     </div>
 
                     {/* Row 3: Reorder Level and Reorder QTY */}
-                    <div className="grid grid-cols-2 gap-4">
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                       <FormField
                         control={form.control}
                         name="reorderLevel"
@@ -597,11 +597,12 @@ export default function StockItems() {
                       )}
                     />
 
-                    <div className="flex justify-end space-x-2">
+                    <div className="flex flex-col sm:flex-row justify-end space-y-2 sm:space-y-0 sm:space-x-2">
                       <Button
                         type="button"
                         variant="outline"
                         onClick={() => setDialogOpen(false)}
+                        className="w-full sm:w-auto"
                       >
                         Cancel
                       </Button>
@@ -610,6 +611,7 @@ export default function StockItems() {
                         disabled={
                           createMutation.isPending || updateMutation.isPending
                         }
+                        className="w-full sm:w-auto"
                       >
                         {editingItem ? "Update" : "Create"}
                       </Button>
