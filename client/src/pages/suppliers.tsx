@@ -219,14 +219,13 @@ export default function Suppliers() {
         />
         <main className="p-6">
           <div className="flex justify-between items-center mb-6">
-            <div className="flex gap-2">
-              <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
-                <DialogTrigger asChild>
-                  <Button onClick={openCreateDialog}>
-                    <Plus className="mr-2 h-4 w-4" />
-                    Add Supplier
-                  </Button>
-                </DialogTrigger>
+            <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
+              <DialogTrigger asChild>
+                <Button onClick={openCreateDialog}>
+                  <Plus className="mr-2 h-4 w-4" />
+                  Add Supplier
+                </Button>
+              </DialogTrigger>
               <DialogContent className="max-w-md">
                 <DialogHeader>
                   <DialogTitle>
@@ -354,14 +353,7 @@ export default function Suppliers() {
                 </Form>
               </DialogContent>
             </Dialog>
-              <Button 
-                variant="outline" 
-                onClick={() => setIsBulkDialogOpen(true)}
-              >
-                <Plus className="mr-2 h-4 w-4" />
-                Add Bulk
-              </Button>
-            </div>
+
           </div>
 
           {/* Bulk Suppliers Dialog */}
