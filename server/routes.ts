@@ -1086,6 +1086,87 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Inventory Bulk Operations
+  app.post("/api/inventory/stock-categories/bulk", isAuthenticated, async (req: any, res) => {
+    try {
+      const { categories } = req.body;
+      const user = await storage.getUser(req.session.user.id);
+      if (!user) return res.status(401).json({ message: "User not found" });
+
+      const results = [];
+      for (const category of categories) {
+        const validatedData = insertStockCategorySchema.parse(category);
+        const newCategory = await inventoryStorage.createStockCategory(validatedData);
+        results.push(newCategory);
+      }
+
+      res.status(201).json(results);
+    } catch (error) {
+      console.error("Error creating stock categories in bulk:", error);
+      res.status(500).json({ message: "Failed to create stock categories in bulk" });
+    }
+  });
+
+  app.post("/api/inventory/measuring-units/bulk", isAuthenticated, async (req: any, res) => {
+    try {
+      const { units } = req.body;
+      const user = await storage.getUser(req.session.user.id);
+      if (!user) return res.status(401).json({ message: "User not found" });
+
+      const results = [];
+      for (const unit of units) {
+        const validatedData = insertMeasuringUnitSchema.parse(unit);
+        const newUnit = await inventoryStorage.createMeasuringUnit(validatedData);
+        results.push(newUnit);
+      }
+
+      res.status(201).json(results);
+    } catch (error) {
+      console.error("Error creating measuring units in bulk:", error);
+      res.status(500).json({ message: "Failed to create measuring units in bulk" });
+    }
+  });
+
+  app.post("/api/inventory/suppliers/bulk", isAuthenticated, async (req: any, res) => {
+    try {
+      const { suppliers } = req.body;
+      const user = await storage.getUser(req.session.user.id);
+      if (!user) return res.status(401).json({ message: "User not found" });
+
+      const results = [];
+      for (const supplier of suppliers) {
+        const validatedData = insertSupplierSchema.parse(supplier);
+        const newSupplier = await inventoryStorage.createSupplier(validatedData);
+        results.push(newSupplier);
+      }
+
+      res.status(201).json(results);
+    } catch (error) {
+      console.error("Error creating suppliers in bulk:", error);
+      res.status(500).json({ message: "Failed to create suppliers in bulk" });
+    }
+  });
+
+  app.post("/api/inventory/stock-items/bulk", isAuthenticated, async (req: any, res) => {
+    try {
+      const { items } = req.body;
+      const user = await storage.getUser(req.session.user.id);
+      if (!user) return res.status(401).json({ message: "User not found" });
+
+      const results = [];
+      for (const item of items) {
+        const validatedData = insertStockItemSchema.parse(item);
+        const newItem = await inventoryStorage.createStockItem(validatedData);
+        results.push(newItem);
+      }
+
+      res.status(201).json(results);
+    } catch (error) {
+      console.error("Error creating stock items in bulk:", error);
+      res.status(500).json({ message: "Failed to create stock items in bulk" });
+    }
+  });
+
   // Restaurant Analytics Endpoints
   app.get("/api/restaurant/analytics/revenue", isAuthenticated, async (req: any, res) => {
     try {

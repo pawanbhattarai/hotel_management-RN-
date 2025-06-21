@@ -46,6 +46,7 @@ import {
 import { insertStockItemSchema } from "@shared/schema";
 import { z } from "zod";
 import { useAuth } from "@/hooks/useAuth";
+import BulkOperations from "@/components/bulk-operations";
 
 const formSchema = insertStockItemSchema.extend({
   name: z.string().min(1, "Item name is required"),
@@ -304,13 +305,14 @@ export default function StockItems() {
         />
         <main className="p-6">
           <div className="flex justify-between items-center mb-6">
-            <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
-              <DialogTrigger asChild>
-                <Button onClick={openCreateDialog}>
-                  <Plus className="mr-2 h-4 w-4" />
-                  Add Item
-                </Button>
-              </DialogTrigger>
+            <div className="flex gap-2">
+              <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
+                <DialogTrigger asChild>
+                  <Button onClick={openCreateDialog}>
+                    <Plus className="mr-2 h-4 w-4" />
+                    Add Item
+                  </Button>
+                </DialogTrigger>
               <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
                 <DialogHeader>
                   <DialogTitle>
@@ -620,6 +622,18 @@ export default function StockItems() {
                 </Form>
               </DialogContent>
             </Dialog>
+            <BulkOperations 
+              type="stock-items" 
+              branches={Array.isArray(branches) ? branches : []} 
+              stockCategories={Array.isArray(stockCategories) ? stockCategories : []}
+              measuringUnits={Array.isArray(measuringUnits) ? measuringUnits : []}
+              suppliers={Array.isArray(suppliers) ? suppliers : []}
+              onSuccess={() => {
+                queryClient.invalidateQueries({ queryKey: ['/api/inventory/stock-items'] });
+                toast({ title: "Stock items created successfully" });
+              }} 
+            />
+            </div>
           </div>
 
           <Card>

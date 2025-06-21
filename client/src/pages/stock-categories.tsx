@@ -47,6 +47,7 @@ import {
 import { insertStockCategorySchema } from "@shared/schema";
 import { z } from "zod";
 import { useAuth } from "@/hooks/useAuth";
+import BulkOperations from "@/components/bulk-operations";
 
 type StockCategory = {
   id: number;
@@ -248,13 +249,14 @@ export default function StockCategories() {
         />
         <main className="p-6">
           <div className="flex justify-between items-center mb-6">
-            <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
-              <DialogTrigger asChild>
-                <Button onClick={openCreateDialog}>
-                  <Plus className="mr-2 h-4 w-4" />
-                  Add Category
-                </Button>
-              </DialogTrigger>
+            <div className="flex gap-2">
+              <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
+                <DialogTrigger asChild>
+                  <Button onClick={openCreateDialog}>
+                    <Plus className="mr-2 h-4 w-4" />
+                    Add Category
+                  </Button>
+                </DialogTrigger>
               <DialogContent className="max-w-md">
                 <DialogHeader>
                   <DialogTitle>
@@ -358,6 +360,15 @@ export default function StockCategories() {
                 </Form>
               </DialogContent>
             </Dialog>
+            <BulkOperations 
+              type="stock-categories" 
+              branches={Array.isArray(branches) ? branches : []} 
+              onSuccess={() => {
+                queryClient.invalidateQueries({ queryKey: ['/api/inventory/stock-categories'] });
+                toast({ title: "Stock categories created successfully" });
+              }} 
+            />
+            </div>
           </div>
 
           <Card>

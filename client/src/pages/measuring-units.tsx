@@ -230,13 +230,14 @@ export default function MeasuringUnits() {
         />
         <main className="p-6">
           <div className="flex justify-between items-center mb-6">
-            <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
-              <DialogTrigger asChild>
-                <Button onClick={openCreateDialog}>
-                  <Plus className="mr-2 h-4 w-4" />
-                  Add Unit
-                </Button>
-              </DialogTrigger>
+            <div className="flex gap-2">
+              <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
+                <DialogTrigger asChild>
+                  <Button onClick={openCreateDialog}>
+                    <Plus className="mr-2 h-4 w-4" />
+                    Add Unit
+                  </Button>
+                </DialogTrigger>
               <DialogContent className="max-w-md">
                 <DialogHeader>
                   <DialogTitle>
@@ -323,6 +324,15 @@ export default function MeasuringUnits() {
                 </Form>
               </DialogContent>
             </Dialog>
+            <BulkOperations 
+              type="measuring-units" 
+              branches={Array.isArray(branches) ? branches : []} 
+              onSuccess={() => {
+                queryClient.invalidateQueries({ queryKey: ['/api/inventory/measuring-units'] });
+                toast({ title: "Measuring units created successfully" });
+              }} 
+            />
+            </div>
           </div>
 
           <Card>
