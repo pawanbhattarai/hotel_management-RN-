@@ -340,13 +340,25 @@ export default function Suppliers() {
                       >
                         Cancel
                       </Button>
+                      {!editingSupplier && (
+                        <Button 
+                          type="button" 
+                          variant="secondary" 
+                          onClick={() => {
+                            setDialogOpen(false);
+                            setIsBulkDialogOpen(true);
+                          }}
+                        >
+                          Add Bulk
+                        </Button>
+                      )}
                       <Button
                         type="submit"
                         disabled={
                           createMutation.isPending || updateMutation.isPending
                         }
                       >
-                        {editingSupplier ? "Update" : "Create"}
+                        {editingSupplier ? "Update" : "Create Supplier"}
                       </Button>
                     </div>
                   </form>

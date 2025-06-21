@@ -347,13 +347,25 @@ export default function StockCategories() {
                       >
                         Cancel
                       </Button>
+                      {!editingCategory && (
+                        <Button 
+                          type="button" 
+                          variant="secondary" 
+                          onClick={() => {
+                            setDialogOpen(false);
+                            setIsBulkDialogOpen(true);
+                          }}
+                        >
+                          Add Bulk
+                        </Button>
+                      )}
                       <Button
                         type="submit"
                         disabled={
                           createMutation.isPending || updateMutation.isPending
                         }
                       >
-                        {editingCategory ? "Update" : "Create"}
+                        {editingCategory ? "Update" : "Create Category"}
                       </Button>
                     </div>
                   </form>

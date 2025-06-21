@@ -317,13 +317,25 @@ export default function MeasuringUnits() {
                       >
                         Cancel
                       </Button>
+                      {!editingUnit && (
+                        <Button 
+                          type="button" 
+                          variant="secondary" 
+                          onClick={() => {
+                            setDialogOpen(false);
+                            setIsBulkDialogOpen(true);
+                          }}
+                        >
+                          Add Bulk
+                        </Button>
+                      )}
                       <Button
                         type="submit"
                         disabled={
                           createMutation.isPending || updateMutation.isPending
                         }
                       >
-                        {editingUnit ? "Update" : "Create"}
+                        {editingUnit ? "Update" : "Create Unit"}
                       </Button>
                     </div>
                   </form>

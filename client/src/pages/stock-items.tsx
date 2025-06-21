@@ -608,6 +608,19 @@ export default function StockItems() {
                       >
                         Cancel
                       </Button>
+                      {!editingItem && (
+                        <Button 
+                          type="button" 
+                          variant="secondary" 
+                          onClick={() => {
+                            setDialogOpen(false);
+                            setIsBulkDialogOpen(true);
+                          }}
+                          className="w-full sm:w-auto"
+                        >
+                          Add Bulk
+                        </Button>
+                      )}
                       <Button
                         type="submit"
                         disabled={
@@ -615,7 +628,7 @@ export default function StockItems() {
                         }
                         className="w-full sm:w-auto"
                       >
-                        {editingItem ? "Update" : "Create"}
+                        {editingItem ? "Update" : "Create Item"}
                       </Button>
                     </div>
                   </form>
