@@ -101,13 +101,7 @@ export default function RestaurantOrders() {
     queryKey: ["/api/restaurant/categories"],
   });
 
-  const { data: menuStockCategories } = useQuery({
-    queryKey: ["/api/inventory/menu-stock-categories"],
-  });
 
-  const { data: menuStockItems } = useQuery({
-    queryKey: ["/api/inventory/menu-stock-items"],
-  });
 
   const { data: orderTaxes } = useQuery({
     queryKey: ["/api/taxes/order"],
@@ -314,31 +308,22 @@ export default function RestaurantOrders() {
       return;
     }
 
-    // For stock items, use stockItemId for identification
-    const itemId = dish.isStockItem ? dish.stockItemId : dish.id;
-    const existingItem = selectedItems.find((item) => 
-      dish.isStockItem ? item.stockItemId === itemId : item.dishId === itemId
-    );
+    const itemId = dish.id;
+    const existingItem = selectedItems.find((item) => item.dishId === itemId);
     
     if (existingItem) {
       setSelectedItems((items) =>
         items.map((item) => {
-          const matches = dish.isStockItem 
-            ? item.stockItemId === itemId 
-            : item.dishId === itemId;
-          return matches ? { ...item, quantity: item.quantity + 1 } : item;
+          return item.dishId === itemId ? { ...item, quantity: item.quantity + 1 } : item;
         }),
       );
     } else {
       const newItem = {
+        dishId: itemId,
         dishName: dish.name,
         quantity: 1,
         unitPrice: dish.price.toString(),
         notes: "",
-        ...(dish.isStockItem 
-          ? { stockItemId: itemId, isStockItem: true }
-          : { dishId: itemId }
-        )
       };
       setSelectedItems((items) => [...items, newItem]);
     }
@@ -384,42 +369,15 @@ export default function RestaurantOrders() {
   };
 
   const getFilteredDishes = () => {
-    let allItems = [];
-    
-    // Add regular menu dishes
     const menuDishes = dishes || [];
-    console.log("Menu dishes:", menuDishes);
-    allItems.push(...menuDishes);
-    
-    // Add stock items from categories marked as "Show in Menu"
-    const stockItems = menuStockItems || [];
-    console.log("Menu stock items:", stockItems);
-    const stockItemsForMenu = stockItems.map((item: any) => ({
-      id: `stock-${item.id}`, // Prefix to distinguish from regular dishes
-      name: item.name,
-      price: item.defaultPrice || item.price || 0,
-      description: `${item.description || ''} (Stock Item)`,
-      categoryId: `stock-${item.categoryId}`, // Map to stock category
-      isStockItem: true,
-      stockItemId: item.id
-    }));
-    console.log("Transformed stock items:", stockItemsForMenu);
-    allItems.push(...stockItemsForMenu);
-    
-    console.log("All items combined:", allItems);
     
     // Filter by category if selected
     if (!selectedCategory || selectedCategory === "all") {
-      return allItems;
+      return menuDishes;
     }
     
-    return allItems.filter((item: any) => {
-      // Handle regular menu dishes
-      if (!item.isStockItem) {
-        return item.categoryId === parseInt(selectedCategory);
-      }
-      // Handle stock items
-      return item.categoryId === selectedCategory;
+    return menuDishes.filter((item: any) => {
+      return item.categoryId === parseInt(selectedCategory);
     });
   };
 
@@ -623,14 +581,7 @@ export default function RestaurantOrders() {
                               {category.name}
                             </SelectItem>
                           ))}
-                          {menuStockCategories?.map((category: any) => (
-                            <SelectItem
-                              key={`stock-${category.id}`}
-                              value={`stock-${category.id}`}
-                            >
-                              {category.name} (Stock)
-                            </SelectItem>
-                          ))}
+
                         </SelectContent>
                       </Select>
                     </div>
@@ -693,8 +644,8 @@ export default function RestaurantOrders() {
                       <>
                         <div className="space-y-3 mb-4 max-h-64 overflow-y-auto">
                           {selectedItems.map((item, index) => {
-                            const itemId = item.isStockItem ? item.stockItemId : item.dishId;
-                            const itemKey = item.isStockItem ? `stock-${item.stockItemId}` : `dish-${item.dishId}`;
+                            const itemId = item.dishId;
+                            const itemKey = `dish-${item.dishId}`;
                             return (
                               <div
                                 key={itemKey || index}
@@ -703,7 +654,7 @@ export default function RestaurantOrders() {
                                 <div className="flex-1">
                                   <h4 className="font-medium text-sm">
                                     {item.dishName}
-                                    {item.isStockItem && <span className="text-xs text-blue-600 ml-1">(Stock)</span>}
+
                                   </h4>
                                   <p className="text-xs text-gray-600">
                                     Rs. {item.unitPrice} each
@@ -716,8 +667,7 @@ export default function RestaurantOrders() {
                                     onClick={() =>
                                       updateItemQuantity(
                                         itemId,
-                                        item.quantity - 1,
-                                        item.isStockItem
+                                        item.quantity - 1
                                       )
                                     }
                                     className="h-6 w-6 p-0"
@@ -733,8 +683,7 @@ export default function RestaurantOrders() {
                                     onClick={() =>
                                       updateItemQuantity(
                                         itemId,
-                                        item.quantity + 1,
-                                        item.isStockItem
+                                        item.quantity + 1
                                       )
                                     }
                                     className="h-6 w-6 p-0"
@@ -744,7 +693,7 @@ export default function RestaurantOrders() {
                                   <Button
                                     size="sm"
                                     variant="ghost"
-                                    onClick={() => removeItem(itemId, item.isStockItem)}
+                                    onClick={() => removeItem(itemId)}
                                     className="h-6 w-6 p-0 text-red-500"
                                   >
                                     <Trash2 className="h-3 w-3" />
