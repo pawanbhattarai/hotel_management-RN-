@@ -80,8 +80,13 @@ export default function RoleManagement() {
   });
 
   // Fetch available modules
-  const { data: modules = [] } = useQuery<Module[]>({
-    queryKey: ["/api/roles/modules/available"],
+  const { data: modules = [], isLoading: modulesLoading } = useQuery<Module[]>({
+    queryKey: ["roles-modules-available"],
+    queryFn: async () => {
+      const response = await fetch("/api/roles/modules/available");
+      if (!response.ok) throw new Error("Failed to fetch modules");
+      return response.json();
+    },
     enabled: isAuthenticated && user?.role === "superadmin",
   });
 
@@ -336,7 +341,20 @@ export default function RoleManagement() {
                             </TableRow>
                           </TableHeader>
                           <TableBody>
-                            {modules.map((module) => (
+                            {modulesLoading ? (
+                              <TableRow>
+                                <TableCell colSpan={4} className="text-center">
+                                  Loading modules...
+                                </TableCell>
+                              </TableRow>
+                            ) : modules.length === 0 ? (
+                              <TableRow>
+                                <TableCell colSpan={4} className="text-center">
+                                  No modules available
+                                </TableCell>
+                              </TableRow>
+                            ) : (
+                              modules.map((module) => (
                               <TableRow key={module.id}>
                                 <TableCell>
                                   <div>
@@ -369,7 +387,8 @@ export default function RoleManagement() {
                                   />
                                 </TableCell>
                               </TableRow>
-                            ))}
+                              ))
+                            )}
                           </TableBody>
                         </Table>
                       </div>
@@ -505,7 +524,20 @@ export default function RoleManagement() {
                         </TableRow>
                       </TableHeader>
                       <TableBody>
-                        {modules.map((module) => (
+                        {modulesLoading ? (
+                          <TableRow>
+                            <TableCell colSpan={4} className="text-center">
+                              Loading modules...
+                            </TableCell>
+                          </TableRow>
+                        ) : modules.length === 0 ? (
+                          <TableRow>
+                            <TableCell colSpan={4} className="text-center">
+                              No modules available
+                            </TableCell>
+                          </TableRow>
+                        ) : (
+                          modules.map((module) => (
                           <TableRow key={module.id}>
                             <TableCell>
                               <div>
@@ -538,7 +570,8 @@ export default function RoleManagement() {
                               />
                             </TableCell>
                           </TableRow>
-                        ))}
+                          ))
+                        )}
                       </TableBody>
                     </Table>
                   </div>

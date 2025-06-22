@@ -3,6 +3,7 @@ import { createServer, type Server } from "http";
 import { storage } from "./storage";
 import { restaurantStorage } from "./restaurant-storage";
 import { inventoryStorage } from "./inventory-storage";
+import { roleStorage } from "./role-storage";
 import { NotificationService } from "./notifications";
 import {
   insertBranchSchema,
@@ -1083,6 +1084,125 @@ export async function registerRoutes(app: Express): Promise<Server> {
     } catch (error) {
       console.error("Error fetching operational analytics:", error);
       res.status(500).json({ message: "Failed to fetch operational analytics" });
+    }
+  });
+
+  // Custom Role Management Routes
+  app.get("/api/roles", isAuthenticated, async (req: any, res) => {
+    try {
+      const user = await storage.getUser(req.session.user.id);
+      if (!user || user.role !== "superadmin") {
+        return res.status(403).json({ message: "Only superadmins can access role management" });
+      }
+
+      const roles = await roleStorage.getCustomRoles();
+      
+      // Get permissions for each role
+      const rolesWithPermissions = await Promise.all(
+        roles.map(async (role) => {
+          const permissions = await roleStorage.getRolePermissions(role.id);
+          return { ...role, permissions };
+        })
+      );
+
+      res.json(rolesWithPermissions);
+    } catch (error) {
+      console.error("Error fetching custom roles:", error);
+      res.status(500).json({ message: "Failed to fetch custom roles" });
+    }
+  });
+
+  app.get("/api/roles/modules/available", isAuthenticated, async (req: any, res) => {
+    try {
+      const user = await storage.getUser(req.session.user.id);
+      if (!user || user.role !== "superadmin") {
+        return res.status(403).json({ message: "Only superadmins can access modules" });
+      }
+
+      const modules = roleStorage.getAvailableModules();
+      res.json(modules);
+    } catch (error) {
+      console.error("Error fetching available modules:", error);
+      res.status(500).json({ message: "Failed to fetch available modules" });
+    }
+  });
+
+  app.post("/api/roles", isAuthenticated, async (req: any, res) => {
+    try {
+      const user = await storage.getUser(req.session.user.id);
+      if (!user || user.role !== "superadmin") {
+        return res.status(403).json({ message: "Only superadmins can create roles" });
+      }
+
+      const { name, description, permissions } = req.body;
+
+      if (!name || !name.trim()) {
+        return res.status(400).json({ message: "Role name is required" });
+      }
+
+      // Create the role
+      const role = await roleStorage.createCustomRole({
+        name: name.trim(),
+        description: description || "",
+      });
+
+      // Set permissions if provided
+      if (permissions && permissions.length > 0) {
+        await roleStorage.setRolePermissions(role.id, permissions);
+      }
+
+      // Return role with permissions
+      const roleWithPermissions = await roleStorage.getCustomRole(role.id);
+      res.status(201).json(roleWithPermissions);
+    } catch (error) {
+      console.error("Error creating custom role:", error);
+      res.status(500).json({ message: "Failed to create custom role" });
+    }
+  });
+
+  app.put("/api/roles/:id", isAuthenticated, async (req: any, res) => {
+    try {
+      const user = await storage.getUser(req.session.user.id);
+      if (!user || user.role !== "superadmin") {
+        return res.status(403).json({ message: "Only superadmins can update roles" });
+      }
+
+      const roleId = parseInt(req.params.id);
+      const { name, description, permissions } = req.body;
+
+      // Update the role
+      await roleStorage.updateCustomRole(roleId, {
+        name: name?.trim(),
+        description,
+      });
+
+      // Update permissions if provided
+      if (permissions !== undefined) {
+        await roleStorage.setRolePermissions(roleId, permissions);
+      }
+
+      // Return updated role with permissions
+      const roleWithPermissions = await roleStorage.getCustomRole(roleId);
+      res.json(roleWithPermissions);
+    } catch (error) {
+      console.error("Error updating custom role:", error);
+      res.status(500).json({ message: "Failed to update custom role" });
+    }
+  });
+
+  app.delete("/api/roles/:id", isAuthenticated, async (req: any, res) => {
+    try {
+      const user = await storage.getUser(req.session.user.id);
+      if (!user || user.role !== "superadmin") {
+        return res.status(403).json({ message: "Only superadmins can delete roles" });
+      }
+
+      const roleId = parseInt(req.params.id);
+      await roleStorage.deleteCustomRole(roleId);
+      res.status(204).send();
+    } catch (error) {
+      console.error("Error deleting custom role:", error);
+      res.status(500).json({ message: "Failed to delete custom role" });
     }
   });
 
