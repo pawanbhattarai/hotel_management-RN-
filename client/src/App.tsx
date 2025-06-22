@@ -17,7 +17,6 @@ import RoleManagement from "@/pages/role-management";
 import Profile from "@/pages/profile";
 import RoomTypes from "@/pages/room-types";
 import Billing from "@/pages/billing";
-import Profile from "@/pages/profile";
 import Settings from "@/pages/settings";
 import Analytics from "@/pages/analytics";
 import RestaurantTables from "@/pages/restaurant-tables";
