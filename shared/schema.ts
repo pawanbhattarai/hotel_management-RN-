@@ -35,7 +35,7 @@ export const users = pgTable("users", {
   firstName: varchar("first_name"),
   lastName: varchar("last_name"),
   profileImageUrl: varchar("profile_image_url"),
-  role: varchar("role", { enum: ["superadmin", "branch-admin", "front-desk"] }).notNull().default("front-desk"),
+  role: varchar("role", { enum: ["superadmin", "branch-admin", "front-desk", "custom"] }).notNull().default("front-desk"),
   branchId: integer("branch_id"),
   isActive: boolean("is_active").default(true),
   permissions: jsonb("permissions").default('[]'),
@@ -147,11 +147,12 @@ export const reservationRooms = pgTable("reservation_rooms", {
 });
 
 // Relations
-export const usersRelations = relations(users, ({ one }) => ({
+export const usersRelations = relations(users, ({ one, many }) => ({
   branch: one(branches, {
     fields: [users.branchId],
     references: [branches.id],
   }),
+  customRoleAssignments: many(userCustomRoles),
 }));
 
 export const branchesRelations = relations(branches, ({ many }) => ({
@@ -307,10 +308,82 @@ export const notificationHistoryRelations = relations(notificationHistory, ({ on
   }),
 }));
 
+// Custom Roles and Permissions Tables
+export const customRoles = pgTable("custom_roles", {
+  id: serial("id").primaryKey(),
+  name: varchar("name", { length: 100 }).notNull().unique(),
+  description: text("description"),
+  isActive: boolean("is_active").default(true),
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+});
+
+export const rolePermissions = pgTable("role_permissions", {
+  id: serial("id").primaryKey(),
+  roleId: integer("role_id").references(() => customRoles.id, { onDelete: "cascade" }),
+  module: varchar("module", { length: 100 }).notNull(), // e.g., "dashboard", "reservations", "rooms"
+  permissions: jsonb("permissions").notNull(), // { read: true, write: true, delete: false }
+  createdAt: timestamp("created_at").defaultNow(),
+});
+
+export const userCustomRoles = pgTable("user_custom_roles", {
+  id: serial("id").primaryKey(),
+  userId: varchar("user_id").references(() => users.id, { onDelete: "cascade" }),
+  roleId: integer("role_id").references(() => customRoles.id, { onDelete: "cascade" }),
+  assignedAt: timestamp("assigned_at").defaultNow(),
+  assignedBy: varchar("assigned_by").references(() => users.id),
+});
+
+// Relations for custom roles
+export const customRolesRelations = relations(customRoles, ({ many }) => ({
+  permissions: many(rolePermissions),
+  userAssignments: many(userCustomRoles),
+}));
+
+export const rolePermissionsRelations = relations(rolePermissions, ({ one }) => ({
+  role: one(customRoles, {
+    fields: [rolePermissions.roleId],
+    references: [customRoles.id],
+  }),
+}));
+
+export const userCustomRolesRelations = relations(userCustomRoles, ({ one }) => ({
+  user: one(users, {
+    fields: [userCustomRoles.userId],
+    references: [users.id],
+  }),
+  role: one(customRoles, {
+    fields: [userCustomRoles.roleId],
+    references: [customRoles.id],
+  }),
+  assignedByUser: one(users, {
+    fields: [userCustomRoles.assignedBy],
+    references: [users.id],
+  }),
+}));
+
 // Insert schemas
+export const insertCustomRoleSchema = createInsertSchema(customRoles).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
+
+export const insertRolePermissionSchema = createInsertSchema(rolePermissions).omit({
+  id: true,
+  createdAt: true,
+});
+
+export const insertUserCustomRoleSchema = createInsertSchema(userCustomRoles).omit({
+  id: true,
+  assignedAt: true,
+});
+
 export const insertUserSchema = createInsertSchema(users).omit({
   createdAt: true,
   updatedAt: true,
+}).extend({
+  customRoleIds: z.array(z.number()).optional(), // For assigning custom roles
 });
 
 export const insertBranchSchema = createInsertSchema(branches).omit({
@@ -880,3 +953,11 @@ export type InsertStockItem = z.infer<typeof insertStockItemSchema>;
 
 export type StockConsumption = typeof stockConsumption.$inferSelect;
 export type InsertStockConsumption = z.infer<typeof insertStockConsumptionSchema>;
+
+// Custom Role Types
+export type CustomRole = typeof customRoles.$inferSelect;
+export type InsertCustomRole = z.infer<typeof insertCustomRoleSchema>;
+export type RolePermission = typeof rolePermissions.$inferSelect;
+export type InsertRolePermission = z.infer<typeof insertRolePermissionSchema>;
+export type UserCustomRole = typeof userCustomRoles.$inferSelect;
+export type InsertUserCustomRole = z.infer<typeof insertUserCustomRoleSchema>;

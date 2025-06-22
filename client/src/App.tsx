@@ -13,6 +13,8 @@ import Rooms from "@/pages/rooms";
 import Guests from "@/pages/guests";
 import Branches from "@/pages/branches";
 import Users from "@/pages/users";
+import RoleManagement from "@/pages/role-management";
+import Profile from "@/pages/profile";
 import RoomTypes from "@/pages/room-types";
 import Billing from "@/pages/billing";
 import Profile from "@/pages/profile";
@@ -51,6 +53,8 @@ function Router() {
           <Route path="/guests" component={Guests} />
           <Route path="/branches" component={Branches} />
           <Route path="/users" component={Users} />
+          <Route path="/role-management" component={RoleManagement} />
+          <Route path="/profile" component={Profile} />
           <Route path="/billing" component={Billing} />
           <Route path="/analytics" component={Analytics} />
           <Route path="/restaurant/analytics" component={() => (

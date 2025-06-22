@@ -43,11 +43,13 @@ export default function Users() {
   const [formData, setFormData] = useState({
     id: "",
     email: "",
+    password: "",
     firstName: "",
     lastName: "",
-    role: "front-desk",
-    branchId: "",
-    password: "",
+    role: "front-desk" as "superadmin" | "branch-admin" | "front-desk" | "custom",
+    branchId: 1,
+    isActive: true,
+    customRoleIds: [] as number[],
   });
 
   const { data: users, isLoading: usersLoading } = useQuery({
@@ -55,8 +57,13 @@ export default function Users() {
     enabled: isAuthenticated && user?.role === "superadmin",
   });
 
-  const { data: branches } = useQuery({
+  const { data: branches = [] } = useQuery({
     queryKey: ["/api/branches"],
+    enabled: isAuthenticated,
+  });
+
+  const { data: customRoles = [] } = useQuery({
+    queryKey: ["/api/roles"],
     enabled: isAuthenticated && user?.role === "superadmin",
   });
 
@@ -134,11 +141,13 @@ export default function Users() {
     setFormData({
       id: "",
       email: "",
+      password: "",
       firstName: "",
       lastName: "",
-      role: "front-desk",
-      branchId: "",
-      password: "",
+      role: "front-desk" as "superadmin" | "branch-admin" | "front-desk" | "custom",
+      branchId: 1,
+      isActive: true,
+      customRoleIds: [] as number[],
     });
     setEditingUser(null);
   };
@@ -171,6 +180,8 @@ export default function Users() {
       role: user.role,
       branchId: user.branchId?.toString() || "unassigned",
       password: "",
+      customRoleIds: user.customRoleIds || [],
+      isActive: user.isActive,
     });
     setIsDialogOpen(true);
   };

@@ -37,6 +37,7 @@ import {
   CollapsibleTrigger,
 } from "@/components/ui/collapsible";
 import { useAuth } from "@/hooks/useAuth";
+import { usePermissions } from "@/hooks/usePermissions";
 import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
 import { NotificationManager } from "@/components/NotificationManager";
 
@@ -50,6 +51,7 @@ export default function Sidebar({
   setIsMobileMenuOpen,
 }: SidebarProps = {}) {
   const { user } = useAuth();
+  const { canAccess } = usePermissions();
   const [location, navigate] = useLocation();
   const [internalMobileMenuOpen, setInternalMobileMenuOpen] = useState(false);
 
@@ -151,7 +153,11 @@ export default function Sidebar({
     return false;
   };
 
-  const hasAccess = (allowedRoles: string[]) => {
+  const hasAccess = (allowedRoles: string[], module?: string) => {
+    // For backward compatibility with built-in roles
+    if (module && user) {
+      return canAccess(module);
+    }
     return user && allowedRoles.includes((user as any).role);
   };
 
@@ -203,7 +209,7 @@ export default function Sidebar({
         <ScrollArea className="h-full px-2 lg:px-3">
           <nav className="py-3 space-y-1">
             {/* Dashboard */}
-            {hasAccess(["superadmin", "branch-admin", "front-desk"]) && (
+            {canAccess("dashboard") && (
               <button
                 onClick={() => {
                   navigate("/");
@@ -234,7 +240,7 @@ export default function Sidebar({
               </CollapsibleTrigger>
               <CollapsibleContent className="space-y-1 mt-2">
                 {/* Reservations */}
-                {hasAccess(["superadmin", "branch-admin", "front-desk"]) && (
+                {canAccess("reservations") && (
                   <button
                     onClick={() => {
                       navigate("/reservations");
@@ -252,7 +258,7 @@ export default function Sidebar({
                 )}
 
                 {/* Room Management */}
-                {hasAccess(["superadmin", "branch-admin", "front-desk"]) && (
+                {canAccess("rooms") && (
                   <button
                     onClick={() => {
                       navigate("/rooms");
@@ -270,7 +276,7 @@ export default function Sidebar({
                 )}
 
                 {/* Guest Management */}
-                {hasAccess(["superadmin", "branch-admin", "front-desk"]) && (
+                {canAccess("guests") && (
                   <button
                     onClick={() => {
                       navigate("/guests");
@@ -290,7 +296,7 @@ export default function Sidebar({
                 )}
 
                 {/* Billing */}
-                {hasAccess(["superadmin", "branch-admin", "front-desk"]) && (
+                {canAccess("billing") && (
                   <button
                     onClick={() => {
                       navigate("/billing");
@@ -308,7 +314,7 @@ export default function Sidebar({
                 )}
 
                 {/* Room Types */}
-                {hasAccess(["superadmin"]) && (
+                {canAccess("room-types") && (
                   <button
                     onClick={() => {
                       navigate("/room-types");
@@ -328,7 +334,7 @@ export default function Sidebar({
             </Collapsible>
 
             {/* RMS Section */}
-            {hasAccess(["superadmin", "branch-admin", "front-desk"]) && (
+            {(canAccess("restaurant-tables") || canAccess("restaurant-categories") || canAccess("restaurant-dishes") || canAccess("restaurant-orders") || canAccess("restaurant-billing")) && (
               <div className="border-t border-gray-200 pt-4 mt-4">
                 <Collapsible
                   open={isRMSExpanded}
@@ -346,91 +352,101 @@ export default function Sidebar({
                   </CollapsibleTrigger>
                   <CollapsibleContent className="space-y-1 mt-2">
                     {/* Tables */}
-                    <button
-                      onClick={() => {
-                        navigate("/restaurant/tables");
-                        setMenuOpen(false);
-                      }}
-                      className={`w-full flex items-center px-3 py-2 lg:py-2.5 text-left rounded-lg mx-6 transition-colors ${
-                        isActiveRoute("/restaurant/tables")
-                          ? "bg-primary text-white"
-                          : "text-gray-700 hover:bg-gray-100"
-                      }`}
-                    >
-                      <Utensils className="mr-3 h-4 w-4 flex-shrink-0" />
-                      <span className="text-sm font-medium">Tables</span>
-                    </button>
+                    {canAccess("restaurant-tables") && (
+                      <button
+                        onClick={() => {
+                          navigate("/restaurant/tables");
+                          setMenuOpen(false);
+                        }}
+                        className={`w-full flex items-center px-3 py-2 lg:py-2.5 text-left rounded-lg mx-6 transition-colors ${
+                          isActiveRoute("/restaurant/tables")
+                            ? "bg-primary text-white"
+                            : "text-gray-700 hover:bg-gray-100"
+                        }`}
+                      >
+                        <Utensils className="mr-3 h-4 w-4 flex-shrink-0" />
+                        <span className="text-sm font-medium">Tables</span>
+                      </button>
+                    )}
 
                     {/* Category */}
-                    <button
-                      onClick={() => {
-                        navigate("/restaurant/categories");
-                        setMenuOpen(false);
-                      }}
-                      className={`w-full flex items-center px-3 py-2 lg:py-2.5 text-left rounded-lg mx-6 transition-colors ${
-                        isActiveRoute("/restaurant/categories")
-                          ? "bg-primary text-white"
-                          : "text-gray-700 hover:bg-gray-100"
-                      }`}
-                    >
-                      <MenuIcon className="mr-3 h-4 w-4 flex-shrink-0" />
-                      <span className="text-sm font-medium">Category</span>
-                    </button>
+                    {canAccess("restaurant-categories") && (
+                      <button
+                        onClick={() => {
+                          navigate("/restaurant/categories");
+                          setMenuOpen(false);
+                        }}
+                        className={`w-full flex items-center px-3 py-2 lg:py-2.5 text-left rounded-lg mx-6 transition-colors ${
+                          isActiveRoute("/restaurant/categories")
+                            ? "bg-primary text-white"
+                            : "text-gray-700 hover:bg-gray-100"
+                        }`}
+                      >
+                        <MenuIcon className="mr-3 h-4 w-4 flex-shrink-0" />
+                        <span className="text-sm font-medium">Category</span>
+                      </button>
+                    )}
 
                     {/* Dishes */}
-                    <button
-                      onClick={() => {
-                        navigate("/restaurant/dishes");
-                        setMenuOpen(false);
-                      }}
-                      className={`w-full flex items-center px-3 py-2 lg:py-2.5 text-left rounded-lg mx-6 transition-colors ${
-                        isActiveRoute("/restaurant/dishes")
-                          ? "bg-primary text-white"
-                          : "text-gray-700 hover:bg-gray-100"
-                      }`}
-                    >
-                      <ChefHat className="mr-3 h-4 w-4 flex-shrink-0" />
-                      <span className="text-sm font-medium">Dishes</span>
-                    </button>
+                    {canAccess("restaurant-dishes") && (
+                      <button
+                        onClick={() => {
+                          navigate("/restaurant/dishes");
+                          setMenuOpen(false);
+                        }}
+                        className={`w-full flex items-center px-3 py-2 lg:py-2.5 text-left rounded-lg mx-6 transition-colors ${
+                          isActiveRoute("/restaurant/dishes")
+                            ? "bg-primary text-white"
+                            : "text-gray-700 hover:bg-gray-100"
+                        }`}
+                      >
+                        <ChefHat className="mr-3 h-4 w-4 flex-shrink-0" />
+                        <span className="text-sm font-medium">Dishes</span>
+                      </button>
+                    )}
 
                     {/* Orders */}
-                    <button
-                      onClick={() => {
-                        navigate("/restaurant/orders");
-                        setMenuOpen(false);
-                      }}
-                      className={`w-full flex items-center px-3 py-2 lg:py-2.5 text-left rounded-lg mx-6 transition-colors ${
-                        isActiveRoute("/restaurant/orders")
-                          ? "bg-primary text-white"
-                          : "text-gray-700 hover:bg-gray-100"
-                      }`}
-                    >
-                      <ClipboardList className="mr-3 h-4 w-4 flex-shrink-0" />
-                      <span className="text-sm font-medium">Orders</span>
-                    </button>
+                    {canAccess("restaurant-orders") && (
+                      <button
+                        onClick={() => {
+                          navigate("/restaurant/orders");
+                          setMenuOpen(false);
+                        }}
+                        className={`w-full flex items-center px-3 py-2 lg:py-2.5 text-left rounded-lg mx-6 transition-colors ${
+                          isActiveRoute("/restaurant/orders")
+                            ? "bg-primary text-white"
+                            : "text-gray-700 hover:bg-gray-100"
+                        }`}
+                      >
+                        <ClipboardList className="mr-3 h-4 w-4 flex-shrink-0" />
+                        <span className="text-sm font-medium">Orders</span>
+                      </button>
+                    )}
 
                     {/* Billing */}
-                    <button
-                      onClick={() => {
-                        navigate("/restaurant/billing");
-                        setMenuOpen(false);
-                      }}
-                      className={`w-full flex items-center px-3 py-2 lg:py-2.5 text-left rounded-lg mx-6 transition-colors ${
-                        isActiveRoute("/restaurant/billing")
-                          ? "bg-primary text-white"
-                          : "text-gray-700 hover:bg-gray-100"
-                      }`}
-                    >
-                      <Receipt className="mr-3 h-4 w-4 flex-shrink-0" />
-                      <span className="text-sm font-medium">Billing</span>
-                    </button>
+                    {canAccess("restaurant-billing") && (
+                      <button
+                        onClick={() => {
+                          navigate("/restaurant/billing");
+                          setMenuOpen(false);
+                        }}
+                        className={`w-full flex items-center px-3 py-2 lg:py-2.5 text-left rounded-lg mx-6 transition-colors ${
+                          isActiveRoute("/restaurant/billing")
+                            ? "bg-primary text-white"
+                            : "text-gray-700 hover:bg-gray-100"
+                        }`}
+                      >
+                        <Receipt className="mr-3 h-4 w-4 flex-shrink-0" />
+                        <span className="text-sm font-medium">Billing</span>
+                      </button>
+                    )}
                   </CollapsibleContent>
                 </Collapsible>
               </div>
             )}
 
             {/* Reports Section */}
-            {hasAccess(["superadmin"]) && (
+            {(canAccess("analytics") || canAccess("restaurant-analytics")) && (
               <div className="border-t border-gray-200 pt-4 mt-4">
                 <Collapsible
                   open={isReportsExpanded}
@@ -447,41 +463,45 @@ export default function Sidebar({
                     )}
                   </CollapsibleTrigger>
                   <CollapsibleContent className="space-y-1 mt-2">
-                    <button
-                      onClick={() => {
-                        navigate("/analytics");
-                        setMenuOpen(false);
-                      }}
-                      className={`w-full flex items-center px-3 py-2 lg:py-2.5 text-left rounded-lg mx-6 transition-colors ${
-                        isActiveRoute("/analytics")
-                          ? "bg-primary text-white"
-                          : "text-gray-700 hover:bg-gray-100"
-                      }`}
-                    >
-                      <TrendingUp className="mr-3 h-4 w-4 flex-shrink-0" />
-                      <span className="text-sm font-medium">PMS Analytics</span>
-                    </button>
-                    <button
-                      onClick={() => {
-                        navigate("/restaurant/analytics");
-                        setMenuOpen(false);
-                      }}
-                      className={`w-full flex items-center px-3 py-2 lg:py-2.5 text-left rounded-lg mx-6 transition-colors ${
-                        isActiveRoute("/restaurant/analytics")
-                          ? "bg-primary text-white"
-                          : "text-gray-700 hover:bg-gray-100"
-                      }`}
-                    >
-                      <ChefHat className="mr-3 h-4 w-4 flex-shrink-0" />
-                      <span className="text-sm font-medium">RMS Analytics</span>
-                    </button>
+                    {canAccess("analytics") && (
+                      <button
+                        onClick={() => {
+                          navigate("/analytics");
+                          setMenuOpen(false);
+                        }}
+                        className={`w-full flex items-center px-3 py-2 lg:py-2.5 text-left rounded-lg mx-6 transition-colors ${
+                          isActiveRoute("/analytics")
+                            ? "bg-primary text-white"
+                            : "text-gray-700 hover:bg-gray-100"
+                        }`}
+                      >
+                        <TrendingUp className="mr-3 h-4 w-4 flex-shrink-0" />
+                        <span className="text-sm font-medium">PMS Analytics</span>
+                      </button>
+                    )}
+                    {canAccess("restaurant-analytics") && (
+                      <button
+                        onClick={() => {
+                          navigate("/restaurant/analytics");
+                          setMenuOpen(false);
+                        }}
+                        className={`w-full flex items-center px-3 py-2 lg:py-2.5 text-left rounded-lg mx-6 transition-colors ${
+                          isActiveRoute("/restaurant/analytics")
+                            ? "bg-primary text-white"
+                            : "text-gray-700 hover:bg-gray-100"
+                        }`}
+                      >
+                        <ChefHat className="mr-3 h-4 w-4 flex-shrink-0" />
+                        <span className="text-sm font-medium">RMS Analytics</span>
+                      </button>
+                    )}
                   </CollapsibleContent>
                 </Collapsible>
               </div>
             )}
 
             {/* Inventory Section */}
-            {hasAccess(["superadmin", "branch-admin", "inventory-manager"]) && (
+            {(canAccess("inventory-stock-categories") || canAccess("inventory-stock-items") || canAccess("inventory-measuring-units") || canAccess("inventory-suppliers") || canAccess("inventory-consumption")) && (
               <div className="border-t border-gray-200 pt-4 mt-4">
                 <Collapsible
                   open={isInventoryExpanded}
@@ -499,84 +519,94 @@ export default function Sidebar({
                   </CollapsibleTrigger>
                   <CollapsibleContent className="space-y-1 mt-2">
                     {/* Stock Categories */}
-                    <button
-                      onClick={() => {
-                        navigate("/inventory/stock-categories");
-                        setMenuOpen(false);
-                      }}
-                      className={`w-full flex items-center px-3 py-2 lg:py-2.5 text-left rounded-lg mx-6 transition-colors ${
-                        isActiveRoute("/inventory/stock-categories")
-                          ? "bg-primary text-white"
-                          : "text-gray-700 hover:bg-gray-100"
-                      }`}
-                    >
-                      <Layers className="mr-3 h-4 w-4 flex-shrink-0" />
-                      <span className="text-sm font-medium">Stock Categories</span>
-                    </button>
+                    {canAccess("inventory-stock-categories") && (
+                      <button
+                        onClick={() => {
+                          navigate("/inventory/stock-categories");
+                          setMenuOpen(false);
+                        }}
+                        className={`w-full flex items-center px-3 py-2 lg:py-2.5 text-left rounded-lg mx-6 transition-colors ${
+                          isActiveRoute("/inventory/stock-categories")
+                            ? "bg-primary text-white"
+                            : "text-gray-700 hover:bg-gray-100"
+                        }`}
+                      >
+                        <Layers className="mr-3 h-4 w-4 flex-shrink-0" />
+                        <span className="text-sm font-medium">Stock Categories</span>
+                      </button>
+                    )}
 
                     {/* Stock Items */}
-                    <button
-                      onClick={() => {
-                        navigate("/inventory/stock-items");
-                        setMenuOpen(false);
-                      }}
-                      className={`w-full flex items-center px-3 py-2 lg:py-2.5 text-left rounded-lg mx-6 transition-colors ${
-                        isActiveRoute("/inventory/stock-items")
-                          ? "bg-primary text-white"
-                          : "text-gray-700 hover:bg-gray-100"
-                      }`}
-                    >
-                      <Package className="mr-3 h-4 w-4 flex-shrink-0" />
-                      <span className="text-sm font-medium">Stock Items</span>
-                    </button>
+                    {canAccess("inventory-stock-items") && (
+                      <button
+                        onClick={() => {
+                          navigate("/inventory/stock-items");
+                          setMenuOpen(false);
+                        }}
+                        className={`w-full flex items-center px-3 py-2 lg:py-2.5 text-left rounded-lg mx-6 transition-colors ${
+                          isActiveRoute("/inventory/stock-items")
+                            ? "bg-primary text-white"
+                            : "text-gray-700 hover:bg-gray-100"
+                        }`}
+                      >
+                        <Package className="mr-3 h-4 w-4 flex-shrink-0" />
+                        <span className="text-sm font-medium">Stock Items</span>
+                      </button>
+                    )}
 
                     {/* Measuring Units */}
-                    <button
-                      onClick={() => {
-                        navigate("/inventory/measuring-units");
-                        setMenuOpen(false);
-                      }}
-                      className={`w-full flex items-center px-3 py-2 lg:py-2.5 text-left rounded-lg mx-6 transition-colors ${
-                        isActiveRoute("/inventory/measuring-units")
-                          ? "bg-primary text-white"
-                          : "text-gray-700 hover:bg-gray-100"
-                      }`}
-                    >
-                      <Scale className="mr-3 h-4 w-4 flex-shrink-0" />
-                      <span className="text-sm font-medium">Measuring Units</span>
-                    </button>
+                    {canAccess("inventory-measuring-units") && (
+                      <button
+                        onClick={() => {
+                          navigate("/inventory/measuring-units");
+                          setMenuOpen(false);
+                        }}
+                        className={`w-full flex items-center px-3 py-2 lg:py-2.5 text-left rounded-lg mx-6 transition-colors ${
+                          isActiveRoute("/inventory/measuring-units")
+                            ? "bg-primary text-white"
+                            : "text-gray-700 hover:bg-gray-100"
+                        }`}
+                      >
+                        <Scale className="mr-3 h-4 w-4 flex-shrink-0" />
+                        <span className="text-sm font-medium">Measuring Units</span>
+                      </button>
+                    )}
 
                     {/* Suppliers */}
-                    <button
-                      onClick={() => {
-                        navigate("/inventory/suppliers");
-                        setMenuOpen(false);
-                      }}
-                      className={`w-full flex items-center px-3 py-2 lg:py-2.5 text-left rounded-lg mx-6 transition-colors ${
-                        isActiveRoute("/inventory/suppliers")
-                          ? "bg-primary text-white"
-                          : "text-gray-700 hover:bg-gray-100"
-                      }`}
-                    >
-                      <Users className="mr-3 h-4 w-4 flex-shrink-0" />
-                      <span className="text-sm font-medium">Suppliers</span>
-                    </button>
+                    {canAccess("inventory-suppliers") && (
+                      <button
+                        onClick={() => {
+                          navigate("/inventory/suppliers");
+                          setMenuOpen(false);
+                        }}
+                        className={`w-full flex items-center px-3 py-2 lg:py-2.5 text-left rounded-lg mx-6 transition-colors ${
+                          isActiveRoute("/inventory/suppliers")
+                            ? "bg-primary text-white"
+                            : "text-gray-700 hover:bg-gray-100"
+                        }`}
+                      >
+                        <Users className="mr-3 h-4 w-4 flex-shrink-0" />
+                        <span className="text-sm font-medium">Suppliers</span>
+                      </button>
+                    )}
 
                     {/* Stock Consumption */}
-                    <button
-                      onClick={() => {
-                        navigate("/inventory/consumption");
-                        setMenuOpen(false);
-                      }}
-                      className={`w-full flex items-center px-3 py-2 lg:py-2.5 text-left rounded-lg mx-6 transition-colors ${
-                        isActiveRoute("/inventory/consumption")
-                          ? "bg-primary text-white"
-                          : "text-gray-700 hover:bg-gray-100"
-                      }`}
-                    >
-                      <TrendingDown className="mr-3 h-4 w-4 flex-shrink-0" />
-                      <span className="text-sm font-medium">Stock Consumption</span>
-                    </button>
+                    {canAccess("inventory-consumption") && (
+                      <button
+                        onClick={() => {
+                          navigate("/inventory/consumption");
+                          setMenuOpen(false);
+                        }}
+                        className={`w-full flex items-center px-3 py-2 lg:py-2.5 text-left rounded-lg mx-6 transition-colors ${
+                          isActiveRoute("/inventory/consumption")
+                            ? "bg-primary text-white"
+                            : "text-gray-700 hover:bg-gray-100"
+                        }`}
+                      >
+                        <TrendingDown className="mr-3 h-4 w-4 flex-shrink-0" />
+                        <span className="text-sm font-medium">Stock Consumption</span>
+                      </button>
+                    )}
                   </CollapsibleContent>
                 </Collapsible>
               </div>
@@ -600,7 +630,7 @@ export default function Sidebar({
                 </CollapsibleTrigger>
                 <CollapsibleContent className="space-y-1 mt-2">
                   {/* Branch Management */}
-                  {hasAccess(["superadmin"]) && (
+                  {canAccess("branches") && (
                     <button
                       onClick={() => {
                         navigate("/branches");
@@ -620,7 +650,7 @@ export default function Sidebar({
                   )}
 
                   {/* User Management */}
-                  {hasAccess(["superadmin"]) && (
+                  {canAccess("users") && (
                     <button
                       onClick={() => {
                         navigate("/users");
@@ -639,8 +669,28 @@ export default function Sidebar({
                     </button>
                   )}
 
+                  {/* Role Management */}
+                  {user && user.role === "superadmin" && (
+                    <button
+                      onClick={() => {
+                        navigate("/role-management");
+                        setMenuOpen(false);
+                      }}
+                      className={`w-full flex items-center px-3 py-2 lg:py-2.5 text-left rounded-lg mx-6 transition-colors ${
+                        isActiveRoute("/role-management")
+                          ? "bg-primary text-white"
+                          : "text-gray-700 hover:bg-gray-100"
+                      }`}
+                    >
+                      <Users className="mr-3 h-4 w-4 flex-shrink-0" />
+                      <span className="text-sm font-medium">
+                        Role Management
+                      </span>
+                    </button>
+                  )}
+
                   {/* Tax/Charges */}
-                  {hasAccess(["superadmin", "branch-admin"]) && (
+                  {canAccess("tax-management") && (
                     <button
                       onClick={() => {
                         navigate("/tax-management");
@@ -658,7 +708,7 @@ export default function Sidebar({
                   )}
 
                   {/* Settings */}
-                  {hasAccess(["superadmin"]) && (
+                  {canAccess("settings") && (
                     <button
                       onClick={() => {
                         navigate("/settings");
@@ -676,7 +726,7 @@ export default function Sidebar({
                   )}
 
                   {/* Profile */}
-                  {hasAccess(["superadmin", "branch-admin", "front-desk"]) && (
+                  {canAccess("profile") && (
                     <button
                       onClick={() => {
                         navigate("/profile");
@@ -694,10 +744,7 @@ export default function Sidebar({
                   )}
 
                   {/* Notifications */}
-                  {user &&
-                    ["superadmin", "branch-admin"].includes(
-                      (user as any).role,
-                    ) && (
+                  {canAccess("notifications") && (
                       <div>
                         <button
                           onClick={() => {
