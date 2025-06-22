@@ -87,12 +87,12 @@ const bulkStockItemsSchema = z.object({
     categoryId: z.number().min(1, "Category is required"),
     measuringUnitId: z.number().min(1, "Measuring unit is required"),
     supplierId: z.number().optional(),
-    defaultPrice: z.string().optional(),
-    currentStock: z.string().optional(),
-    minimumStock: z.string().optional(),
-    maximumStock: z.string().optional(),
-    reorderLevel: z.string().optional(),
-    reorderQuantity: z.string().optional(),
+    defaultPrice: z.string().transform((val) => val === "" ? "0" : val),
+    currentStock: z.string().transform((val) => val === "" ? "0" : val),
+    minimumStock: z.string().transform((val) => val === "" ? "0" : val),
+    maximumStock: z.string().transform((val) => val === "" ? undefined : val).optional(),
+    reorderLevel: z.string().transform((val) => val === "" ? undefined : val).optional(),
+    reorderQuantity: z.string().transform((val) => val === "" ? undefined : val).optional(),
     description: z.string().optional(),
     branchId: z.number().nullable().optional(),
   })).min(1, "At least one item is required"),
@@ -1230,7 +1230,19 @@ export default function BulkOperations({ type, branches, categories, stockCatego
           toast({ title: "Please fill at least one item with name, category, and unit", variant: "destructive" });
           return;
         }
-        createStockItemsMutation.mutate({ items: validItems });
+        
+        // Process the items to handle empty numeric fields
+        const processedItems = validItems.map(item => ({
+          ...item,
+          defaultPrice: item.defaultPrice || "0",
+          currentStock: item.currentStock || "0",
+          minimumStock: item.minimumStock || "0",
+          maximumStock: item.maximumStock || undefined,
+          reorderLevel: item.reorderLevel || undefined,
+          reorderQuantity: item.reorderQuantity || undefined,
+        }));
+        
+        createStockItemsMutation.mutate({ items: processedItems });
       })} className="space-y-4">
         {stockItemFields.map((field, index) => (
           <Card key={field.id} className="p-4">

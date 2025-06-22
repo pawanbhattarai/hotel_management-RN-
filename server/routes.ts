@@ -1155,7 +1155,18 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       const results = [];
       for (const item of items) {
-        const validatedData = insertStockItemSchema.parse(item);
+        // Ensure branchId is set properly
+        const itemWithBranch = {
+          ...item,
+          branchId: user.role === "superadmin" ? item.branchId || user.branchId : user.branchId,
+        };
+
+        // Check permissions
+        if (!checkBranchPermissions(user.role, user.branchId, itemWithBranch.branchId)) {
+          return res.status(403).json({ message: "Insufficient permissions for one or more items" });
+        }
+
+        const validatedData = insertStockItemSchema.parse(itemWithBranch);
         const newItem = await inventoryStorage.createStockItem(validatedData);
         results.push(newItem);
       }
