@@ -154,6 +154,17 @@ export default function Users() {
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
+    
+    // Validate custom role selection
+    if (formData.role === "custom" && formData.customRoleIds.length === 0) {
+      toast({ 
+        title: "Custom Role Required", 
+        description: "Please select at least one custom role.",
+        variant: "destructive" 
+      });
+      return;
+    }
+    
     // Convert branchId to number or null for unassigned
     const submitData = {
       ...formData,
@@ -161,6 +172,7 @@ export default function Users() {
         formData.branchId === "unassigned" || formData.branchId === ""
           ? null
           : parseInt(formData.branchId, 10),
+      customRoleIds: formData.role === "custom" ? formData.customRoleIds : [],
     };
 
     if (editingUser) {
@@ -177,7 +189,7 @@ export default function Users() {
       email: user.email || "",
       firstName: user.firstName || "",
       lastName: user.lastName || "",
-      role: user.role,
+      role: user.customRoleIds && user.customRoleIds.length > 0 ? "custom" : user.role,
       branchId: user.branchId?.toString() || "unassigned",
       password: "",
       customRoleIds: user.customRoleIds || [],
@@ -197,7 +209,25 @@ export default function Users() {
     return branch?.name || "Unassigned";
   };
 
-  const getRoleBadge = (role: string) => {
+  const getRoleBadge = (user: any) => {
+    // If user has custom roles, show custom roles
+    if (user.customRoleIds && user.customRoleIds.length > 0) {
+      const userCustomRoles = customRoles?.filter((role: any) => 
+        user.customRoleIds.includes(role.id)
+      ) || [];
+      
+      return (
+        <div className="flex flex-wrap gap-1">
+          {userCustomRoles.map((role: any) => (
+            <Badge key={role.id} className="bg-purple-100 text-purple-800">
+              {role.name}
+            </Badge>
+          ))}
+        </div>
+      );
+    }
+    
+    // Default role badges
     const roleConfig = {
       superadmin: {
         label: "Super Admin",
@@ -213,7 +243,7 @@ export default function Users() {
       },
     };
     const config =
-      roleConfig[role as keyof typeof roleConfig] || roleConfig["front-desk"];
+      roleConfig[user.role as keyof typeof roleConfig] || roleConfig["front-desk"];
     return <Badge className={config.className}>{config.label}</Badge>;
   };
 
@@ -365,9 +395,13 @@ export default function Users() {
                       <Label htmlFor="role">Role</Label>
                       <Select
                         value={formData.role}
-                        onValueChange={(value) =>
-                          setFormData({ ...formData, role: value })
-                        }
+                        onValueChange={(value) => {
+                          setFormData({ 
+                            ...formData, 
+                            role: value,
+                            customRoleIds: value === "custom" ? formData.customRoleIds : []
+                          });
+                        }}
                       >
                         <SelectTrigger>
                           <SelectValue />
@@ -380,9 +414,47 @@ export default function Users() {
                           <SelectItem value="superadmin">
                             Super Admin
                           </SelectItem>
+                          <SelectItem value="custom">Custom Role</SelectItem>
                         </SelectContent>
                       </Select>
                     </div>
+                    {formData.role === "custom" && (
+                      <div>
+                        <Label htmlFor="customRoles">Custom Roles</Label>
+                        <div className="space-y-2 max-h-32 overflow-y-auto border rounded-md p-3">
+                          {customRoles?.length > 0 ? (
+                            customRoles.map((role: any) => (
+                              <div key={role.id} className="flex items-center space-x-2">
+                                <input
+                                  type="checkbox"
+                                  id={`role-${role.id}`}
+                                  checked={formData.customRoleIds.includes(role.id)}
+                                  onChange={(e) => {
+                                    if (e.target.checked) {
+                                      setFormData({
+                                        ...formData,
+                                        customRoleIds: [...formData.customRoleIds, role.id]
+                                      });
+                                    } else {
+                                      setFormData({
+                                        ...formData,
+                                        customRoleIds: formData.customRoleIds.filter(id => id !== role.id)
+                                      });
+                                    }
+                                  }}
+                                  className="rounded border-gray-300"
+                                />
+                                <Label htmlFor={`role-${role.id}`} className="text-sm font-normal">
+                                  {role.name}
+                                </Label>
+                              </div>
+                            ))
+                          ) : (
+                            <p className="text-sm text-gray-500">No custom roles available</p>
+                          )}
+                        </div>
+                      </div>
+                    )}
                     <div>
                       <Label htmlFor="branchId">Branch</Label>
                       <Select
@@ -439,7 +511,7 @@ export default function Users() {
                             {user.firstName} {user.lastName}
                           </TableCell>
                           <TableCell>{user.email || "N/A"}</TableCell>
-                          <TableCell>{getRoleBadge(user.role)}</TableCell>
+                          <TableCell>{getRoleBadge(user)}</TableCell>
                           <TableCell>{getBranchName(user.branchId)}</TableCell>
                           <TableCell>
                             {user.lastLogin

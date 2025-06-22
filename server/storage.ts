@@ -37,6 +37,9 @@ import {
   type InsertTax,
 } from "@shared/schema";
 
+// Import roleStorage for custom role management
+import { roleStorage } from "./role-storage";
+
 if (!process.env.DATABASE_URL) {
   throw new Error("DATABASE_URL must be set");
 }
@@ -190,6 +193,33 @@ export class DatabaseStorage implements IStorage {
 
   async getAllUsers(): Promise<User[]> {
     return await db.select().from(users);
+  }
+
+  async getAllUsersWithCustomRoles(): Promise<(User & { customRoleIds: number[] })[]> {
+    const allUsers = await db.select().from(users);
+    
+    const usersWithRoles = await Promise.all(
+      allUsers.map(async (user) => {
+        const customRoleIds = await roleStorage.getUserRoles(user.id);
+        return {
+          ...user,
+          customRoleIds,
+        };
+      })
+    );
+    
+    return usersWithRoles;
+  }
+
+  async getUserWithCustomRoles(userId: string): Promise<(User & { customRoleIds: number[] }) | undefined> {
+    const user = await this.getUser(userId);
+    if (!user) return undefined;
+    
+    const customRoleIds = await roleStorage.getUserRoles(userId);
+    return {
+      ...user,
+      customRoleIds,
+    };
   }
 
   async updateUser(id: string, user: Partial<InsertUser>): Promise<User> {

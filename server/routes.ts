@@ -224,7 +224,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(403).json({ message: "Insufficient permissions" });
       }
 
-      const users = await storage.getAllUsers();
+      const users = await storage.getAllUsersWithCustomRoles();
       res.json(users);
     } catch (error) {
       console.error("Error fetching users:", error);
@@ -239,10 +239,20 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(403).json({ message: "Insufficient permissions" });
       }
 
-      const userData = insertUserSchema.parse(req.body);
-      const newUser = await storage.upsertUser(userData);
-      broadcastChange('users', 'created', newUser); // Broadcast change
-      res.status(201).json(newUser);
+      const { customRoleIds, ...userData } = req.body;
+      const validatedUserData = insertUserSchema.parse(userData);
+      const newUser = await storage.upsertUser(validatedUserData);
+      
+      // Handle custom role assignments
+      if (customRoleIds && customRoleIds.length > 0) {
+        await roleStorage.assignRolesToUser(newUser.id, customRoleIds);
+      }
+      
+      // Get user with custom roles for response
+      const userWithRoles = await storage.getUserWithCustomRoles(newUser.id);
+      
+      broadcastChange('users', 'created', userWithRoles); // Broadcast change
+      res.status(201).json(userWithRoles);
     } catch (error) {
       console.error("Error creating user:", error);
       res.status(500).json({ message: "Failed to create user" });
@@ -257,10 +267,20 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
 
       const userId = req.params.id;
-      const userData = insertUserSchema.partial().parse(req.body);
-      const updatedUser = await storage.updateUser(userId, userData);
-      broadcastChange('users', 'updated', updatedUser); // Broadcast change
-      res.json(updatedUser);
+      const { customRoleIds, ...userData } = req.body;
+      const validatedUserData = insertUserSchema.partial().parse(userData);
+      const updatedUser = await storage.updateUser(userId, validatedUserData);
+      
+      // Handle custom role assignments
+      if (customRoleIds !== undefined) {
+        await roleStorage.assignRolesToUser(userId, customRoleIds);
+      }
+      
+      // Get user with custom roles for response
+      const userWithRoles = await storage.getUserWithCustomRoles(userId);
+      
+      broadcastChange('users', 'updated', userWithRoles); // Broadcast change
+      res.json(userWithRoles);
     } catch (error) {
       console.error("Error updating user:", error);
       res.status(500).json({ message: "Failed to update user" });

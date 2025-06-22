@@ -1,4 +1,3 @@
-
 import { db } from "./db";
 import { customRoles, rolePermissions, userCustomRoles, users } from "@shared/schema";
 import { eq, and, desc } from "drizzle-orm";
@@ -31,11 +30,44 @@ export class RoleStorage {
     return role;
   }
 
-  async deleteCustomRole(id: number) {
-    await db.update(customRoles)
-      .set({ isActive: false, updatedAt: new Date() })
-      .where(eq(customRoles.id, id));
+  async deleteCustomRole(roleId: number): Promise<void> {
+    await db.transaction(async (tx) => {
+      // Remove all permissions for this role
+      await tx.delete(rolePermissions).where(eq(rolePermissions.roleId, roleId));
+
+      // Remove all user assignments for this role
+      await tx.delete(userCustomRoles).where(eq(userCustomRoles.roleId, roleId));
+
+      // Delete the role
+      await tx.delete(customRoles).where(eq(customRoles.id, roleId));
+    });
   }
+
+  async assignRolesToUser(userId: string, roleIds: number[]): Promise<void> {
+    await db.transaction(async (tx) => {
+      // Remove existing role assignments for this user
+      await tx.delete(userCustomRoles).where(eq(userCustomRoles.userId, userId));
+
+      // Add new role assignments
+      if (roleIds.length > 0) {
+        const assignments = roleIds.map(roleId => ({
+          userId,
+          roleId,
+        }));
+        await tx.insert(userCustomRoles).values(assignments);
+      }
+    });
+  }
+
+  async getUserRoles(userId: string): Promise<number[]> {
+    const results = await db
+      .select({ roleId: userCustomRoles.roleId })
+      .from(userCustomRoles)
+      .where(eq(userCustomRoles.userId, userId));
+
+    return results.map(r => r.roleId);
+  }
+
 
   // Role Permissions
   async getRolePermissions(roleId: number) {
@@ -79,8 +111,14 @@ export class RoleStorage {
   }
 
   async removeUserFromRole(userId: string, roleId: number) {
-    await db.delete(userCustomRoles)
-      .where(and(eq(userCustomRoles.userId, userId), eq(userCustomRoles.roleId, roleId)));
+    await db
+      .delete(userCustomRoles)
+      .where(
+        and(
+          eq(userCustomRoles.userId, userId),
+          eq(userCustomRoles.roleId, roleId)
+        )
+      );
   }
 
   async getUserPermissions(userId: string) {
@@ -103,7 +141,7 @@ export class RoleStorage {
       if (!aggregatedPermissions[role.module]) {
         aggregatedPermissions[role.module] = { read: false, write: false, delete: false };
       }
-      
+
       const modulePerms = role.permissions as any;
       if (modulePerms.read) aggregatedPermissions[role.module].read = true;
       if (modulePerms.write) aggregatedPermissions[role.module].write = true;
