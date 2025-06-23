@@ -49,6 +49,11 @@ export default function QROrderPage() {
   const [submitting, setSubmitting] = useState(false);
   const [orderComplete, setOrderComplete] = useState(false);
   const [orderNumber, setOrderNumber] = useState('');
+  const [existingOrderId, setExistingOrderId] = useState<string | null>(null);
+  const [orderStatus, setOrderStatus] = useState<string>('');
+  const [orderCreatedAt, setOrderCreatedAt] = useState<Date | null>(null);
+  const [estimatedTime, setEstimatedTime] = useState<number>(0);
+  const [canModifyOrder, setCanModifyOrder] = useState(true);
   const [locationInfo, setLocationInfo] = useState<LocationInfo | null>(null);
   const [categories, setCategories] = useState<MenuCategory[]>([]);
   const [dishes, setDishes] = useState<MenuDish[]>([]);
@@ -62,8 +67,26 @@ export default function QROrderPage() {
   useEffect(() => {
     if (token) {
       fetchOrderInfo();
+      // Check for existing order every 30 seconds
+      const interval = setInterval(checkExistingOrder, 30000);
+      return () => clearInterval(interval);
     }
   }, [token]);
+
+  useEffect(() => {
+    if (existingOrderId && orderCreatedAt) {
+      const interval = setInterval(() => {
+        const now = new Date();
+        const diffInMinutes = (now.getTime() - orderCreatedAt.getTime()) / (1000 * 60);
+        setCanModifyOrder(diffInMinutes <= 2);
+      }, 1000);
+      return () => clearInterval(interval);
+    }
+  }, [existingOrderId, orderCreatedAt]);
+
+  useEffect(() => {
+    calculateEstimatedTime();
+  }, [cart, dishes]);
 
   const fetchOrderInfo = async () => {
     try {
@@ -75,6 +98,9 @@ export default function QROrderPage() {
       setLocationInfo(data.location);
       setCategories(data.menu.categories);
       setDishes(data.menu.dishes);
+      
+      // Check for existing order
+      await checkExistingOrder();
     } catch (error) {
       toast({
         title: "Error",
@@ -86,7 +112,60 @@ export default function QROrderPage() {
     }
   };
 
+  const checkExistingOrder = async () => {
+    try {
+      const response = await fetch(`/api/order/existing/${token}`);
+      if (response.ok) {
+        const orderData = await response.json();
+        setExistingOrderId(orderData.id);
+        setOrderNumber(orderData.orderNumber);
+        setOrderStatus(orderData.status);
+        setOrderCreatedAt(new Date(orderData.createdAt));
+        setCustomerName(orderData.customerName || '');
+        setCustomerPhone(orderData.customerPhone || '');
+        setNotes(orderData.notes || '');
+        
+        // Load existing order items into cart
+        if (orderData.items) {
+          const existingItems = orderData.items.map((item: any) => {
+            const dish = dishes.find(d => d.id === item.dishId);
+            return {
+              dishId: item.dishId,
+              name: dish?.name || item.dish?.name || 'Unknown',
+              price: item.unitPrice,
+              quantity: item.quantity,
+              specialInstructions: item.specialInstructions
+            };
+          });
+          setCart(existingItems);
+        }
+      }
+    } catch (error) {
+      // No existing order found, that's fine
+    }
+  };
+
+  const calculateEstimatedTime = () => {
+    let totalTime = 0;
+    cart.forEach(item => {
+      const dish = dishes.find(d => d.id === item.dishId);
+      if (dish && dish.preparationTime) {
+        totalTime = Math.max(totalTime, dish.preparationTime * item.quantity);
+      }
+    });
+    setEstimatedTime(totalTime);
+  };
+
   const addToCart = (dish: MenuDish) => {
+    if (!canModifyOrder && existingOrderId) {
+      toast({
+        title: "Cannot Modify Order",
+        description: "Order can only be modified within 2 minutes of placement",
+        variant: "destructive",
+      });
+      return;
+    }
+
     const existingItem = cart.find(item => item.dishId === dish.id);
     if (existingItem) {
       setCart(cart.map(item => 
@@ -105,6 +184,15 @@ export default function QROrderPage() {
   };
 
   const updateQuantity = (dishId: number, quantity: number) => {
+    if (!canModifyOrder && existingOrderId) {
+      toast({
+        title: "Cannot Modify Order",
+        description: "Order can only be modified within 2 minutes of placement",
+        variant: "destructive",
+      });
+      return;
+    }
+
     if (quantity === 0) {
       setCart(cart.filter(item => item.dishId !== dishId));
     } else {
@@ -141,8 +229,12 @@ export default function QROrderPage() {
 
     setSubmitting(true);
     try {
-      const response = await fetch(`/api/order/submit/${token}`, {
-        method: 'POST',
+      const endpoint = existingOrderId 
+        ? `/api/order/update/${existingOrderId}` 
+        : `/api/order/submit/${token}`;
+      
+      const response = await fetch(endpoint, {
+        method: existingOrderId ? 'PUT' : 'POST',
         headers: {
           'Content-Type': 'application/json',
         },
@@ -164,12 +256,16 @@ export default function QROrderPage() {
 
       const data = await response.json();
       setOrderNumber(data.orderNumber);
-      setOrderComplete(true);
+      setExistingOrderId(data.orderId);
+      setOrderCreatedAt(new Date());
       
       toast({
-        title: "Order Placed!",
-        description: `Your order ${data.orderNumber} has been placed successfully`,
+        title: existingOrderId ? "Order Updated!" : "Order Placed!",
+        description: `Your order ${data.orderNumber} has been ${existingOrderId ? 'updated' : 'placed'} successfully`,
       });
+      
+      // Refresh order status
+      await checkExistingOrder();
     } catch (error) {
       toast({
         title: "Error",
@@ -179,6 +275,58 @@ export default function QROrderPage() {
     } finally {
       setSubmitting(false);
     }
+  };
+
+  const clearTable = async () => {
+    try {
+      const response = await fetch(`/api/order/clear/${token}`, {
+        method: 'POST'
+      });
+      
+      if (response.ok) {
+        // Reset all state
+        setExistingOrderId(null);
+        setOrderNumber('');
+        setOrderStatus('');
+        setOrderCreatedAt(null);
+        setCart([]);
+        setCustomerName('');
+        setCustomerPhone('');
+        setNotes('');
+        setOrderComplete(false);
+        
+        toast({
+          title: "Table Cleared",
+          description: "Table is now available for new orders",
+        });
+      }
+    } catch (error) {
+      toast({
+        title: "Error",
+        description: "Failed to clear table",
+        variant: "destructive",
+      });
+    }
+  };
+
+  const getStatusColor = (status: string) => {
+    switch (status) {
+      case 'pending': return 'bg-yellow-500';
+      case 'confirmed': return 'bg-blue-500';
+      case 'preparing': return 'bg-orange-500';
+      case 'ready': return 'bg-green-500';
+      case 'served': return 'bg-gray-500';
+      case 'completed': return 'bg-green-600';
+      default: return 'bg-gray-400';
+    }
+  };
+
+  const getTimeRemaining = () => {
+    if (!orderCreatedAt) return null;
+    const now = new Date();
+    const diffInMinutes = (now.getTime() - orderCreatedAt.getTime()) / (1000 * 60);
+    const remaining = Math.max(0, 2 - diffInMinutes);
+    return remaining;
   };
 
   if (loading) {
@@ -300,6 +448,42 @@ export default function QROrderPage() {
               )}
             </div>
 
+            {/* Existing Order Status */}
+            {existingOrderId && (
+              <div className="bg-white p-4 rounded-lg mb-4">
+                <div className="flex items-center justify-between mb-2">
+                  <h3 className="font-semibold">Order #{orderNumber}</h3>
+                  <span className={`px-2 py-1 rounded text-white text-xs ${getStatusColor(orderStatus)}`}>
+                    {orderStatus.toUpperCase()}
+                  </span>
+                </div>
+                {estimatedTime > 0 && (
+                  <p className="text-sm text-gray-600 mb-2">
+                    Estimated preparation: {estimatedTime} minutes
+                  </p>
+                )}
+                {!canModifyOrder && (
+                  <p className="text-red-600 text-xs">
+                    Order modification time expired
+                  </p>
+                )}
+                {canModifyOrder && getTimeRemaining() !== null && (
+                  <p className="text-orange-600 text-xs">
+                    {Math.ceil(getTimeRemaining()!)} minutes left to modify
+                  </p>
+                )}
+                {orderStatus === 'completed' && (
+                  <Button
+                    onClick={clearTable}
+                    className="w-full mt-2 bg-green-600 hover:bg-green-700"
+                    size="sm"
+                  >
+                    Clear Table & New Order
+                  </Button>
+                )}
+              </div>
+            )}
+
             {cart.length === 0 ? (
               <p className="text-gray-500 text-center py-8">No items in cart</p>
             ) : (
@@ -401,9 +585,12 @@ export default function QROrderPage() {
                 <Button 
                   className="w-full bg-blue-500 hover:bg-blue-600 text-white py-3 text-lg font-semibold rounded-lg"
                   onClick={submitOrder}
-                  disabled={submitting || cart.length === 0}
+                  disabled={submitting || cart.length === 0 || (!canModifyOrder && existingOrderId && orderStatus !== 'pending')}
                 >
-                  {submitting ? "Creating Order..." : "Create Order"}
+                  {submitting 
+                    ? (existingOrderId ? "Updating Order..." : "Creating Order...")
+                    : (existingOrderId ? "Update Order" : "Create Order")
+                  }
                 </Button>
               </div>
             )}

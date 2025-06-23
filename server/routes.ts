@@ -32,6 +32,9 @@ import {
   insertDishIngredientSchema,
 } from "@shared/schema";
 import { QRService } from "./qr-service";
+import { eq } from "drizzle-orm";
+import { restaurantOrderItems } from "@shared/schema";
+import { db } from "./db";
 import { z } from "zod";
 import { broadcastChange } from "./middleware/websocket";
 import { enforceBranchIsolation, getBranchFilter, canAccessBranch } from "./middleware/branchIsolation";
@@ -2919,6 +2922,141 @@ export async function registerRoutes(app: Express): Promise<Server> {
     } catch (error) {
       console.error("Error validating QR token:", error);
       res.status(500).json({ message: "Failed to validate QR code" });
+    }
+  });
+
+  // Check for existing order
+  app.get("/api/order/existing/:token", async (req: any, res) => {
+    try {
+      const token = req.params.token;
+      const orderInfo = await QRService.validateQRToken(token);
+      
+      if (!orderInfo) {
+        return res.status(404).json({ message: "Invalid QR code" });
+      }
+
+      // Find existing active order for this table/room
+      const whereCondition = orderInfo.type === 'table' 
+        ? { tableId: orderInfo.id, status: ["pending", "confirmed", "preparing", "ready"] }
+        : { roomId: orderInfo.id, status: ["pending", "confirmed", "preparing", "ready"] };
+
+      const existingOrder = await restaurantStorage.getRestaurantOrders(orderInfo.branchId, whereCondition.status[0]);
+      const activeOrder = existingOrder.find((order: any) => 
+        orderInfo.type === 'table' ? order.tableId === orderInfo.id : order.roomId === orderInfo.id
+      );
+
+      if (activeOrder) {
+        const orderItems = await restaurantStorage.getRestaurantOrderItems(activeOrder.id);
+        res.json({
+          ...activeOrder,
+          items: orderItems
+        });
+      } else {
+        res.status(404).json({ message: "No active order found" });
+      }
+    } catch (error) {
+      console.error("Error checking existing order:", error);
+      res.status(500).json({ message: "Failed to check existing order" });
+    }
+  });
+
+  // Update existing order
+  app.put("/api/order/update/:orderId", async (req: any, res) => {
+    try {
+      const orderId = req.params.orderId;
+      const { items, customerName, customerPhone, notes } = req.body;
+
+      // Check if order can be modified (within 2 minutes)
+      const existingOrder = await restaurantStorage.getRestaurantOrder(orderId);
+      if (!existingOrder) {
+        return res.status(404).json({ message: "Order not found" });
+      }
+
+      const orderTime = new Date(existingOrder.createdAt);
+      const now = new Date();
+      const diffInMinutes = (now.getTime() - orderTime.getTime()) / (1000 * 60);
+      
+      if (diffInMinutes > 2 && existingOrder.status !== 'pending') {
+        return res.status(400).json({ message: "Order can no longer be modified" });
+      }
+
+      // Calculate new totals
+      let subtotal = 0;
+      const orderItems = [];
+
+      for (const item of items) {
+        const dish = await restaurantStorage.getMenuDish(item.dishId);
+        if (!dish) {
+          return res.status(400).json({ message: `Dish with ID ${item.dishId} not found` });
+        }
+
+        const itemTotal = parseFloat(dish.price) * item.quantity;
+        subtotal += itemTotal;
+
+        orderItems.push({
+          orderId,
+          dishId: item.dishId,
+          quantity: item.quantity,
+          unitPrice: dish.price,
+          totalPrice: itemTotal.toString(),
+          specialInstructions: item.specialInstructions || null
+        });
+      }
+
+      // Update order
+      const updatedOrder = await restaurantStorage.updateRestaurantOrder(orderId, {
+        customerName,
+        customerPhone,
+        subtotal: subtotal.toString(),
+        totalAmount: subtotal.toString(),
+        notes
+      });
+
+      // Delete existing items and add new ones
+      await db.delete(restaurantOrderItems).where(eq(restaurantOrderItems.orderId, orderId));
+      await db.insert(restaurantOrderItems).values(orderItems);
+
+      res.json({
+        message: "Order updated successfully",
+        orderNumber: updatedOrder.orderNumber,
+        orderId: updatedOrder.id
+      });
+    } catch (error) {
+      console.error("Error updating order:", error);
+      res.status(500).json({ message: "Failed to update order" });
+    }
+  });
+
+  // Clear table/room
+  app.post("/api/order/clear/:token", async (req: any, res) => {
+    try {
+      const token = req.params.token;
+      const orderInfo = await QRService.validateQRToken(token);
+      
+      if (!orderInfo) {
+        return res.status(404).json({ message: "Invalid QR code" });
+      }
+
+      // Mark any active orders as completed
+      const existingOrders = await restaurantStorage.getRestaurantOrders(orderInfo.branchId);
+      const activeOrders = existingOrders.filter((order: any) => 
+        (orderInfo.type === 'table' ? order.tableId === orderInfo.id : order.roomId === orderInfo.id) &&
+        !['completed', 'cancelled'].includes(order.status)
+      );
+
+      for (const order of activeOrders) {
+        await restaurantStorage.updateRestaurantOrderStatus(order.id, 'completed');
+      }
+
+      // Update table status if it's a table order
+      if (orderInfo.type === 'table') {
+        await restaurantStorage.updateRestaurantTable(orderInfo.id, { status: 'open' });
+      }
+
+      res.json({ message: "Table/room cleared successfully" });
+    } catch (error) {
+      console.error("Error clearing table/room:", error);
+      res.status(500).json({ message: "Failed to clear table/room" });
     }
   });
 
