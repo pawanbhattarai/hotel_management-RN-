@@ -101,18 +101,27 @@ export default function MultiRoomModal({
       console.log("User branch ID:", user?.branchId);
 
       try {
-        const response = await apiRequest(
-          "GET",
-          `/api/rooms?branchId=${branchId}&status=available`,
-        );
+        // Build query parameters properly
+        const params = new URLSearchParams();
+        params.append('branchId', branchId.toString());
+        params.append('status', 'available');
+        
+        const url = `/api/rooms?${params.toString()}`;
+        console.log("Fetching from URL:", url);
+        
+        const response = await apiRequest("GET", url);
+        
         if (!response.ok) {
           console.error("Room fetch failed with status:", response.status);
-          throw new Error(`Failed to fetch rooms: ${response.status}`);
+          const errorText = await response.text();
+          console.error("Error response:", errorText);
+          throw new Error(`Failed to fetch rooms: ${response.status} - ${errorText}`);
         }
+        
         const rooms = await response.json();
         console.log("Available rooms fetched:", rooms);
         console.log("Number of rooms:", rooms?.length || 0);
-        return rooms;
+        return rooms || [];
       } catch (error) {
         console.error("Error fetching rooms:", error);
         throw error;

@@ -322,8 +322,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
         (queryBranchId ? parseInt(queryBranchId as string) : undefined) : 
         user.branchId!;
 
+      console.log("Fetching rooms with filters:", { branchId, status, userRole: user.role });
+
       const rooms = await storage.getRooms(branchId, status as string);
-      res.json(rooms);
+      console.log("Rooms found:", rooms?.length || 0);
+      
+      res.json(rooms || []);
     } catch (error) {
       console.error("Error fetching rooms:", error);
       res.status(500).json({ message: "Failed to fetch rooms" });
