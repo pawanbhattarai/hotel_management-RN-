@@ -62,8 +62,10 @@ export default function QROrderPage() {
   const [customerPhone, setCustomerPhone] = useState('');
   const [notes, setNotes] = useState('');
 
-  // Extract token from URL path like /order/token
-  const token = location.replace('/order/', '');
+  // Extract token from URL path like /order/token or /qr-order/token
+  const token = location.startsWith('/order/') 
+    ? location.replace('/order/', '')
+    : location.replace('/qr-order/', '');
 
   console.log('QR Order Page - Location:', location);
   console.log('QR Order Page - Token:', token);
