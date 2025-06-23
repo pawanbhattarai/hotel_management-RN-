@@ -2848,6 +2848,153 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // QR Code routes for tables and rooms
+  app.get("/api/qr/table/:id", isAuthenticated, async (req: any, res) => {
+    try {
+      const tableId = parseInt(req.params.id);
+      const qrCode = await QRService.generateTableQR(tableId);
+      const table = await restaurantStorage.getRestaurantTable(tableId);
+      res.json({ qrCode, url: `${QRService.getBaseUrl()}/order/${table?.qrToken}` });
+    } catch (error) {
+      console.error("Error generating table QR code:", error);
+      res.status(500).json({ message: "Failed to generate QR code" });
+    }
+  });
+
+  app.get("/api/qr/room/:id", isAuthenticated, async (req: any, res) => {
+    try {
+      const roomId = parseInt(req.params.id);
+      const qrCode = await QRService.generateRoomQR(roomId);
+      const room = await storage.getRoom(roomId);
+      res.json({ qrCode, url: `${QRService.getBaseUrl()}/order/${room?.qrToken}` });
+    } catch (error) {
+      console.error("Error generating room QR code:", error);
+      res.status(500).json({ message: "Failed to generate QR code" });
+    }
+  });
+
+  app.post("/api/qr/table/:id/regenerate", isAuthenticated, async (req: any, res) => {
+    try {
+      const tableId = parseInt(req.params.id);
+      const result = await QRService.regenerateTableQR(tableId);
+      res.json(result);
+    } catch (error) {
+      console.error("Error regenerating table QR code:", error);
+      res.status(500).json({ message: "Failed to regenerate QR code" });
+    }
+  });
+
+  app.post("/api/qr/room/:id/regenerate", isAuthenticated, async (req: any, res) => {
+    try {
+      const roomId = parseInt(req.params.id);
+      const result = await QRService.regenerateRoomQR(roomId);
+      res.json(result);
+    } catch (error) {
+      console.error("Error regenerating room QR code:", error);
+      res.status(500).json({ message: "Failed to regenerate QR code" });
+    }
+  });
+
+  // Public order page route (no authentication required)
+  app.get("/api/order/info/:token", async (req: any, res) => {
+    try {
+      const token = req.params.token;
+      const orderInfo = await QRService.validateQRToken(token);
+      
+      if (!orderInfo) {
+        return res.status(404).json({ message: "Invalid QR code" });
+      }
+
+      // Get menu items for the branch
+      const menuCategories = await restaurantStorage.getMenuCategories(orderInfo.branchId);
+      const menuDishes = await restaurantStorage.getMenuDishes(orderInfo.branchId);
+      
+      res.json({
+        location: orderInfo,
+        menu: {
+          categories: menuCategories,
+          dishes: menuDishes
+        }
+      });
+    } catch (error) {
+      console.error("Error validating QR token:", error);
+      res.status(500).json({ message: "Failed to validate QR code" });
+    }
+  });
+
+  // Public order submission route (no authentication required)
+  app.post("/api/order/submit/:token", async (req: any, res) => {
+    try {
+      const token = req.params.token;
+      const orderInfo = await QRService.validateQRToken(token);
+      
+      if (!orderInfo) {
+        return res.status(404).json({ message: "Invalid QR code" });
+      }
+
+      const { items, customerName, customerPhone, notes } = req.body;
+
+      if (!items || !Array.isArray(items) || items.length === 0) {
+        return res.status(400).json({ message: "Order items are required" });
+      }
+
+      if (!customerName || !customerPhone) {
+        return res.status(400).json({ message: "Customer name and phone are required" });
+      }
+
+      // Calculate totals
+      let subtotal = 0;
+      const orderItems = [];
+
+      for (const item of items) {
+        const dish = await restaurantStorage.getMenuDish(item.dishId);
+        if (!dish) {
+          return res.status(400).json({ message: `Dish with ID ${item.dishId} not found` });
+        }
+
+        const itemTotal = parseFloat(dish.price) * item.quantity;
+        subtotal += itemTotal;
+
+        orderItems.push({
+          orderId: '', // Will be set after order creation
+          dishId: item.dishId,
+          quantity: item.quantity,
+          unitPrice: dish.price,
+          totalPrice: itemTotal.toString(),
+          specialInstructions: item.specialInstructions || null
+        });
+      }
+
+      // Create order
+      const orderNumber = `ORD-${Date.now()}`;
+      const orderData = {
+        orderNumber,
+        branchId: orderInfo.branchId,
+        tableId: orderInfo.type === 'table' ? orderInfo.id : null,
+        roomId: orderInfo.type === 'room' ? orderInfo.id : null,
+        orderType: orderInfo.type,
+        customerName,
+        customerPhone,
+        subtotal: subtotal.toString(),
+        taxAmount: "0",
+        totalAmount: subtotal.toString(),
+        notes,
+        createdById: null // No staff member created this order
+      };
+
+      const order = await restaurantStorage.createRestaurantOrder(orderData, orderItems);
+
+      res.status(201).json({
+        message: "Order placed successfully",
+        orderNumber: order.orderNumber,
+        orderId: order.id
+      });
+    } catch (error) {
+      console.error("Error submitting order:", error);
+      res.status(500).json({ message: "Failed to submit order" });
+    }
+  });
+
   const httpServer = createServer(app);
   return httpServer;
 }

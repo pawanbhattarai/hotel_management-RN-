@@ -1,0 +1,24 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>QR Code Test</title>
+</head>
+<body>
+    <h1>QR Code System Test</h1>
+    <p>Testing QR functionality...</p>
+    
+    <script>
+        // Test QR validation endpoint
+        fetch('/api/order/info/test-token')
+            .then(response => response.json())
+            .then(data => {
+                console.log('QR validation test:', data);
+                document.body.innerHTML += '<p>QR API Response: ' + JSON.stringify(data) + '</p>';
+            })
+            .catch(error => {
+                console.log('Expected error for invalid token:', error);
+                document.body.innerHTML += '<p>QR API correctly returned error for invalid token</p>';
+            });
+    </script>
+</body>
+</html>

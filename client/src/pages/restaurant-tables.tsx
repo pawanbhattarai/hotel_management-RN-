@@ -319,6 +319,11 @@ export default function RestaurantTables() {
                           </TableCell>
                           <TableCell>
                             <div className="flex space-x-2">
+                              <QRCodeModal type="table" id={table.id} name={table.name}>
+                                <Button variant="outline" size="sm">
+                                  <QrCode className="h-4 w-4" />
+                                </Button>
+                              </QRCodeModal>
                               <Button
                                 variant="outline"
                                 size="sm"

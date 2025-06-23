@@ -434,6 +434,11 @@ export default function Rooms() {
                           <TableCell>{getStatusBadge(room.status)}</TableCell>
                           <TableCell>
                             <div className="flex space-x-2">
+                              <QRCodeModal type="room" id={room.id} name={`Room ${room.number}`}>
+                                <Button variant="outline" size="sm">
+                                  <QrCode className="h-4 w-4" />
+                                </Button>
+                              </QRCodeModal>
                               {(user?.role === "superadmin" ||
                                 user?.role === "branch-admin") && (
                                 <>
