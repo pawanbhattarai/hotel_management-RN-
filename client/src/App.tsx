@@ -44,7 +44,7 @@ function Router() {
   return (
     <Switch>
       {/* Public QR order page - no authentication required */}
-      <Route path="/order/:token" component={QROrderPage} />
+      <Route path="/order/:token" component={lazy(() => import('./pages/qr-order-new'))} />
       {isLoading || !isAuthenticated ? (
         <Route path="/" component={Login} />
       ) : (

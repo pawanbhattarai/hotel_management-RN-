@@ -238,6 +238,13 @@ export const hotelSettings = pgTable("hotel_settings", {
   billingFooter: text("billing_footer"),
   termsAndConditions: text("terms_and_conditions"),
   cancellationPolicy: text("cancellation_policy"),
+  // Social media and company info
+  facebookUrl: text("facebook_url"),
+  instagramUrl: text("instagram_url"),
+  tiktokUrl: text("tiktok_url"),
+  youtubeUrl: text("youtube_url"),
+  contactInfo: text("contact_info"),
+  reviewsUrl: text("reviews_url"),
   isActive: boolean("is_active").default(true),
   createdAt: timestamp("created_at").defaultNow(),
   updatedAt: timestamp("updated_at").defaultNow(),

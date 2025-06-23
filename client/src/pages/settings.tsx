@@ -52,6 +52,13 @@ const hotelSettingsSchema = z.object({
   billingFooter: z.string().optional(),
   termsAndConditions: z.string().optional(),
   cancellationPolicy: z.string().optional(),
+  // Social media and company info
+  facebookUrl: z.string().optional(),
+  instagramUrl: z.string().optional(),
+  tiktokUrl: z.string().optional(),
+  youtubeUrl: z.string().optional(),
+  contactInfo: z.string().optional(),
+  reviewsUrl: z.string().optional(),
 });
 
 type HotelSettingsForm = z.infer<typeof hotelSettingsSchema>;
@@ -116,6 +123,13 @@ export default function Settings() {
       billingFooter: "",
       termsAndConditions: "",
       cancellationPolicy: "",
+      // Social media and company info
+      facebookUrl: "",
+      instagramUrl: "",
+      tiktokUrl: "",
+      youtubeUrl: "",
+      contactInfo: "",
+      reviewsUrl: "",
     },
   });
 
@@ -649,6 +663,68 @@ export default function Settings() {
                         Specify your cancellation terms and any applicable fees
                       </p>
                     </div>
+
+                    {/* Social Media & Company Info Section */}
+                    <div className="mt-8 space-y-6">
+                      <h3 className="text-lg font-semibold mb-4">Social Media & Company Information</h3>
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                        <div className="space-y-2">
+                          <Label htmlFor="facebookUrl">Facebook URL</Label>
+                          <Input
+                            id="facebookUrl"
+                            placeholder="https://facebook.com/yourpage"
+                            {...form.register("facebookUrl")}
+                          />
+                        </div>
+
+                        <div className="space-y-2">
+                          <Label htmlFor="instagramUrl">Instagram URL</Label>
+                          <Input
+                            id="instagramUrl"
+                            placeholder="https://instagram.com/yourpage"
+                            {...form.register("instagramUrl")}
+                          />
+                        </div>
+
+                        <div className="space-y-2">
+                          <Label htmlFor="tiktokUrl">TikTok URL</Label>
+                          <Input
+                            id="tiktokUrl"
+                            placeholder="https://tiktok.com/@yourpage"
+                            {...form.register("tiktokUrl")}
+                          />
+                        </div>
+
+                        <div className="space-y-2">
+                          <Label htmlFor="youtubeUrl">YouTube URL</Label>
+                          <Input
+                            id="youtubeUrl"
+                            placeholder="https://youtube.com/c/yourpage"
+                            {...form.register("youtubeUrl")}
+                          />
+                        </div>
+
+                        <div className="md:col-span-2 space-y-2">
+                          <Label htmlFor="contactInfo">Company Description</Label>
+                          <Textarea
+                            id="contactInfo"
+                            placeholder="Brief description about your restaurant/hotel"
+                            {...form.register("contactInfo")}
+                            rows={3}
+                          />
+                        </div>
+
+                        <div className="space-y-2">
+                          <Label htmlFor="reviewsUrl">Reviews URL</Label>
+                          <Input
+                            id="reviewsUrl"
+                            placeholder="https://google.com/reviews or TripAdvisor link"
+                            {...form.register("reviewsUrl")}
+                          />
+                        </div>
+                      </div>
+                    </div>
+
                   </CardContent>
                 </Card>
               </TabsContent>
