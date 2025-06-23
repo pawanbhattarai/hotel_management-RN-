@@ -31,6 +31,7 @@ import {
 } from "@shared/schema";
 import { z } from "zod";
 import { broadcastChange } from "./middleware/websocket";
+import { enforceBranchIsolation, getBranchFilter, canAccessBranch } from "./middleware/branchIsolation";
 
 // Helper function to check user permissions based on role and branch
 function checkBranchPermissions(
@@ -71,10 +72,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Custom auth middleware
   const isAuthenticated = (req: any, res: any, next: any) => {
     if (req.session && req.session.user) {
+      req.user = req.session.user; // Add user to request object
       return next();
     }
     return res.status(401).json({ message: "Unauthorized" });
   };
+
+  // Combined auth and branch isolation middleware
+  const requireAuthWithBranchIsolation = [isAuthenticated, enforceBranchIsolation];
 
   // Auth routes
   app.post("/api/auth/login", async (req: any, res) => {
@@ -2442,6 +2447,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Measuring Units
   app.get("/api/inventory/measuring-units", isAuthenticated, async (req: any, res) => {
     try {
+      // Measuring units are global and not branch-specific
       const units = await inventoryStorage.getMeasuringUnits();
       res.json(units);
     } catch (error) {
