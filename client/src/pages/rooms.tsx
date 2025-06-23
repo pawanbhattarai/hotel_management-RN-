@@ -31,7 +31,8 @@ import {
   DialogTitle,
   DialogTrigger,
 } from "@/components/ui/dialog";
-import { Plus, Edit2, Trash2 } from "lucide-react";
+import { Plus, Edit2, Trash2, QrCode } from "lucide-react";
+import { QRCodeModal } from "@/components/qr-code-modal";
 
 export default function Rooms() {
   const { toast } = useToast();

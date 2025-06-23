@@ -80,6 +80,7 @@ export const rooms = pgTable("rooms", {
   status: varchar("status", { 
     enum: ["available", "occupied", "maintenance", "housekeeping", "out-of-order", "reserved"] 
   }).notNull().default("available"),
+  qrToken: uuid("qr_token").defaultRandom().notNull().unique(),
   isActive: boolean("is_active").default(true),
   createdAt: timestamp("created_at").defaultNow(),
   updatedAt: timestamp("updated_at").defaultNow(),
@@ -448,6 +449,7 @@ export const restaurantTables = pgTable("restaurant_tables", {
     enum: ["open", "occupied", "maintenance"] 
   }).notNull().default("open"),
   branchId: integer("branch_id").notNull(),
+  qrToken: uuid("qr_token").defaultRandom().notNull().unique(),
   isActive: boolean("is_active").default(true),
   createdAt: timestamp("created_at").defaultNow(),
   updatedAt: timestamp("updated_at").defaultNow(),

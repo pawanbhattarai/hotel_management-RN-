@@ -31,6 +31,7 @@ import {
   insertStockConsumptionSchema,
   insertDishIngredientSchema,
 } from "@shared/schema";
+import { QRService } from "./qr-service";
 import { z } from "zod";
 import { broadcastChange } from "./middleware/websocket";
 import { enforceBranchIsolation, getBranchFilter, canAccessBranch } from "./middleware/branchIsolation";
