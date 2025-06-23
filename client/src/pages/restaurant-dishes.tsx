@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
+import { useLocation } from "wouter";
 import { Plus, Edit2, Trash2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -37,6 +38,7 @@ const dishSchema = z.object({
 type DishFormData = z.infer<typeof dishSchema>;
 
 export default function RestaurantDishes() {
+  const [, navigate] = useLocation();
   const [isDishDialogOpen, setIsDishDialogOpen] = useState(false);
   const [isBulkDishDialogOpen, setIsBulkDishDialogOpen] = useState(false);
   const [editingDish, setEditingDish] = useState<any>(null);
