@@ -2227,7 +2227,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.post("/api/restaurant/dishes/:dishId/ingredients", isAuthenticated, async (req: any, res) => {
+  app.put("/api/restaurant/dishes/:dishId/ingredients", isAuthenticated, async (req: any, res) => {
     try {
       const dishId = parseInt(req.params.dishId);
       const ingredients = req.body.ingredients || [];
