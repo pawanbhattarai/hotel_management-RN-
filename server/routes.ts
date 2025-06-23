@@ -44,7 +44,7 @@ function checkBranchPermissions(
 
   if (!targetBranchId) return true; // For operations that don't specify a branch
 
-  if (userRole === "branch-admin" || userRole === "front-desk") {
+  if (userRole === "branch-admin") {
     return userBranchId === targetBranchId;
   }
 
@@ -830,7 +830,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const reservationId = req.params.id;
       const existingReservation = await storage.getReservation(reservationId);
 
-      if (!existingReservation) {
+      if (!existingReservation){
         return res.status(404).json({ message: "Reservation not found" });
       }
 
@@ -1614,8 +1614,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       res.json({
         ...subscription,
-        message: "Subscription created successfully"
-      });
+        message: "Subscription created successfully"Here's the code with the front-desk role removed and related permissions adjusted.
+```
+        });
         } catch (error) {
       console.error(" Error creating push subscription:", error);
       res.status(500).json({ 

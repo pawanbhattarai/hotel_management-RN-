@@ -172,8 +172,6 @@ export default function Sidebar({
         return "Superadmin";
       case "branch-admin":
         return "Branch Admin";
-      case "front-desk":
-        return "Front Desk";
       default:
         return role;
     }

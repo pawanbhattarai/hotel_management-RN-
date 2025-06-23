@@ -46,7 +46,7 @@ export default function Users() {
     password: "",
     firstName: "",
     lastName: "",
-    role: "front-desk" as "superadmin" | "branch-admin" | "front-desk" | "custom",
+    role: "branch-admin" as "superadmin" | "branch-admin" | "custom",
     branchId: 1,
     isActive: true,
     customRoleIds: [] as number[],
@@ -144,7 +144,7 @@ export default function Users() {
       password: "",
       firstName: "",
       lastName: "",
-      role: "front-desk" as "superadmin" | "branch-admin" | "front-desk" | "custom",
+      role: "branch-admin" as "superadmin" | "branch-admin" | "custom",
       branchId: 1,
       isActive: true,
       customRoleIds: [] as number[],
@@ -154,7 +154,7 @@ export default function Users() {
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    
+
     // Validate custom role selection
     if (formData.role === "custom" && formData.customRoleIds.length === 0) {
       toast({ 
@@ -164,7 +164,7 @@ export default function Users() {
       });
       return;
     }
-    
+
     // Convert branchId to number or null for unassigned
     const submitData = {
       ...formData,
@@ -215,7 +215,7 @@ export default function Users() {
       const userCustomRoles = customRoles?.filter((role: any) => 
         user.customRoleIds.includes(role.id)
       ) || [];
-      
+
       return (
         <div className="flex flex-wrap gap-1">
           {userCustomRoles.map((role: any) => (
@@ -226,7 +226,7 @@ export default function Users() {
         </div>
       );
     }
-    
+
     // Default role badges
     const roleConfig = {
       superadmin: {
@@ -237,13 +237,9 @@ export default function Users() {
         label: "Branch Admin",
         className: "bg-blue-100 text-blue-800",
       },
-      "front-desk": {
-        label: "Front Desk",
-        className: "bg-green-100 text-green-800",
-      },
     };
     const config =
-      roleConfig[user.role as keyof typeof roleConfig] || roleConfig["front-desk"];
+      roleConfig[user.role as keyof typeof roleConfig] || roleConfig["branch-admin"];
     return <Badge className={config.className}>{config.label}</Badge>;
   };
 
@@ -407,7 +403,6 @@ export default function Users() {
                           <SelectValue />
                         </SelectTrigger>
                         <SelectContent>
-                          <SelectItem value="front-desk">Front Desk</SelectItem>
                           <SelectItem value="branch-admin">
                             Branch Admin
                           </SelectItem>

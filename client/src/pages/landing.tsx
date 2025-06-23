@@ -61,7 +61,7 @@ export default function Landing() {
                 Role-Based Access
               </h3>
               <p className="text-blue-100 text-sm">
-                Superadmin, Branch Admin, and Front Desk roles with appropriate permissions
+                Superadmin and Branch Admin roles with appropriate permissions
               </p>
             </CardContent>
           </Card>
