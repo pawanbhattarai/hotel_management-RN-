@@ -1614,10 +1614,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       res.json({
         ...subscription,
-        message: "Subscription created successfully"Here's the code with the front-desk role removed and related permissions adjusted.
-```
+        message: "Subscription created successfully"
         });
-        } catch (error) {
+    } catch (error) {
       console.error(" Error creating push subscription:", error);
       res.status(500).json({ 
         message: "Failed to create push subscription",
