@@ -1,21 +1,43 @@
-
 import { useState, useEffect } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { Plus, Edit, SquareStack, Trash2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
-import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+} from "@/components/ui/dialog";
+import {
+  Form,
+  FormControl,
+  FormField,
+  FormItem,
+  FormLabel,
+  FormMessage,
+} from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { Badge } from "@/components/ui/badge";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 import { useToast } from "@/hooks/use-toast";
 import { queryClient } from "@/lib/queryClient";
-import { insertRoomTypeSchema, type RoomType, type Branch } from "@shared/schema";
+import {
+  insertRoomTypeSchema,
+  type RoomType,
+  type Branch,
+} from "@shared/schema";
 import Header from "@/components/layout/header";
 import Sidebar from "@/components/layout/sidebar";
 import { useAuth } from "@/hooks/useAuth";
@@ -23,9 +45,12 @@ import { useAuth } from "@/hooks/useAuth";
 const roomTypeFormSchema = z.object({
   name: z.string().min(1, "Name is required"),
   description: z.string().optional(),
-  basePrice: z.string().min(1, "Base price is required").refine((val) => !isNaN(parseFloat(val)), {
-    message: "Base price must be a valid number",
-  }),
+  basePrice: z
+    .string()
+    .min(1, "Base price is required")
+    .refine((val) => !isNaN(parseFloat(val)), {
+      message: "Base price must be a valid number",
+    }),
   maxOccupancy: z.number().min(1, "Max occupancy must be at least 1"),
   branchId: z.number().nullable().optional(),
 });
@@ -196,14 +221,18 @@ export default function RoomTypes() {
   };
 
   const handleDelete = (roomType: RoomType) => {
-    if (window.confirm(`Are you sure you want to delete "${roomType.name}"? This action cannot be undone.`)) {
+    if (
+      window.confirm(
+        `Are you sure you want to delete "${roomType.name}"? This action cannot be undone.`,
+      )
+    ) {
       deleteMutation.mutate(roomType.id);
     }
   };
 
   const getBranchName = (branchId: number | null) => {
     if (!branchId) return "All Branches";
-    return branches?.find(b => b.id === branchId)?.name || "Unknown Branch";
+    return branches?.find((b) => b.id === branchId)?.name || "Unknown Branch";
   };
 
   useEffect(() => {
@@ -247,9 +276,19 @@ export default function RoomTypes() {
   if (isLoading) {
     return (
       <div className="min-h-screen bg-gray-50">
-        <Sidebar />
+        <Sidebar
+          isMobileMenuOpen={isMobileSidebarOpen}
+          setIsMobileMenuOpen={setIsMobileSidebarOpen}
+        />
         <div className="main-content">
-          <div className="p-8">
+          <Header
+            title="Room Types"
+            subtitle="Manage room categories and pricing"
+            onMobileMenuToggle={() =>
+              setIsMobileSidebarOpen(!isMobileSidebarOpen)
+            }
+          />
+          <main className="p-6">
             <div className="animate-pulse space-y-4">
               <div className="h-8 bg-gray-200 rounded w-1/4"></div>
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
@@ -258,7 +297,7 @@ export default function RoomTypes() {
                 ))}
               </div>
             </div>
-          </div>
+          </main>
         </div>
       </div>
     );
@@ -271,17 +310,20 @@ export default function RoomTypes() {
         setIsMobileMenuOpen={setIsMobileSidebarOpen}
       />
       <div className="main-content">
-        <div className="p-4 md:p-8">
-          <Header
-            title="Room Types"
-            subtitle="Manage room categories and pricing"
-            onMobileMenuToggle={() =>
-              setIsMobileSidebarOpen(!isMobileSidebarOpen)
-            }
-          />
+        <Header
+          title="Room Types"
+          subtitle="Manage room categories and pricing"
+          onMobileMenuToggle={() =>
+            setIsMobileSidebarOpen(!isMobileSidebarOpen)
+          }
+        />
+        <main className="p-6">
           {/* Add Button Section */}
-          <div className="mt-4 mb-6">
-            <Dialog open={isCreateOpen || !!editingRoomType} onOpenChange={handleCloseDialog}>
+          <div className="mb-6">
+            <Dialog
+              open={isCreateOpen || !!editingRoomType}
+              onOpenChange={handleCloseDialog}
+            >
               <DialogTrigger asChild>
                 <Button
                   onClick={() => {
@@ -301,7 +343,10 @@ export default function RoomTypes() {
                   </DialogTitle>
                 </DialogHeader>
                 <Form {...form}>
-                  <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
+                  <form
+                    onSubmit={form.handleSubmit(onSubmit)}
+                    className="space-y-4"
+                  >
                     <FormField
                       control={form.control}
                       name="name"
@@ -309,7 +354,10 @@ export default function RoomTypes() {
                         <FormItem>
                           <FormLabel>Name</FormLabel>
                           <FormControl>
-                            <Input placeholder="e.g. Standard Room" {...field} />
+                            <Input
+                              placeholder="e.g. Standard Room"
+                              {...field}
+                            />
                           </FormControl>
                           <FormMessage />
                         </FormItem>
@@ -364,7 +412,9 @@ export default function RoomTypes() {
                               type="number"
                               min="1"
                               {...field}
-                              onChange={(e) => field.onChange(parseInt(e.target.value))}
+                              onChange={(e) =>
+                                field.onChange(parseInt(e.target.value))
+                              }
                             />
                           </FormControl>
                           <FormMessage />
@@ -378,8 +428,16 @@ export default function RoomTypes() {
                         <FormItem>
                           <FormLabel>Branch</FormLabel>
                           <Select
-                            onValueChange={(value) => field.onChange(value === "unassigned" ? null : parseInt(value))}
-                            value={field.value ? field.value.toString() : "unassigned"}
+                            onValueChange={(value) =>
+                              field.onChange(
+                                value === "unassigned" ? null : parseInt(value),
+                              )
+                            }
+                            value={
+                              field.value
+                                ? field.value.toString()
+                                : "unassigned"
+                            }
                           >
                             <FormControl>
                               <SelectTrigger>
@@ -391,7 +449,10 @@ export default function RoomTypes() {
                                 All Branches (Unassigned)
                               </SelectItem>
                               {branches?.map((branch) => (
-                                <SelectItem key={branch.id} value={branch.id.toString()}>
+                                <SelectItem
+                                  key={branch.id}
+                                  value={branch.id.toString()}
+                                >
                                   {branch.name}
                                 </SelectItem>
                               ))}
@@ -402,14 +463,24 @@ export default function RoomTypes() {
                       )}
                     />
                     <div className="flex flex-col sm:flex-row justify-end gap-2 pt-4">
-                      <Button type="button" variant="outline" onClick={() => handleCloseDialog(false)}>
+                      <Button
+                        type="button"
+                        variant="outline"
+                        onClick={() => handleCloseDialog(false)}
+                      >
                         Cancel
                       </Button>
                       <Button
                         type="submit"
-                        disabled={createMutation.isPending || updateMutation.isPending}
+                        disabled={
+                          createMutation.isPending || updateMutation.isPending
+                        }
                       >
-                        {createMutation.isPending || updateMutation.isPending ? "Saving..." : (editingRoomType ? "Update" : "Create")}
+                        {createMutation.isPending || updateMutation.isPending
+                          ? "Saving..."
+                          : editingRoomType
+                            ? "Update"
+                            : "Create"}
                       </Button>
                     </div>
                   </form>
@@ -423,13 +494,17 @@ export default function RoomTypes() {
               <Card>
                 <CardContent className="flex flex-col items-center justify-center py-8 md:py-12 px-4">
                   <SquareStack className="h-10 w-10 md:h-12 md:w-12 text-gray-400 mb-4" />
-                  <h3 className="text-base md:text-lg font-medium text-gray-900 mb-2 text-center">No room types found</h3>
+                  <h3 className="text-base md:text-lg font-medium text-gray-900 mb-2 text-center">
+                    No room types found
+                  </h3>
                   <p className="text-sm md:text-base text-gray-600 text-center mb-4 max-w-sm">
                     Create your first room type to start managing rooms
                   </p>
                   <Button
                     onClick={() => {
-                      console.log("Create Room Type button clicked (empty state)");
+                      console.log(
+                        "Create Room Type button clicked (empty state)",
+                      );
                       setIsCreateOpen(true);
                     }}
                     className="w-full sm:w-auto"
@@ -442,11 +517,16 @@ export default function RoomTypes() {
             ) : (
               <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4 md:gap-6">
                 {roomTypes.map((roomType) => (
-                  <Card key={roomType.id} className="hover:shadow-lg transition-shadow">
+                  <Card
+                    key={roomType.id}
+                    className="hover:shadow-lg transition-shadow"
+                  >
                     <CardHeader className="pb-3">
                       <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-2">
                         <div className="flex-1 min-w-0">
-                          <CardTitle className="text-base md:text-lg truncate">{roomType.name}</CardTitle>
+                          <CardTitle className="text-base md:text-lg truncate">
+                            {roomType.name}
+                          </CardTitle>
                           <Badge variant="secondary" className="mt-1 text-xs">
                             {getBranchName(roomType.branchId)}
                           </Badge>
@@ -476,17 +556,25 @@ export default function RoomTypes() {
                     <CardContent>
                       <div className="space-y-3">
                         {roomType.description && (
-                          <p className="text-sm text-gray-600 line-clamp-2">{roomType.description}</p>
+                          <p className="text-sm text-gray-600 line-clamp-2">
+                            {roomType.description}
+                          </p>
                         )}
                         <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-2">
-                          <span className="text-sm font-medium">Base Price:</span>
+                          <span className="text-sm font-medium">
+                            Base Price:
+                          </span>
                           <span className="text-lg font-bold text-primary">
                             Rs. {roomType.basePrice}/night
                           </span>
                         </div>
                         <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-2">
-                          <span className="text-sm font-medium">Max Occupancy:</span>
-                          <span className="text-sm">{roomType.maxOccupancy} guests</span>
+                          <span className="text-sm font-medium">
+                            Max Occupancy:
+                          </span>
+                          <span className="text-sm">
+                            {roomType.maxOccupancy} guests
+                          </span>
                         </div>
                       </div>
                     </CardContent>
@@ -495,7 +583,7 @@ export default function RoomTypes() {
               </div>
             )}
           </div>
-        </div>
+        </main>
       </div>
     </div>
   );

@@ -75,30 +75,26 @@ export default function TableStatusOverview() {
   ];
 
   return (
-    <Card className="bg-white rounded-xl shadow-sm border border-gray-200">
+    <Card className="bg-white rounded-xl shadow-sm border border-gray-200 mb-8">
       <CardHeader className="p-6 border-b border-gray-200">
         <CardTitle className="text-lg font-semibold text-gray-900">
           Table Status Overview
         </CardTitle>
       </CardHeader>
+
       <CardContent className="p-6">
         <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
           {tableStatusItems.map((item) => (
             <div key={item.key} className="text-center">
               <div
-                className={`w-12 h-12 ${item.iconBg} rounded-xl flex items-center justify-center mx-auto mb-3`}
+                className={`w-16 h-16 ${item.iconBg} rounded-xl flex items-center justify-center mx-auto mb-2`}
               >
-                <item.icon className={`${item.iconColor} h-6 w-6`} />
+                <item.icon className={`${item.iconColor} text-xl h-6 w-6`} />
               </div>
-              <div className="text-2xl font-bold text-gray-900 mb-1">
-                {item.count}
-              </div>
-              <div className="text-sm text-gray-600">{item.label}</div>
+              <p className="text-2xl font-bold text-gray-900">{item.count}</p>
+              <p className="text-sm text-gray-600">{item.label}</p>
             </div>
           ))}
-        </div>
-        <div className="mt-6 pt-4 border-t border-gray-200">
-          <div className="flex justify-between items-center"></div>
         </div>
       </CardContent>
     </Card>

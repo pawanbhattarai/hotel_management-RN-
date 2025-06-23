@@ -157,10 +157,10 @@ export default function Users() {
 
     // Validate custom role selection
     if (formData.role === "custom" && formData.customRoleIds.length === 0) {
-      toast({ 
-        title: "Custom Role Required", 
+      toast({
+        title: "Custom Role Required",
         description: "Please select at least one custom role.",
-        variant: "destructive" 
+        variant: "destructive",
       });
       return;
     }
@@ -189,7 +189,10 @@ export default function Users() {
       email: user.email || "",
       firstName: user.firstName || "",
       lastName: user.lastName || "",
-      role: user.customRoleIds && user.customRoleIds.length > 0 ? "custom" : user.role,
+      role:
+        user.customRoleIds && user.customRoleIds.length > 0
+          ? "custom"
+          : user.role,
       branchId: user.branchId?.toString() || "unassigned",
       password: "",
       customRoleIds: user.customRoleIds || [],
@@ -212,9 +215,10 @@ export default function Users() {
   const getRoleBadge = (user: any) => {
     // If user has custom roles, show custom roles
     if (user.customRoleIds && user.customRoleIds.length > 0) {
-      const userCustomRoles = customRoles?.filter((role: any) => 
-        user.customRoleIds.includes(role.id)
-      ) || [];
+      const userCustomRoles =
+        customRoles?.filter((role: any) =>
+          user.customRoleIds.includes(role.id),
+        ) || [];
 
       return (
         <div className="flex flex-wrap gap-1">
@@ -239,7 +243,8 @@ export default function Users() {
       },
     };
     const config =
-      roleConfig[user.role as keyof typeof roleConfig] || roleConfig["branch-admin"];
+      roleConfig[user.role as keyof typeof roleConfig] ||
+      roleConfig["branch-admin"];
     return <Badge className={config.className}>{config.label}</Badge>;
   };
 
@@ -306,180 +311,197 @@ export default function Users() {
           }
         />
         <main className="p-6">
-          <Card>
-            <CardHeader className="flex flex-row items-center justify-between">
-              <CardTitle>All Users</CardTitle>
-              <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
-                <DialogTrigger asChild>
-                  <Button onClick={resetForm}>
-                    <Plus className="h-4 w-4 mr-2" />
-                    Add User
-                  </Button>
-                </DialogTrigger>
-                <DialogContent>
-                  <DialogHeader>
-                    <DialogTitle>
-                      {editingUser ? "Edit User" : "Add New User"}
-                    </DialogTitle>
-                  </DialogHeader>
-                  <form onSubmit={handleSubmit} className="space-y-4">
+          <div className="flex justify-between items-center mb-6">
+            <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
+              <DialogTrigger asChild>
+                <Button onClick={resetForm}>
+                  <Plus className="h-4 w-4 mr-2" />
+                  Add User
+                </Button>
+              </DialogTrigger>
+              <DialogContent>
+                <DialogHeader>
+                  <DialogTitle>
+                    {editingUser ? "Edit User" : "Add New User"}
+                  </DialogTitle>
+                </DialogHeader>
+                <form onSubmit={handleSubmit} className="space-y-4">
+                  <div>
+                    <Label htmlFor="id">User ID</Label>
+                    <Input
+                      id="id"
+                      value={formData.id}
+                      onChange={(e) =>
+                        setFormData({ ...formData, id: e.target.value })
+                      }
+                      required
+                      disabled={!!editingUser}
+                    />
+                  </div>
+                  <div>
+                    <Label htmlFor="email">Email</Label>
+                    <Input
+                      id="email"
+                      type="email"
+                      value={formData.email}
+                      onChange={(e) =>
+                        setFormData({ ...formData, email: e.target.value })
+                      }
+                      required
+                    />
+                  </div>
+                  <div>
+                    <Label htmlFor="password">Password</Label>
+                    <Input
+                      id="password"
+                      type="password"
+                      value={formData.password}
+                      onChange={(e) =>
+                        setFormData({ ...formData, password: e.target.value })
+                      }
+                      required={!editingUser}
+                      placeholder={
+                        editingUser
+                          ? "Leave blank to keep current password"
+                          : "Enter password"
+                      }
+                    />
+                  </div>
+                  <div>
+                    <Label htmlFor="firstName">First Name</Label>
+                    <Input
+                      id="firstName"
+                      value={formData.firstName}
+                      onChange={(e) =>
+                        setFormData({
+                          ...formData,
+                          firstName: e.target.value,
+                        })
+                      }
+                    />
+                  </div>
+                  <div>
+                    <Label htmlFor="lastName">Last Name</Label>
+                    <Input
+                      id="lastName"
+                      value={formData.lastName}
+                      onChange={(e) =>
+                        setFormData({ ...formData, lastName: e.target.value })
+                      }
+                    />
+                  </div>
+                  <div>
+                    <Label htmlFor="role">Role</Label>
+                    <Select
+                      value={formData.role}
+                      onValueChange={(value) => {
+                        setFormData({
+                          ...formData,
+                          role: value,
+                          customRoleIds:
+                            value === "custom" ? formData.customRoleIds : [],
+                        });
+                      }}
+                    >
+                      <SelectTrigger>
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="branch-admin">
+                          Branch Admin
+                        </SelectItem>
+                        <SelectItem value="superadmin">Super Admin</SelectItem>
+                        <SelectItem value="custom">Custom Role</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  {formData.role === "custom" && (
                     <div>
-                      <Label htmlFor="id">User ID</Label>
-                      <Input
-                        id="id"
-                        value={formData.id}
-                        onChange={(e) =>
-                          setFormData({ ...formData, id: e.target.value })
-                        }
-                        required
-                        disabled={!!editingUser}
-                      />
-                    </div>
-                    <div>
-                      <Label htmlFor="email">Email</Label>
-                      <Input
-                        id="email"
-                        type="email"
-                        value={formData.email}
-                        onChange={(e) =>
-                          setFormData({ ...formData, email: e.target.value })
-                        }
-                        required
-                      />
-                    </div>
-                    <div>
-                      <Label htmlFor="password">Password</Label>
-                      <Input
-                        id="password"
-                        type="password"
-                        value={formData.password}
-                        onChange={(e) =>
-                          setFormData({ ...formData, password: e.target.value })
-                        }
-                        required={!editingUser}
-                        placeholder={
-                          editingUser
-                            ? "Leave blank to keep current password"
-                            : "Enter password"
-                        }
-                      />
-                    </div>
-                    <div>
-                      <Label htmlFor="firstName">First Name</Label>
-                      <Input
-                        id="firstName"
-                        value={formData.firstName}
-                        onChange={(e) =>
-                          setFormData({
-                            ...formData,
-                            firstName: e.target.value,
-                          })
-                        }
-                      />
-                    </div>
-                    <div>
-                      <Label htmlFor="lastName">Last Name</Label>
-                      <Input
-                        id="lastName"
-                        value={formData.lastName}
-                        onChange={(e) =>
-                          setFormData({ ...formData, lastName: e.target.value })
-                        }
-                      />
-                    </div>
-                    <div>
-                      <Label htmlFor="role">Role</Label>
-                      <Select
-                        value={formData.role}
-                        onValueChange={(value) => {
-                          setFormData({ 
-                            ...formData, 
-                            role: value,
-                            customRoleIds: value === "custom" ? formData.customRoleIds : []
-                          });
-                        }}
-                      >
-                        <SelectTrigger>
-                          <SelectValue />
-                        </SelectTrigger>
-                        <SelectContent>
-                          <SelectItem value="branch-admin">
-                            Branch Admin
-                          </SelectItem>
-                          <SelectItem value="superadmin">
-                            Super Admin
-                          </SelectItem>
-                          <SelectItem value="custom">Custom Role</SelectItem>
-                        </SelectContent>
-                      </Select>
-                    </div>
-                    {formData.role === "custom" && (
-                      <div>
-                        <Label htmlFor="customRoles">Custom Roles</Label>
-                        <div className="space-y-2 max-h-32 overflow-y-auto border rounded-md p-3">
-                          {customRoles?.length > 0 ? (
-                            customRoles.map((role: any) => (
-                              <div key={role.id} className="flex items-center space-x-2">
-                                <input
-                                  type="checkbox"
-                                  id={`role-${role.id}`}
-                                  checked={formData.customRoleIds.includes(role.id)}
-                                  onChange={(e) => {
-                                    if (e.target.checked) {
-                                      setFormData({
-                                        ...formData,
-                                        customRoleIds: [...formData.customRoleIds, role.id]
-                                      });
-                                    } else {
-                                      setFormData({
-                                        ...formData,
-                                        customRoleIds: formData.customRoleIds.filter(id => id !== role.id)
-                                      });
-                                    }
-                                  }}
-                                  className="rounded border-gray-300"
-                                />
-                                <Label htmlFor={`role-${role.id}`} className="text-sm font-normal">
-                                  {role.name}
-                                </Label>
-                              </div>
-                            ))
-                          ) : (
-                            <p className="text-sm text-gray-500">No custom roles available</p>
-                          )}
-                        </div>
-                      </div>
-                    )}
-                    <div>
-                      <Label htmlFor="branchId">Branch</Label>
-                      <Select
-                        value={formData.branchId}
-                        onValueChange={(value) =>
-                          setFormData({ ...formData, branchId: value })
-                        }
-                      >
-                        <SelectTrigger>
-                          <SelectValue placeholder="Select a branch" />
-                        </SelectTrigger>
-                        <SelectContent>
-                          <SelectItem value="unassigned">Unassigned</SelectItem>
-                          {branches?.map((branch: any) => (
-                            <SelectItem
-                              key={branch.id}
-                              value={branch.id.toString()}
+                      <Label htmlFor="customRoles">Custom Roles</Label>
+                      <div className="space-y-2 max-h-32 overflow-y-auto border rounded-md p-3">
+                        {customRoles?.length > 0 ? (
+                          customRoles.map((role: any) => (
+                            <div
+                              key={role.id}
+                              className="flex items-center space-x-2"
                             >
-                              {branch.name}
-                            </SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
+                              <input
+                                type="checkbox"
+                                id={`role-${role.id}`}
+                                checked={formData.customRoleIds.includes(
+                                  role.id,
+                                )}
+                                onChange={(e) => {
+                                  if (e.target.checked) {
+                                    setFormData({
+                                      ...formData,
+                                      customRoleIds: [
+                                        ...formData.customRoleIds,
+                                        role.id,
+                                      ],
+                                    });
+                                  } else {
+                                    setFormData({
+                                      ...formData,
+                                      customRoleIds:
+                                        formData.customRoleIds.filter(
+                                          (id) => id !== role.id,
+                                        ),
+                                    });
+                                  }
+                                }}
+                                className="rounded border-gray-300"
+                              />
+                              <Label
+                                htmlFor={`role-${role.id}`}
+                                className="text-sm font-normal"
+                              >
+                                {role.name}
+                              </Label>
+                            </div>
+                          ))
+                        ) : (
+                          <p className="text-sm text-gray-500">
+                            No custom roles available
+                          </p>
+                        )}
+                      </div>
                     </div>
-                    <Button type="submit" className="w-full">
-                      {editingUser ? "Update User" : "Create User"}
-                    </Button>
-                  </form>
-                </DialogContent>
-              </Dialog>
+                  )}
+                  <div>
+                    <Label htmlFor="branchId">Branch</Label>
+                    <Select
+                      value={formData.branchId}
+                      onValueChange={(value) =>
+                        setFormData({ ...formData, branchId: value })
+                      }
+                    >
+                      <SelectTrigger>
+                        <SelectValue placeholder="Select a branch" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="unassigned">Unassigned</SelectItem>
+                        {branches?.map((branch: any) => (
+                          <SelectItem
+                            key={branch.id}
+                            value={branch.id.toString()}
+                          >
+                            {branch.name}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  <Button type="submit" className="w-full">
+                    {editingUser ? "Update User" : "Create User"}
+                  </Button>
+                </form>
+              </DialogContent>
+            </Dialog>
+          </div>
+          <Card>
+            <CardHeader>
+              <CardTitle>All Users</CardTitle>
             </CardHeader>
             <CardContent>
               {usersLoading ? (

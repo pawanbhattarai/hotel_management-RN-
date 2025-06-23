@@ -1,4 +1,3 @@
-
 import React, { useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useAuth } from "@/hooks/useAuth";
@@ -92,7 +91,11 @@ export default function RoleManagement() {
 
   // Create role mutation
   const createRoleMutation = useMutation({
-    mutationFn: async (data: { name: string; description: string; permissions: Permission[] }) => {
+    mutationFn: async (data: {
+      name: string;
+      description: string;
+      permissions: Permission[];
+    }) => {
       const response = await fetch("/api/roles", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -118,7 +121,13 @@ export default function RoleManagement() {
 
   // Update role mutation
   const updateRoleMutation = useMutation({
-    mutationFn: async ({ id, data }: { id: number; data: { name: string; description: string; permissions: Permission[] } }) => {
+    mutationFn: async ({
+      id,
+      data,
+    }: {
+      id: number;
+      data: { name: string; description: string; permissions: Permission[] };
+    }) => {
       const response = await fetch(`/api/roles/${id}`, {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
@@ -165,30 +174,37 @@ export default function RoleManagement() {
     },
   });
 
-  const handlePermissionChange = (moduleId: string, permissionType: 'read' | 'write' | 'delete', value: boolean) => {
-    setFormData(prev => {
+  const handlePermissionChange = (
+    moduleId: string,
+    permissionType: "read" | "write" | "delete",
+    value: boolean,
+  ) => {
+    setFormData((prev) => {
       const permissions = [...prev.permissions];
-      const existingIndex = permissions.findIndex(p => p.module === moduleId);
-      
+      const existingIndex = permissions.findIndex((p) => p.module === moduleId);
+
       if (existingIndex >= 0) {
         permissions[existingIndex].permissions[permissionType] = value;
       } else {
         permissions.push({
           module: moduleId,
           permissions: {
-            read: permissionType === 'read' ? value : false,
-            write: permissionType === 'write' ? value : false,
-            delete: permissionType === 'delete' ? value : false,
+            read: permissionType === "read" ? value : false,
+            write: permissionType === "write" ? value : false,
+            delete: permissionType === "delete" ? value : false,
           },
         });
       }
-      
+
       return { ...prev, permissions };
     });
   };
 
-  const getPermissionValue = (moduleId: string, permissionType: 'read' | 'write' | 'delete'): boolean => {
-    const permission = formData.permissions.find(p => p.module === moduleId);
+  const getPermissionValue = (
+    moduleId: string,
+    permissionType: "read" | "write" | "delete",
+  ): boolean => {
+    const permission = formData.permissions.find((p) => p.module === moduleId);
     return permission?.permissions[permissionType] || false;
   };
 
@@ -279,135 +295,185 @@ export default function RoleManagement() {
         <Header
           title="Role Management"
           subtitle="Create and manage custom roles with granular permissions"
-          onMobileMenuToggle={() => setIsMobileSidebarOpen(!isMobileSidebarOpen)}
+          onMobileMenuToggle={() =>
+            setIsMobileSidebarOpen(!isMobileSidebarOpen)
+          }
         />
-        
-        <main className="p-6">
-          <Card>
-            <CardHeader className="flex flex-row items-center justify-between">
-              <div>
-                <CardTitle>Custom Roles</CardTitle>
-                <CardDescription>
-                  Manage custom roles and assign specific permissions to control user access
-                </CardDescription>
-              </div>
-              <Dialog open={isCreateDialogOpen} onOpenChange={setIsCreateDialogOpen}>
-                <DialogTrigger asChild>
-                  <Button onClick={resetForm}>
-                    <Plus className="h-4 w-4 mr-2" />
-                    Create Role
-                  </Button>
-                </DialogTrigger>
-                <DialogContent className="max-w-4xl max-h-[80vh] overflow-y-auto">
-                  <DialogHeader>
-                    <DialogTitle>Create Custom Role</DialogTitle>
-                    <DialogDescription>
-                      Create a new role with specific permissions for different modules
-                    </DialogDescription>
-                  </DialogHeader>
-                  
-                  <div className="space-y-6">
-                    <div className="grid grid-cols-2 gap-4">
-                      <div>
-                        <Label htmlFor="name">Role Name *</Label>
-                        <Input
-                          id="name"
-                          value={formData.name}
-                          onChange={(e) => setFormData({...formData, name: e.target.value})}
-                          placeholder="e.g., Test Manager"
-                        />
-                      </div>
-                      <div>
-                        <Label htmlFor="description">Description</Label>
-                        <Input
-                          id="description"
-                          value={formData.description}
-                          onChange={(e) => setFormData({...formData, description: e.target.value})}
-                          placeholder="Role description"
-                        />
-                      </div>
-                    </div>
 
+        <main className="p-6">
+          {/* Create Role Button - Now outside the card */}
+          <div className="mb-6 flex justify-start">
+            <Dialog
+              open={isCreateDialogOpen}
+              onOpenChange={setIsCreateDialogOpen}
+            >
+              <DialogTrigger asChild>
+                <Button onClick={resetForm}>
+                  <Plus className="h-4 w-4 mr-2" />
+                  Create Role
+                </Button>
+              </DialogTrigger>
+              <DialogContent className="max-w-4xl max-h-[80vh] overflow-y-auto">
+                <DialogHeader>
+                  <DialogTitle>Create Custom Role</DialogTitle>
+                  <DialogDescription>
+                    Create a new role with specific permissions for different
+                    modules
+                  </DialogDescription>
+                </DialogHeader>
+
+                <div className="space-y-6">
+                  <div className="grid grid-cols-2 gap-4">
                     <div>
-                      <Label className="text-base font-semibold">Module Permissions</Label>
-                      <div className="mt-4 border rounded-lg">
-                        <Table>
-                          <TableHeader>
+                      <Label htmlFor="name">Role Name *</Label>
+                      <Input
+                        id="name"
+                        value={formData.name}
+                        onChange={(e) =>
+                          setFormData({ ...formData, name: e.target.value })
+                        }
+                        placeholder="e.g., Test Manager"
+                      />
+                    </div>
+                    <div>
+                      <Label htmlFor="description">Description</Label>
+                      <Input
+                        id="description"
+                        value={formData.description}
+                        onChange={(e) =>
+                          setFormData({
+                            ...formData,
+                            description: e.target.value,
+                          })
+                        }
+                        placeholder="Role description"
+                      />
+                    </div>
+                  </div>
+
+                  <div>
+                    <Label className="text-base font-semibold">
+                      Module Permissions
+                    </Label>
+                    <div className="mt-4 border rounded-lg">
+                      <Table>
+                        <TableHeader>
+                          <TableRow>
+                            <TableHead>Module</TableHead>
+                            <TableHead className="text-center">Read</TableHead>
+                            <TableHead className="text-center">Write</TableHead>
+                            <TableHead className="text-center">
+                              Delete
+                            </TableHead>
+                          </TableRow>
+                        </TableHeader>
+                        <TableBody>
+                          {modulesLoading ? (
                             <TableRow>
-                              <TableHead>Module</TableHead>
-                              <TableHead className="text-center">Read</TableHead>
-                              <TableHead className="text-center">Write</TableHead>
-                              <TableHead className="text-center">Delete</TableHead>
+                              <TableCell colSpan={4} className="text-center">
+                                Loading modules...
+                              </TableCell>
                             </TableRow>
-                          </TableHeader>
-                          <TableBody>
-                            {modulesLoading ? (
-                              <TableRow>
-                                <TableCell colSpan={4} className="text-center">
-                                  Loading modules...
-                                </TableCell>
-                              </TableRow>
-                            ) : modules.length === 0 ? (
-                              <TableRow>
-                                <TableCell colSpan={4} className="text-center">
-                                  No modules available
-                                </TableCell>
-                              </TableRow>
-                            ) : (
-                              modules.map((module) => (
+                          ) : modules.length === 0 ? (
+                            <TableRow>
+                              <TableCell colSpan={4} className="text-center">
+                                No modules available
+                              </TableCell>
+                            </TableRow>
+                          ) : (
+                            modules.map((module) => (
                               <TableRow key={module.id}>
                                 <TableCell>
                                   <div>
-                                    <div className="font-medium">{module.name}</div>
-                                    <div className="text-sm text-gray-500">{module.description}</div>
+                                    <div className="font-medium">
+                                      {module.name}
+                                    </div>
+                                    <div className="text-sm text-gray-500">
+                                      {module.description}
+                                    </div>
                                   </div>
                                 </TableCell>
                                 <TableCell className="text-center">
                                   <Checkbox
-                                    checked={getPermissionValue(module.id, 'read')}
-                                    onCheckedChange={(checked) => 
-                                      handlePermissionChange(module.id, 'read', checked as boolean)
+                                    checked={getPermissionValue(
+                                      module.id,
+                                      "read",
+                                    )}
+                                    onCheckedChange={(checked) =>
+                                      handlePermissionChange(
+                                        module.id,
+                                        "read",
+                                        checked as boolean,
+                                      )
                                     }
                                   />
                                 </TableCell>
                                 <TableCell className="text-center">
                                   <Checkbox
-                                    checked={getPermissionValue(module.id, 'write')}
-                                    onCheckedChange={(checked) => 
-                                      handlePermissionChange(module.id, 'write', checked as boolean)
+                                    checked={getPermissionValue(
+                                      module.id,
+                                      "write",
+                                    )}
+                                    onCheckedChange={(checked) =>
+                                      handlePermissionChange(
+                                        module.id,
+                                        "write",
+                                        checked as boolean,
+                                      )
                                     }
                                   />
                                 </TableCell>
                                 <TableCell className="text-center">
                                   <Checkbox
-                                    checked={getPermissionValue(module.id, 'delete')}
-                                    onCheckedChange={(checked) => 
-                                      handlePermissionChange(module.id, 'delete', checked as boolean)
+                                    checked={getPermissionValue(
+                                      module.id,
+                                      "delete",
+                                    )}
+                                    onCheckedChange={(checked) =>
+                                      handlePermissionChange(
+                                        module.id,
+                                        "delete",
+                                        checked as boolean,
+                                      )
                                     }
                                   />
                                 </TableCell>
                               </TableRow>
-                              ))
-                            )}
-                          </TableBody>
-                        </Table>
-                      </div>
-                    </div>
-
-                    <div className="flex justify-end space-x-2">
-                      <Button variant="outline" onClick={() => setIsCreateDialogOpen(false)}>
-                        Cancel
-                      </Button>
-                      <Button 
-                        onClick={handleCreateRole}
-                        disabled={createRoleMutation.isPending}
-                      >
-                        {createRoleMutation.isPending ? "Creating..." : "Create Role"}
-                      </Button>
+                            ))
+                          )}
+                        </TableBody>
+                      </Table>
                     </div>
                   </div>
-                </DialogContent>
-              </Dialog>
+
+                  <div className="flex justify-end space-x-2">
+                    <Button
+                      variant="outline"
+                      onClick={() => setIsCreateDialogOpen(false)}
+                    >
+                      Cancel
+                    </Button>
+                    <Button
+                      onClick={handleCreateRole}
+                      disabled={createRoleMutation.isPending}
+                    >
+                      {createRoleMutation.isPending
+                        ? "Creating..."
+                        : "Create Role"}
+                    </Button>
+                  </div>
+                </div>
+              </DialogContent>
+            </Dialog>
+          </div>
+
+          <Card>
+            <CardHeader>
+              <CardTitle>Custom Roles</CardTitle>
+              <CardDescription>
+                Manage custom roles and assign specific permissions to control
+                user access
+              </CardDescription>
             </CardHeader>
 
             <CardContent>
@@ -425,12 +491,19 @@ export default function RoleManagement() {
                   {roles.map((role: CustomRole) => (
                     <TableRow key={role.id}>
                       <TableCell className="font-medium">{role.name}</TableCell>
-                      <TableCell>{role.description || "No description"}</TableCell>
+                      <TableCell>
+                        {role.description || "No description"}
+                      </TableCell>
                       <TableCell>
                         <div className="flex flex-wrap gap-1">
                           {role.permissions?.slice(0, 3).map((permission) => (
-                            <Badge key={permission.module} variant="secondary" className="text-xs">
-                              {modules.find(m => m.id === permission.module)?.name || permission.module}
+                            <Badge
+                              key={permission.module}
+                              variant="secondary"
+                              className="text-xs"
+                            >
+                              {modules.find((m) => m.id === permission.module)
+                                ?.name || permission.module}
                             </Badge>
                           ))}
                           {role.permissions?.length > 3 && (
@@ -441,7 +514,9 @@ export default function RoleManagement() {
                         </div>
                       </TableCell>
                       <TableCell>
-                        <Badge variant={role.isActive ? "default" : "secondary"}>
+                        <Badge
+                          variant={role.isActive ? "default" : "secondary"}
+                        >
                           {role.isActive ? "Active" : "Inactive"}
                         </Badge>
                       </TableCell>
@@ -473,7 +548,9 @@ export default function RoleManagement() {
                 <div className="text-center py-8">
                   <Shield className="h-12 w-12 text-gray-400 mx-auto mb-4" />
                   <p className="text-gray-500">No custom roles created yet.</p>
-                  <p className="text-sm text-gray-400">Create your first custom role to get started.</p>
+                  <p className="text-sm text-gray-400">
+                    Create your first custom role to get started.
+                  </p>
                 </div>
               )}
             </CardContent>
@@ -488,7 +565,7 @@ export default function RoleManagement() {
                   Update role permissions and settings
                 </DialogDescription>
               </DialogHeader>
-              
+
               <div className="space-y-6">
                 <div className="grid grid-cols-2 gap-4">
                   <div>
@@ -496,7 +573,9 @@ export default function RoleManagement() {
                     <Input
                       id="edit-name"
                       value={formData.name}
-                      onChange={(e) => setFormData({...formData, name: e.target.value})}
+                      onChange={(e) =>
+                        setFormData({ ...formData, name: e.target.value })
+                      }
                       placeholder="e.g., Test Manager"
                     />
                   </div>
@@ -505,14 +584,21 @@ export default function RoleManagement() {
                     <Input
                       id="edit-description"
                       value={formData.description}
-                      onChange={(e) => setFormData({...formData, description: e.target.value})}
+                      onChange={(e) =>
+                        setFormData({
+                          ...formData,
+                          description: e.target.value,
+                        })
+                      }
                       placeholder="Role description"
                     />
                   </div>
                 </div>
 
                 <div>
-                  <Label className="text-base font-semibold">Module Permissions</Label>
+                  <Label className="text-base font-semibold">
+                    Module Permissions
+                  </Label>
                   <div className="mt-4 border rounded-lg">
                     <Table>
                       <TableHeader>
@@ -538,38 +624,63 @@ export default function RoleManagement() {
                           </TableRow>
                         ) : (
                           modules.map((module) => (
-                          <TableRow key={module.id}>
-                            <TableCell>
-                              <div>
-                                <div className="font-medium">{module.name}</div>
-                                <div className="text-sm text-gray-500">{module.description}</div>
-                              </div>
-                            </TableCell>
-                            <TableCell className="text-center">
-                              <Checkbox
-                                checked={getPermissionValue(module.id, 'read')}
-                                onCheckedChange={(checked) => 
-                                  handlePermissionChange(module.id, 'read', checked as boolean)
-                                }
-                              />
-                            </TableCell>
-                            <TableCell className="text-center">
-                              <Checkbox
-                                checked={getPermissionValue(module.id, 'write')}
-                                onCheckedChange={(checked) => 
-                                  handlePermissionChange(module.id, 'write', checked as boolean)
-                                }
-                              />
-                            </TableCell>
-                            <TableCell className="text-center">
-                              <Checkbox
-                                checked={getPermissionValue(module.id, 'delete')}
-                                onCheckedChange={(checked) => 
-                                  handlePermissionChange(module.id, 'delete', checked as boolean)
-                                }
-                              />
-                            </TableCell>
-                          </TableRow>
+                            <TableRow key={module.id}>
+                              <TableCell>
+                                <div>
+                                  <div className="font-medium">
+                                    {module.name}
+                                  </div>
+                                  <div className="text-sm text-gray-500">
+                                    {module.description}
+                                  </div>
+                                </div>
+                              </TableCell>
+                              <TableCell className="text-center">
+                                <Checkbox
+                                  checked={getPermissionValue(
+                                    module.id,
+                                    "read",
+                                  )}
+                                  onCheckedChange={(checked) =>
+                                    handlePermissionChange(
+                                      module.id,
+                                      "read",
+                                      checked as boolean,
+                                    )
+                                  }
+                                />
+                              </TableCell>
+                              <TableCell className="text-center">
+                                <Checkbox
+                                  checked={getPermissionValue(
+                                    module.id,
+                                    "write",
+                                  )}
+                                  onCheckedChange={(checked) =>
+                                    handlePermissionChange(
+                                      module.id,
+                                      "write",
+                                      checked as boolean,
+                                    )
+                                  }
+                                />
+                              </TableCell>
+                              <TableCell className="text-center">
+                                <Checkbox
+                                  checked={getPermissionValue(
+                                    module.id,
+                                    "delete",
+                                  )}
+                                  onCheckedChange={(checked) =>
+                                    handlePermissionChange(
+                                      module.id,
+                                      "delete",
+                                      checked as boolean,
+                                    )
+                                  }
+                                />
+                              </TableCell>
+                            </TableRow>
                           ))
                         )}
                       </TableBody>
@@ -578,14 +689,19 @@ export default function RoleManagement() {
                 </div>
 
                 <div className="flex justify-end space-x-2">
-                  <Button variant="outline" onClick={() => setIsEditDialogOpen(false)}>
+                  <Button
+                    variant="outline"
+                    onClick={() => setIsEditDialogOpen(false)}
+                  >
                     Cancel
                   </Button>
-                  <Button 
+                  <Button
                     onClick={handleUpdateRole}
                     disabled={updateRoleMutation.isPending}
                   >
-                    {updateRoleMutation.isPending ? "Updating..." : "Update Role"}
+                    {updateRoleMutation.isPending
+                      ? "Updating..."
+                      : "Update Role"}
                   </Button>
                 </div>
               </div>

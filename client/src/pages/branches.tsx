@@ -1,4 +1,3 @@
-
 import { useEffect, useState } from "react";
 import { useAuth } from "@/hooks/useAuth";
 import { useToast } from "@/hooks/use-toast";
@@ -11,8 +10,21 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+} from "@/components/ui/dialog";
 import { Plus, Edit2, Trash2 } from "lucide-react";
 
 export default function Branches() {
@@ -21,7 +33,7 @@ export default function Branches() {
   const queryClient = useQueryClient();
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [editingBranch, setEditingBranch] = useState<any>(null);
-      const [isMobileSidebarOpen, setIsMobileSidebarOpen] = useState(false);
+  const [isMobileSidebarOpen, setIsMobileSidebarOpen] = useState(false);
   const [formData, setFormData] = useState({
     name: "",
     address: "",
@@ -51,7 +63,11 @@ export default function Branches() {
       toast({ title: "Success", description: "Branch created successfully" });
     },
     onError: () => {
-      toast({ title: "Error", description: "Failed to create branch", variant: "destructive" });
+      toast({
+        title: "Error",
+        description: "Failed to create branch",
+        variant: "destructive",
+      });
     },
   });
 
@@ -72,13 +88,19 @@ export default function Branches() {
       toast({ title: "Success", description: "Branch updated successfully" });
     },
     onError: () => {
-      toast({ title: "Error", description: "Failed to update branch", variant: "destructive" });
+      toast({
+        title: "Error",
+        description: "Failed to update branch",
+        variant: "destructive",
+      });
     },
   });
 
   const deleteBranchMutation = useMutation({
     mutationFn: async (branchId: number) => {
-      const response = await fetch(`/api/branches/${branchId}`, { method: "DELETE" });
+      const response = await fetch(`/api/branches/${branchId}`, {
+        method: "DELETE",
+      });
       if (!response.ok) throw new Error("Failed to delete branch");
     },
     onSuccess: () => {
@@ -86,7 +108,11 @@ export default function Branches() {
       toast({ title: "Success", description: "Branch deleted successfully" });
     },
     onError: () => {
-      toast({ title: "Error", description: "Failed to delete branch", variant: "destructive" });
+      toast({
+        title: "Error",
+        description: "Failed to delete branch",
+        variant: "destructive",
+      });
     },
   });
 
@@ -153,15 +179,14 @@ export default function Branches() {
       <div className="min-h-screen bg-gray-50">
         <Sidebar />
         <div className="main-content">
-          <Header
-            title="Branch Management"
-            subtitle="Access Denied"
-          />
+          <Header title="Branch Management" subtitle="Access Denied" />
           <main className="p-6">
             <Card>
               <CardContent className="pt-6">
                 <div className="text-center py-8">
-                  <p className="text-gray-500">You don't have permission to view this page.</p>
+                  <p className="text-gray-500">
+                    You don't have permission to view this page.
+                  </p>
                 </div>
               </CardContent>
             </Card>
@@ -185,72 +210,88 @@ export default function Branches() {
 
   return (
     <div className="min-h-screen bg-gray-50">
-         <Sidebar 
-                isMobileMenuOpen={isMobileSidebarOpen}
-                setIsMobileMenuOpen={setIsMobileSidebarOpen}
-              />
-              <div className="main-content">
-                <Header
-                 title="Branch Management"
+      <Sidebar
+        isMobileMenuOpen={isMobileSidebarOpen}
+        setIsMobileMenuOpen={setIsMobileSidebarOpen}
+      />
+      <div className="main-content">
+        <Header
+          title="Branch Management"
           subtitle="Oversee multiple hotel locations"
-                 onMobileMenuToggle={() => setIsMobileSidebarOpen(!isMobileSidebarOpen)}
-                />
+          onMobileMenuToggle={() =>
+            setIsMobileSidebarOpen(!isMobileSidebarOpen)
+          }
+        />
         <main className="p-6">
-          <Card>
-            <CardHeader className="flex flex-row items-center justify-between">
-              <CardTitle>All Branches</CardTitle>
-              <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
-                <DialogTrigger asChild>
-                  <Button onClick={resetForm}>
-                    <Plus className="h-4 w-4 mr-2" />
-                    Add Branch
+          {/* Add Branch button moved outside the card */}
+          <div className="flex justify-between items-center mb-6">
+            <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
+              <DialogTrigger asChild>
+                <Button onClick={resetForm}>
+                  <Plus className="h-4 w-4 mr-2" />
+                  Add Branch
+                </Button>
+              </DialogTrigger>
+              <DialogContent>
+                <DialogHeader>
+                  <DialogTitle>
+                    {editingBranch ? "Edit Branch" : "Add New Branch"}
+                  </DialogTitle>
+                </DialogHeader>
+                <form onSubmit={handleSubmit} className="space-y-4">
+                  <div>
+                    <Label htmlFor="name">Branch Name</Label>
+                    <Input
+                      id="name"
+                      value={formData.name}
+                      onChange={(e) =>
+                        setFormData({ ...formData, name: e.target.value })
+                      }
+                      required
+                    />
+                  </div>
+                  <div>
+                    <Label htmlFor="address">Address</Label>
+                    <Textarea
+                      id="address"
+                      value={formData.address}
+                      onChange={(e) =>
+                        setFormData({ ...formData, address: e.target.value })
+                      }
+                    />
+                  </div>
+                  <div>
+                    <Label htmlFor="phone">Phone</Label>
+                    <Input
+                      id="phone"
+                      value={formData.phone}
+                      onChange={(e) =>
+                        setFormData({ ...formData, phone: e.target.value })
+                      }
+                    />
+                  </div>
+                  <div>
+                    <Label htmlFor="email">Email</Label>
+                    <Input
+                      id="email"
+                      type="email"
+                      value={formData.email}
+                      onChange={(e) =>
+                        setFormData({ ...formData, email: e.target.value })
+                      }
+                    />
+                  </div>
+                  <Button type="submit" className="w-full">
+                    {editingBranch ? "Update Branch" : "Create Branch"}
                   </Button>
-                </DialogTrigger>
-                <DialogContent>
-                  <DialogHeader>
-                    <DialogTitle>{editingBranch ? "Edit Branch" : "Add New Branch"}</DialogTitle>
-                  </DialogHeader>
-                  <form onSubmit={handleSubmit} className="space-y-4">
-                    <div>
-                      <Label htmlFor="name">Branch Name</Label>
-                      <Input
-                        id="name"
-                        value={formData.name}
-                        onChange={(e) => setFormData({ ...formData, name: e.target.value })}
-                        required
-                      />
-                    </div>
-                    <div>
-                      <Label htmlFor="address">Address</Label>
-                      <Textarea
-                        id="address"
-                        value={formData.address}
-                        onChange={(e) => setFormData({ ...formData, address: e.target.value })}
-                      />
-                    </div>
-                    <div>
-                      <Label htmlFor="phone">Phone</Label>
-                      <Input
-                        id="phone"
-                        value={formData.phone}
-                        onChange={(e) => setFormData({ ...formData, phone: e.target.value })}
-                      />
-                    </div>
-                    <div>
-                      <Label htmlFor="email">Email</Label>
-                      <Input
-                        id="email"
-                        type="email"
-                        value={formData.email}
-                        onChange={(e) => setFormData({ ...formData, email: e.target.value })}
-                      />
-                    </div>
-                    <Button type="submit" className="w-full">
-                      {editingBranch ? "Update Branch" : "Create Branch"}
-                    </Button>
-                  </form>
-                </DialogContent>
-              </Dialog>
+                </form>
+              </DialogContent>
+            </Dialog>
+          </div>
+
+          <Card>
+            <CardHeader>
+              <CardTitle>All Branches</CardTitle>
             </CardHeader>
             <CardContent>
               {branchesLoading ? (
@@ -277,23 +318,19 @@ export default function Branches() {
                           <TableCell className="font-medium">
                             {branch.name}
                           </TableCell>
+                          <TableCell>{branch.address || "N/A"}</TableCell>
+                          <TableCell>{branch.phone || "N/A"}</TableCell>
+                          <TableCell>{branch.email || "N/A"}</TableCell>
                           <TableCell>
-                            {branch.address || "N/A"}
-                          </TableCell>
-                          <TableCell>
-                            {branch.phone || "N/A"}
-                          </TableCell>
-                          <TableCell>
-                            {branch.email || "N/A"}
-                          </TableCell>
-                          <TableCell>
-                            <Badge variant={branch.isActive ? "default" : "secondary"}>
+                            <Badge
+                              variant={
+                                branch.isActive ? "default" : "secondary"
+                              }
+                            >
                               {branch.isActive ? "Active" : "Inactive"}
                             </Badge>
                           </TableCell>
-                          <TableCell>
-                            {formatDate(branch.createdAt)}
-                          </TableCell>
+                          <TableCell>{formatDate(branch.createdAt)}</TableCell>
                           <TableCell>
                             <div className="flex space-x-2">
                               <Button
@@ -316,8 +353,12 @@ export default function Branches() {
                       ))
                     ) : (
                       <TableRow>
-                        <TableCell colSpan={7} className="text-center py-8 text-gray-500">
-                          No branches found. Create your first branch to get started.
+                        <TableCell
+                          colSpan={7}
+                          className="text-center py-8 text-gray-500"
+                        >
+                          No branches found. Create your first branch to get
+                          started.
                         </TableCell>
                       </TableRow>
                     )}

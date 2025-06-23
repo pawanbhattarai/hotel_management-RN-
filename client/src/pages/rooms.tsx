@@ -1,4 +1,3 @@
-
 import { useEffect, useState } from "react";
 import { useAuth } from "@/hooks/useAuth";
 import { useToast } from "@/hooks/use-toast";
@@ -10,9 +9,28 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+} from "@/components/ui/dialog";
 import { Plus, Edit2, Trash2 } from "lucide-react";
 
 export default function Rooms() {
@@ -67,7 +85,11 @@ export default function Rooms() {
       toast({ title: "Success", description: "Room created successfully" });
     },
     onError: () => {
-      toast({ title: "Error", description: "Failed to create room", variant: "destructive" });
+      toast({
+        title: "Error",
+        description: "Failed to create room",
+        variant: "destructive",
+      });
     },
   });
 
@@ -88,13 +110,19 @@ export default function Rooms() {
       toast({ title: "Success", description: "Room updated successfully" });
     },
     onError: () => {
-      toast({ title: "Error", description: "Failed to update room", variant: "destructive" });
+      toast({
+        title: "Error",
+        description: "Failed to update room",
+        variant: "destructive",
+      });
     },
   });
 
   const deleteRoomMutation = useMutation({
     mutationFn: async (roomId: number) => {
-      const response = await fetch(`/api/rooms/${roomId}`, { method: "DELETE" });
+      const response = await fetch(`/api/rooms/${roomId}`, {
+        method: "DELETE",
+      });
       if (!response.ok) throw new Error("Failed to delete room");
     },
     onSuccess: () => {
@@ -102,7 +130,11 @@ export default function Rooms() {
       toast({ title: "Success", description: "Room deleted successfully" });
     },
     onError: () => {
-      toast({ title: "Error", description: "Failed to delete room", variant: "destructive" });
+      toast({
+        title: "Error",
+        description: "Failed to delete room",
+        variant: "destructive",
+      });
     },
   });
 
@@ -111,7 +143,8 @@ export default function Rooms() {
       number: "",
       floor: "",
       roomTypeId: "",
-      branchId: user?.role === "superadmin" ? "" : user?.branchId?.toString() || "",
+      branchId:
+        user?.role === "superadmin" ? "" : user?.branchId?.toString() || "",
       status: "available",
     });
     setEditingRoom(null);
@@ -153,15 +186,32 @@ export default function Rooms() {
 
   const getStatusBadge = (status: string) => {
     const statusConfig = {
-      available: { label: "Available", className: "bg-green-100 text-green-800" },
+      available: {
+        label: "Available",
+        className: "bg-green-100 text-green-800",
+      },
       occupied: { label: "Occupied", className: "bg-red-100 text-red-800" },
-      maintenance: { label: "Maintenance", className: "bg-orange-100 text-orange-800" },
-      housekeeping: { label: "Housekeeping", className: "bg-blue-100 text-blue-800" },
-      "out-of-order": { label: "Out of Order", className: "bg-gray-100 text-gray-800" },
-      reserved: { label: "Reserved", className: "bg-yellow-100 text-yellow-800" },
+      maintenance: {
+        label: "Maintenance",
+        className: "bg-orange-100 text-orange-800",
+      },
+      housekeeping: {
+        label: "Housekeeping",
+        className: "bg-blue-100 text-blue-800",
+      },
+      "out-of-order": {
+        label: "Out of Order",
+        className: "bg-gray-100 text-gray-800",
+      },
+      reserved: {
+        label: "Reserved",
+        className: "bg-yellow-100 text-yellow-800",
+      },
     };
 
-    const config = statusConfig[status as keyof typeof statusConfig] || statusConfig.available;
+    const config =
+      statusConfig[status as keyof typeof statusConfig] ||
+      statusConfig.available;
     return <Badge className={config.className}>{config.label}</Badge>;
   };
 
@@ -216,95 +266,132 @@ export default function Rooms() {
           }
         />
         <main className="p-6">
-          <Card>
-            <CardHeader className="flex flex-row items-center justify-between">
-              <CardTitle>All Rooms</CardTitle>
-              {(user?.role === "superadmin" || user?.role === "branch-admin") && (
-                <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
-                  <DialogTrigger asChild>
-                    <Button onClick={resetForm}>
-                      <Plus className="h-4 w-4 mr-2" />
-                      Add Room
-                    </Button>
-                  </DialogTrigger>
-                  <DialogContent>
-                    <DialogHeader>
-                      <DialogTitle>{editingRoom ? "Edit Room" : "Add New Room"}</DialogTitle>
-                    </DialogHeader>
-                    <form onSubmit={handleSubmit} className="space-y-4">
+          {/* Add Room Button - Outside the card */}
+          {(user?.role === "superadmin" || user?.role === "branch-admin") && (
+            <div className="mb-6">
+              <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
+                <DialogTrigger asChild>
+                  <Button onClick={resetForm}>
+                    <Plus className="h-4 w-4 mr-2" />
+                    Add Room
+                  </Button>
+                </DialogTrigger>
+                <DialogContent>
+                  <DialogHeader>
+                    <DialogTitle>
+                      {editingRoom ? "Edit Room" : "Add New Room"}
+                    </DialogTitle>
+                  </DialogHeader>
+                  <form onSubmit={handleSubmit} className="space-y-4">
+                    <div>
+                      <Label htmlFor="number">Room Number</Label>
+                      <Input
+                        id="number"
+                        value={formData.number}
+                        onChange={(e) =>
+                          setFormData({ ...formData, number: e.target.value })
+                        }
+                        required
+                      />
+                    </div>
+                    <div>
+                      <Label htmlFor="floor">Floor</Label>
+                      <Input
+                        id="floor"
+                        type="number"
+                        value={formData.floor}
+                        onChange={(e) =>
+                          setFormData({ ...formData, floor: e.target.value })
+                        }
+                      />
+                    </div>
+                    <div>
+                      <Label htmlFor="roomTypeId">Room Type</Label>
+                      <Select
+                        value={formData.roomTypeId}
+                        onValueChange={(value) =>
+                          setFormData({ ...formData, roomTypeId: value })
+                        }
+                      >
+                        <SelectTrigger>
+                          <SelectValue placeholder="Select room type" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {roomTypes?.map((roomType: any) => (
+                            <SelectItem
+                              key={roomType.id}
+                              value={roomType.id.toString()}
+                            >
+                              {roomType.name}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </div>
+                    {user?.role === "superadmin" && (
                       <div>
-                        <Label htmlFor="number">Room Number</Label>
-                        <Input
-                          id="number"
-                          value={formData.number}
-                          onChange={(e) => setFormData({ ...formData, number: e.target.value })}
-                          required
-                        />
-                      </div>
-                      <div>
-                        <Label htmlFor="floor">Floor</Label>
-                        <Input
-                          id="floor"
-                          type="number"
-                          value={formData.floor}
-                          onChange={(e) => setFormData({ ...formData, floor: e.target.value })}
-                        />
-                      </div>
-                      <div>
-                        <Label htmlFor="roomTypeId">Room Type</Label>
-                        <Select value={formData.roomTypeId} onValueChange={(value) => setFormData({ ...formData, roomTypeId: value })}>
+                        <Label htmlFor="branchId">Branch</Label>
+                        <Select
+                          value={formData.branchId}
+                          onValueChange={(value) =>
+                            setFormData({ ...formData, branchId: value })
+                          }
+                        >
                           <SelectTrigger>
-                            <SelectValue placeholder="Select room type" />
+                            <SelectValue placeholder="Select branch" />
                           </SelectTrigger>
                           <SelectContent>
-                            {roomTypes?.map((roomType: any) => (
-                              <SelectItem key={roomType.id} value={roomType.id.toString()}>
-                                {roomType.name}
+                            {branches?.map((branch: any) => (
+                              <SelectItem
+                                key={branch.id}
+                                value={branch.id.toString()}
+                              >
+                                {branch.name}
                               </SelectItem>
                             ))}
                           </SelectContent>
                         </Select>
                       </div>
-                      {user?.role === "superadmin" && (
-                        <div>
-                          <Label htmlFor="branchId">Branch</Label>
-                          <Select value={formData.branchId} onValueChange={(value) => setFormData({ ...formData, branchId: value })}>
-                            <SelectTrigger>
-                              <SelectValue placeholder="Select branch" />
-                            </SelectTrigger>
-                            <SelectContent>
-                              {branches?.map((branch: any) => (
-                                <SelectItem key={branch.id} value={branch.id.toString()}>
-                                  {branch.name}
-                                </SelectItem>
-                              ))}
-                            </SelectContent>
-                          </Select>
-                        </div>
-                      )}
-                      <div>
-                        <Label htmlFor="status">Status</Label>
-                        <Select value={formData.status} onValueChange={(value) => setFormData({ ...formData, status: value })}>
-                          <SelectTrigger>
-                            <SelectValue />
-                          </SelectTrigger>
-                          <SelectContent>
-                            <SelectItem value="available">Available</SelectItem>
-                            <SelectItem value="occupied">Occupied</SelectItem>
-                            <SelectItem value="maintenance">Maintenance</SelectItem>
-                            <SelectItem value="housekeeping">Housekeeping</SelectItem>
-                            <SelectItem value="out-of-order">Out of Order</SelectItem>
-                            <SelectItem value="reserved">Reserved</SelectItem>
-                          </SelectContent>
-                        </Select>
-                      </div>
-                      <Button type="submit" className="w-full">
-                        {editingRoom ? "Update Room" : "Create Room"}
-                      </Button>
-                    </form>
-                  </DialogContent>
-                </Dialog>
-              )}
+                    )}
+                    <div>
+                      <Label htmlFor="status">Status</Label>
+                      <Select
+                        value={formData.status}
+                        onValueChange={(value) =>
+                          setFormData({ ...formData, status: value })
+                        }
+                      >
+                        <SelectTrigger>
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="available">Available</SelectItem>
+                          <SelectItem value="occupied">Occupied</SelectItem>
+                          <SelectItem value="maintenance">
+                            Maintenance
+                          </SelectItem>
+                          <SelectItem value="housekeeping">
+                            Housekeeping
+                          </SelectItem>
+                          <SelectItem value="out-of-order">
+                            Out of Order
+                          </SelectItem>
+                          <SelectItem value="reserved">Reserved</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </div>
+                    <Button type="submit" className="w-full">
+                      {editingRoom ? "Update Room" : "Create Room"}
+                    </Button>
+                  </form>
+                </DialogContent>
+              </Dialog>
+            </div>
+          )}
+
+          <Card>
+            <CardHeader>
+              <CardTitle>All Rooms</CardTitle>
             </CardHeader>
             <CardContent>
               {roomsLoading ? (
@@ -318,7 +405,9 @@ export default function Rooms() {
                       <TableHead>Room Number</TableHead>
                       <TableHead>Floor</TableHead>
                       <TableHead>Type</TableHead>
-                      {user?.role === "superadmin" && <TableHead>Branch</TableHead>}
+                      {user?.role === "superadmin" && (
+                        <TableHead>Branch</TableHead>
+                      )}
                       <TableHead>Status</TableHead>
                       <TableHead>Actions</TableHead>
                     </TableRow>
@@ -341,12 +430,11 @@ export default function Rooms() {
                               {getBranchName(room.branchId)}
                             </TableCell>
                           )}
-                          <TableCell>
-                            {getStatusBadge(room.status)}
-                          </TableCell>
+                          <TableCell>{getStatusBadge(room.status)}</TableCell>
                           <TableCell>
                             <div className="flex space-x-2">
-                              {(user?.role === "superadmin" || user?.role === "branch-admin") && (
+                              {(user?.role === "superadmin" ||
+                                user?.role === "branch-admin") && (
                                 <>
                                   <Button
                                     variant="outline"
@@ -370,8 +458,12 @@ export default function Rooms() {
                       ))
                     ) : (
                       <TableRow>
-                        <TableCell colSpan={user?.role === "superadmin" ? 6 : 5} className="text-center py-8 text-gray-500">
-                          No rooms found. Contact your administrator to set up rooms.
+                        <TableCell
+                          colSpan={user?.role === "superadmin" ? 6 : 5}
+                          className="text-center py-8 text-gray-500"
+                        >
+                          No rooms found. Contact your administrator to set up
+                          rooms.
                         </TableCell>
                       </TableRow>
                     )}
