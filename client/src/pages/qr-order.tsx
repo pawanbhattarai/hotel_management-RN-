@@ -94,32 +94,55 @@ export default function QROrderPage() {
 
   const fetchOrderInfo = async () => {
     try {
-      console.log('Fetching order info for token:', token);
+      console.log('🔍 QR Order - Fetching order info for token:', token);
+      
+      if (!token || token.length < 10) {
+        throw new Error('Invalid or missing QR token');
+      }
+
       const response = await fetch(`/api/order/info/${token}`);
       
-      console.log('Response status:', response.status);
-      console.log('Response ok:', response.ok);
+      console.log('📡 QR Order - Response status:', response.status);
+      console.log('📡 QR Order - Response ok:', response.ok);
       
       if (!response.ok) {
         const errorText = await response.text();
-        console.error('API Error:', errorText);
-        throw new Error(`Invalid QR code: ${response.status} - ${errorText}`);
+        console.error('❌ QR Order - API Error:', response.status, errorText);
+        
+        if (response.status === 404) {
+          throw new Error('QR code not found. Please check if the QR code is valid.');
+        } else if (response.status === 500) {
+          throw new Error('Server error. Please try again later.');
+        } else {
+          throw new Error(`Failed to load menu: ${response.status}`);
+        }
       }
       
       const data = await response.json();
-      console.log('Order info data:', data);
+      console.log('✅ QR Order - Order info data:', data);
+      
+      if (!data.location) {
+        throw new Error('Invalid QR code - no location information found');
+      }
+
+      if (!data.menu || !data.menu.categories || !data.menu.dishes) {
+        console.warn('⚠️ QR Order - Menu data incomplete:', data.menu);
+      }
       
       setLocationInfo(data.location);
       setCategories(data.menu.categories || []);
       setDishes(data.menu.dishes || []);
       
+      console.log(`📍 QR Order - Location: ${data.location.type} ${data.location.name}`);
+      console.log(`🍽️ QR Order - Menu: ${data.menu.categories?.length || 0} categories, ${data.menu.dishes?.length || 0} dishes`);
+      
       // Check for existing order
       await checkExistingOrder();
     } catch (error) {
-      console.error('Error fetching order info:', error);
+      console.error('❌ QR Order - Error fetching order info:', error);
       toast({
         title: "Error",
-        description: error instanceof Error ? error.message : "Invalid QR code or expired link",
+        description: error instanceof Error ? error.message : "Failed to load menu. Please try scanning the QR code again.",
         variant: "destructive",
       });
     } finally {

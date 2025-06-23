@@ -1,6 +1,6 @@
 
-import { db } from './server/db.js';
-import { restaurantTables } from './shared/schema.js';
+import { db } from './server/db.ts';
+import { restaurantTables } from './shared/schema.ts';
 import { eq, isNull } from 'drizzle-orm';
 import crypto from 'crypto';
 
@@ -28,8 +28,10 @@ async function updateExistingTables() {
     }
 
     console.log('✅ All existing tables updated with QR tokens');
+    process.exit(0);
   } catch (error) {
     console.error('❌ Error updating tables:', error);
+    process.exit(1);
   }
 }
 

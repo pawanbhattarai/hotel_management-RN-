@@ -39,6 +39,7 @@ import {
 
 // Import roleStorage for custom role management
 import { roleStorage } from "./role-storage";
+import crypto from "crypto";
 
 if (!process.env.DATABASE_URL) {
   throw new Error("DATABASE_URL must be set");
@@ -317,12 +318,12 @@ export class DatabaseStorage implements IStorage {
         .leftJoin(branches, eq(rooms.branchId, branches.id));
 
       const conditions = [];
-      
+
       if (branchId) {
         console.log("🔍 Adding branchId filter:", branchId);
         conditions.push(eq(rooms.branchId, branchId));
       }
-      
+
       if (status) {
         console.log("🔍 Adding status filter:", status);
         conditions.push(eq(rooms.status, status));
@@ -343,7 +344,7 @@ export class DatabaseStorage implements IStorage {
           console.warn("⚠️ Found result without rooms data:", result);
           return null;
         }
-        
+
         return {
           ...result.rooms,
           roomType: result.room_types || { id: 0, name: 'Unknown', description: '', basePrice: '0', maxOccupancy: 1, amenities: [], isActive: true, branchId: null, createdAt: new Date(), updatedAt: new Date() },
@@ -376,9 +377,13 @@ export class DatabaseStorage implements IStorage {
     };
   }
 
-  async createRoom(room: InsertRoom): Promise<Room> {
-    const [result] = await db.insert(rooms).values(room).returning();
-    return result;
+  async createRoom(roomData: typeof rooms.$inferInsert): Promise<Room> {
+    const roomWithToken = {
+      ...roomData,
+      qrToken: roomData.qrToken || crypto.randomUUID()
+    };
+    const [room] = await db.insert(rooms).values(roomWithToken).returning();
+    return room;
   }
 
   async updateRoom(id: number, room: Partial<InsertRoom>): Promise<Room> {
@@ -440,7 +445,7 @@ export class DatabaseStorage implements IStorage {
       .select()
       .from(guests)
       .where(searchConditions);
-    
+
     return await searchQuery.orderBy(desc(guests.createdAt)).limit(10);
   }
 
@@ -913,7 +918,7 @@ export class DatabaseStorage implements IStorage {
       })
       .from(guests)
       .leftJoin(reservations, eq(guests.id, reservations.guestId))
-      .groupBy(guests.id, guests.firstName, guests.lastName, guests.email, guests.reservationCount)
+            .groupBy(guests.id, guests.firstName, guests.lastName, guests.email, guests.reservationCount)
       .orderBy(desc(guests.reservationCount))
       .limit(10);
 
