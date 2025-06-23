@@ -242,15 +242,15 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const { customRoleIds, ...userData } = req.body;
       const validatedUserData = insertUserSchema.parse(userData);
       const newUser = await storage.upsertUser(validatedUserData);
-      
+
       // Handle custom role assignments
       if (customRoleIds && customRoleIds.length > 0) {
         await roleStorage.assignRolesToUser(newUser.id, customRoleIds);
       }
-      
+
       // Get user with custom roles for response
       const userWithRoles = await storage.getUserWithCustomRoles(newUser.id);
-      
+
       broadcastChange('users', 'created', userWithRoles); // Broadcast change
       res.status(201).json(userWithRoles);
     } catch (error) {
@@ -270,15 +270,15 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const { customRoleIds, ...userData } = req.body;
       const validatedUserData = insertUserSchema.partial().parse(userData);
       const updatedUser = await storage.updateUser(userId, validatedUserData);
-      
+
       // Handle custom role assignments
       if (customRoleIds !== undefined) {
         await roleStorage.assignRolesToUser(userId, customRoleIds);
       }
-      
+
       // Get user with custom roles for response
       const userWithRoles = await storage.getUserWithCustomRoles(userId);
-      
+
       broadcastChange('users', 'updated', userWithRoles); // Broadcast change
       res.json(userWithRoles);
     } catch (error) {
@@ -1116,7 +1116,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
 
       const roles = await roleStorage.getCustomRoles();
-      
+
       // Get permissions for each role
       const rolesWithPermissions = await Promise.all(
         roles.map(async (role) => {
@@ -1616,7 +1616,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         ...subscription,
         message: "Subscription created successfully"
       });
-    } catch (error) {
+        } catch (error) {
       console.error(" Error creating push subscription:", error);
       res.status(500).json({ 
         message: "Failed to create push subscription",

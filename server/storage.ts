@@ -160,6 +160,8 @@ export interface IStorage {
       room: Room & { roomType: RoomType };
     })[];
   })[]>;
+    // User operations - mandatory for Replit Auth
+    getUsers(): Promise<any[]>;
 }
 
 export class DatabaseStorage implements IStorage {
@@ -197,7 +199,7 @@ export class DatabaseStorage implements IStorage {
 
   async getAllUsersWithCustomRoles(): Promise<(User & { customRoleIds: number[] })[]> {
     const allUsers = await db.select().from(users);
-    
+
     const usersWithRoles = await Promise.all(
       allUsers.map(async (user) => {
         const customRoleIds = await roleStorage.getUserRoles(user.id);
@@ -207,14 +209,14 @@ export class DatabaseStorage implements IStorage {
         };
       })
     );
-    
+
     return usersWithRoles;
   }
 
   async getUserWithCustomRoles(userId: string): Promise<(User & { customRoleIds: number[] }) | undefined> {
     const user = await this.getUser(userId);
     if (!user) return undefined;
-    
+
     const customRoleIds = await roleStorage.getUserRoles(userId);
     return {
       ...user,
@@ -1349,6 +1351,22 @@ export class DatabaseStorage implements IStorage {
       totalRooms,
       branchMetrics,
     };
+  }
+    async getUsers() {
+    const allUsers = await db.select().from(users).orderBy(desc(users.createdAt));
+
+    // For each user, get their custom role information
+    const usersWithRoles = await Promise.all(
+      allUsers.map(async (user) => {
+        if (user.role === "custom") {
+          const customRoleIds = await roleStorage.getUserRoles(user.id);
+          return { ...user, customRoleIds };
+        }
+        return user;
+      })
+    );
+
+    return usersWithRoles;
   }
 }
 
