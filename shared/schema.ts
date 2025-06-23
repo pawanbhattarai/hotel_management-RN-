@@ -98,7 +98,6 @@ export const guests = pgTable("guests", {
   dateOfBirth: date("date_of_birth"),
   nationality: varchar("nationality", { length: 100 }),
   reservationCount: integer("reservation_count").notNull().default(0),
-  branchId: integer("branch_id").notNull(),
   isActive: boolean("is_active").default(true),
   createdAt: timestamp("created_at").defaultNow(),
   updatedAt: timestamp("updated_at").defaultNow(),
@@ -183,11 +182,7 @@ export const roomsRelations = relations(rooms, ({ one, many }) => ({
   reservationRooms: many(reservationRooms),
 }));
 
-export const guestsRelations = relations(guests, ({ one, many }) => ({
-  branch: one(branches, {
-    fields: [guests.branchId],
-    references: [branches.id],
-  }),
+export const guestsRelations = relations(guests, ({ many }) => ({
   reservations: many(reservations),
 }));
 

@@ -547,16 +547,15 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const { phone } = req.query;
 
       if (phone) {
-        // Search guest by phone number
-        const branchId = user.role === "superadmin" ? undefined : user.branchId!;
-        const guests = await storage.searchGuests(phone as string, branchId);
-        res.json(guests);
-      } else {
-        // Get all guests
-        const branchId = user.role === "superadmin" ? undefined : user.branchId!;
-        const guests = await storage.getGuests(branchId);
-        res.json(guests);
+        // Search guest by phone number - this returns any guest with this phone number from any branch
+        const guest = await storage.findGuestByPhone(phone as string);
+        return res.json(guest || null);
       }
+
+      // For superadmin, return all guests. For branch users, return only guests who have reservations at their branch
+      const branchFilter = getBranchFilter(user);
+      const guests = await storage.getGuests(branchFilter);
+      res.json(guests);
     } catch (error) {
       console.error("Error fetching guests:", error);
       res.status(500).json({ message: "Failed to fetch guests" });
@@ -585,14 +584,18 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const user = await storage.getUser(req.session.user.id);
       if (!user) return res.status(401).json({ message: "User not found" });
 
+      // Guests are now centrally stored, no branch isolation needed
       const guestData = insertGuestSchema.parse(req.body);
-
-      if (
-        !checkBranchPermissions(user.role, user.branchId, guestData.branchId)
-      ) {
-        return res
-          .status(403)
-          .json({ message: "Insufficient permissions for this branch" });
+      
+      // Check if guest with this phone number already exists
+      if (guestData.phone) {
+        const existingGuest = await storage.findGuestByPhone(guestData.phone);
+        if (existingGuest) {
+          return res.status(409).json({ 
+            message: "Guest with this phone number already exists",
+            guest: existingGuest 
+          });
+        }
       }
 
       const guest = await storage.createGuest(guestData);
@@ -612,15 +615,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const guestId = parseInt(req.params.id);
       const guestData = insertGuestSchema.partial().parse(req.body);
 
-      // Check if user has permission for the guest's branch
+      // Guests are centrally accessible, no branch permission check needed
       const existingGuest = await storage.getGuest(guestId);
-      if (
-        !existingGuest ||
-        !checkBranchPermissions(user.role, user.branchId, existingGuest.branchId)
-      ) {
-        return res
-          .status(403)
-          .json({ message: "Insufficient permissions for this guest" });
+      if (!existingGuest) {
+        return res.status(404).json({ message: "Guest not found" });
       }
 
       const guest = await storage.updateGuest(guestId, guestData);
@@ -639,15 +637,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       const guestId = parseInt(req.params.id);
 
-      // Check if user has permission for the guest's branch
+      // Guests are centrally accessible, no branch permission check needed
       const existingGuest = await storage.getGuest(guestId);
-      if (
-        !existingGuest ||
-        !checkBranchPermissions(user.role, user.branchId, existingGuest.branchId)
-      ) {
-        return res
-          .status(403)
-          .json({ message: "Insufficient permissions for this guest" });
+      if (!existingGuest) {
+        return res.status(404).json({ message: "Guest not found" });
       }
 
       // Instead of hard delete, we'll mark as inactive

@@ -84,6 +84,7 @@ export interface IStorage {
   updateGuest(id: number, guest: Partial<InsertGuest>): Promise<Guest>;
   deleteGuest(id: number): Promise<void>;
   searchGuests(query: string, branchId?: number): Promise<Guest[]>;
+  findGuestByPhone(phone: string): Promise<Guest | undefined>;
 
   // Reservation operations
   getReservations(branchId?: number): Promise<(Reservation & {
@@ -362,11 +363,35 @@ export class DatabaseStorage implements IStorage {
 
   // Guest operations
   async getGuests(branchId?: number): Promise<Guest[]> {
-    let query = db.select().from(guests);
     if (branchId) {
-      query = query.where(eq(guests.branchId, branchId));
+      // Get only guests who have reservations at the current branch
+      const guestsWithReservations = await db
+        .selectDistinct({ 
+          id: guests.id,
+          firstName: guests.firstName,
+          lastName: guests.lastName,
+          email: guests.email,
+          phone: guests.phone,
+          idType: guests.idType,
+          idNumber: guests.idNumber,
+          address: guests.address,
+          dateOfBirth: guests.dateOfBirth,
+          nationality: guests.nationality,
+          reservationCount: guests.reservationCount,
+          isActive: guests.isActive,
+          createdAt: guests.createdAt,
+          updatedAt: guests.updatedAt,
+        })
+        .from(guests)
+        .innerJoin(reservations, eq(guests.id, reservations.guestId))
+        .where(eq(reservations.branchId, branchId))
+        .orderBy(desc(guests.createdAt));
+      
+      return guestsWithReservations;
+    } else {
+      // For superadmin or when no branch filter, return all guests
+      return await db.select().from(guests).orderBy(desc(guests.createdAt));
     }
-    return await query.orderBy(desc(guests.createdAt));
   }
 
   async getGuest(id: number): Promise<Guest | undefined> {
@@ -393,20 +418,58 @@ export class DatabaseStorage implements IStorage {
   }
 
   async searchGuests(query: string, branchId?: number): Promise<Guest[]> {
-    let searchQuery = db.select().from(guests).where(
-      and(
-        eq(guests.isActive, true),
-        or(
-          sql`${guests.firstName} ILIKE ${`%${query}%`}`,
-          sql`${guests.lastName} ILIKE ${`%${query}%`}`,
-          sql`${guests.phone} ILIKE ${`%${query}%`}`,
-          sql`${guests.email} ILIKE ${`%${query}%`}`
-        ),
-        branchId ? eq(guests.branchId, branchId) : undefined
+    const searchConditions = and(
+      eq(guests.isActive, true),
+      or(
+        sql`${guests.firstName} ILIKE ${`%${query}%`}`,
+        sql`${guests.lastName} ILIKE ${`%${query}%`}`,
+        sql`${guests.phone} ILIKE ${`%${query}%`}`,
+        sql`${guests.email} ILIKE ${`%${query}%`}`
       )
     );
 
-    return await searchQuery.orderBy(desc(guests.createdAt)).limit(10);
+    if (branchId) {
+      // Search guests who have reservations at the current branch
+      const searchQuery = db
+        .selectDistinct({ 
+          id: guests.id,
+          firstName: guests.firstName,
+          lastName: guests.lastName,
+          email: guests.email,
+          phone: guests.phone,
+          idType: guests.idType,
+          idNumber: guests.idNumber,
+          address: guests.address,
+          dateOfBirth: guests.dateOfBirth,
+          nationality: guests.nationality,
+          reservationCount: guests.reservationCount,
+          isActive: guests.isActive,
+          createdAt: guests.createdAt,
+          updatedAt: guests.updatedAt,
+        })
+        .from(guests)
+        .innerJoin(reservations, eq(guests.id, reservations.guestId))
+        .where(and(searchConditions, eq(reservations.branchId, branchId)));
+      
+      return await searchQuery.orderBy(desc(guests.createdAt)).limit(10);
+    } else {
+      // For superadmin or global search, search all guests
+      const searchQuery = db
+        .select()
+        .from(guests)
+        .where(searchConditions);
+      
+      return await searchQuery.orderBy(desc(guests.createdAt)).limit(10);
+    }
+  }
+
+  async findGuestByPhone(phone: string): Promise<Guest | undefined> {
+    const [guest] = await db
+      .select()
+      .from(guests)
+      .where(and(eq(guests.phone, phone), eq(guests.isActive, true)))
+      .limit(1);
+    return guest;
   }
 
   // Reservation operations
