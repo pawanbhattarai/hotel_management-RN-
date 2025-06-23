@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Plus, UtensilsCrossed } from "lucide-react";
+import { Plus, UtensilsCrossed, Package, ClipboardList, Users, Bed } from "lucide-react";
 import MultiRoomModal from "@/components/reservations/multi-room-modal";
 
 export default function QuickActions() {
@@ -12,8 +12,23 @@ export default function QuickActions() {
   };
 
   const handleDiningOrders = () => {
-    // Navigate to dining orders page
     window.location.href = "/restaurant/orders";
+  };
+
+  const handleInventory = () => {
+    window.location.href = "/inventory/stock-items";
+  };
+
+  const handleGuests = () => {
+    window.location.href = "/guests";
+  };
+
+  const handleRooms = () => {
+    window.location.href = "/room-types";
+  };
+
+  const handleBilling = () => {
+    window.location.href = "/restaurant/billing";
   };
 
   const quickActionItems = [
@@ -33,6 +48,38 @@ export default function QuickActions() {
       iconColor: "text-orange-600",
       action: handleDiningOrders,
     },
+    {
+      title: "Inventory",
+      description: "Manage stock items",
+      icon: Package,
+      iconBg: "bg-green-50",
+      iconColor: "text-green-600",
+      action: handleInventory,
+    },
+    {
+      title: "Guests",
+      description: "Manage guest profiles",
+      icon: Users,
+      iconBg: "bg-blue-50",
+      iconColor: "text-blue-600",
+      action: handleGuests,
+    },
+    {
+      title: "Rooms",
+      description: "Manage room types",
+      icon: Bed,
+      iconBg: "bg-purple-50",
+      iconColor: "text-purple-600",
+      action: handleRooms,
+    },
+    {
+      title: "Billing",
+      description: "Restaurant billing",
+      icon: ClipboardList,
+      iconBg: "bg-yellow-50",
+      iconColor: "text-yellow-600",
+      action: handleBilling,
+    },
   ];
 
   return (
@@ -44,13 +91,13 @@ export default function QuickActions() {
           </CardTitle>
         </CardHeader>
         <CardContent className="p-4 pt-0">
-          <div className="flex space-x-2">
+          <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-2">
             {quickActionItems.map((item, index) => (
               <Button
                 key={index}
                 variant="ghost"
                 onClick={item.action}
-                className="flex-1 flex flex-col items-center p-3 text-center border border-gray-200 rounded-lg hover:bg-gray-50 transition-colors h-auto"
+                className="flex flex-col items-center p-3 text-center border border-gray-200 rounded-lg hover:bg-gray-50 transition-colors h-auto"
               >
                 <div
                   className={`w-8 h-8 ${item.iconBg} rounded-lg flex items-center justify-center mb-2`}
@@ -58,7 +105,7 @@ export default function QuickActions() {
                   <item.icon className={`${item.iconColor} h-4 w-4`} />
                 </div>
                 <div className="text-center">
-                  <p className="font-medium text-gray-900 text-sm mb-1">
+                  <p className="font-medium text-gray-900 text-xs mb-1">
                     {item.title}
                   </p>
                   <p className="text-xs text-gray-500">{item.description}</p>
