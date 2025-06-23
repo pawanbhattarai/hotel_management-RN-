@@ -552,9 +552,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.json(guest || null);
       }
 
-      // For superadmin, return all guests. For branch users, return only guests who have reservations at their branch
-      const branchId = user.role === "superadmin" ? undefined : user.branchId!;
-      const guests = await storage.getGuests(branchId);
+      // Guests are now centrally accessible to all users
+      const guests = await storage.getGuests();
       res.json(guests);
     } catch (error) {
       console.error("Error fetching guests:", error);
@@ -570,8 +569,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const query = req.query.q as string;
       if (!query) return res.json([]);
 
-      const branchId = user.role === "superadmin" ? undefined : user.branchId!;
-      const guests = await storage.searchGuests(query, branchId);
+      // Search all guests regardless of branch
+      const guests = await storage.searchGuests(query);
       res.json(guests);
     } catch (error) {
       console.error("Error searching guests:", error);

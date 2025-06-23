@@ -363,35 +363,9 @@ export class DatabaseStorage implements IStorage {
 
   // Guest operations
   async getGuests(branchId?: number): Promise<Guest[]> {
-    if (branchId) {
-      // Get only guests who have reservations at the current branch
-      const guestsWithReservations = await db
-        .selectDistinct({ 
-          id: guests.id,
-          firstName: guests.firstName,
-          lastName: guests.lastName,
-          email: guests.email,
-          phone: guests.phone,
-          idType: guests.idType,
-          idNumber: guests.idNumber,
-          address: guests.address,
-          dateOfBirth: guests.dateOfBirth,
-          nationality: guests.nationality,
-          reservationCount: guests.reservationCount,
-          isActive: guests.isActive,
-          createdAt: guests.createdAt,
-          updatedAt: guests.updatedAt,
-        })
-        .from(guests)
-        .innerJoin(reservations, eq(guests.id, reservations.guestId))
-        .where(eq(reservations.branchId, branchId))
-        .orderBy(desc(guests.createdAt));
-      
-      return guestsWithReservations;
-    } else {
-      // For superadmin or when no branch filter, return all guests
-      return await db.select().from(guests).orderBy(desc(guests.createdAt));
-    }
+    // Guests are now centrally stored and accessible to all branches
+    // Branch filtering is only applied for reservations, not guest management
+    return await db.select().from(guests).where(eq(guests.isActive, true)).orderBy(desc(guests.createdAt));
   }
 
   async getGuest(id: number): Promise<Guest | undefined> {
@@ -428,39 +402,13 @@ export class DatabaseStorage implements IStorage {
       )
     );
 
-    if (branchId) {
-      // Search guests who have reservations at the current branch
-      const searchQuery = db
-        .selectDistinct({ 
-          id: guests.id,
-          firstName: guests.firstName,
-          lastName: guests.lastName,
-          email: guests.email,
-          phone: guests.phone,
-          idType: guests.idType,
-          idNumber: guests.idNumber,
-          address: guests.address,
-          dateOfBirth: guests.dateOfBirth,
-          nationality: guests.nationality,
-          reservationCount: guests.reservationCount,
-          isActive: guests.isActive,
-          createdAt: guests.createdAt,
-          updatedAt: guests.updatedAt,
-        })
-        .from(guests)
-        .innerJoin(reservations, eq(guests.id, reservations.guestId))
-        .where(and(searchConditions, eq(reservations.branchId, branchId)));
-      
-      return await searchQuery.orderBy(desc(guests.createdAt)).limit(10);
-    } else {
-      // For superadmin or global search, search all guests
-      const searchQuery = db
-        .select()
-        .from(guests)
-        .where(searchConditions);
-      
-      return await searchQuery.orderBy(desc(guests.createdAt)).limit(10);
-    }
+    // Search all active guests regardless of branch
+    const searchQuery = db
+      .select()
+      .from(guests)
+      .where(searchConditions);
+    
+    return await searchQuery.orderBy(desc(guests.createdAt)).limit(10);
   }
 
   async findGuestByPhone(phone: string): Promise<Guest | undefined> {
