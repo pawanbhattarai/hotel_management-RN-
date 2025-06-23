@@ -492,14 +492,15 @@ export const menuDishes = pgTable("menu_dishes", {
 export const restaurantOrders = pgTable("restaurant_orders", {
   id: uuid("id").primaryKey().defaultRandom(),
   orderNumber: varchar("order_number", { length: 20 }).notNull().unique(),
-  tableId: integer("table_id").notNull(),
+  tableId: integer("table_id"), // Nullable for room orders
   branchId: integer("branch_id").notNull(),
   status: varchar("status", { 
     enum: ["pending", "confirmed", "preparing", "ready", "served", "completed", "cancelled"] 
   }).notNull().default("pending"),
   orderType: varchar("order_type", { 
-    enum: ["dine-in", "takeaway", "delivery"] 
+    enum: ["dine-in", "takeaway", "delivery", "table", "room"] 
   }).notNull().default("dine-in"),
+  roomId: integer("room_id"), // For room service orders
   customerName: varchar("customer_name", { length: 100 }),
   customerPhone: varchar("customer_phone", { length: 20 }),
   subtotal: decimal("subtotal", { precision: 10, scale: 2 }).notNull(),
@@ -521,7 +522,7 @@ export const restaurantOrders = pgTable("restaurant_orders", {
   botGeneratedAt: timestamp("bot_generated_at"),
   servedAt: timestamp("served_at"),
   completedAt: timestamp("completed_at"),
-  createdById: text("created_by_id").notNull(),
+  createdById: text("created_by_id").references(() => users.id), // Nullable for guest orders
   createdAt: timestamp("created_at").defaultNow(),
   updatedAt: timestamp("updated_at").defaultNow(),
 });
