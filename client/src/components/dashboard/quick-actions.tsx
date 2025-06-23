@@ -15,19 +15,11 @@ export default function QuickActions() {
     window.location.href = "/restaurant/orders";
   };
 
-  const handleInventory = () => {
-    window.location.href = "/inventory/stock-items";
+  const handleRoomBilling = () => {
+    window.location.href = "/billing";
   };
 
-  const handleGuests = () => {
-    window.location.href = "/guests";
-  };
-
-  const handleRooms = () => {
-    window.location.href = "/room-types";
-  };
-
-  const handleBilling = () => {
+  const handleRestaurantBilling = () => {
     window.location.href = "/restaurant/billing";
   };
 
@@ -49,36 +41,20 @@ export default function QuickActions() {
       action: handleDiningOrders,
     },
     {
-      title: "Inventory",
-      description: "Manage stock items",
-      icon: Package,
-      iconBg: "bg-green-50",
-      iconColor: "text-green-600",
-      action: handleInventory,
-    },
-    {
-      title: "Guests",
-      description: "Manage guest profiles",
-      icon: Users,
+      title: "Billing",
+      description: "Room billing",
+      icon: Bed,
       iconBg: "bg-blue-50",
       iconColor: "text-blue-600",
-      action: handleGuests,
-    },
-    {
-      title: "Rooms",
-      description: "Manage room types",
-      icon: Bed,
-      iconBg: "bg-purple-50",
-      iconColor: "text-purple-600",
-      action: handleRooms,
+      action: handleRoomBilling,
     },
     {
       title: "Billing",
       description: "Restaurant billing",
       icon: ClipboardList,
-      iconBg: "bg-yellow-50",
-      iconColor: "text-yellow-600",
-      action: handleBilling,
+      iconBg: "bg-green-50",
+      iconColor: "text-green-600",
+      action: handleRestaurantBilling,
     },
   ];
 
@@ -91,7 +67,7 @@ export default function QuickActions() {
           </CardTitle>
         </CardHeader>
         <CardContent className="p-4 pt-0">
-          <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-2">
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-2">
             {quickActionItems.map((item, index) => (
               <Button
                 key={index}
