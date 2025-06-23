@@ -8,6 +8,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { Badge } from '@/components/ui/badge';
 import { Separator } from '@/components/ui/separator';
 import { Minus, Plus, ShoppingCart, CheckCircle } from 'lucide-react';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { useToast } from '@/hooks/use-toast';
 
 interface OrderItem {
@@ -230,146 +231,183 @@ export default function QROrderPage() {
 
   return (
     <div className="min-h-screen bg-gray-50">
-      <div className="sticky top-0 z-10 bg-white border-b shadow-sm">
-        <div className="max-w-4xl mx-auto p-4">
-          <h1 className="text-xl font-bold">Order from {locationInfo.name}</h1>
-          <p className="text-gray-600">Browse menu and place your order</p>
-        </div>
-      </div>
+      <div className="max-w-6xl mx-auto grid lg:grid-cols-3 gap-0 min-h-screen">
+        {/* Menu Section - Left Side */}
+        <div className="lg:col-span-2 bg-white p-6 overflow-y-auto">
+          <div className="mb-6">
+            <div className="flex items-center justify-between">
+              <h1 className="text-2xl font-bold">Menu Items</h1>
+              <Select value="all" onValueChange={() => {}}>
+                <SelectTrigger className="w-48">
+                  <SelectValue placeholder="All Categories" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">All Categories</SelectItem>
+                  {categories.map(category => (
+                    <SelectItem key={category.id} value={category.id.toString()}>
+                      {category.name}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+          </div>
 
-      <div className="max-w-4xl mx-auto p-4 grid md:grid-cols-3 gap-6">
-        {/* Menu Section */}
-        <div className="md:col-span-2 space-y-6">
-          {groupedDishes.map(category => (
-            <div key={category.id}>
-              <h2 className="text-lg font-semibold mb-3">{category.name}</h2>
-              <div className="grid gap-3">
+          <div className="space-y-6">
+            {groupedDishes.map(category => (
+              <div key={category.id}>
                 {category.dishes.map(dish => (
-                  <Card key={dish.id} className="p-4">
-                    <div className="flex justify-between items-start">
-                      <div className="flex-1">
-                        <h3 className="font-medium">{dish.name}</h3>
-                        {dish.description && (
-                          <p className="text-sm text-gray-600 mt-1">{dish.description}</p>
+                  <div key={dish.id} className="flex items-center justify-between p-4 border-b border-gray-100 hover:bg-gray-50 transition-colors">
+                    <div className="flex-1">
+                      <h3 className="font-medium text-lg">{dish.name}</h3>
+                      <p className="text-green-600 font-semibold text-lg mt-1">Rs. {dish.price}</p>
+                      {dish.description && (
+                        <p className="text-sm text-gray-600 mt-1">{dish.description}</p>
+                      )}
+                      <div className="flex items-center gap-2 mt-2">
+                        {dish.isVegetarian && <Badge variant="outline" className="text-green-600 text-xs">Veg</Badge>}
+                        {dish.isVegan && <Badge variant="outline" className="text-green-700 text-xs">Vegan</Badge>}
+                        {dish.spiceLevel && (
+                          <Badge variant="outline" className="text-red-600 text-xs">
+                            {dish.spiceLevel}
+                          </Badge>
                         )}
-                        <div className="flex items-center gap-2 mt-2">
-                          <span className="font-semibold">₹{dish.price}</span>
-                          {dish.isVegetarian && <Badge variant="outline" className="text-green-600">Veg</Badge>}
-                          {dish.isVegan && <Badge variant="outline" className="text-green-700">Vegan</Badge>}
-                          {dish.spiceLevel && (
-                            <Badge variant="outline" className="text-red-600">
-                              {dish.spiceLevel}
-                            </Badge>
-                          )}
-                        </div>
                       </div>
-                      <Button onClick={() => addToCart(dish)} size="sm">
-                        <Plus className="h-4 w-4" />
-                      </Button>
                     </div>
-                  </Card>
+                    <Button 
+                      onClick={() => addToCart(dish)} 
+                      className="bg-blue-500 hover:bg-blue-600 text-white rounded-lg px-4 py-2"
+                    >
+                      <Plus className="h-4 w-4" />
+                    </Button>
+                  </div>
                 ))}
               </div>
-            </div>
-          ))}
+            ))}
+          </div>
         </div>
 
-        {/* Cart & Customer Info Section */}
-        <div className="space-y-6">
-          {/* Customer Information */}
-          <Card>
-            <CardHeader>
-              <CardTitle>Your Information</CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              <div>
-                <Label htmlFor="name">Name</Label>
-                <Input
-                  id="name"
-                  value={customerName}
-                  onChange={(e) => setCustomerName(e.target.value)}
-                  placeholder="Your name"
-                />
-              </div>
-              <div>
-                <Label htmlFor="phone">Phone Number</Label>
-                <Input
-                  id="phone"
-                  value={customerPhone}
-                  onChange={(e) => setCustomerPhone(e.target.value)}
-                  placeholder="Your phone number"
-                />
-              </div>
-              <div>
-                <Label htmlFor="notes">Special Instructions</Label>
-                <Textarea
-                  id="notes"
-                  value={notes}
-                  onChange={(e) => setNotes(e.target.value)}
-                  placeholder="Any special requests..."
-                  rows={3}
-                />
-              </div>
-            </CardContent>
-          </Card>
+        {/* Order Summary - Right Side */}
+        <div className="bg-gray-100 p-6 border-l">
+          <div className="sticky top-6">
+            <div className="flex items-center gap-2 mb-6">
+              <ShoppingCart className="h-5 w-5" />
+              <h2 className="text-xl font-bold">Order Summary</h2>
+              {cart.length > 0 && (
+                <span className="bg-blue-500 text-white rounded-full w-6 h-6 flex items-center justify-center text-sm">
+                  {cart.length}
+                </span>
+              )}
+            </div>
 
-          {/* Cart */}
-          <Card>
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2">
-                <ShoppingCart className="h-5 w-5" />
-                Your Order ({cart.length})
-              </CardTitle>
-            </CardHeader>
-            <CardContent>
-              {cart.length === 0 ? (
-                <p className="text-gray-500 text-center py-4">No items in cart</p>
-              ) : (
-                <div className="space-y-3">
-                  {cart.map(item => (
-                    <div key={item.dishId} className="flex justify-between items-center">
+            {cart.length === 0 ? (
+              <p className="text-gray-500 text-center py-8">No items in cart</p>
+            ) : (
+              <div className="space-y-4">
+                {cart.map(item => (
+                  <div key={item.dishId} className="bg-white p-4 rounded-lg">
+                    <div className="flex justify-between items-start mb-2">
                       <div className="flex-1">
-                        <h4 className="font-medium text-sm">{item.name}</h4>
-                        <p className="text-sm text-gray-600">₹{item.price} each</p>
+                        <h4 className="font-medium">{item.name}</h4>
+                        <p className="text-sm text-gray-600">Rs. {item.price} each</p>
                       </div>
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => updateQuantity(item.dishId, 0)}
+                        className="text-red-500 hover:text-red-700 p-1"
+                      >
+                        ×
+                      </Button>
+                    </div>
+                    <div className="flex items-center justify-between">
                       <div className="flex items-center gap-2">
                         <Button 
                           size="sm" 
                           variant="outline"
                           onClick={() => updateQuantity(item.dishId, item.quantity - 1)}
+                          className="w-8 h-8 p-0"
                         >
-                          <Minus className="h-3 w-3" />
+                          -
                         </Button>
-                        <span className="w-8 text-center">{item.quantity}</span>
+                        <span className="w-8 text-center font-medium">{item.quantity}</span>
                         <Button 
                           size="sm" 
                           variant="outline"
                           onClick={() => updateQuantity(item.dishId, item.quantity + 1)}
+                          className="w-8 h-8 p-0"
                         >
-                          <Plus className="h-3 w-3" />
+                          +
                         </Button>
                       </div>
                     </div>
-                  ))}
-                  
-                  <Separator />
-                  
-                  <div className="flex justify-between items-center font-semibold">
-                    <span>Total:</span>
-                    <span>₹{getTotal().toFixed(2)}</span>
                   </div>
-                  
-                  <Button 
-                    className="w-full" 
-                    onClick={submitOrder}
-                    disabled={submitting || cart.length === 0}
-                  >
-                    {submitting ? "Placing Order..." : "Place Order"}
-                  </Button>
+                ))}
+
+                <div className="bg-white p-4 rounded-lg space-y-3">
+                  <div className="flex justify-between text-sm">
+                    <span>Subtotal:</span>
+                    <span>Rs. {getTotal().toFixed(2)}</span>
+                  </div>
+                  <div className="flex justify-between text-sm">
+                    <span>Tax:</span>
+                    <span>Rs. 0.00</span>
+                  </div>
+                  <Separator />
+                  <div className="flex justify-between font-bold text-lg">
+                    <span>Total:</span>
+                    <span>Rs. {getTotal().toFixed(2)}</span>
+                  </div>
                 </div>
-              )}
-            </CardContent>
-          </Card>
+
+                {/* Customer Information */}
+                <div className="bg-white p-4 rounded-lg space-y-4">
+                  <h3 className="font-semibold">Customer Details</h3>
+                  <div>
+                    <Label htmlFor="name" className="text-sm">Name</Label>
+                    <Input
+                      id="name"
+                      value={customerName}
+                      onChange={(e) => setCustomerName(e.target.value)}
+                      placeholder="Your name"
+                      className="mt-1"
+                    />
+                  </div>
+                  <div>
+                    <Label htmlFor="phone" className="text-sm">Phone Number</Label>
+                    <Input
+                      id="phone"
+                      value={customerPhone}
+                      onChange={(e) => setCustomerPhone(e.target.value)}
+                      placeholder="Your phone number"
+                      className="mt-1"
+                    />
+                  </div>
+                </div>
+
+                {/* Order Notes */}
+                <div className="bg-white p-4 rounded-lg">
+                  <Label htmlFor="notes" className="text-sm font-semibold">Order Notes</Label>
+                  <Textarea
+                    id="notes"
+                    value={notes}
+                    onChange={(e) => setNotes(e.target.value)}
+                    placeholder="Special instructions..."
+                    rows={3}
+                    className="mt-2"
+                  />
+                </div>
+
+                <Button 
+                  className="w-full bg-blue-500 hover:bg-blue-600 text-white py-3 text-lg font-semibold rounded-lg"
+                  onClick={submitOrder}
+                  disabled={submitting || cart.length === 0}
+                >
+                  {submitting ? "Creating Order..." : "Create Order"}
+                </Button>
+              </div>
+            )}
+          </div>
         </div>
       </div>
     </div>
