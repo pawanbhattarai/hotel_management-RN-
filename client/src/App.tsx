@@ -31,6 +31,7 @@ import StockItems from "@/pages/stock-items";
 import MeasuringUnits from "@/pages/measuring-units";
 import Suppliers from "@/pages/suppliers";
 import StockConsumption from "@/pages/stock-consumption";
+import DishIngredients from "@/pages/dish-ingredients";
 import { lazy, Suspense } from "react";
 
 const RestaurantAnalytics = lazy(() => import("./pages/restaurant-analytics"));
@@ -79,6 +80,7 @@ function Router() {
           <Route path="/inventory/measuring-units" component={MeasuringUnits} />
           <Route path="/inventory/suppliers" component={Suppliers} />
           <Route path="/inventory/consumption" component={StockConsumption} />
+          <Route path="/restaurant/dishes/:dishId/ingredients" component={DishIngredients} />
         </>
       )}
       <Route component={NotFound} />

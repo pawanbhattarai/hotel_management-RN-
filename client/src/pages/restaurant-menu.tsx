@@ -45,6 +45,7 @@ type CategoryFormData = z.infer<typeof categorySchema>;
 type DishFormData = z.infer<typeof dishSchema>;
 
 export default function RestaurantMenu() {
+  const [, navigate] = useLocation();
   const [isCategoryDialogOpen, setIsCategoryDialogOpen] = useState(false);
   const [isDishDialogOpen, setIsDishDialogOpen] = useState(false);
   const [isBulkCategoryDialogOpen, setIsBulkCategoryDialogOpen] = useState(false);
@@ -684,6 +685,13 @@ export default function RestaurantMenu() {
                               </TableCell>
                               <TableCell>
                                 <div className="flex space-x-2">
+                                  <Button
+                                    variant="outline"
+                                    size="sm"
+                                    onClick={() => navigate(`/restaurant/dishes/${dish.id}/ingredients`)}
+                                  >
+                                    Setup Stock
+                                  </Button>
                                   <Button
                                     variant="outline"
                                     size="sm"

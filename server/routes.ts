@@ -3,6 +3,7 @@ import { createServer, type Server } from "http";
 import { storage } from "./storage";
 import { restaurantStorage } from "./restaurant-storage";
 import { inventoryStorage } from "./inventory-storage";
+import { dishIngredientsStorage } from "./dish-ingredients-storage";
 import { roleStorage } from "./role-storage";
 import { NotificationService } from "./notifications";
 import {
@@ -28,6 +29,7 @@ import {
   insertSupplierSchema,
   insertStockItemSchema,
   insertStockConsumptionSchema,
+  insertDishIngredientSchema,
 } from "@shared/schema";
 import { z } from "zod";
 import { broadcastChange } from "./middleware/websocket";
@@ -2187,6 +2189,47 @@ export async function registerRoutes(app: Express): Promise<Server> {
     } catch (error) {
       console.error("Error generating BOT:", error);
       res.status(500).json({ message: "Failed to generate BOT" });
+    }
+  });
+
+  // Dish Ingredients Management
+  app.get("/api/restaurant/dishes/:dishId/ingredients", isAuthenticated, async (req: any, res) => {
+    try {
+      const dishId = parseInt(req.params.dishId);
+      const ingredients = await dishIngredientsStorage.getDishIngredients(dishId);
+      res.json(ingredients);
+    } catch (error) {
+      console.error("Error fetching dish ingredients:", error);
+      res.status(500).json({ message: "Failed to fetch dish ingredients" });
+    }
+  });
+
+  app.post("/api/restaurant/dishes/:dishId/ingredients", isAuthenticated, async (req: any, res) => {
+    try {
+      const dishId = parseInt(req.params.dishId);
+      const ingredients = req.body.ingredients || [];
+      
+      // Validate each ingredient
+      const validatedIngredients = ingredients.map((ingredient: any) => 
+        insertDishIngredientSchema.parse({ ...ingredient, dishId })
+      );
+
+      const result = await dishIngredientsStorage.updateDishIngredientsBulk(dishId, validatedIngredients);
+      res.json(result);
+    } catch (error) {
+      console.error("Error updating dish ingredients:", error);
+      res.status(500).json({ message: "Failed to update dish ingredients" });
+    }
+  });
+
+  app.get("/api/restaurant/dishes/:dishId/cost-calculation", isAuthenticated, async (req: any, res) => {
+    try {
+      const dishId = parseInt(req.params.dishId);
+      const costCalculation = await dishIngredientsStorage.getDishCostCalculation(dishId);
+      res.json(costCalculation);
+    } catch (error) {
+      console.error("Error calculating dish cost:", error);
+      res.status(500).json({ message: "Failed to calculate dish cost" });
     }
   });
 

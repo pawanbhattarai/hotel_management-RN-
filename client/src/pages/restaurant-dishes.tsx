@@ -411,6 +411,13 @@ export default function RestaurantDishes() {
                               <Button
                                 variant="outline"
                                 size="sm"
+                                onClick={() => navigate(`/restaurant/dishes/${dish.id}/ingredients`)}
+                              >
+                                Setup Stock
+                              </Button>
+                              <Button
+                                variant="outline"
+                                size="sm"
                                 onClick={() => handleEditDish(dish)}
                               >
                                 <Edit2 className="h-4 w-4" />

@@ -266,7 +266,27 @@ export class RestaurantStorage {
         orderId: newOrder.id,
       }));
 
-      await tx.insert(restaurantOrderItems).values(orderItemsWithOrderId);
+      const createdItems = await tx.insert(restaurantOrderItems).values(orderItemsWithOrderId).returning();
+
+      // Process stock consumption for each item
+      for (const item of createdItems) {
+        if (item.dishId && item.quantity) {
+          try {
+            const { dishIngredientsStorage } = await import('./dish-ingredients-storage');
+            await dishIngredientsStorage.processDishConsumption(
+              item.dishId,
+              item.quantity,
+              item.orderId,
+              item.id,
+              order.branchId,
+              order.createdById || 'system'
+            );
+          } catch (error) {
+            console.error('Error processing dish consumption:', error);
+            // Don't fail the order creation, just log the error
+          }
+        }
+      }
 
       // Update table status to occupied
       await tx

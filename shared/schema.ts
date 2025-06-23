@@ -619,7 +619,10 @@ export const menuDishesRelations = relations(menuDishes, ({ one, many }) => ({
     references: [branches.id],
   }),
   orderItems: many(restaurantOrderItems),
+  ingredients: many(dishIngredients),
 }));
+
+
 
 export const restaurantOrdersRelations = relations(restaurantOrders, ({ one, many }) => ({
   table: one(restaurantTables, {
@@ -834,11 +837,27 @@ export const stockItems = pgTable("stock_items", {
   updatedAt: timestamp("updated_at").defaultNow(),
 });
 
+// Dish Ingredients/Recipe - tracks what stock items are used in each dish
+export const dishIngredients = pgTable("dish_ingredients", {
+  id: serial("id").primaryKey(),
+  dishId: integer("dish_id").notNull(),
+  stockItemId: integer("stock_item_id").notNull(),
+  quantity: decimal("quantity", { precision: 10, scale: 3 }).notNull(),
+  unit: varchar("unit", { length: 50 }).notNull(),
+  cost: decimal("cost", { precision: 10, scale: 2 }).default("0"),
+  notes: text("notes"),
+  isActive: boolean("is_active").default(true),
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+});
+
 // Stock Consumption
 export const stockConsumption = pgTable("stock_consumption", {
   id: serial("id").primaryKey(),
   stockItemId: integer("stock_item_id").references(() => stockItems.id),
   orderId: varchar("order_id", { length: 255 }),
+  orderItemId: integer("order_item_id"), // Reference to specific order item
+  dishId: integer("dish_id"), // Reference to dish that caused consumption
   orderType: varchar("order_type", { length: 50 }).default("restaurant"), // restaurant, hotel, etc
   quantity: decimal("quantity", { precision: 10, scale: 3 }).notNull(),
   unitPrice: decimal("unit_price", { precision: 10, scale: 2 }),
@@ -870,11 +889,26 @@ export const stockItemsRelations = relations(stockItems, ({ one, many }) => ({
   supplier: one(suppliers, { fields: [stockItems.supplierId], references: [suppliers.id] }),
   branch: one(branches, { fields: [stockItems.branchId], references: [branches.id] }),
   consumptions: many(stockConsumption),
+  dishIngredients: many(dishIngredients),
+}));
+
+export const dishIngredientsRelations = relations(dishIngredients, ({ one }) => ({
+  dish: one(menuDishes, {
+    fields: [dishIngredients.dishId],
+    references: [menuDishes.id],
+  }),
+  stockItem: one(stockItems, {
+    fields: [dishIngredients.stockItemId],
+    references: [stockItems.id],
+  }),
 }));
 
 export const stockConsumptionRelations = relations(stockConsumption, ({ one }) => ({
   stockItem: one(stockItems, { fields: [stockConsumption.stockItemId], references: [stockItems.id] }),
   branch: one(branches, { fields: [stockConsumption.branchId], references: [branches.id] }),
+  order: one(restaurantOrders, { fields: [stockConsumption.orderId], references: [restaurantOrders.id] }),
+  orderItem: one(restaurantOrderItems, { fields: [stockConsumption.orderItemId], references: [restaurantOrderItems.id] }),
+  dish: one(menuDishes, { fields: [stockConsumption.dishId], references: [menuDishes.id] }),
 }));
 
 // Inventory Insert Schemas
@@ -921,6 +955,19 @@ export const insertStockItemSchema = createInsertSchema(stockItems).omit({
   ).optional(),
 });
 
+export const insertDishIngredientSchema = createInsertSchema(dishIngredients).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+}).extend({
+  quantity: z.union([z.string(), z.number()]).transform((val) => 
+    typeof val === 'number' ? val.toString() : val
+  ),
+  cost: z.union([z.string(), z.number()]).transform((val) => 
+    typeof val === 'number' ? val.toString() : val
+  ),
+});
+
 export const insertStockConsumptionSchema = createInsertSchema(stockConsumption).omit({
   id: true,
   createdAt: true,
@@ -950,6 +997,9 @@ export type InsertSupplier = z.infer<typeof insertSupplierSchema>;
 
 export type StockItem = typeof stockItems.$inferSelect;
 export type InsertStockItem = z.infer<typeof insertStockItemSchema>;
+
+export type DishIngredient = typeof dishIngredients.$inferSelect;
+export type InsertDishIngredient = z.infer<typeof insertDishIngredientSchema>;
 
 export type StockConsumption = typeof stockConsumption.$inferSelect;
 export type InsertStockConsumption = z.infer<typeof insertStockConsumptionSchema>;
