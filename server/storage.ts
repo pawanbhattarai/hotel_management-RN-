@@ -323,7 +323,9 @@ export class DatabaseStorage implements IStorage {
       conditions.push(eq(rooms.status, status));
     }
 
-    if (conditions.length > 0) {
+    if (conditions.length === 1) {
+      query = query.where(conditions[0]);
+    } else if (conditions.length > 1) {
       query = query.where(and(...conditions));
     }
 
