@@ -315,22 +315,42 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.get("/api/rooms", isAuthenticated, async (req: any, res) => {
     try {
       const user = await storage.getUser(req.session.user.id);
-      if (!user) return res.status(401).json({ message: "User not found" });
+      if (!user) {
+        console.error("❌ User not found during rooms fetch");
+        return res.status(401).json({ message: "User not found" });
+      }
 
       const { branchId: queryBranchId, status } = req.query;
       let branchId = user.role === "superadmin" ? 
         (queryBranchId ? parseInt(queryBranchId as string) : undefined) : 
         user.branchId!;
 
-      console.log("Fetching rooms with filters:", { branchId, status, userRole: user.role });
+      console.log("🔍 Fetching rooms with filters:", { 
+        branchId, 
+        status, 
+        userRole: user.role,
+        queryBranchId: queryBranchId 
+      });
+
+      // Validate branchId if provided
+      if (queryBranchId && isNaN(parseInt(queryBranchId as string))) {
+        console.error("❌ Invalid branchId provided:", queryBranchId);
+        return res.status(400).json({ message: "Invalid branch ID" });
+      }
 
       const rooms = await storage.getRooms(branchId, status as string);
-      console.log("Rooms found:", rooms?.length || 0);
+      console.log("✅ Rooms found:", rooms?.length || 0);
       
-      res.json(rooms || []);
+      // Ensure we always return a valid JSON response
+      const response = rooms || [];
+      res.status(200).json(response);
     } catch (error) {
-      console.error("Error fetching rooms:", error);
-      res.status(500).json({ message: "Failed to fetch rooms" });
+      console.error("❌ Error fetching rooms:", error);
+      // Make sure we return JSON even on error
+      res.status(500).json({ 
+        message: "Failed to fetch rooms",
+        error: error instanceof Error ? error.message : "Unknown error"
+      });
     }
   });
 

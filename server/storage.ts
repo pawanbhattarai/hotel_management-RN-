@@ -307,35 +307,56 @@ export class DatabaseStorage implements IStorage {
 
   // Room operations
   async getRooms(branchId?: number, status?: string): Promise<(Room & { roomType: RoomType; branch: Branch })[]> {
-    let query = db
-      .select()
-      .from(rooms)
-      .leftJoin(roomTypes, eq(rooms.roomTypeId, roomTypes.id))
-      .leftJoin(branches, eq(rooms.branchId, branches.id));
+    try {
+      console.log("🏨 getRooms called with:", { branchId, status });
 
-    const conditions = [];
-    
-    if (branchId) {
-      conditions.push(eq(rooms.branchId, branchId));
+      let query = db
+        .select()
+        .from(rooms)
+        .leftJoin(roomTypes, eq(rooms.roomTypeId, roomTypes.id))
+        .leftJoin(branches, eq(rooms.branchId, branches.id));
+
+      const conditions = [];
+      
+      if (branchId) {
+        console.log("🔍 Adding branchId filter:", branchId);
+        conditions.push(eq(rooms.branchId, branchId));
+      }
+      
+      if (status) {
+        console.log("🔍 Adding status filter:", status);
+        conditions.push(eq(rooms.status, status));
+      }
+
+      if (conditions.length === 1) {
+        query = query.where(conditions[0]);
+      } else if (conditions.length > 1) {
+        query = query.where(and(...conditions));
+      }
+
+      console.log("🔄 Executing rooms query...");
+      const results = await query.orderBy(rooms.number);
+      console.log("✅ Query executed, found", results.length, "results");
+
+      const mappedResults = results.map(result => {
+        if (!result.rooms) {
+          console.warn("⚠️ Found result without rooms data:", result);
+          return null;
+        }
+        
+        return {
+          ...result.rooms,
+          roomType: result.room_types || { id: 0, name: 'Unknown', description: '', basePrice: '0', maxOccupancy: 1, amenities: [], isActive: true, branchId: null, createdAt: new Date(), updatedAt: new Date() },
+          branch: result.branches || { id: 0, name: 'Unknown', address: '', phone: '', email: '', isActive: true, createdAt: new Date(), updatedAt: new Date() },
+        };
+      }).filter(Boolean);
+
+      console.log("✅ getRooms completed successfully with", mappedResults.length, "rooms");
+      return mappedResults as (Room & { roomType: RoomType; branch: Branch })[];
+    } catch (error) {
+      console.error("❌ Error in getRooms:", error);
+      throw error;
     }
-    
-    if (status) {
-      conditions.push(eq(rooms.status, status));
-    }
-
-    if (conditions.length === 1) {
-      query = query.where(conditions[0]);
-    } else if (conditions.length > 1) {
-      query = query.where(and(...conditions));
-    }
-
-    const results = await query.orderBy(rooms.number);
-
-    return results.map(result => ({
-      ...result.rooms,
-      roomType: result.room_types!,
-      branch: result.branches!,
-    }));
   }
 
   async getRoom(id: number): Promise<(Room & { roomType: RoomType; branch: Branch }) | undefined> {
