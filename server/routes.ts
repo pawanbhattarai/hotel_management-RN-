@@ -1991,6 +1991,29 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  app.get("/api/restaurant/dishes/:id", isAuthenticated, async (req: any, res) => {
+    try {
+      const user = await storage.getUser(req.session.user.id);
+      if (!user) return res.status(401).json({ message: "User not found" });
+
+      const dishId = parseInt(req.params.id);
+      const dish = await restaurantStorage.getMenuDish(dishId);
+      
+      if (!dish) {
+        return res.status(404).json({ message: "Dish not found" });
+      }
+
+      if (!checkBranchPermissions(user.role, user.branchId, dish.branchId)) {
+        return res.status(403).json({ message: "Insufficient permissions for this dish" });
+      }
+
+      res.json(dish);
+    } catch (error) {
+      console.error("Error fetching menu dish:", error);
+      res.status(500).json({ message: "Failed to fetch menu dish" });
+    }
+  });
+
   app.put("/api/restaurant/dishes/:id", isAuthenticated, async (req: any, res) => {
     try {
       const user = await storage.getUser(req.session.user.id);

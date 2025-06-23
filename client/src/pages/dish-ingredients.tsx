@@ -258,7 +258,7 @@ export default function DishIngredients() {
                                     <FormItem>
                                       <FormLabel>Unit *</FormLabel>
                                       <FormControl>
-                                        <Input {...field} placeholder="kg, pcs, etc." />
+                                        <Input {...field} placeholder="kg, pcs, etc." readOnly className="bg-gray-100" />
                                       </FormControl>
                                       <FormMessage />
                                     </FormItem>
