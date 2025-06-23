@@ -371,45 +371,77 @@ export default function DishIngredients() {
                   </CardTitle>
                 </CardHeader>
                 <CardContent>
-                  {costCalculation ? (
-                    <div className="space-y-4">
-                      <div>
-                        <h4 className="font-medium mb-2">Ingredient Costs:</h4>
-                        <div className="space-y-2 text-sm">
-                          {costCalculation.ingredients.map((ingredient: any, index: number) => (
+                  <div className="space-y-4">
+                    <div>
+                      <h4 className="font-medium mb-2">Ingredient Costs:</h4>
+                      <div className="space-y-2 text-sm">
+                        {form.watch("ingredients")?.filter((ing: any) => ing.stockItemId && ing.quantity && ing.cost).map((ingredient: any, index: number) => {
+                          const stockItem = stockItems.find((item: any) => item.id === ingredient.stockItemId);
+                          const quantity = parseFloat(ingredient.quantity || "0");
+                          const cost = parseFloat(ingredient.cost || "0");
+                          const total = quantity * cost;
+                          
+                          return (
                             <div key={index} className="flex justify-between">
                               <span className="text-muted-foreground">
-                                {ingredient.name} ({ingredient.quantity} {ingredient.unit})
+                                {stockItem?.name || "Unknown"} ({quantity} {ingredient.unit || ""})
                               </span>
-                              <span>Rs. {ingredient.totalCost.toFixed(2)}</span>
+                              <span>Rs. {total.toFixed(2)}</span>
                             </div>
-                          ))}
-                        </div>
+                          );
+                        })}
+                        {(!form.watch("ingredients") || form.watch("ingredients").length === 0) && (
+                          <p className="text-muted-foreground text-sm">No ingredients added yet</p>
+                        )}
                       </div>
-                      <div className="border-t pt-4">
-                        <div className="flex justify-between font-medium">
-                          <span>Total Cost:</span>
-                          <span>Rs. {costCalculation.totalCost.toFixed(2)}</span>
-                        </div>
+                    </div>
+                    <div className="border-t pt-4">
+                      <div className="flex justify-between font-medium">
+                        <span>Total Cost:</span>
+                        <span>Rs. {(form.watch("ingredients")?.reduce((sum: number, ing: any) => {
+                          const quantity = parseFloat(ing.quantity || "0");
+                          const cost = parseFloat(ing.cost || "0");
+                          return sum + (quantity * cost);
+                        }, 0) || 0).toFixed(2)}</span>
                       </div>
+                    </div>
+                    {dish && (
                       <div className="bg-blue-50 p-3 rounded-lg">
                         <div className="flex justify-between text-sm">
                           <span>Dish Price:</span>
-                          <span>Rs. {dish?.price || '0'}</span>
+                          <span>Rs. {dish.price || '0'}</span>
                         </div>
                         <div className="flex justify-between font-medium">
                           <span>Gross Profit:</span>
-                          <span className={parseFloat(dish?.price || '0') - costCalculation.totalCost >= 0 ? 'text-green-600' : 'text-red-600'}>
-                            Rs. {(parseFloat(dish?.price || '0') - costCalculation.totalCost).toFixed(2)}
+                          <span className={parseFloat(dish.price || '0') - (form.watch("ingredients")?.reduce((sum: number, ing: any) => {
+                            const quantity = parseFloat(ing.quantity || "0");
+                            const cost = parseFloat(ing.cost || "0");
+                            return sum + (quantity * cost);
+                          }, 0) || 0) >= 0 ? 'text-green-600' : 'text-red-600'}>
+                            Rs. {(parseFloat(dish.price || '0') - (form.watch("ingredients")?.reduce((sum: number, ing: any) => {
+                              const quantity = parseFloat(ing.quantity || "0");
+                              const cost = parseFloat(ing.cost || "0");
+                              return sum + (quantity * cost);
+                            }, 0) || 0)).toFixed(2)}
+                          </span>
+                        </div>
+                        <div className="flex justify-between text-sm">
+                          <span>Profit Margin:</span>
+                          <span className={parseFloat(dish.price || '0') - (form.watch("ingredients")?.reduce((sum: number, ing: any) => {
+                            const quantity = parseFloat(ing.quantity || "0");
+                            const cost = parseFloat(ing.cost || "0");
+                            return sum + (quantity * cost);
+                          }, 0) || 0) >= 0 ? 'text-green-600' : 'text-red-600'}>
+                            {dish.price && parseFloat(dish.price) > 0 ? (((parseFloat(dish.price) - (form.watch("ingredients")?.reduce((sum: number, ing: any) => {
+                              const quantity = parseFloat(ing.quantity || "0");
+                              const cost = parseFloat(ing.cost || "0");
+                              return sum + (quantity * cost);
+                            }, 0) || 0)) / parseFloat(dish.price)) * 100).toFixed(1) : '0'}%
                           </span>
                         </div>
                       </div>
-                    </div>
-                  ) : (
-                    <p className="text-muted-foreground text-sm">
-                      Add ingredients to see cost calculation
-                    </p>
-                  )}
+                    )}
+                  </div>
                 </CardContent>
               </Card>
 
