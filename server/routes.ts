@@ -2727,6 +2727,61 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  const requireAuth = (req: any, res: any, next: any) => {
+    if (req.session && req.session.user) {
+      req.user = req.session.user;
+      return next();
+    }
+    return res.status(401).json({ message: "Unauthorized" });
+  };
+
+  // Get user permissions (for custom roles)
+  app.get("/api/auth/user/permissions", requireAuth, async (req, res) => {
+    const userId = req.user?.id;
+    if (!userId) {
+      return res.status(401).json({ message: "Unauthorized" });
+    }
+
+    try {
+      const user = await storage.getUser(userId);
+      if (!user || user.role !== "custom") {
+        return res.json({});
+      }
+
+      // Get user's role permissions
+      const userRole = await roleStorage.getUserRole(userId);
+      if (!userRole) {
+        console.log("No user role found for user:", userId);
+        return res.json({});
+      }
+
+      const role = await roleStorage.getCustomRole(userRole.roleId);
+      if (!role) {
+        console.log("No role found for roleId:", userRole.roleId);
+        return res.json({});
+      }
+
+      const permissions = await roleStorage.getRolePermissions(role.id);
+      console.log("Role permissions found:", permissions);
+
+      const permissionsObj: Record<string, any> = {};
+
+      for (const perm of permissions) {
+        permissionsObj[perm.module] = {
+          read: perm.read,
+          write: perm.write,
+          delete: perm.delete
+        };
+      }
+
+      console.log("Returning permissions object:", permissionsObj);
+      res.json(permissionsObj);
+    } catch (error) {
+      console.error("Error fetching user permissions:", error);
+      res.status(500).json({ message: "Internal server error" });
+    }
+  });
+
   const httpServer = createServer(app);
   return httpServer;
 }

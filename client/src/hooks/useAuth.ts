@@ -8,7 +8,7 @@ export function useAuth() {
   });
 
   // Fetch custom permissions if user has custom role
-  const { data: customPermissions } = useQuery({
+  const { data: customPermissions, isLoading: permissionsLoading } = useQuery({
     queryKey: ["/api/auth/user/permissions"],
     enabled: !!user && user.role === "custom",
     staleTime: 5 * 60 * 1000,
@@ -20,10 +20,11 @@ export function useAuth() {
     : user;
 
   const isAuthenticated = !!user;
+  const isPermissionsLoading = user?.role === "custom" ? permissionsLoading : false;
 
   return {
     user: userWithPermissions,
     isAuthenticated,
-    isLoading,
+    isLoading: isLoading || isPermissionsLoading,
   };
 }

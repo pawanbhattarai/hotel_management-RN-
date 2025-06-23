@@ -37,10 +37,21 @@ export function usePermissions() {
     }
 
     // Custom role permissions
-    if (user.role === "custom" && user.customPermissions) {
+    if (user.role === "custom") {
+      if (!user.customPermissions) {
+        console.log("Custom role but no permissions found for user:", user.id);
+        return false;
+      }
+      
       const modulePermissions = user.customPermissions[module];
-      if (!modulePermissions) return false;
-      return modulePermissions[action] || false;
+      if (!modulePermissions) {
+        console.log("No permissions found for module:", module, "Available modules:", Object.keys(user.customPermissions));
+        return false;
+      }
+      
+      const hasAccess = modulePermissions[action] || false;
+      console.log(`Permission check: ${module}.${action} = ${hasAccess}`, modulePermissions);
+      return hasAccess;
     }
 
     return false;

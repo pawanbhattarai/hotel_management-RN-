@@ -50,8 +50,13 @@ export default function Sidebar({
   isMobileMenuOpen = false,
   setIsMobileMenuOpen,
 }: SidebarProps = {}) {
-  const { user } = useAuth();
+  const { user, isLoading } = useAuth();
   const { canAccess } = usePermissions();
+
+  // Don't render sidebar content if still loading user permissions
+  if (isLoading) {
+    return null;
+  }
   const [location, navigate] = useLocation();
   const [internalMobileMenuOpen, setInternalMobileMenuOpen] = useState(false);
 
