@@ -2748,34 +2748,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.json({});
       }
 
-      // Get user's role permissions
-      const userRole = await roleStorage.getUserRole(userId);
-      if (!userRole) {
-        console.log("No user role found for user:", userId);
-        return res.json({});
-      }
+      // Use the getUserPermissions method which already aggregates permissions
+      const permissions = await roleStorage.getUserPermissions(userId);
+      console.log("User permissions found:", permissions);
 
-      const role = await roleStorage.getCustomRole(userRole.roleId);
-      if (!role) {
-        console.log("No role found for roleId:", userRole.roleId);
-        return res.json({});
-      }
-
-      const permissions = await roleStorage.getRolePermissions(role.id);
-      console.log("Role permissions found:", permissions);
-
-      const permissionsObj: Record<string, any> = {};
-
-      for (const perm of permissions) {
-        permissionsObj[perm.module] = {
-          read: perm.read,
-          write: perm.write,
-          delete: perm.delete
-        };
-      }
-
-      console.log("Returning permissions object:", permissionsObj);
-      res.json(permissionsObj);
+      res.json(permissions);
     } catch (error) {
       console.error("Error fetching user permissions:", error);
       res.status(500).json({ message: "Internal server error" });
