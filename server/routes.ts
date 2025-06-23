@@ -553,8 +553,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
 
       // For superadmin, return all guests. For branch users, return only guests who have reservations at their branch
-      const branchFilter = getBranchFilter(user);
-      const guests = await storage.getGuests(branchFilter);
+      const branchId = user.role === "superadmin" ? undefined : user.branchId!;
+      const guests = await storage.getGuests(branchId);
       res.json(guests);
     } catch (error) {
       console.error("Error fetching guests:", error);
