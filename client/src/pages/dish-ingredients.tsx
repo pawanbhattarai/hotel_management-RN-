@@ -92,10 +92,11 @@ export default function DishIngredients() {
 
   const saveIngredientsMutation = useMutation({
     mutationFn: async (data: FormData) => {
-      return apiRequest(`/api/restaurant/dishes/${dishId}/ingredients`, {
+      const response = await apiRequest(`/api/restaurant/dishes/${dishId}/ingredients`, {
         method: "PUT",
         body: { ingredients: data.ingredients },
       });
+      return response.json();
     },
     onSuccess: () => {
       toast({
