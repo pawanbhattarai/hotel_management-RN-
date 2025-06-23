@@ -62,7 +62,11 @@ export default function QROrderPage() {
   const [customerPhone, setCustomerPhone] = useState('');
   const [notes, setNotes] = useState('');
 
-  const token = location.split('/').pop();
+  // Extract token from URL path like /order/token
+  const token = location.replace('/order/', '');
+
+  console.log('QR Order Page - Location:', location);
+  console.log('QR Order Page - Token:', token);
 
   useEffect(() => {
     if (token) {
@@ -90,21 +94,32 @@ export default function QROrderPage() {
 
   const fetchOrderInfo = async () => {
     try {
+      console.log('Fetching order info for token:', token);
       const response = await fetch(`/api/order/info/${token}`);
+      
+      console.log('Response status:', response.status);
+      console.log('Response ok:', response.ok);
+      
       if (!response.ok) {
-        throw new Error('Invalid QR code');
+        const errorText = await response.text();
+        console.error('API Error:', errorText);
+        throw new Error(`Invalid QR code: ${response.status} - ${errorText}`);
       }
+      
       const data = await response.json();
+      console.log('Order info data:', data);
+      
       setLocationInfo(data.location);
-      setCategories(data.menu.categories);
-      setDishes(data.menu.dishes);
+      setCategories(data.menu.categories || []);
+      setDishes(data.menu.dishes || []);
       
       // Check for existing order
       await checkExistingOrder();
     } catch (error) {
+      console.error('Error fetching order info:', error);
       toast({
         title: "Error",
-        description: "Invalid QR code or expired link",
+        description: error instanceof Error ? error.message : "Invalid QR code or expired link",
         variant: "destructive",
       });
     } finally {

@@ -1763,7 +1763,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const user = await storage.getUser(req.session.user.id);
       if (!user) return res.status(401).json({ message: "User not found" });
 
-      const tableData = insertRestaurantTableSchema.parse(req.body);
+      const tableData = insertRestaurantTableSchema.parse({
+        ...req.body,
+        qrToken: req.body.qrToken || crypto.randomUUID()
+      });
 
       if (!checkBranchPermissions(user.role, user.branchId, tableData.branchId)) {
         return res.status(403).json({ message: "Insufficient permissions for this branch" });
@@ -1788,7 +1791,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(400).json({ message: "Tables array is required" });
       }
 
-      const validatedTables = tables.map(table => insertRestaurantTableSchema.parse(table));
+      const validatedTables = tables.map(table => insertRestaurantTableSchema.parse({
+        ...table,
+        qrToken: table.qrToken || crypto.randomUUID()
+      }));
 
       // Check permissions for all tables
       for (const table of validatedTables) {
