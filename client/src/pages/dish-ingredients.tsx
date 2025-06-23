@@ -225,8 +225,10 @@ export default function DishIngredients() {
                                           const stockItem = stockItems.find((item: any) => item.id === parseInt(value));
                                           field.onChange(parseInt(value));
                                           if (stockItem) {
-                                            form.setValue(`ingredients.${index}.unit`, stockItem.measuringUnit?.symbol || '');
-                                            form.setValue(`ingredients.${index}.cost`, stockItem.defaultPrice || "0");
+                                            const unit = stockItem.measuringUnitSymbol || stockItem.measuringUnitName || '';
+                                            const cost = stockItem.defaultPrice || "0";
+                                            form.setValue(`ingredients.${index}.unit`, unit);
+                                            form.setValue(`ingredients.${index}.cost`, cost);
                                           }
                                         }}
                                         value={field.value?.toString()}
