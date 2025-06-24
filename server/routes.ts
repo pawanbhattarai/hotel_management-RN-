@@ -3323,6 +3323,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       const order = await restaurantStorage.createRestaurantOrder(orderData, orderItems);
 
+      // Broadcast new guest order creation for immediate sync
+      wsManager.broadcastDataUpdate('restaurant-orders', orderInfo.branchId?.toString());
+      wsManager.broadcastDataUpdate('restaurant-dashboard', orderInfo.branchId?.toString());
+
       res.status(201).json({
         message: "Order placed successfully",
         orderNumber: order.orderNumber,

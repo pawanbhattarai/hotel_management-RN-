@@ -87,7 +87,7 @@ export default function RestaurantOrders() {
 
   const { data: orders, isLoading: ordersLoading } = useQuery({
     queryKey: ["/api/restaurant/orders"],
-    refetchInterval: 10000, // Fallback polling every 10 seconds
+    refetchInterval: 2000, // Real-time polling every 2 seconds for immediate updates
   });
 
   // Real-time updates using polling (WebSocket disabled in dev mode)
