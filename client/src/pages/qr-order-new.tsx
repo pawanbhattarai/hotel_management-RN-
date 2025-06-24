@@ -426,8 +426,8 @@ export default function QROrder() {
           <div className="space-y-4">
             {/* Category Filter */}
             <div className="sticky top-0 bg-gray-50 py-3 z-10">
-              {/* Dropdown for mobile/smaller screens */}
-              <div className="block md:hidden mb-3">
+              {/* Dropdown for all screen sizes */}
+              <div className="mb-3">
                 <Select
                   value={selectedCategory}
                   onValueChange={setSelectedCategory}
@@ -445,56 +445,33 @@ export default function QROrder() {
                   </SelectContent>
                 </Select>
               </div>
-              
-              {/* Buttons for larger screens */}
-              <div className="hidden md:flex gap-2 overflow-x-auto pb-2">
-                <Button
-                  variant={selectedCategory === 'all' ? 'default' : 'outline'}
-                  size="sm"
-                  onClick={() => setSelectedCategory('all')}
-                  className="whitespace-nowrap"
-                >
-                  All Items
-                </Button>
-                {categories.map(category => (
-                  <Button
-                    key={category.id}
-                    variant={selectedCategory === category.id.toString() ? 'default' : 'outline'}
-                    size="sm"
-                    onClick={() => setSelectedCategory(category.id.toString())}
-                    className="whitespace-nowrap"
-                  >
-                    {category.name}
-                  </Button>
-                ))}
-              </div>
             </div>
 
             {/* Dishes Grid */}
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div className="grid grid-cols-2 md:grid-cols-2 lg:grid-cols-3 gap-3 md:gap-4">
               {getFilteredDishes().map(dish => {
                 const cartItem = cart.find(item => item.dishId === dish.id);
                 const existingItem = existingItems.find(item => item.dishId === dish.id);
                 
                 return (
                   <Card key={dish.id} className="hover:shadow-md transition-shadow">
-                    <CardContent className="p-4">
-                      <div className="flex justify-between items-start mb-2">
-                        <h4 className="font-medium text-sm leading-tight">{dish.name}</h4>
-                        <span className="text-sm font-semibold text-green-600">
+                    <CardContent className="p-2 md:p-4">
+                      <div className="flex flex-col mb-2">
+                        <h4 className="font-medium text-xs md:text-sm leading-tight mb-1">{dish.name}</h4>
+                        <span className="text-xs md:text-sm font-semibold text-green-600">
                           Rs. {parseFloat(dish.price).toFixed(0)}
                         </span>
                       </div>
                       
                       {dish.description && (
-                        <p className="text-xs text-gray-600 mb-2 line-clamp-2">
+                        <p className="text-xs text-gray-600 mb-2 line-clamp-2 hidden md:block">
                           {dish.description}
                         </p>
                       )}
                       
-                      <div className="flex items-center gap-2 mb-3">
+                      <div className="flex flex-wrap items-center gap-1 mb-2 md:mb-3">
                         {dish.category && (
-                          <Badge variant="secondary" className="text-xs px-2 py-0">
+                          <Badge variant="secondary" className="text-xs px-1 py-0 hidden md:inline-flex">
                             {dish.category.name}
                           </Badge>
                         )}
@@ -505,20 +482,20 @@ export default function QROrder() {
                           <Badge variant="outline" className="text-xs px-1 py-0">Vegan</Badge>
                         )}
                         {dish.preparationTime && (
-                          <Badge variant="outline" className="text-xs px-1 py-0">
+                          <Badge variant="outline" className="text-xs px-1 py-0 hidden md:inline-flex">
                             <Clock className="w-3 h-3 mr-1" />
                             {dish.preparationTime}min
                           </Badge>
                         )}
                       </div>
                       
-                      <div className="flex items-center justify-between">
+                      <div className="flex items-center justify-center">
                         {cartItem ? (
-                          <div className="flex items-center gap-2">
+                          <div className="flex items-center gap-1 md:gap-2">
                             <Button
                               size="sm"
                               variant="outline"
-                              className="h-8 w-8 p-0"
+                              className="h-6 w-6 md:h-8 md:w-8 p-0"
                               onClick={() => updateQuantity(dish.id, cartItem.quantity - 1)}
                               disabled={
                                 // Disable if would go below existing order quantity
@@ -527,30 +504,30 @@ export default function QROrder() {
                                 (existingItem && !canModifyOrder && existingOrderId)
                               }
                             >
-                              <Minus className="h-3 w-3" />
+                              <Minus className="h-2 w-2 md:h-3 md:w-3" />
                             </Button>
-                            <span className="min-w-[2rem] text-center font-medium">
+                            <span className="min-w-[1.5rem] md:min-w-[2rem] text-center font-medium text-xs md:text-sm">
                               {cartItem.quantity}
                             </span>
                             <Button
                               size="sm"
                               variant="outline"
-                              className="h-8 w-8 p-0"
+                              className="h-6 w-6 md:h-8 md:w-8 p-0"
                               onClick={() => updateQuantity(dish.id, cartItem.quantity + 1)}
                               // Always allow increasing quantity
                             >
-                              <Plus className="h-3 w-3" />
+                              <Plus className="h-2 w-2 md:h-3 md:w-3" />
                             </Button>
                           </div>
                         ) : (
                           <Button
                             size="sm"
                             onClick={() => addToCart(dish)}
-                            className="h-8 px-3 text-xs"
+                            className="h-6 md:h-8 px-2 md:px-3 text-xs"
                             // New items can always be added, even after modification time
                           >
-                            <Plus className="h-3 w-3 mr-1" />
-                            Add
+                            <Plus className="h-2 w-2 md:h-3 md:w-3 mr-1" />
+                            <span className="hidden md:inline">Add</span>
                           </Button>
                         )}
                       </div>
