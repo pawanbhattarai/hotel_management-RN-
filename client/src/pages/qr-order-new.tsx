@@ -221,20 +221,9 @@ export default function QROrder() {
 
   const addToCart = (dish: MenuDish) => {
     const existingCartItem = cart.find(item => item.dishId === dish.id);
-    const existingOrderItem = existingItems.find(item => item.dishId === dish.id);
     
-    // If this item was in the original order and modification time expired, prevent modification
-    if (existingOrderItem && !canModifyOrder && existingOrderId) {
-      toast({
-        title: "Cannot Modify",
-        description: "Cannot modify existing order items after 2 minutes",
-        variant: "destructive",
-      });
-      return;
-    }
-
     if (existingCartItem) {
-      // Increase quantity of existing cart item
+      // Increase quantity of existing cart item (always allowed)
       setCart(cart.map(item => 
         item.dishId === dish.id 
           ? { ...item, quantity: item.quantity + 1 }
@@ -548,10 +537,7 @@ export default function QROrder() {
                               variant="outline"
                               className="h-8 w-8 p-0"
                               onClick={() => updateQuantity(dish.id, cartItem.quantity + 1)}
-                              disabled={
-                                // Only disable if this is an existing item and modification time expired
-                                existingItem && !canModifyOrder && existingOrderId
-                              }
+                              // Always allow increasing quantity
                             >
                               <Plus className="h-3 w-3" />
                             </Button>
@@ -673,13 +659,7 @@ export default function QROrder() {
                               variant="outline"
                               className="h-8 w-8 p-0"
                               onClick={() => updateQuantity(item.dishId, item.quantity + 1)}
-                              disabled={
-                                // Only disable if this is an existing item and modification time expired
-                                (() => {
-                                  const existingItem = existingItems.find(ei => ei.dishId === item.dishId);
-                                  return existingItem && !canModifyOrder && existingOrderId;
-                                })()
-                              }
+                              // Always allow increasing quantity
                             >
                               <Plus className="h-3 w-3" />
                             </Button>
