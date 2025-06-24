@@ -1,15 +1,74 @@
-import { useState, useEffect } from 'react';
-import { useLocation } from 'wouter';
-import { Button } from '@/components/ui/button';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
-import { Textarea } from '@/components/ui/textarea';
-import { Badge } from '@/components/ui/badge';
-import { Separator } from '@/components/ui/separator';
-import { Minus, Plus, ShoppingCart, CheckCircle, Search, Clock, Facebook, Instagram, Youtube, ExternalLink } from 'lucide-react';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { useToast } from '@/hooks/use-toast';
+
+import { useState, useEffect } from "react";
+import { useLocation } from "wouter";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Textarea } from "@/components/ui/textarea";
+import { Card, CardContent } from "@/components/ui/card";
+import { Badge } from "@/components/ui/badge";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import { useToast } from "@/hooks/use-toast";
+import {
+  ShoppingCart,
+  Plus,
+  Minus,
+  Home,
+  UtensilsCrossed,
+  MoreHorizontal,
+  Facebook,
+  Instagram,
+  Youtube,
+  Phone,
+  Star,
+  Clock,
+  Users,
+  Search,
+  ExternalLink,
+} from "lucide-react";
+
+interface LocationInfo {
+  type: "table" | "room";
+  id: number;
+  branchId: number;
+  name: string;
+}
+
+interface MenuCategory {
+  id: number;
+  name: string;
+  branchId: number;
+  isActive: boolean;
+  sortOrder: number;
+  createdAt: string;
+  updatedAt: string;
+}
+
+interface MenuDish {
+  id: number;
+  name: string;
+  price: string;
+  image?: string;
+  categoryId: number;
+  branchId: number;
+  description: string;
+  ingredients: string;
+  isVegetarian: boolean;
+  isVegan: boolean;
+  spiceLevel: string;
+  preparationTime: number;
+  isActive: boolean;
+  sortOrder: number;
+  createdAt: string;
+  updatedAt: string;
+  category: MenuCategory;
+}
 
 interface OrderItem {
   dishId: number;
@@ -19,65 +78,60 @@ interface OrderItem {
   specialInstructions?: string;
 }
 
-interface MenuDish {
-  id: number;
-  name: string;
-  price: string;
-  description?: string;
-  categoryId: number;
-  isVegetarian?: boolean;
-  isVegan?: boolean;
-  spiceLevel?: string;
-  preparationTime?: number;
+interface HotelSettings {
+  hotelName?: string;
+  phone?: string;
+  email?: string;
+  address?: string;
+  facebookUrl?: string;
+  instagramUrl?: string;
+  tiktokUrl?: string;
+  youtubeUrl?: string;
+  contactInfo?: string;
+  reviewsUrl?: string;
+  website?: string;
 }
 
-interface MenuCategory {
-  id: number;
-  name: string;
-}
-
-interface LocationInfo {
-  type: 'table' | 'room';
-  id: number;
-  branchId: number;
-  name: string;
-}
+type TabType = "dishes" | "cart" | "more";
 
 export default function QROrderPage() {
   const [location] = useLocation();
   const { toast } = useToast();
   const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
-  const [orderComplete, setOrderComplete] = useState(false);
-  const [orderNumber, setOrderNumber] = useState('');
-  const [searchQuery, setSearchQuery] = useState('');
-  const [hotelSettings, setHotelSettings] = useState<any>({});
+  const [activeTab, setActiveTab] = useState<TabType>("dishes");
+
+  // Order states
   const [existingOrderId, setExistingOrderId] = useState<string | null>(null);
-  const [orderStatus, setOrderStatus] = useState<string>('');
+  const [orderNumber, setOrderNumber] = useState("");
+  const [orderStatus, setOrderStatus] = useState<string>("");
   const [orderCreatedAt, setOrderCreatedAt] = useState<Date | null>(null);
   const [estimatedTime, setEstimatedTime] = useState<number>(0);
   const [canModifyOrder, setCanModifyOrder] = useState(true);
+  const [existingItems, setExistingItems] = useState<OrderItem[]>([]);
+
+  // Menu data
   const [locationInfo, setLocationInfo] = useState<LocationInfo | null>(null);
   const [categories, setCategories] = useState<MenuCategory[]>([]);
   const [dishes, setDishes] = useState<MenuDish[]>([]);
   const [cart, setCart] = useState<OrderItem[]>([]);
-  const [customerName, setCustomerName] = useState('');
-  const [customerPhone, setCustomerPhone] = useState('');
-  const [notes, setNotes] = useState('');
-  const [selectedCategory, setSelectedCategory] = useState<string>('all');
+  const [customerName, setCustomerName] = useState("");
+  const [customerPhone, setCustomerPhone] = useState("");
+  const [notes, setNotes] = useState("");
 
-  // Extract token from URL path like /order/token or /qr-order/token
-  const token = location.startsWith('/order/')
-    ? location.replace('/order/', '')
-    : location.replace('/qr-order/', '');
+  // Settings
+  const [hotelSettings, setHotelSettings] = useState<HotelSettings>({});
 
-  console.log('QR Order Page - Location:', location);
-  console.log('QR Order Page - Token:', token);
+  // Filter state
+  const [selectedCategory, setSelectedCategory] = useState<string>("all");
+  const [searchQuery, setSearchQuery] = useState("");
+
+  const token = location.split("/").pop();
 
   useEffect(() => {
     if (token) {
       fetchOrderInfo();
-      // Check for existing order every 30 seconds
+      fetchHotelSettings();
       const interval = setInterval(checkExistingOrder, 30000);
       return () => clearInterval(interval);
     }
@@ -87,7 +141,8 @@ export default function QROrderPage() {
     if (existingOrderId && orderCreatedAt) {
       const interval = setInterval(() => {
         const now = new Date();
-        const diffInMinutes = (now.getTime() - orderCreatedAt.getTime()) / (1000 * 60);
+        const diffInMinutes =
+          (now.getTime() - orderCreatedAt.getTime()) / (1000 * 60);
         setCanModifyOrder(diffInMinutes <= 2);
       }, 1000);
       return () => clearInterval(interval);
@@ -98,68 +153,34 @@ export default function QROrderPage() {
     calculateEstimatedTime();
   }, [cart, dishes]);
 
+  const fetchHotelSettings = async () => {
+    try {
+      const response = await fetch("/api/hotel-settings");
+      if (response.ok) {
+        const settings = await response.json();
+        setHotelSettings(settings);
+      }
+    } catch (error) {
+      console.error("Failed to fetch hotel settings:", error);
+    }
+  };
+
   const fetchOrderInfo = async () => {
     try {
-      console.log('🔍 QR Order - Fetching order info for token:', token);
-
-      if (!token || token.length < 10) {
-        throw new Error('Invalid or missing QR token');
-      }
-
       const response = await fetch(`/api/order/info/${token}`);
-
-      console.log('📡 QR Order - Response status:', response.status);
-      console.log('📡 QR Order - Response ok:', response.ok);
-
       if (!response.ok) {
-        const errorText = await response.text();
-        console.error('❌ QR Order - API Error:', response.status, errorText);
-
-        if (response.status === 404) {
-          throw new Error('QR code not found. Please check if the QR code is valid.');
-        } else if (response.status === 500) {
-          throw new Error('Server error. Please try again later.');
-        } else {
-          throw new Error(`Failed to load menu: ${response.status}`);
-        }
+        throw new Error("Invalid QR code");
       }
-
       const data = await response.json();
-      console.log('✅ QR Order - Order info data:', data);
-
-      if (!data.location) {
-        throw new Error('Invalid QR code - no location information found');
-      }
-
-      if (!data.menu || !data.menu.categories || !data.menu.dishes) {
-        console.warn('⚠️ QR Order - Menu data incomplete:', data.menu);
-      }
-
       setLocationInfo(data.location);
-      setCategories(data.menu.categories || []);
-      setDishes(data.menu.dishes || []);
+      setCategories(data.menu.categories);
+      setDishes(data.menu.dishes);
 
-      console.log(`📍 QR Order - Location: ${data.location.type} ${data.location.name}`);
-      console.log(`🍽️ QR Order - Menu: ${data.menu.categories?.length || 0} categories, ${data.menu.dishes?.length || 0} dishes`);
-
-      // Fetch hotel settings for company information
-      try {
-        const settingsResponse = await fetch('/api/hotel-settings');
-        if (settingsResponse.ok) {
-          const settingsData = await settingsResponse.json();
-          setHotelSettings(settingsData);
-        }
-      } catch (error) {
-        console.error('Failed to fetch hotel settings:', error);
-      }
-
-      // Check for existing order
       await checkExistingOrder();
     } catch (error) {
-      console.error('❌ QR Order - Error fetching order info:', error);
       toast({
         title: "Error",
-        description: error instanceof Error ? error.message : "Failed to load menu. Please try scanning the QR code again.",
+        description: "Invalid QR code or expired link",
         variant: "destructive",
       });
     } finally {
@@ -176,34 +197,34 @@ export default function QROrderPage() {
         setOrderNumber(orderData.orderNumber);
         setOrderStatus(orderData.status);
         setOrderCreatedAt(new Date(orderData.createdAt));
-        setCustomerName(orderData.customerName || '');
-        setCustomerPhone(orderData.customerPhone || '');
-        setNotes(orderData.notes || '');
+        setCustomerName(orderData.customerName || "");
+        setCustomerPhone(orderData.customerPhone || "");
+        setNotes(orderData.notes || "");
 
-        // Load existing order items into cart
         if (orderData.items) {
           const existingItems = orderData.items.map((item: any) => {
-            const dish = dishes.find(d => d.id === item.dishId);
+            const dish = dishes.find((d) => d.id === item.dishId);
             return {
               dishId: item.dishId,
-              name: dish?.name || item.dish?.name || 'Unknown',
+              name: dish?.name || item.dish?.name || "Unknown",
               price: item.unitPrice,
               quantity: item.quantity,
-              specialInstructions: item.specialInstructions
+              specialInstructions: item.specialInstructions,
             };
           });
+          setExistingItems(existingItems);
           setCart(existingItems);
         }
       }
     } catch (error) {
-      // No existing order found, that's fine
+      // No existing order found
     }
   };
 
   const calculateEstimatedTime = () => {
     let totalTime = 0;
-    cart.forEach(item => {
-      const dish = dishes.find(d => d.id === item.dishId);
+    cart.forEach((item) => {
+      const dish = dishes.find((d) => d.id === item.dishId);
       if (dish && dish.preparationTime) {
         totalTime = Math.max(totalTime, dish.preparationTime * item.quantity);
       }
@@ -212,63 +233,76 @@ export default function QROrderPage() {
   };
 
   const addToCart = (dish: MenuDish) => {
-    if (!canModifyOrder && existingOrderId) {
-      toast({
-        title: "Cannot Modify Order",
-        description: "Order can only be modified within 2 minutes of placement",
-        variant: "destructive",
-      });
-      return;
-    }
+    const existingCartItem = cart.find((item) => item.dishId === dish.id);
 
-    const existingItem = cart.find(item => item.dishId === dish.id);
-    if (existingItem) {
-      setCart(cart.map(item =>
-        item.dishId === dish.id
-          ? { ...item, quantity: item.quantity + 1 }
-          : item
-      ));
+    if (existingCartItem) {
+      // Increase quantity of existing cart item (always allowed)
+      setCart(
+        cart.map((item) =>
+          item.dishId === dish.id
+            ? { ...item, quantity: item.quantity + 1 }
+            : item,
+        ),
+      );
     } else {
-      setCart([...cart, {
-        dishId: dish.id,
-        name: dish.name,
-        price: dish.price,
-        quantity: 1
-      }]);
+      // Add new item to cart (always allowed, even after modification time)
+      setCart([
+        ...cart,
+        {
+          dishId: dish.id,
+          name: dish.name,
+          price: dish.price,
+          quantity: 1,
+        },
+      ]);
     }
   };
 
   const updateQuantity = (dishId: number, quantity: number) => {
-    if (!canModifyOrder && existingOrderId) {
+    const existingItem = existingItems.find((item) => item.dishId === dishId);
+
+    // If this is an existing item from the original order and modification time has expired
+    if (existingItem && !canModifyOrder && existingOrderId) {
       toast({
-        title: "Cannot Modify Order",
-        description: "Order can only be modified within 2 minutes of placement",
+        title: "Cannot Modify",
+        description: "Cannot modify existing order items after 2 minutes",
         variant: "destructive",
       });
       return;
     }
 
-    if (quantity === 0) {
-      setCart(cart.filter(item => item.dishId !== dishId));
+    // Prevent decreasing quantity below existing order quantity for any existing item
+    if (existingItem && quantity < existingItem.quantity) {
+      toast({
+        title: "Cannot Decrease",
+        description: "Cannot decrease quantity below the original order amount",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    // For new items (not in existing order), allow removal completely
+    if (quantity === 0 && !existingItem) {
+      setCart(cart.filter((item) => item.dishId !== dishId));
     } else {
-      setCart(cart.map(item =>
-        item.dishId === dishId
-          ? { ...item, quantity }
-          : item
-      ));
+      // Set minimum quantity to existing order quantity if item was previously ordered
+      const minQuantity = existingItem?.quantity || 0;
+      setCart(
+        cart.map((item) =>
+          item.dishId === dishId
+            ? { ...item, quantity: Math.max(quantity, minQuantity) }
+            : item,
+        ),
+      );
     }
   };
 
   const getTotal = () => {
-    return cart.reduce((total, item) => total + (parseFloat(item.price) * item.quantity), 0);
+    return cart.reduce(
+      (total, item) => total + parseFloat(item.price) * item.quantity,
+      0,
+    );
   };
-
-  // Filter dishes based on search query
-  const filteredDishes = dishes.filter(dish =>
-    dish.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-    dish.description?.toLowerCase().includes(searchQuery.toLowerCase()) ||
-    categories.find(cat => cat.id === dish.categoryId)?.name.toLowerCase().includes(searchQuery.toLowerCase())
-  );
 
   const submitOrder = async () => {
     if (!customerName || !customerPhone) {
@@ -296,24 +330,24 @@ export default function QROrderPage() {
         : `/api/order/submit/${token}`;
 
       const response = await fetch(endpoint, {
-        method: existingOrderId ? 'PUT' : 'POST',
+        method: existingOrderId ? "PUT" : "POST",
         headers: {
-          'Content-Type': 'application/json',
+          "Content-Type": "application/json",
         },
         body: JSON.stringify({
-          items: cart.map(item => ({
+          items: cart.map((item) => ({
             dishId: item.dishId,
             quantity: item.quantity,
-            specialInstructions: item.specialInstructions
+            specialInstructions: item.specialInstructions,
           })),
           customerName,
           customerPhone,
-          notes
-        })
+          notes,
+        }),
       });
 
       if (!response.ok) {
-        throw new Error('Failed to submit order');
+        throw new Error("Failed to submit order");
       }
 
       const data = await response.json();
@@ -323,11 +357,11 @@ export default function QROrderPage() {
 
       toast({
         title: existingOrderId ? "Order Updated!" : "Order Placed!",
-        description: `Your order ${data.orderNumber} has been ${existingOrderId ? 'updated' : 'placed'} successfully`,
+        description: `Your order ${data.orderNumber} has been ${existingOrderId ? "updated" : "placed"} successfully`,
       });
 
-      // Refresh order status
       await checkExistingOrder();
+      setActiveTab("cart");
     } catch (error) {
       toast({
         title: "Error",
@@ -342,20 +376,19 @@ export default function QROrderPage() {
   const clearTable = async () => {
     try {
       const response = await fetch(`/api/order/clear/${token}`, {
-        method: 'POST'
+        method: "POST",
       });
 
       if (response.ok) {
-        // Reset all state
         setExistingOrderId(null);
-        setOrderNumber('');
-        setOrderStatus('');
+        setOrderNumber("");
+        setOrderStatus("");
         setOrderCreatedAt(null);
         setCart([]);
-        setCustomerName('');
-        setCustomerPhone('');
-        setNotes('');
-        setOrderComplete(false);
+        setExistingItems([]);
+        setCustomerName("");
+        setCustomerPhone("");
+        setNotes("");
 
         toast({
           title: "Table Cleared",
@@ -373,20 +406,28 @@ export default function QROrderPage() {
 
   const getStatusColor = (status: string) => {
     switch (status) {
-      case 'pending': return 'bg-yellow-500';
-      case 'confirmed': return 'bg-blue-500';
-      case 'preparing': return 'bg-orange-500';
-      case 'ready': return 'bg-green-500';
-      case 'served': return 'bg-gray-500';
-      case 'completed': return 'bg-green-600';
-      default: return 'bg-gray-400';
+      case "pending":
+        return "bg-yellow-500";
+      case "confirmed":
+        return "bg-blue-500";
+      case "preparing":
+        return "bg-orange-500";
+      case "ready":
+        return "bg-green-500";
+      case "served":
+        return "bg-gray-500";
+      case "completed":
+        return "bg-green-600";
+      default:
+        return "bg-gray-400";
     }
   };
 
   const getTimeRemaining = () => {
     if (!orderCreatedAt) return null;
     const now = new Date();
-    const diffInMinutes = (now.getTime() - orderCreatedAt.getTime()) / (1000 * 60);
+    const diffInMinutes =
+      (now.getTime() - orderCreatedAt.getTime()) / (1000 * 60);
     const remaining = Math.max(0, 2 - diffInMinutes);
     return remaining;
   };
@@ -395,17 +436,22 @@ export default function QROrderPage() {
     let filtered = dishes;
 
     // Filter by category first
-    if (selectedCategory !== 'all') {
-      filtered = filtered.filter(dish => dish.categoryId === parseInt(selectedCategory));
+    if (selectedCategory !== "all") {
+      filtered = filtered.filter(
+        (dish) => dish.categoryId === parseInt(selectedCategory),
+      );
     }
 
     // Then filter by search query
     if (searchQuery.trim()) {
-      const searchTerm = searchQuery.toLowerCase().trim();
-      filtered = filtered.filter(dish =>
-        dish.name.toLowerCase().includes(searchTerm) ||
-        dish.description?.toLowerCase().includes(searchTerm) ||
-        categories.find(cat => cat.id === dish.categoryId)?.name.toLowerCase().includes(searchTerm)
+      filtered = filtered.filter(
+        (dish) =>
+          dish.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+          dish.description?.toLowerCase().includes(searchQuery.toLowerCase()) ||
+          categories
+            .find((cat) => cat.id === dish.categoryId)
+            ?.name.toLowerCase()
+            .includes(searchQuery.toLowerCase()),
       );
     }
 
@@ -416,456 +462,540 @@ export default function QROrderPage() {
     return (
       <div className="min-h-screen flex items-center justify-center">
         <div className="text-center">
-          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600 mx-auto"></div>
-          <p className="mt-2 text-gray-600">Loading menu...</p>
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-500 mx-auto mb-4"></div>
+          <p>Loading menu...</p>
         </div>
       </div>
     );
   }
 
-  if (orderComplete) {
-    return (
-      <div className="min-h-screen flex items-center justify-center p-4">
-        <Card className="w-full max-w-md">
-          <CardContent className="text-center p-6">
-            <CheckCircle className="h-16 w-16 text-green-500 mx-auto mb-4" />
-            <h2 className="text-2xl font-bold mb-2">Order Placed!</h2>
-            <p className="text-gray-600 mb-4">
-              Your order <strong>{orderNumber}</strong> has been placed successfully.
-            </p>
-            <p className="text-sm text-gray-500">
-              Our staff will prepare your order and deliver it to {locationInfo?.name}.
-            </p>
-          </CardContent>
-        </Card>
-      </div>
-    );
-  }
+  const renderTabContent = () => {
+    switch (activeTab) {
+      case "dishes":
+        return (
+          <div className="space-y-4">
+            {/* Category Filter and Search */}
+            <div className="sticky top-0 bg-gray-50 py-3 z-10">
+              {/* Search Bar and Category Filter on Same Row */}
+              <div className="grid grid-cols-1 lg:grid-cols-2 gap-3 mb-3">
+                {/* Search Bar */}
+                <div className="relative">
+                  <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 h-4 w-4" />
+                  <Input
+                    type="text"
+                    placeholder="Search dishes..."
+                    value={searchQuery}
+                    onChange={(e) => setSearchQuery(e.target.value)}
+                    className="pl-10"
+                  />
+                </div>
 
-  if (!locationInfo) {
-    return (
-      <div className="min-h-screen flex items-center justify-center">
-        <Card className="w-full max-w-md">
-          <CardContent className="text-center p-6">
-            <h2 className="text-xl font-bold text-red-600 mb-2">Invalid QR Code</h2>
-            <p className="text-gray-600">This QR code is invalid or has expired.</p>
-          </CardContent>
-        </Card>
-      </div>
-    );
-  }
-
-  return (
-    <div className="min-h-screen bg-gray-50">
-      {/* Mobile Header */}
-      <div className="lg:hidden bg-white shadow-sm border-b sticky top-0 z-50">
-        <div className="px-4 py-3">
-          <div className="flex items-center justify-between">
-            <div>
-              <h1 className="text-lg font-semibold">
-                {hotelSettings.hotelName || 'Restaurant'}
-              </h1>
-              <p className="text-sm text-gray-600">
-                {locationInfo?.type === 'table' ? 'Table' : 'Room'} {locationInfo?.name}
-              </p>
-            </div>
-            {cart.length > 0 && (
-              <div className="flex items-center gap-2">
-                <ShoppingCart className="w-4 h-4 text-gray-500" />
-                <span className="text-sm font-medium">{cart.length} items</span>
-              </div>
-            )}
-          </div>
-        </div>
-      </div>
-
-      <div className="max-w-6xl mx-auto grid lg:grid-cols-3 gap-0 min-h-screen">
-        {/* Menu Section - Left Side */}
-        <div className="lg:col-span-2 bg-white p-3 lg:p-6 overflow-y-auto">
-          <div className="mb-6">
-            <div className="hidden lg:flex items-center justify-between mb-4">
-              <h1 className="text-2xl font-bold">Menu Items</h1>
-            </div>
-
-            {/* Search Bar and Category Filter on Same Row */}
-            <div className="flex flex-col lg:flex-row gap-3 mb-4">
-              {/* Search Bar */}
-              <div className="relative flex-1">
-                <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 h-4 w-4" />
-                <Input
-                  type="text"
-                  placeholder="Search dishes..."
-                  value={searchQuery}
-                  onChange={(e) => setSearchQuery(e.target.value)}
-                  className="pl-10"
-                />
-              </div>
-
-              {/* Category Filter */}
-              <div className="flex gap-2 overflow-x-auto pb-2 lg:pb-0">
-                <Button
-                  variant={selectedCategory === 'all' ? 'default' : 'outline'}
-                  size="sm"
-                  onClick={() => setSelectedCategory('all')}
-                  className="whitespace-nowrap flex-shrink-0"
-                >
-                  All Items
-                </Button>
-                {categories.map(category => (
-                  <Button
-                    key={category.id}
-                    variant={selectedCategory === category.id.toString() ? 'default' : 'outline'}
-                    size="sm"
-                    onClick={() => setSelectedCategory(category.id.toString())}
-                    className="whitespace-nowrap flex-shrink-0"
+                {/* Category Dropdown */}
+                <div>
+                  <Select
+                    value={selectedCategory}
+                    onValueChange={setSelectedCategory}
                   >
-                    {category.name}
-                  </Button>
-                ))}
+                    <SelectTrigger className="w-full">
+                      <SelectValue placeholder="Select category" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="all">All Items</SelectItem>
+                      {categories.map((category) => (
+                        <SelectItem
+                          key={category.id}
+                          value={category.id.toString()}
+                        >
+                          {category.name}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
               </div>
             </div>
-          </div>
 
-          {/* Mobile Grid Layout */}
-          <div className="lg:space-y-3">
-            {/* Mobile Card Grid */}
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:hidden gap-3 mb-4">
-              {getFilteredDishes().map(dish => (
-                <div key={dish.id} className="bg-white border border-gray-200 rounded-lg p-3 hover:shadow-md transition-shadow">
-                  <div className="flex flex-col h-full">
-                    <h3 className="font-medium text-sm leading-tight mb-1">{dish.name}</h3>
+            {/* Dishes Grid */}
+            <div className="grid grid-cols-2 md:grid-cols-2 lg:grid-cols-3 gap-3 md:gap-4">
+              {getFilteredDishes().map((dish) => {
+                const cartItem = cart.find((item) => item.dishId === dish.id);
+                const existingItem = existingItems.find(
+                  (item) => item.dishId === dish.id,
+                );
 
-                    <div className="flex items-center justify-between mb-2">
-                      <div className="flex items-center gap-2">
-                        <p className="text-green-600 font-semibold text-lg">Rs. {dish.price}</p>
-                        {dish.preparationTime && (
-                          <div className="flex items-center gap-1 text-blue-600 text-xs">
-                            <Clock className="h-3 w-3" />
-                            <span>{dish.preparationTime}min</span>
-                          </div>
+                return (
+                  <Card
+                    key={dish.id}
+                    className="hover:shadow-md transition-shadow"
+                  >
+                    <CardContent className="p-2 md:p-4">
+                      <div className="flex flex-col mb-2">
+                        <h4 className="font-medium text-xs md:text-sm leading-tight mb-1">
+                          {dish.name}
+                        </h4>
+                        <div className="flex items-center gap-2">
+                          <span className="text-xs md:text-sm font-semibold text-green-600">
+                            Rs. {parseFloat(dish.price).toFixed(0)}
+                          </span>
+                          {dish.preparationTime && (
+                            <div className="flex items-center gap-1 text-blue-600 text-xs">
+                              <Clock className="w-3 h-3" />
+                              <span>{dish.preparationTime}min</span>
+                            </div>
+                          )}
+                        </div>
+                      </div>
+
+                      {dish.description && (
+                        <p className="text-xs text-gray-600 mb-2 line-clamp-2 hidden md:block">
+                          {dish.description}
+                        </p>
+                      )}
+
+                      <div className="flex flex-wrap items-center gap-1 mb-2 md:mb-3">
+                        {dish.category && (
+                          <Badge
+                            variant="secondary"
+                            className="text-xs px-1 py-0 hidden md:inline-flex"
+                          >
+                            {dish.category.name}
+                          </Badge>
+                        )}
+                        {dish.isVegetarian && (
+                          <Badge
+                            variant="outline"
+                            className="text-xs px-1 py-0"
+                          >
+                            Veg
+                          </Badge>
+                        )}
+                        {dish.isVegan && (
+                          <Badge
+                            variant="outline"
+                            className="text-xs px-1 py-0"
+                          >
+                            Vegan
+                          </Badge>
                         )}
                       </div>
-                    </div>
 
-                    {dish.description && (
-                      <p className="text-xs text-gray-600 mb-2 line-clamp-2">{dish.description}</p>
-                    )}
-
-                    <div className="flex flex-wrap items-center gap-1 mb-3 flex-grow">
-                      <Badge variant="secondary" className="text-xs px-1 py-0">
-                        {categories.find(cat => cat.id === dish.categoryId)?.name}
-                      </Badge>
-                      {dish.isVegetarian && <Badge variant="outline" className="text-green-600 text-xs px-1 py-0">Veg</Badge>}
-                      {dish.isVegan && <Badge variant="outline" className="text-green-700 text-xs px-1 py-0">Vegan</Badge>}
-                      {dish.spiceLevel && (
-                        <Badge variant="outline" className="text-red-600 text-xs px-1 py-0">
-                          {dish.spiceLevel}
-                        </Badge>
-                      )}
-                    </div>
-
-                    <Button
-                      onClick={() => addToCart(dish)}
-                      className="bg-blue-500 hover:bg-blue-600 text-white rounded-lg px-3 py-2 text-sm w-full mt-auto"
-                    >
-                      <Plus className="h-3 w-3 mr-1" />
-                      Add to Cart
-                    </Button>
-                  </div>
-                </div>
-              ))}
-            </div>
-
-            {/* Desktop List Layout */}
-            <div className="hidden lg:block space-y-3">
-              {getFilteredDishes().map(dish => (
-                <div key={dish.id} className="flex items-center justify-between p-4 border border-gray-200 rounded-lg hover:bg-gray-50 transition-colors">
-                  <div className="flex-1">
-                    <h3 className="font-medium text-lg">{dish.name}</h3>
-                    <p className="text-green-600 font-semibold text-lg mt-1">Rs. {dish.price}</p>
-                    {dish.description && (
-                      <p className="text-sm text-gray-600 mt-1">{dish.description}</p>
-                    )}
-                    <div className="flex items-center gap-2 mt-2">
-                      <Badge variant="secondary" className="text-xs">
-                        {categories.find(cat => cat.id === dish.categoryId)?.name}
-                      </Badge>
-                      {dish.isVegetarian && <Badge variant="outline" className="text-green-600 text-xs">Veg</Badge>}
-                      {dish.isVegan && <Badge variant="outline" className="text-green-700 text-xs">Vegan</Badge>}
-                      {dish.spiceLevel && (
-                        <Badge variant="outline" className="text-red-600 text-xs">
-                          {dish.spiceLevel}
-                        </Badge>
-                      )}
-                      {dish.preparationTime && dish.preparationTime > 0 && (
-                        <Badge variant="outline" className="text-blue-600 text-xs flex items-center gap-1">
-                          <Clock className="h-3 w-3" />
-                          {dish.preparationTime}min
-                        </Badge>
-                      )}
-                    </div>
-                  </div>
-                  <Button
-                    onClick={() => addToCart(dish)}
-                    className="bg-blue-500 hover:bg-blue-600 text-white rounded-lg px-4 py-2"
-                  >
-                    <Plus className="h-4 w-4" />
-                  </Button>
-                </div>
-              ))}
+                      <div className="flex items-center justify-center">
+                        {cartItem ? (
+                          <div className="flex items-center gap-1 md:gap-2">
+                            <Button
+                              size="sm"
+                              variant="outline"
+                              className="h-6 w-6 md:h-8 md:w-8 p-0"
+                              onClick={() =>
+                                updateQuantity(dish.id, cartItem.quantity - 1)
+                              }
+                              disabled={
+                                // Disable if would go below existing order quantity
+                                (existingItem &&
+                                  cartItem.quantity <= existingItem.quantity) ||
+                                // Or if this is an existing item and modification time expired
+                                (existingItem &&
+                                  !canModifyOrder &&
+                                  existingOrderId)
+                              }
+                            >
+                              <Minus className="h-2 w-2 md:h-3 md:w-3" />
+                            </Button>
+                            <span className="min-w-[1.5rem] md:min-w-[2rem] text-center font-medium text-xs md:text-sm">
+                              {cartItem.quantity}
+                            </span>
+                            <Button
+                              size="sm"
+                              variant="outline"
+                              className="h-6 w-6 md:h-8 md:w-8 p-0"
+                              onClick={() =>
+                                updateQuantity(dish.id, cartItem.quantity + 1)
+                              }
+                              // Always allow increasing quantity
+                            >
+                              <Plus className="h-2 w-2 md:h-3 md:w-3" />
+                            </Button>
+                          </div>
+                        ) : (
+                          <Button
+                            size="sm"
+                            onClick={() => addToCart(dish)}
+                            className="h-6 md:h-8 px-2 md:px-3 text-xs"
+                            // New items can always be added, even after modification time
+                          >
+                            <Plus className="h-2 w-2 md:h-3 md:w-3 mr-1" />
+                            <span className="hidden md:inline">Add</span>
+                          </Button>
+                        )}
+                      </div>
+                    </CardContent>
+                  </Card>
+                );
+              })}
             </div>
 
             {getFilteredDishes().length === 0 && (
               <div className="text-center py-8">
-                <p className="text-gray-500">No dishes found</p>
+                <p className="text-gray-500">
+                  No dishes found in this category
+                </p>
               </div>
             )}
           </div>
-        </div>
+        );
 
-        {/* Order Summary - Right Side / Mobile Bottom Sheet */}
-        <div className="bg-gray-100 p-3 lg:p-6 border-l lg:block">
-          <div className="sticky top-6">
-            <div className="flex items-center gap-2 mb-6">
-              <ShoppingCart className="h-5 w-5" />
-              <h2 className="text-xl font-bold">Order Summary</h2>
-              {cart.length > 0 && (
-                <span className="bg-blue-500 text-white rounded-full w-6 h-6 flex items-center justify-center text-sm">
-                  {cart.length}
-                </span>
-              )}
-            </div>
-
-            {/* Existing Order Status */}
+      case "cart":
+        return (
+          <div className="space-y-4">
             {existingOrderId && (
-              <div className="bg-white p-4 rounded-lg mb-4">
-                <div className="flex items-center justify-between mb-2">
-                  <h3 className="font-semibold">Order #{orderNumber}</h3>
-                  <span className={`px-2 py-1 rounded text-white text-xs ${getStatusColor(orderStatus)}`}>
-                    {orderStatus.toUpperCase()}
-                  </span>
-                </div>
-                {estimatedTime > 0 && (
-                  <p className="text-sm text-gray-600 mb-2">
-                    Estimated preparation: {estimatedTime} minutes
-                  </p>
-                )}
-                {!canModifyOrder && (
-                  <p className="text-red-600 text-xs">
-                    Order modification time expired
-                  </p>
-                )}
-                {canModifyOrder && getTimeRemaining() !== null && (
-                  <p className="text-orange-600 text-xs">
-                    {Math.ceil(getTimeRemaining()!)} minutes left to modify
-                  </p>
-                )}
-                {orderStatus === 'completed' && (
-                  <Button
-                    onClick={clearTable}
-                    className="w-full mt-2 bg-green-600 hover:bg-green-700"
-                    size="sm"
-                  >
-                    Clear Table & New Order
-                  </Button>
-                )}
-              </div>
+              <Card>
+                <CardContent className="p-4">
+                  <div className="flex items-center justify-between mb-2">
+                    <h3 className="font-semibold">Order #{orderNumber}</h3>
+                    <span
+                      className={`px-2 py-1 rounded text-white text-xs ${getStatusColor(orderStatus)}`}
+                    >
+                      {orderStatus.toUpperCase()}
+                    </span>
+                  </div>
+                  {estimatedTime > 0 && (
+                    <p className="text-sm text-gray-600 mb-2">
+                      <Clock className="w-4 h-4 inline mr-1" />
+                      Estimated preparation: {estimatedTime} minutes
+                    </p>
+                  )}
+                  {!canModifyOrder && (
+                    <p className="text-red-600 text-xs">
+                      Order modification time expired
+                    </p>
+                  )}
+                  {canModifyOrder && getTimeRemaining() !== null && (
+                    <p className="text-orange-600 text-xs">
+                      {Math.ceil(getTimeRemaining()!)} minutes left to modify
+                    </p>
+                  )}
+                  {orderStatus === "completed" && (
+                    <Button
+                      onClick={clearTable}
+                      className="w-full mt-2 bg-green-600 hover:bg-green-700"
+                      size="sm"
+                    >
+                      Clear Table & New Order
+                    </Button>
+                  )}
+                </CardContent>
+              </Card>
             )}
 
             {cart.length === 0 ? (
-              <p className="text-gray-500 text-center py-8">No items in cart</p>
-            ) : (
-              <div className="space-y-4">
-                {cart.map(item => (
-                  <div key={item.dishId} className="bg-white p-4 rounded-lg">
-                    <div className="flex justify-between items-start mb-2">
-                      <div className="flex-1">
-                        <h4 className="font-medium">{item.name}</h4>
-                        <p className="text-sm text-gray-600">Rs. {item.price} each</p>
-                      </div>
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        onClick={() => updateQuantity(item.dishId, 0)}
-                        className="text-red-500 hover:text-red-700 p-1"
-                      >
-                        ×
-                      </Button>
-                    </div>
-                    <div className="flex items-center justify-between">
-                      <div className="flex items-center gap-2">
-                        <Button
-                          size="sm"
-                          variant="outline"
-                          onClick={() => updateQuantity(item.dishId, item.quantity - 1)}
-                          className="w-8 h-8 p-0"
-                        >
-                          -
-                        </Button>
-                        <span className="w-8 text-center font-medium">{item.quantity}</span>
-                        <Button
-                          size="sm"
-                          variant="outline"
-                          onClick={() => updateQuantity(item.dishId, item.quantity + 1)}
-                          className="w-8 h-8 p-0"
-                        >
-                          +
-                        </Button>
-                      </div>
-                    </div>
-                  </div>
-                ))}
-
-                <div className="bg-white p-4 rounded-lg space-y-3">
-                  <div className="flex justify-between text-sm">
-                    <span>Subtotal:</span>
-                    <span>Rs. {getTotal().toFixed(2)}</span>
-                  </div>
-                  <div className="flex justify-between text-sm">
-                    <span>Tax:</span>
-                    <span>Rs. 0.00</span>
-                  </div>
-                  <Separator />
-                  <div className="flex justify-between font-bold text-lg">
-                    <span>Total:</span>
-                    <span>Rs. {getTotal().toFixed(2)}</span>
-                  </div>
-                </div>
-
-                {/* Customer Information */}
-                <div className="bg-white p-4 rounded-lg space-y-4">
-                  <h3 className="font-semibold">Customer Details</h3>
-                  <div>
-                    <Label htmlFor="name" className="text-sm">Name</Label>
-                    <Input
-                      id="name"
-                      value={customerName}
-                      onChange={(e) => setCustomerName(e.target.value)}
-                      placeholder="Your name"
-                      className="mt-1"
-                    />
-                  </div>
-                  <div>
-                    <Label htmlFor="phone" className="text-sm">Phone Number</Label>
-                    <Input
-                      id="phone"
-                      value={customerPhone}
-                      onChange={(e) => setCustomerPhone(e.target.value)}
-                      placeholder="Your phone number"
-                      className="mt-1"
-                    />
-                  </div>
-                </div>
-
-                {/* Order Notes */}
-                <div className="bg-white p-4 rounded-lg">
-                  <Label htmlFor="notes" className="text-sm font-semibold">Order Notes</Label>
-                  <Textarea
-                    id="notes"
-                    value={notes}
-                    onChange={(e) => setNotes(e.target.value)}
-                    placeholder="Special instructions..."
-                    rows={3}
-                    className="mt-2"
-                  />
-                </div>
-
-                <Button
-                  className="w-full bg-blue-500 hover:bg-blue-600 text-white py-3 text-lg font-semibold rounded-lg"
-                  onClick={submitOrder}
-                  disabled={submitting || cart.length === 0 || (!canModifyOrder && existingOrderId && orderStatus !== 'pending')}
-                >
-                  {submitting
-                    ? (existingOrderId ? "Updating Order..." : "Creating Order...")
-                    : (existingOrderId ? "Update Order" : "Create Order")
-                  }
+              <div className="text-center py-8">
+                <ShoppingCart className="w-16 h-16 mx-auto text-gray-300 mb-4" />
+                <p className="text-gray-500">Your cart is empty</p>
+                <Button onClick={() => setActiveTab("dishes")} className="mt-4">
+                  Browse Menu
                 </Button>
               </div>
+            ) : (
+              <>
+                <div className="space-y-3">
+                  {cart.map((item) => (
+                    <Card key={item.dishId}>
+                      <CardContent className="p-4">
+                        <div className="flex justify-between items-start mb-2">
+                          <h4 className="font-medium">{item.name}</h4>
+                          <span className="text-sm font-semibold">
+                            Rs.{" "}
+                            {(parseFloat(item.price) * item.quantity).toFixed(
+                              0,
+                            )}
+                          </span>
+                        </div>
+                        <div className="flex items-center justify-between">
+                          <div className="flex items-center gap-2">
+                            <Button
+                              size="sm"
+                              variant="outline"
+                              className="h-8 w-8 p-0"
+                              onClick={() =>
+                                updateQuantity(item.dishId, item.quantity - 1)
+                              }
+                              disabled={
+                                // Find if this item was in the original order
+                                (() => {
+                                  const existingItem = existingItems.find(
+                                    (ei) => ei.dishId === item.dishId,
+                                  );
+                                  return (
+                                    // Disable if would go below existing order quantity
+                                    (existingItem &&
+                                      item.quantity <= existingItem.quantity) ||
+                                    // Or if this is an existing item and modification time expired
+                                    (existingItem &&
+                                      !canModifyOrder &&
+                                      existingOrderId)
+                                  );
+                                })()
+                              }
+                            >
+                              <Minus className="h-3 w-3" />
+                            </Button>
+                            <span className="min-w-[2rem] text-center font-medium">
+                              {item.quantity}
+                            </span>
+                            <Button
+                              size="sm"
+                              variant="outline"
+                              className="h-8 w-8 p-0"
+                              onClick={() =>
+                                updateQuantity(item.dishId, item.quantity + 1)
+                              }
+                              // Always allow increasing quantity
+                            >
+                              <Plus className="h-3 w-3" />
+                            </Button>
+                          </div>
+                          <span className="text-sm text-gray-600">
+                            Rs. {parseFloat(item.price).toFixed(0)} each
+                          </span>
+                        </div>
+                      </CardContent>
+                    </Card>
+                  ))}
+                </div>
+
+                <Card>
+                  <CardContent className="p-4">
+                    <div className="space-y-4">
+                      <div>
+                        <Label htmlFor="customerName">Name *</Label>
+                        <Input
+                          id="customerName"
+                          value={customerName}
+                          onChange={(e) => setCustomerName(e.target.value)}
+                          placeholder="Your full name"
+                        />
+                      </div>
+                      <div>
+                        <Label htmlFor="customerPhone">Phone Number *</Label>
+                        <Input
+                          id="customerPhone"
+                          value={customerPhone}
+                          onChange={(e) => setCustomerPhone(e.target.value)}
+                          placeholder="Your phone number"
+                        />
+                      </div>
+                      <div>
+                        <Label htmlFor="notes">Special Instructions</Label>
+                        <Textarea
+                          id="notes"
+                          value={notes}
+                          onChange={(e) => setNotes(e.target.value)}
+                          placeholder="Any special requests or notes"
+                          rows={2}
+                        />
+                      </div>
+                    </div>
+                  </CardContent>
+                </Card>
+
+                <Card>
+                  <CardContent className="p-4">
+                    <div className="flex justify-between items-center text-lg font-semibold mb-4">
+                      <span>Total</span>
+                      <span>Rs. {getTotal().toFixed(0)}</span>
+                    </div>
+                    <Button
+                      className="w-full bg-blue-500 hover:bg-blue-600 text-white py-3 text-lg font-semibold"
+                      onClick={submitOrder}
+                      disabled={
+                        submitting ||
+                        cart.length === 0 ||
+                        (!canModifyOrder &&
+                          existingOrderId &&
+                          orderStatus !== "pending")
+                      }
+                    >
+                      {submitting
+                        ? existingOrderId
+                          ? "Updating Order..."
+                          : "Creating Order..."
+                        : existingOrderId
+                          ? "Update Order"
+                          : "Place Order"}
+                    </Button>
+                  </CardContent>
+                </Card>
+              </>
+            )}
+          </div>
+        );
+
+      case "more":
+        return (
+          <div className="space-y-6">
+            <Card>
+              <CardContent className="p-6">
+                <h3 className="text-lg font-semibold mb-4">
+                  Company Information
+                </h3>
+                <div className="space-y-4">
+                  {hotelSettings.hotelName && (
+                    <div>
+                      <h4 className="font-medium text-gray-700">Restaurant</h4>
+                      <p className="text-gray-600">{hotelSettings.hotelName}</p>
+                    </div>
+                  )}
+
+                  {hotelSettings.contactInfo && (
+                    <div>
+                      <h4 className="font-medium text-gray-700">About Us</h4>
+                      <p className="text-gray-600">
+                        {hotelSettings.contactInfo}
+                      </p>
+                    </div>
+                  )}
+
+                  {hotelSettings.address && (
+                    <div>
+                      <h4 className="font-medium text-gray-700">Address</h4>
+                      <p className="text-gray-600">{hotelSettings.address}</p>
+                    </div>
+                  )}
+
+                  {hotelSettings.phone && (
+                    <div>
+                      <h4 className="font-medium text-gray-700">Contact Us</h4>
+                      <div className="flex items-center gap-2">
+                        <Phone className="w-4 h-4" />
+                        <a
+                          href={`tel:${hotelSettings.phone}`}
+                          className="text-blue-600"
+                        >
+                          {hotelSettings.phone}
+                        </a>
+                      </div>
+                    </div>
+                  )}
+
+                  {hotelSettings.email && (
+                    <div className="flex items-center gap-2">
+                      <span>📧</span>
+                      <a
+                        href={`mailto:${hotelSettings.email}`}
+                        className="text-blue-600"
+                      >
+                        {hotelSettings.email}
+                      </a>
+                    </div>
+                  )}
+
+                  {hotelSettings.website && (
+                    <div className="flex items-center gap-2">
+                      <ExternalLink className="w-4 h-4" />
+                      <a
+                        href={hotelSettings.website}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="text-blue-600"
+                      >
+                        {hotelSettings.website}
+                      </a>
+                    </div>
+                  )}
+                </div>
+              </CardContent>
+            </Card>
+
+            {/* Follow Us Section - Only show if at least one social media URL exists */}
+            {(hotelSettings.facebookUrl ||
+              hotelSettings.instagramUrl ||
+              hotelSettings.tiktokUrl ||
+              hotelSettings.youtubeUrl) && (
+              <Card>
+                <CardContent className="p-6">
+                  <h3 className="text-lg font-semibold mb-4">Follow Us</h3>
+                  <div className="grid grid-cols-2 gap-4">
+                    {hotelSettings.facebookUrl &&
+                      hotelSettings.facebookUrl.trim() !== "" && (
+                        <a
+                          href={hotelSettings.facebookUrl}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="flex items-center gap-2 p-3 border rounded-lg hover:bg-gray-50"
+                        >
+                          <Facebook className="w-5 h-5 text-blue-600" />
+                          <span>Facebook</span>
+                        </a>
+                      )}
+
+                    {hotelSettings.instagramUrl &&
+                      hotelSettings.instagramUrl.trim() !== "" && (
+                        <a
+                          href={hotelSettings.instagramUrl}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="flex items-center gap-2 p-3 border rounded-lg hover:bg-gray-50"
+                        >
+                          <Instagram className="w-5 h-5 text-pink-600" />
+                          <span>Instagram</span>
+                        </a>
+                      )}
+
+                    {hotelSettings.tiktokUrl &&
+                      hotelSettings.tiktokUrl.trim() !== "" && (
+                        <a
+                          href={hotelSettings.tiktokUrl}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="flex items-center gap-2 p-3 border rounded-lg hover:bg-gray-50"
+                        >
+                          <span className="w-5 h-5 text-black font-bold">
+                            TT
+                          </span>
+                          <span>TikTok</span>
+                        </a>
+                      )}
+
+                    {hotelSettings.youtubeUrl &&
+                      hotelSettings.youtubeUrl.trim() !== "" && (
+                        <a
+                          href={hotelSettings.youtubeUrl}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="flex items-center gap-2 p-3 border rounded-lg hover:bg-gray-50"
+                        >
+                          <Youtube className="w-5 h-5 text-red-600" />
+                          <span>YouTube</span>
+                        </a>
+                      )}
+                  </div>
+                </CardContent>
+              </Card>
             )}
 
-            {/* More Section with Company Information */}
-            <div className="mt-6 pt-6 border-t border-gray-200">
-              <h3 className="font-semibold text-lg mb-4">More</h3>
-
-              {/* Company Information */}
-              {hotelSettings && Object.keys(hotelSettings).length > 0 && (
-                <div className="bg-white p-3 lg:p-4 rounded-lg mb-4">
-                  <h4 className="font-medium mb-2 text-sm lg:text-base">About Us</h4>
-                  {hotelSettings.hotelName && (
-                    <p className="text-sm text-gray-600 mb-1">{hotelSettings.hotelName}</p>
-                  )}
-                  {hotelSettings.address && (
-                    <p className="text-xs text-gray-500 mb-1">{hotelSettings.address}</p>
-                  )}
-                  {hotelSettings.phone && (
-                    <p className="text-xs text-gray-500 mb-1">Phone: {hotelSettings.phone}</p>
-                  )}
-                  {hotelSettings.email && (
-                    <p className="text-xs text-gray-500">Email: {hotelSettings.email}</p>
-                  )}
-                </div>
+            {hotelSettings.reviewsUrl &&
+              hotelSettings.reviewsUrl.trim() !== "" && (
+                <Card>
+                  <CardContent className="p-6">
+                    <h3 className="text-lg font-semibold mb-4">Review Us</h3>
+                    <a
+                      href={hotelSettings.reviewsUrl}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="flex items-center gap-2 p-3 border rounded-lg hover:bg-gray-50 w-full"
+                    >
+                      <Star className="w-5 h-5 text-yellow-500" />
+                      <span>Leave a Review</span>
+                    </a>
+                  </CardContent>
+                </Card>
               )}
 
-              {/* Follow Us Section with Social Media */}
-              {hotelSettings && ((hotelSettings.facebookUrl && hotelSettings.facebookUrl.trim() !== '') ||
-                (hotelSettings.instagramUrl && hotelSettings.instagramUrl.trim() !== '') ||
-                (hotelSettings.tiktokUrl && hotelSettings.tiktokUrl.trim() !== '') ||
-                (hotelSettings.youtubeUrl && hotelSettings.youtubeUrl.trim() !== '')) && (
-                <div className="bg-white p-3 lg:p-4 rounded-lg mb-4">
-                  <h4 className="font-medium mb-3 text-sm lg:text-base">Follow Us</h4>
-                  <div className="flex flex-wrap gap-2 lg:gap-3">
-                    {hotelSettings?.facebookUrl && hotelSettings.facebookUrl.trim() !== '' && (
-                      <a
-                        href={hotelSettings.facebookUrl}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className="flex items-center gap-1 lg:gap-2 text-blue-600 hover:text-blue-800 text-xs lg:text-sm"
-                      >
-                        <Facebook className="h-3 w-3 lg:h-4 lg:w-4" />
-                        <span className="hidden sm:inline">Facebook</span>
-                      </a>
-                    )}
-                    {hotelSettings?.instagramUrl && hotelSettings.instagramUrl.trim() !== '' && (
-                      <a
-                        href={hotelSettings.instagramUrl}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className="flex items-center gap-1 lg:gap-2 text-pink-600 hover:text-pink-800 text-xs lg:text-sm"
-                      >
-                        <Instagram className="h-3 w-3 lg:h-4 lg:w-4" />
-                        <span className="hidden sm:inline">Instagram</span>
-                      </a>
-                    )}
-                    {hotelSettings?.youtubeUrl && hotelSettings.youtubeUrl.trim() !== '' && (
-                      <a
-                        href={hotelSettings.youtubeUrl}
-                        target="_blank"
-                        rel="noopener noreferrer"```text
- className="flex items-center gap-1 lg:gap-2 text-red-600 hover:text-red-800 text-xs lg:text-sm"
-                      >
-                        <Youtube className="h-3 w-3 lg:h-4 lg:w-4" />
-                        <span className="hidden sm:inline">YouTube</span>
-                      </a>
-                    )}
-                    {hotelSettings?.tiktokUrl && hotelSettings.tiktokUrl.trim() !== '' && (
-                      <a
-                        href={hotelSettings.tiktokUrl}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className="flex items-center gap-1 lg:gap-2 text-gray-800 hover:text-black text-xs lg:text-sm"
-                      >
-                        <ExternalLink className="h-3 w-3 lg:h-4 lg:w-4" />
-                        <span className="hidden sm:inline">TikTok</span>
-                      </a>
-                    )}
-                  </div>
-                </div>
-              )}
-
-              {/* Copyright Section */}
-              <div className="bg-white p-3 lg:p-4 rounded-lg text-center mt-4">
+            {/* Copyright Section */}
+            <Card>
+              <CardContent className="p-6 text-center">
                 <p className="text-xs text-gray-500">
-                  Powered by{' '}
+                  Powered by{" "}
                   <a
                     href="https://maptechnepal.com"
                     target="_blank"
@@ -875,16 +1005,94 @@ export default function QROrderPage() {
                     <img
                       src="https://maptechnepal.com/_next/static/media/company__logo.388080d1.webp"
                       alt="MapTech Nepal"
-                      className="h-3 lg:h-4 w-auto inline"
+                      className="h-4 w-auto inline"
                     />
-                    <span className="text-xs">MapTech Nepal</span>
                   </a>
                 </p>
-              </div>
+              </CardContent>
+            </Card>
+          </div>
+        );
+    }
+  };
+
+  return (
+    <div className="min-h-screen bg-gray-50 flex flex-col">
+      {/* Header */}
+      <header className="bg-white shadow-sm border-b sticky top-0 z-50">
+        <div className="max-w-4xl mx-auto px-4 py-3">
+          <div className="flex items-center justify-between">
+            <div>
+              <h1 className="text-lg font-semibold">
+                {hotelSettings.hotelName || "Restaurant"}
+              </h1>
+              <p className="text-sm text-gray-600">
+                {locationInfo?.type === "table" ? "Table" : "Room"}{" "}
+                {locationInfo?.name}
+              </p>
             </div>
+            {cart.length > 0 && (
+              <div className="flex items-center gap-2">
+                <Users className="w-4 h-4 text-gray-500" />
+                <span className="text-sm font-medium">{cart.length} items</span>
+              </div>
+            )}
           </div>
         </div>
-      </div>
+      </header>
+
+      {/* Main Content */}
+      <main className="flex-1 max-w-4xl mx-auto w-full px-4 py-4">
+        {renderTabContent()}
+      </main>
+
+      {/* Bottom Navigation */}
+      <nav className="bg-white border-t sticky bottom-0 z-50">
+        <div className="max-w-4xl mx-auto px-4">
+          <div className="flex justify-around py-2">
+            <button
+              onClick={() => setActiveTab("dishes")}
+              className={`flex flex-col items-center gap-1 py-2 px-4 rounded-lg transition-colors ${
+                activeTab === "dishes"
+                  ? "text-blue-600 bg-blue-50"
+                  : "text-gray-600 hover:text-gray-800"
+              }`}
+            >
+              <UtensilsCrossed className="w-5 h-5" />
+              <span className="text-xs font-medium">Dishes</span>
+            </button>
+
+            <button
+              onClick={() => setActiveTab("cart")}
+              className={`flex flex-col items-center gap-1 py-2 px-4 rounded-lg transition-colors relative ${
+                activeTab === "cart"
+                  ? "text-blue-600 bg-blue-50"
+                  : "text-gray-600 hover:text-gray-800"
+              }`}
+            >
+              <ShoppingCart className="w-5 h-5" />
+              <span className="text-xs font-medium">Order</span>
+              {cart.length > 0 && (
+                <span className="absolute -top-1 -right-1 bg-red-500 text-white rounded-full w-5 h-5 flex items-center justify-center text-xs">
+                  {cart.length}
+                </span>
+              )}
+            </button>
+
+            <button
+              onClick={() => setActiveTab("more")}
+              className={`flex flex-col items-center gap-1 py-2 px-4 rounded-lg transition-colors ${
+                activeTab === "more"
+                  ? "text-blue-600 bg-blue-50"
+                  : "text-gray-600 hover:text-gray-800"
+              }`}
+            >
+              <MoreHorizontal className="w-5 h-5" />
+              <span className="text-xs font-medium">More</span>
+            </button>
+          </div>
+        </div>
+      </nav>
     </div>
   );
 }
