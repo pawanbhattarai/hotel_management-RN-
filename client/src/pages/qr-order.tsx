@@ -486,10 +486,10 @@ export default function QROrderPage() {
               <h1 className="text-2xl font-bold">Menu Items</h1>
             </div>
 
-            {/* Category Filter and Search */}
-            <div className="flex flex-col gap-3 mb-4">
-              {/* Search Bar - Mobile First */}
-              <div className="relative">
+            {/* Search Bar and Category Filter on Same Row */}
+            <div className="flex flex-col lg:flex-row gap-3 mb-4">
+              {/* Search Bar */}
+              <div className="relative flex-1">
                 <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 h-4 w-4" />
                 <Input
                   type="text"
@@ -501,7 +501,7 @@ export default function QROrderPage() {
               </div>
 
               {/* Category Filter */}
-              <div className="flex gap-2 overflow-x-auto pb-2">
+              <div className="flex gap-2 overflow-x-auto pb-2 lg:pb-0">
                 <Button
                   variant={selectedCategory === 'all' ? 'default' : 'outline'}
                   size="sm"
@@ -533,7 +533,16 @@ export default function QROrderPage() {
                 <div key={dish.id} className="bg-white border border-gray-200 rounded-lg p-3 hover:shadow-md transition-shadow">
                   <div className="flex flex-col h-full">
                     <h3 className="font-medium text-sm leading-tight mb-1">{dish.name}</h3>
-                    <p className="text-green-600 font-semibold text-lg mb-2">Rs. {dish.price}</p>
+                    
+                    <div className="flex items-center justify-between mb-2">
+                      <p className="text-green-600 font-semibold text-lg">Rs. {dish.price}</p>
+                      {dish.preparationTime && (
+                        <div className="flex items-center gap-1 text-blue-600 text-xs">
+                          <Clock className="h-3 w-3" />
+                          <span>{dish.preparationTime}min</span>
+                        </div>
+                      )}
+                    </div>
 
                     {dish.description && (
                       <p className="text-xs text-gray-600 mb-2 line-clamp-2">{dish.description}</p>
@@ -548,12 +557,6 @@ export default function QROrderPage() {
                       {dish.spiceLevel && (
                         <Badge variant="outline" className="text-red-600 text-xs px-1 py-0">
                           {dish.spiceLevel}
-                        </Badge>
-                      )}
-                      {dish.preparationTime && (
-                        <Badge variant="outline" className="text-blue-600 text-xs px-1 py-0 flex items-center gap-1">
-                          <Clock className="h-3 w-3" />
-                          {dish.preparationTime}min
                         </Badge>
                       )}
                     </div>
