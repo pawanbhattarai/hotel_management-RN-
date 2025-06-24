@@ -1,19 +1,25 @@
-import { useState, useEffect } from 'react';
-import { useLocation } from 'wouter';
-import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
-import { Textarea } from '@/components/ui/textarea';
-import { Card, CardContent } from '@/components/ui/card';
-import { Badge } from '@/components/ui/badge';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { useToast } from '@/hooks/use-toast';
-import { 
-  ShoppingCart, 
-  Plus, 
-  Minus, 
-  Home, 
-  UtensilsCrossed, 
+import { useState, useEffect } from "react";
+import { useLocation } from "wouter";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Textarea } from "@/components/ui/textarea";
+import { Card, CardContent } from "@/components/ui/card";
+import { Badge } from "@/components/ui/badge";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import { useToast } from "@/hooks/use-toast";
+import {
+  ShoppingCart,
+  Plus,
+  Minus,
+  Home,
+  UtensilsCrossed,
   MoreHorizontal,
   Facebook,
   Instagram,
@@ -23,11 +29,11 @@ import {
   Clock,
   Users,
   Search,
-  ExternalLink
-} from 'lucide-react';
+  ExternalLink,
+} from "lucide-react";
 
 interface LocationInfo {
-  type: 'table' | 'room';
+  type: "table" | "room";
   id: number;
   branchId: number;
   name: string;
@@ -83,41 +89,41 @@ interface HotelSettings {
   reviewsUrl?: string;
 }
 
-type TabType = 'dishes' | 'cart' | 'more';
+type TabType = "dishes" | "cart" | "more";
 
 export default function QROrder() {
   const [location] = useLocation();
   const { toast } = useToast();
   const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
-  const [activeTab, setActiveTab] = useState<TabType>('dishes');
-  
+  const [activeTab, setActiveTab] = useState<TabType>("dishes");
+
   // Order states
   const [existingOrderId, setExistingOrderId] = useState<string | null>(null);
-  const [orderNumber, setOrderNumber] = useState('');
-  const [orderStatus, setOrderStatus] = useState<string>('');
+  const [orderNumber, setOrderNumber] = useState("");
+  const [orderStatus, setOrderStatus] = useState<string>("");
   const [orderCreatedAt, setOrderCreatedAt] = useState<Date | null>(null);
   const [estimatedTime, setEstimatedTime] = useState<number>(0);
   const [canModifyOrder, setCanModifyOrder] = useState(true);
   const [existingItems, setExistingItems] = useState<OrderItem[]>([]);
-  
+
   // Menu data
   const [locationInfo, setLocationInfo] = useState<LocationInfo | null>(null);
   const [categories, setCategories] = useState<MenuCategory[]>([]);
   const [dishes, setDishes] = useState<MenuDish[]>([]);
   const [cart, setCart] = useState<OrderItem[]>([]);
-  const [customerName, setCustomerName] = useState('');
-  const [customerPhone, setCustomerPhone] = useState('');
-  const [notes, setNotes] = useState('');
-  
+  const [customerName, setCustomerName] = useState("");
+  const [customerPhone, setCustomerPhone] = useState("");
+  const [notes, setNotes] = useState("");
+
   // Settings
   const [hotelSettings, setHotelSettings] = useState<HotelSettings>({});
-  
-  // Filter state
-  const [selectedCategory, setSelectedCategory] = useState<string>('all');
-  const [searchQuery, setSearchQuery] = useState('');
 
-  const token = location.split('/').pop();
+  // Filter state
+  const [selectedCategory, setSelectedCategory] = useState<string>("all");
+  const [searchQuery, setSearchQuery] = useState("");
+
+  const token = location.split("/").pop();
 
   useEffect(() => {
     if (token) {
@@ -132,7 +138,8 @@ export default function QROrder() {
     if (existingOrderId && orderCreatedAt) {
       const interval = setInterval(() => {
         const now = new Date();
-        const diffInMinutes = (now.getTime() - orderCreatedAt.getTime()) / (1000 * 60);
+        const diffInMinutes =
+          (now.getTime() - orderCreatedAt.getTime()) / (1000 * 60);
         setCanModifyOrder(diffInMinutes <= 2);
       }, 1000);
       return () => clearInterval(interval);
@@ -145,13 +152,13 @@ export default function QROrder() {
 
   const fetchHotelSettings = async () => {
     try {
-      const response = await fetch('/api/hotel-settings');
+      const response = await fetch("/api/hotel-settings");
       if (response.ok) {
         const settings = await response.json();
         setHotelSettings(settings);
       }
     } catch (error) {
-      console.error('Failed to fetch hotel settings:', error);
+      console.error("Failed to fetch hotel settings:", error);
     }
   };
 
@@ -159,13 +166,13 @@ export default function QROrder() {
     try {
       const response = await fetch(`/api/order/info/${token}`);
       if (!response.ok) {
-        throw new Error('Invalid QR code');
+        throw new Error("Invalid QR code");
       }
       const data = await response.json();
       setLocationInfo(data.location);
       setCategories(data.menu.categories);
       setDishes(data.menu.dishes);
-      
+
       await checkExistingOrder();
     } catch (error) {
       toast({
@@ -187,19 +194,19 @@ export default function QROrder() {
         setOrderNumber(orderData.orderNumber);
         setOrderStatus(orderData.status);
         setOrderCreatedAt(new Date(orderData.createdAt));
-        setCustomerName(orderData.customerName || '');
-        setCustomerPhone(orderData.customerPhone || '');
-        setNotes(orderData.notes || '');
-        
+        setCustomerName(orderData.customerName || "");
+        setCustomerPhone(orderData.customerPhone || "");
+        setNotes(orderData.notes || "");
+
         if (orderData.items) {
           const existingItems = orderData.items.map((item: any) => {
-            const dish = dishes.find(d => d.id === item.dishId);
+            const dish = dishes.find((d) => d.id === item.dishId);
             return {
               dishId: item.dishId,
-              name: dish?.name || item.dish?.name || 'Unknown',
+              name: dish?.name || item.dish?.name || "Unknown",
               price: item.unitPrice,
               quantity: item.quantity,
-              specialInstructions: item.specialInstructions
+              specialInstructions: item.specialInstructions,
             };
           });
           setExistingItems(existingItems);
@@ -213,8 +220,8 @@ export default function QROrder() {
 
   const calculateEstimatedTime = () => {
     let totalTime = 0;
-    cart.forEach(item => {
-      const dish = dishes.find(d => d.id === item.dishId);
+    cart.forEach((item) => {
+      const dish = dishes.find((d) => d.id === item.dishId);
       if (dish && dish.preparationTime) {
         totalTime = Math.max(totalTime, dish.preparationTime * item.quantity);
       }
@@ -223,29 +230,34 @@ export default function QROrder() {
   };
 
   const addToCart = (dish: MenuDish) => {
-    const existingCartItem = cart.find(item => item.dishId === dish.id);
-    
+    const existingCartItem = cart.find((item) => item.dishId === dish.id);
+
     if (existingCartItem) {
       // Increase quantity of existing cart item (always allowed)
-      setCart(cart.map(item => 
-        item.dishId === dish.id 
-          ? { ...item, quantity: item.quantity + 1 }
-          : item
-      ));
+      setCart(
+        cart.map((item) =>
+          item.dishId === dish.id
+            ? { ...item, quantity: item.quantity + 1 }
+            : item,
+        ),
+      );
     } else {
       // Add new item to cart (always allowed, even after modification time)
-      setCart([...cart, {
-        dishId: dish.id,
-        name: dish.name,
-        price: dish.price,
-        quantity: 1
-      }]);
+      setCart([
+        ...cart,
+        {
+          dishId: dish.id,
+          name: dish.name,
+          price: dish.price,
+          quantity: 1,
+        },
+      ]);
     }
   };
 
   const updateQuantity = (dishId: number, quantity: number) => {
-    const existingItem = existingItems.find(item => item.dishId === dishId);
-    
+    const existingItem = existingItems.find((item) => item.dishId === dishId);
+
     // If this is an existing item from the original order and modification time has expired
     if (existingItem && !canModifyOrder && existingOrderId) {
       toast({
@@ -268,20 +280,25 @@ export default function QROrder() {
 
     // For new items (not in existing order), allow removal completely
     if (quantity === 0 && !existingItem) {
-      setCart(cart.filter(item => item.dishId !== dishId));
+      setCart(cart.filter((item) => item.dishId !== dishId));
     } else {
       // Set minimum quantity to existing order quantity if item was previously ordered
       const minQuantity = existingItem?.quantity || 0;
-      setCart(cart.map(item => 
-        item.dishId === dishId 
-          ? { ...item, quantity: Math.max(quantity, minQuantity) }
-          : item
-      ));
+      setCart(
+        cart.map((item) =>
+          item.dishId === dishId
+            ? { ...item, quantity: Math.max(quantity, minQuantity) }
+            : item,
+        ),
+      );
     }
   };
 
   const getTotal = () => {
-    return cart.reduce((total, item) => total + (parseFloat(item.price) * item.quantity), 0);
+    return cart.reduce(
+      (total, item) => total + parseFloat(item.price) * item.quantity,
+      0,
+    );
   };
 
   const submitOrder = async () => {
@@ -305,43 +322,43 @@ export default function QROrder() {
 
     setSubmitting(true);
     try {
-      const endpoint = existingOrderId 
-        ? `/api/order/update/${existingOrderId}` 
+      const endpoint = existingOrderId
+        ? `/api/order/update/${existingOrderId}`
         : `/api/order/submit/${token}`;
-      
+
       const response = await fetch(endpoint, {
-        method: existingOrderId ? 'PUT' : 'POST',
+        method: existingOrderId ? "PUT" : "POST",
         headers: {
-          'Content-Type': 'application/json',
+          "Content-Type": "application/json",
         },
         body: JSON.stringify({
-          items: cart.map(item => ({
+          items: cart.map((item) => ({
             dishId: item.dishId,
             quantity: item.quantity,
-            specialInstructions: item.specialInstructions
+            specialInstructions: item.specialInstructions,
           })),
           customerName,
           customerPhone,
-          notes
-        })
+          notes,
+        }),
       });
 
       if (!response.ok) {
-        throw new Error('Failed to submit order');
+        throw new Error("Failed to submit order");
       }
 
       const data = await response.json();
       setOrderNumber(data.orderNumber);
       setExistingOrderId(data.orderId);
       setOrderCreatedAt(new Date());
-      
+
       toast({
         title: existingOrderId ? "Order Updated!" : "Order Placed!",
-        description: `Your order ${data.orderNumber} has been ${existingOrderId ? 'updated' : 'placed'} successfully`,
+        description: `Your order ${data.orderNumber} has been ${existingOrderId ? "updated" : "placed"} successfully`,
       });
-      
+
       await checkExistingOrder();
-      setActiveTab('cart');
+      setActiveTab("cart");
     } catch (error) {
       toast({
         title: "Error",
@@ -356,20 +373,20 @@ export default function QROrder() {
   const clearTable = async () => {
     try {
       const response = await fetch(`/api/order/clear/${token}`, {
-        method: 'POST'
+        method: "POST",
       });
-      
+
       if (response.ok) {
         setExistingOrderId(null);
-        setOrderNumber('');
-        setOrderStatus('');
+        setOrderNumber("");
+        setOrderStatus("");
         setOrderCreatedAt(null);
         setCart([]);
         setExistingItems([]);
-        setCustomerName('');
-        setCustomerPhone('');
-        setNotes('');
-        
+        setCustomerName("");
+        setCustomerPhone("");
+        setNotes("");
+
         toast({
           title: "Table Cleared",
           description: "Table is now available for new orders",
@@ -386,41 +403,55 @@ export default function QROrder() {
 
   const getStatusColor = (status: string) => {
     switch (status) {
-      case 'pending': return 'bg-yellow-500';
-      case 'confirmed': return 'bg-blue-500';
-      case 'preparing': return 'bg-orange-500';
-      case 'ready': return 'bg-green-500';
-      case 'served': return 'bg-gray-500';
-      case 'completed': return 'bg-green-600';
-      default: return 'bg-gray-400';
+      case "pending":
+        return "bg-yellow-500";
+      case "confirmed":
+        return "bg-blue-500";
+      case "preparing":
+        return "bg-orange-500";
+      case "ready":
+        return "bg-green-500";
+      case "served":
+        return "bg-gray-500";
+      case "completed":
+        return "bg-green-600";
+      default:
+        return "bg-gray-400";
     }
   };
 
   const getTimeRemaining = () => {
     if (!orderCreatedAt) return null;
     const now = new Date();
-    const diffInMinutes = (now.getTime() - orderCreatedAt.getTime()) / (1000 * 60);
+    const diffInMinutes =
+      (now.getTime() - orderCreatedAt.getTime()) / (1000 * 60);
     const remaining = Math.max(0, 2 - diffInMinutes);
     return remaining;
   };
 
   const getFilteredDishes = () => {
     let filtered = dishes;
-    
+
     // Filter by category first
-    if (selectedCategory !== 'all') {
-      filtered = filtered.filter(dish => dish.categoryId === parseInt(selectedCategory));
-    }
-    
-    // Then filter by search query
-    if (searchQuery.trim()) {
-      filtered = filtered.filter(dish => 
-        dish.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        dish.description?.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        categories.find(cat => cat.id === dish.categoryId)?.name.toLowerCase().includes(searchQuery.toLowerCase())
+    if (selectedCategory !== "all") {
+      filtered = filtered.filter(
+        (dish) => dish.categoryId === parseInt(selectedCategory),
       );
     }
-    
+
+    // Then filter by search query
+    if (searchQuery.trim()) {
+      filtered = filtered.filter(
+        (dish) =>
+          dish.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+          dish.description?.toLowerCase().includes(searchQuery.toLowerCase()) ||
+          categories
+            .find((cat) => cat.id === dish.categoryId)
+            ?.name.toLowerCase()
+            .includes(searchQuery.toLowerCase()),
+      );
+    }
+
     return filtered;
   };
 
@@ -437,7 +468,7 @@ export default function QROrder() {
 
   const renderTabContent = () => {
     switch (activeTab) {
-      case 'dishes':
+      case "dishes":
         return (
           <div className="space-y-4">
             {/* Category Filter and Search */}
@@ -455,7 +486,7 @@ export default function QROrder() {
                   />
                 </div>
               </div>
-              
+
               {/* Category Dropdown */}
               <div className="mb-3">
                 <Select
@@ -467,8 +498,11 @@ export default function QROrder() {
                   </SelectTrigger>
                   <SelectContent>
                     <SelectItem value="all">All Items</SelectItem>
-                    {categories.map(category => (
-                      <SelectItem key={category.id} value={category.id.toString()}>
+                    {categories.map((category) => (
+                      <SelectItem
+                        key={category.id}
+                        value={category.id.toString()}
+                      >
                         {category.name}
                       </SelectItem>
                     ))}
@@ -479,46 +513,69 @@ export default function QROrder() {
 
             {/* Dishes Grid */}
             <div className="grid grid-cols-2 md:grid-cols-2 lg:grid-cols-3 gap-3 md:gap-4">
-              {getFilteredDishes().map(dish => {
-                const cartItem = cart.find(item => item.dishId === dish.id);
-                const existingItem = existingItems.find(item => item.dishId === dish.id);
-                
+              {getFilteredDishes().map((dish) => {
+                const cartItem = cart.find((item) => item.dishId === dish.id);
+                const existingItem = existingItems.find(
+                  (item) => item.dishId === dish.id,
+                );
+
                 return (
-                  <Card key={dish.id} className="hover:shadow-md transition-shadow">
+                  <Card
+                    key={dish.id}
+                    className="hover:shadow-md transition-shadow"
+                  >
                     <CardContent className="p-2 md:p-4">
                       <div className="flex flex-col mb-2">
-                        <h4 className="font-medium text-xs md:text-sm leading-tight mb-1">{dish.name}</h4>
+                        <h4 className="font-medium text-xs md:text-sm leading-tight mb-1">
+                          {dish.name}
+                        </h4>
                         <span className="text-xs md:text-sm font-semibold text-green-600">
                           Rs. {parseFloat(dish.price).toFixed(0)}
                         </span>
                       </div>
-                      
+
                       {dish.description && (
                         <p className="text-xs text-gray-600 mb-2 line-clamp-2 hidden md:block">
                           {dish.description}
                         </p>
                       )}
-                      
+
                       <div className="flex flex-wrap items-center gap-1 mb-2 md:mb-3">
                         {dish.category && (
-                          <Badge variant="secondary" className="text-xs px-1 py-0 hidden md:inline-flex">
+                          <Badge
+                            variant="secondary"
+                            className="text-xs px-1 py-0 hidden md:inline-flex"
+                          >
                             {dish.category.name}
                           </Badge>
                         )}
                         {dish.isVegetarian && (
-                          <Badge variant="outline" className="text-xs px-1 py-0">Veg</Badge>
+                          <Badge
+                            variant="outline"
+                            className="text-xs px-1 py-0"
+                          >
+                            Veg
+                          </Badge>
                         )}
                         {dish.isVegan && (
-                          <Badge variant="outline" className="text-xs px-1 py-0">Vegan</Badge>
+                          <Badge
+                            variant="outline"
+                            className="text-xs px-1 py-0"
+                          >
+                            Vegan
+                          </Badge>
                         )}
                         {dish.preparationTime && (
-                          <Badge variant="outline" className="text-xs px-1 py-0 flex items-center gap-1">
+                          <Badge
+                            variant="outline"
+                            className="text-xs px-1 py-0 flex items-center gap-1"
+                          >
                             <Clock className="w-3 h-3" />
                             {dish.preparationTime}min
                           </Badge>
                         )}
                       </div>
-                      
+
                       <div className="flex items-center justify-center">
                         {cartItem ? (
                           <div className="flex items-center gap-1 md:gap-2">
@@ -526,12 +583,17 @@ export default function QROrder() {
                               size="sm"
                               variant="outline"
                               className="h-6 w-6 md:h-8 md:w-8 p-0"
-                              onClick={() => updateQuantity(dish.id, cartItem.quantity - 1)}
+                              onClick={() =>
+                                updateQuantity(dish.id, cartItem.quantity - 1)
+                              }
                               disabled={
                                 // Disable if would go below existing order quantity
-                                (existingItem && cartItem.quantity <= existingItem.quantity) ||
+                                (existingItem &&
+                                  cartItem.quantity <= existingItem.quantity) ||
                                 // Or if this is an existing item and modification time expired
-                                (existingItem && !canModifyOrder && existingOrderId)
+                                (existingItem &&
+                                  !canModifyOrder &&
+                                  existingOrderId)
                               }
                             >
                               <Minus className="h-2 w-2 md:h-3 md:w-3" />
@@ -543,7 +605,9 @@ export default function QROrder() {
                               size="sm"
                               variant="outline"
                               className="h-6 w-6 md:h-8 md:w-8 p-0"
-                              onClick={() => updateQuantity(dish.id, cartItem.quantity + 1)}
+                              onClick={() =>
+                                updateQuantity(dish.id, cartItem.quantity + 1)
+                              }
                               // Always allow increasing quantity
                             >
                               <Plus className="h-2 w-2 md:h-3 md:w-3" />
@@ -566,16 +630,18 @@ export default function QROrder() {
                 );
               })}
             </div>
-            
+
             {getFilteredDishes().length === 0 && (
               <div className="text-center py-8">
-                <p className="text-gray-500">No dishes found in this category</p>
+                <p className="text-gray-500">
+                  No dishes found in this category
+                </p>
               </div>
             )}
           </div>
         );
-        
-      case 'cart':
+
+      case "cart":
         return (
           <div className="space-y-4">
             {existingOrderId && (
@@ -583,7 +649,9 @@ export default function QROrder() {
                 <CardContent className="p-4">
                   <div className="flex items-center justify-between mb-2">
                     <h3 className="font-semibold">Order #{orderNumber}</h3>
-                    <span className={`px-2 py-1 rounded text-white text-xs ${getStatusColor(orderStatus)}`}>
+                    <span
+                      className={`px-2 py-1 rounded text-white text-xs ${getStatusColor(orderStatus)}`}
+                    >
                       {orderStatus.toUpperCase()}
                     </span>
                   </div>
@@ -603,7 +671,7 @@ export default function QROrder() {
                       {Math.ceil(getTimeRemaining()!)} minutes left to modify
                     </p>
                   )}
-                  {orderStatus === 'completed' && (
+                  {orderStatus === "completed" && (
                     <Button
                       onClick={clearTable}
                       className="w-full mt-2 bg-green-600 hover:bg-green-700"
@@ -620,20 +688,23 @@ export default function QROrder() {
               <div className="text-center py-8">
                 <ShoppingCart className="w-16 h-16 mx-auto text-gray-300 mb-4" />
                 <p className="text-gray-500">Your cart is empty</p>
-                <Button onClick={() => setActiveTab('dishes')} className="mt-4">
+                <Button onClick={() => setActiveTab("dishes")} className="mt-4">
                   Browse Menu
                 </Button>
               </div>
             ) : (
               <>
                 <div className="space-y-3">
-                  {cart.map(item => (
+                  {cart.map((item) => (
                     <Card key={item.dishId}>
                       <CardContent className="p-4">
                         <div className="flex justify-between items-start mb-2">
                           <h4 className="font-medium">{item.name}</h4>
                           <span className="text-sm font-semibold">
-                            Rs. {(parseFloat(item.price) * item.quantity).toFixed(0)}
+                            Rs.{" "}
+                            {(parseFloat(item.price) * item.quantity).toFixed(
+                              0,
+                            )}
                           </span>
                         </div>
                         <div className="flex items-center justify-between">
@@ -642,16 +713,23 @@ export default function QROrder() {
                               size="sm"
                               variant="outline"
                               className="h-8 w-8 p-0"
-                              onClick={() => updateQuantity(item.dishId, item.quantity - 1)}
+                              onClick={() =>
+                                updateQuantity(item.dishId, item.quantity - 1)
+                              }
                               disabled={
                                 // Find if this item was in the original order
                                 (() => {
-                                  const existingItem = existingItems.find(ei => ei.dishId === item.dishId);
+                                  const existingItem = existingItems.find(
+                                    (ei) => ei.dishId === item.dishId,
+                                  );
                                   return (
                                     // Disable if would go below existing order quantity
-                                    (existingItem && item.quantity <= existingItem.quantity) ||
+                                    (existingItem &&
+                                      item.quantity <= existingItem.quantity) ||
                                     // Or if this is an existing item and modification time expired
-                                    (existingItem && !canModifyOrder && existingOrderId)
+                                    (existingItem &&
+                                      !canModifyOrder &&
+                                      existingOrderId)
                                   );
                                 })()
                               }
@@ -665,7 +743,9 @@ export default function QROrder() {
                               size="sm"
                               variant="outline"
                               className="h-8 w-8 p-0"
-                              onClick={() => updateQuantity(item.dishId, item.quantity + 1)}
+                              onClick={() =>
+                                updateQuantity(item.dishId, item.quantity + 1)
+                              }
                               // Always allow increasing quantity
                             >
                               <Plus className="h-3 w-3" />
@@ -721,15 +801,24 @@ export default function QROrder() {
                       <span>Total</span>
                       <span>Rs. {getTotal().toFixed(0)}</span>
                     </div>
-                    <Button 
+                    <Button
                       className="w-full bg-blue-500 hover:bg-blue-600 text-white py-3 text-lg font-semibold"
                       onClick={submitOrder}
-                      disabled={submitting || cart.length === 0 || (!canModifyOrder && existingOrderId && orderStatus !== 'pending')}
-                    >
-                      {submitting 
-                        ? (existingOrderId ? "Updating Order..." : "Creating Order...")
-                        : (existingOrderId ? "Update Order" : "Place Order")
+                      disabled={
+                        submitting ||
+                        cart.length === 0 ||
+                        (!canModifyOrder &&
+                          existingOrderId &&
+                          orderStatus !== "pending")
                       }
+                    >
+                      {submitting
+                        ? existingOrderId
+                          ? "Updating Order..."
+                          : "Creating Order..."
+                        : existingOrderId
+                          ? "Update Order"
+                          : "Place Order"}
                     </Button>
                   </CardContent>
                 </Card>
@@ -737,13 +826,15 @@ export default function QROrder() {
             )}
           </div>
         );
-        
-      case 'more':
+
+      case "more":
         return (
           <div className="space-y-6">
             <Card>
               <CardContent className="p-6">
-                <h3 className="text-lg font-semibold mb-4">Company Information</h3>
+                <h3 className="text-lg font-semibold mb-4">
+                  Company Information
+                </h3>
                 <div className="space-y-4">
                   {hotelSettings.hotelName && (
                     <div>
@@ -751,46 +842,59 @@ export default function QROrder() {
                       <p className="text-gray-600">{hotelSettings.hotelName}</p>
                     </div>
                   )}
-                  
+
                   {hotelSettings.contactInfo && (
                     <div>
                       <h4 className="font-medium text-gray-700">About Us</h4>
-                      <p className="text-gray-600">{hotelSettings.contactInfo}</p>
+                      <p className="text-gray-600">
+                        {hotelSettings.contactInfo}
+                      </p>
                     </div>
                   )}
-                  
+
                   {hotelSettings.address && (
                     <div>
                       <h4 className="font-medium text-gray-700">Address</h4>
                       <p className="text-gray-600">{hotelSettings.address}</p>
                     </div>
                   )}
-                  
+
                   {hotelSettings.phone && (
                     <div>
                       <h4 className="font-medium text-gray-700">Contact Us</h4>
                       <div className="flex items-center gap-2">
                         <Phone className="w-4 h-4" />
-                        <a href={`tel:${hotelSettings.phone}`} className="text-blue-600">
+                        <a
+                          href={`tel:${hotelSettings.phone}`}
+                          className="text-blue-600"
+                        >
                           {hotelSettings.phone}
                         </a>
                       </div>
                     </div>
                   )}
-                  
+
                   {hotelSettings.email && (
                     <div className="flex items-center gap-2">
                       <span>📧</span>
-                      <a href={`mailto:${hotelSettings.email}`} className="text-blue-600">
+                      <a
+                        href={`mailto:${hotelSettings.email}`}
+                        className="text-blue-600"
+                      >
                         {hotelSettings.email}
                       </a>
                     </div>
                   )}
-                  
+
                   {hotelSettings.website && (
                     <div className="flex items-center gap-2">
                       <ExternalLink className="w-4 h-4" />
-                      <a href={hotelSettings.website} target="_blank" rel="noopener noreferrer" className="text-blue-600">
+                      <a
+                        href={hotelSettings.website}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="text-blue-600"
+                      >
                         {hotelSettings.website}
                       </a>
                     </div>
@@ -800,97 +904,106 @@ export default function QROrder() {
             </Card>
 
             {/* Follow Us Section - Only show if at least one social media URL exists */}
-            {(hotelSettings.facebookUrl || hotelSettings.instagramUrl || hotelSettings.tiktokUrl || hotelSettings.youtubeUrl) && (
+            {(hotelSettings.facebookUrl ||
+              hotelSettings.instagramUrl ||
+              hotelSettings.tiktokUrl ||
+              hotelSettings.youtubeUrl) && (
               <Card>
                 <CardContent className="p-6">
                   <h3 className="text-lg font-semibold mb-4">Follow Us</h3>
                   <div className="grid grid-cols-2 gap-4">
-                    {hotelSettings.facebookUrl && hotelSettings.facebookUrl.trim() !== '' && (
-                      <a 
-                        href={hotelSettings.facebookUrl} 
-                        target="_blank" 
-                        rel="noopener noreferrer"
-                        className="flex items-center gap-2 p-3 border rounded-lg hover:bg-gray-50"
-                      >
-                        <Facebook className="w-5 h-5 text-blue-600" />
-                        <span>Facebook</span>
-                      </a>
-                    )}
-                    
-                    {hotelSettings.instagramUrl && hotelSettings.instagramUrl.trim() !== '' && (
-                      <a 
-                        href={hotelSettings.instagramUrl} 
-                        target="_blank" 
-                        rel="noopener noreferrer"
-                        className="flex items-center gap-2 p-3 border rounded-lg hover:bg-gray-50"
-                      >
-                        <Instagram className="w-5 h-5 text-pink-600" />
-                        <span>Instagram</span>
-                      </a>
-                    )}
-                    
-                    {hotelSettings.tiktokUrl && hotelSettings.tiktokUrl.trim() !== '' && (
-                      <a 
-                        href={hotelSettings.tiktokUrl} 
-                        target="_blank" 
-                        rel="noopener noreferrer"
-                        className="flex items-center gap-2 p-3 border rounded-lg hover:bg-gray-50"
-                      >
-                        <span className="w-5 h-5 text-black font-bold">TT</span>
-                        <span>TikTok</span>
-                      </a>
-                    )}
-                    
-                    {hotelSettings.youtubeUrl && hotelSettings.youtubeUrl.trim() !== '' && (
-                      <a 
-                        href={hotelSettings.youtubeUrl} 
-                        target="_blank" 
-                        rel="noopener noreferrer"
-                        className="flex items-center gap-2 p-3 border rounded-lg hover:bg-gray-50"
-                      >
-                        <Youtube className="w-5 h-5 text-red-600" />
-                        <span>YouTube</span>
-                      </a>
-                    )}
+                    {hotelSettings.facebookUrl &&
+                      hotelSettings.facebookUrl.trim() !== "" && (
+                        <a
+                          href={hotelSettings.facebookUrl}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="flex items-center gap-2 p-3 border rounded-lg hover:bg-gray-50"
+                        >
+                          <Facebook className="w-5 h-5 text-blue-600" />
+                          <span>Facebook</span>
+                        </a>
+                      )}
+
+                    {hotelSettings.instagramUrl &&
+                      hotelSettings.instagramUrl.trim() !== "" && (
+                        <a
+                          href={hotelSettings.instagramUrl}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="flex items-center gap-2 p-3 border rounded-lg hover:bg-gray-50"
+                        >
+                          <Instagram className="w-5 h-5 text-pink-600" />
+                          <span>Instagram</span>
+                        </a>
+                      )}
+
+                    {hotelSettings.tiktokUrl &&
+                      hotelSettings.tiktokUrl.trim() !== "" && (
+                        <a
+                          href={hotelSettings.tiktokUrl}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="flex items-center gap-2 p-3 border rounded-lg hover:bg-gray-50"
+                        >
+                          <span className="w-5 h-5 text-black font-bold">
+                            TT
+                          </span>
+                          <span>TikTok</span>
+                        </a>
+                      )}
+
+                    {hotelSettings.youtubeUrl &&
+                      hotelSettings.youtubeUrl.trim() !== "" && (
+                        <a
+                          href={hotelSettings.youtubeUrl}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="flex items-center gap-2 p-3 border rounded-lg hover:bg-gray-50"
+                        >
+                          <Youtube className="w-5 h-5 text-red-600" />
+                          <span>YouTube</span>
+                        </a>
+                      )}
                   </div>
                 </CardContent>
               </Card>
             )}
 
-            {hotelSettings.reviewsUrl && hotelSettings.reviewsUrl.trim() !== '' && (
-              <Card>
-                <CardContent className="p-6">
-                  <h3 className="text-lg font-semibold mb-4">Review Us</h3>
-                  <a 
-                    href={hotelSettings.reviewsUrl} 
-                    target="_blank" 
-                    rel="noopener noreferrer"
-                    className="flex items-center gap-2 p-3 border rounded-lg hover:bg-gray-50 w-full"
-                  >
-                    <Star className="w-5 h-5 text-yellow-500" />
-                    <span>Leave a Review</span>
-                  </a>
-                </CardContent>
-              </Card>
-            )}
+            {hotelSettings.reviewsUrl &&
+              hotelSettings.reviewsUrl.trim() !== "" && (
+                <Card>
+                  <CardContent className="p-6">
+                    <h3 className="text-lg font-semibold mb-4">Review Us</h3>
+                    <a
+                      href={hotelSettings.reviewsUrl}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="flex items-center gap-2 p-3 border rounded-lg hover:bg-gray-50 w-full"
+                    >
+                      <Star className="w-5 h-5 text-yellow-500" />
+                      <span>Leave a Review</span>
+                    </a>
+                  </CardContent>
+                </Card>
+              )}
 
             {/* Copyright Section */}
             <Card>
               <CardContent className="p-6 text-center">
                 <p className="text-xs text-gray-500">
-                  Powered by{' '}
-                  <a 
-                    href="https://maptechnepal.com" 
-                    target="_blank" 
+                  Powered by{" "}
+                  <a
+                    href="https://maptechnepal.com"
+                    target="_blank"
                     rel="noopener noreferrer"
                     className="inline-flex items-center gap-1 text-blue-600 hover:text-blue-800"
                   >
-                    <img 
-                      src="https://maptechnepal.com/_next/static/media/company__logo.388080d1.webp" 
-                      alt="MapTech Nepal" 
+                    <img
+                      src="https://maptechnepal.com/_next/static/media/company__logo.388080d1.webp"
+                      alt="MapTech Nepal"
                       className="h-4 w-auto inline"
                     />
-                    MapTech Nepal
                   </a>
                 </p>
               </CardContent>
@@ -908,10 +1021,11 @@ export default function QROrder() {
           <div className="flex items-center justify-between">
             <div>
               <h1 className="text-lg font-semibold">
-                {hotelSettings.hotelName || 'Restaurant'}
+                {hotelSettings.hotelName || "Restaurant"}
               </h1>
               <p className="text-sm text-gray-600">
-                {locationInfo?.type === 'table' ? 'Table' : 'Room'} {locationInfo?.name}
+                {locationInfo?.type === "table" ? "Table" : "Room"}{" "}
+                {locationInfo?.name}
               </p>
             </div>
             {cart.length > 0 && (
@@ -934,23 +1048,23 @@ export default function QROrder() {
         <div className="max-w-4xl mx-auto px-4">
           <div className="flex justify-around py-2">
             <button
-              onClick={() => setActiveTab('dishes')}
+              onClick={() => setActiveTab("dishes")}
               className={`flex flex-col items-center gap-1 py-2 px-4 rounded-lg transition-colors ${
-                activeTab === 'dishes' 
-                  ? 'text-blue-600 bg-blue-50' 
-                  : 'text-gray-600 hover:text-gray-800'
+                activeTab === "dishes"
+                  ? "text-blue-600 bg-blue-50"
+                  : "text-gray-600 hover:text-gray-800"
               }`}
             >
               <UtensilsCrossed className="w-5 h-5" />
               <span className="text-xs font-medium">Dishes</span>
             </button>
-            
+
             <button
-              onClick={() => setActiveTab('cart')}
+              onClick={() => setActiveTab("cart")}
               className={`flex flex-col items-center gap-1 py-2 px-4 rounded-lg transition-colors relative ${
-                activeTab === 'cart' 
-                  ? 'text-blue-600 bg-blue-50' 
-                  : 'text-gray-600 hover:text-gray-800'
+                activeTab === "cart"
+                  ? "text-blue-600 bg-blue-50"
+                  : "text-gray-600 hover:text-gray-800"
               }`}
             >
               <ShoppingCart className="w-5 h-5" />
@@ -961,13 +1075,13 @@ export default function QROrder() {
                 </span>
               )}
             </button>
-            
+
             <button
-              onClick={() => setActiveTab('more')}
+              onClick={() => setActiveTab("more")}
               className={`flex flex-col items-center gap-1 py-2 px-4 rounded-lg transition-colors ${
-                activeTab === 'more' 
-                  ? 'text-blue-600 bg-blue-50' 
-                  : 'text-gray-600 hover:text-gray-800'
+                activeTab === "more"
+                  ? "text-blue-600 bg-blue-50"
+                  : "text-gray-600 hover:text-gray-800"
               }`}
             >
               <MoreHorizontal className="w-5 h-5" />
