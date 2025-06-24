@@ -220,23 +220,28 @@ export default function QROrder() {
   };
 
   const addToCart = (dish: MenuDish) => {
-    if (!canModifyOrder && existingOrderId) {
+    const existingCartItem = cart.find(item => item.dishId === dish.id);
+    const existingOrderItem = existingItems.find(item => item.dishId === dish.id);
+    
+    // If this item was in the original order and modification time expired, prevent modification
+    if (existingOrderItem && !canModifyOrder && existingOrderId) {
       toast({
-        title: "Cannot Modify Order",
-        description: "Order can only be modified within 2 minutes of placement",
+        title: "Cannot Modify",
+        description: "Cannot modify existing order items after 2 minutes",
         variant: "destructive",
       });
       return;
     }
 
-    const existingItem = cart.find(item => item.dishId === dish.id);
-    if (existingItem) {
+    if (existingCartItem) {
+      // Increase quantity of existing cart item
       setCart(cart.map(item => 
         item.dishId === dish.id 
           ? { ...item, quantity: item.quantity + 1 }
           : item
       ));
     } else {
+      // Add new item to cart (always allowed, even after modification time)
       setCart([...cart, {
         dishId: dish.id,
         name: dish.name,
@@ -246,19 +251,20 @@ export default function QROrder() {
     }
   };
 
-  const updateQuantity = (dishId: number, quantity: number, allowDecrease: boolean = false) => {
-    if (!canModifyOrder && existingOrderId) {
+  const updateQuantity = (dishId: number, quantity: number) => {
+    const existingItem = existingItems.find(item => item.dishId === dishId);
+    
+    // If this is an existing item from the original order and modification time has expired
+    if (existingItem && !canModifyOrder && existingOrderId) {
       toast({
-        title: "Cannot Modify Order",
-        description: "Order can only be modified within 2 minutes of placement",
+        title: "Cannot Modify",
+        description: "Cannot modify existing order items after 2 minutes",
         variant: "destructive",
       });
       return;
     }
 
-    const existingItem = existingItems.find(item => item.dishId === dishId);
-    
-    // Prevent decreasing quantity below existing order quantity
+    // Prevent decreasing quantity below existing order quantity for any existing item
     if (existingItem && quantity < existingItem.quantity) {
       toast({
         title: "Cannot Decrease",
@@ -268,9 +274,11 @@ export default function QROrder() {
       return;
     }
 
+    // For new items (not in existing order), allow removal completely
     if (quantity === 0 && !existingItem) {
       setCart(cart.filter(item => item.dishId !== dishId));
     } else {
+      // Set minimum quantity to existing order quantity if item was previously ordered
       const minQuantity = existingItem?.quantity || 0;
       setCart(cart.map(item => 
         item.dishId === dishId 
@@ -523,7 +531,12 @@ export default function QROrder() {
                               variant="outline"
                               className="h-8 w-8 p-0"
                               onClick={() => updateQuantity(dish.id, cartItem.quantity - 1)}
-                              disabled={existingItem && cartItem.quantity <= existingItem.quantity}
+                              disabled={
+                                // Disable if would go below existing order quantity
+                                (existingItem && cartItem.quantity <= existingItem.quantity) ||
+                                // Or if this is an existing item and modification time expired
+                                (existingItem && !canModifyOrder && existingOrderId)
+                              }
                             >
                               <Minus className="h-3 w-3" />
                             </Button>
@@ -534,7 +547,11 @@ export default function QROrder() {
                               size="sm"
                               variant="outline"
                               className="h-8 w-8 p-0"
-                              onClick={() => updateQuantity(dish.id, cartItem.quantity + 1, true)}
+                              onClick={() => updateQuantity(dish.id, cartItem.quantity + 1)}
+                              disabled={
+                                // Only disable if this is an existing item and modification time expired
+                                existingItem && !canModifyOrder && existingOrderId
+                              }
                             >
                               <Plus className="h-3 w-3" />
                             </Button>
@@ -544,6 +561,7 @@ export default function QROrder() {
                             size="sm"
                             onClick={() => addToCart(dish)}
                             className="h-8 px-3 text-xs"
+                            // New items can always be added, even after modification time
                           >
                             <Plus className="h-3 w-3 mr-1" />
                             Add
@@ -632,8 +650,18 @@ export default function QROrder() {
                               variant="outline"
                               className="h-8 w-8 p-0"
                               onClick={() => updateQuantity(item.dishId, item.quantity - 1)}
-                              disabled={existingItems.find(ei => ei.dishId === item.dishId) && 
-                                       item.quantity <= (existingItems.find(ei => ei.dishId === item.dishId)?.quantity || 0)}
+                              disabled={
+                                // Find if this item was in the original order
+                                (() => {
+                                  const existingItem = existingItems.find(ei => ei.dishId === item.dishId);
+                                  return (
+                                    // Disable if would go below existing order quantity
+                                    (existingItem && item.quantity <= existingItem.quantity) ||
+                                    // Or if this is an existing item and modification time expired
+                                    (existingItem && !canModifyOrder && existingOrderId)
+                                  );
+                                })()
+                              }
                             >
                               <Minus className="h-3 w-3" />
                             </Button>
@@ -644,7 +672,14 @@ export default function QROrder() {
                               size="sm"
                               variant="outline"
                               className="h-8 w-8 p-0"
-                              onClick={() => updateQuantity(item.dishId, item.quantity + 1, true)}
+                              onClick={() => updateQuantity(item.dishId, item.quantity + 1)}
+                              disabled={
+                                // Only disable if this is an existing item and modification time expired
+                                (() => {
+                                  const existingItem = existingItems.find(ei => ei.dishId === item.dishId);
+                                  return existingItem && !canModifyOrder && existingOrderId;
+                                })()
+                              }
                             >
                               <Plus className="h-3 w-3" />
                             </Button>
