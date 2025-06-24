@@ -34,7 +34,7 @@ import Suppliers from "@/pages/suppliers";
 import StockConsumption from "@/pages/stock-consumption";
 import DishIngredients from "@/pages/dish-ingredients";
 import { lazy, Suspense } from "react";
-import QROrderNew from "@/pages/qr-order-new";
+import QROrderPage from "@/pages/qr-order";
 
 const RestaurantAnalytics = lazy(() => import("./pages/restaurant-analytics"));
 
@@ -51,7 +51,7 @@ function Router() {
             <div className="animate-spin rounded-full h-32 w-32 border-b-2 border-primary"></div>
           </div>
         }>
-          <QROrderNew />
+          <QROrderPage />
         </Suspense>
       </Route>
       {isLoading || !isAuthenticated ? (
