@@ -463,7 +463,7 @@ export default function QROrder() {
                       <div className="flex justify-between items-start mb-2">
                         <h4 className="font-medium text-sm leading-tight">{dish.name}</h4>
                         <span className="text-sm font-semibold text-green-600">
-                          ₹{parseFloat(dish.price).toFixed(0)}
+                          Rs. {parseFloat(dish.price).toFixed(0)}
                         </span>
                       </div>
                       
@@ -600,7 +600,7 @@ export default function QROrder() {
                         <div className="flex justify-between items-start mb-2">
                           <h4 className="font-medium">{item.name}</h4>
                           <span className="text-sm font-semibold">
-                            ₹{(parseFloat(item.price) * item.quantity).toFixed(0)}
+                            Rs. {(parseFloat(item.price) * item.quantity).toFixed(0)}
                           </span>
                         </div>
                         <div className="flex items-center justify-between">
@@ -628,7 +628,7 @@ export default function QROrder() {
                             </Button>
                           </div>
                           <span className="text-sm text-gray-600">
-                            ₹{parseFloat(item.price).toFixed(0)} each
+                            Rs. {parseFloat(item.price).toFixed(0)} each
                           </span>
                         </div>
                       </CardContent>
@@ -675,7 +675,7 @@ export default function QROrder() {
                   <CardContent className="p-4">
                     <div className="flex justify-between items-center text-lg font-semibold mb-4">
                       <span>Total</span>
-                      <span>₹{getTotal().toFixed(0)}</span>
+                      <span>Rs. {getTotal().toFixed(0)}</span>
                     </div>
                     <Button 
                       className="w-full bg-blue-500 hover:bg-blue-600 text-white py-3 text-lg font-semibold"
