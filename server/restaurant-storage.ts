@@ -727,31 +727,61 @@ export class RestaurantStorage {
   }
 
   async updateKotStatus(kotId: number, status: string, userId?: string): Promise<KotTicket> {
-    const updateData: any = { 
-      status,
-      updatedAt: sql`NOW()`,
-    };
+    return await db.transaction(async (tx) => {
+      const updateData: any = { 
+        status,
+        updatedAt: sql`NOW()`,
+      };
 
-    // Set timestamps based on status
-    switch (status) {
-      case 'preparing':
-        updateData.startedAt = sql`NOW()`;
-        break;
-      case 'ready':
-        updateData.completedAt = sql`NOW()`;
-        break;
-      case 'served':
-        updateData.servedAt = sql`NOW()`;
-        break;
-    }
+      // Set timestamps based on status
+      switch (status) {
+        case 'preparing':
+          updateData.startedAt = sql`NOW()`;
+          break;
+        case 'ready':
+          updateData.completedAt = sql`NOW()`;
+          break;
+        case 'served':
+          updateData.servedAt = sql`NOW()`;
+          break;
+      }
 
-    const [result] = await db
-      .update(kotTickets)
-      .set(updateData)
-      .where(eq(kotTickets.id, kotId))
-      .returning();
+      const [result] = await tx
+        .update(kotTickets)
+        .set(updateData)
+        .where(eq(kotTickets.id, kotId))
+        .returning();
 
-    return result;
+      // Update corresponding order status based on KOT status
+      if (result) {
+        let orderStatus: string | null = null;
+        
+        switch (status) {
+          case 'preparing':
+            orderStatus = 'preparing';
+            break;
+          case 'ready':
+            orderStatus = 'ready';
+            break;
+          case 'served':
+            orderStatus = 'served';
+            break;
+        }
+
+        if (orderStatus) {
+          await tx
+            .update(restaurantOrders)
+            .set({ 
+              status: orderStatus as any,
+              updatedAt: sql`NOW()`,
+              ...(orderStatus === 'served' && { servedAt: sql`NOW()` })
+            })
+            .where(eq(restaurantOrders.id, result.orderId));
+        }
+      }
+
+      return result;
+    });
   }
 
   async markKotPrinted(kotId: number): Promise<KotTicket> {
