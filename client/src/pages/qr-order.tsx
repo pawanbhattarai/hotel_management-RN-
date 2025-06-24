@@ -454,44 +454,42 @@ export default function QROrderPage() {
     );
   }
 
-
-
   return (
     <div className="min-h-screen bg-gray-50">
+      {/* Mobile Header */}
+      <div className="lg:hidden bg-white shadow-sm border-b sticky top-0 z-50">
+        <div className="px-4 py-3">
+          <div className="flex items-center justify-between">
+            <div>
+              <h1 className="text-lg font-semibold">
+                {hotelSettings.hotelName || 'Restaurant'}
+              </h1>
+              <p className="text-sm text-gray-600">
+                {locationInfo?.type === 'table' ? 'Table' : 'Room'} {locationInfo?.name}
+              </p>
+            </div>
+            {cart.length > 0 && (
+              <div className="flex items-center gap-2">
+                <ShoppingCart className="w-4 h-4 text-gray-500" />
+                <span className="text-sm font-medium">{cart.length} items</span>
+              </div>
+            )}
+          </div>
+        </div>
+      </div>
+
       <div className="max-w-6xl mx-auto grid lg:grid-cols-3 gap-0 min-h-screen">
         {/* Menu Section - Left Side */}
-        <div className="lg:col-span-2 bg-white p-6 overflow-y-auto">
+        <div className="lg:col-span-2 bg-white p-3 lg:p-6 overflow-y-auto">
           <div className="mb-6">
-            <div className="flex items-center justify-between mb-4">
+            <div className="hidden lg:flex items-center justify-between mb-4">
               <h1 className="text-2xl font-bold">Menu Items</h1>
             </div>
 
             {/* Category Filter and Search */}
-            <div className="flex flex-col sm:flex-row gap-3 mb-4">
-              <div className="flex gap-2 overflow-x-auto pb-2 flex-1">
-              <Button
-                variant={selectedCategory === 'all' ? 'default' : 'outline'}
-                size="sm"
-                onClick={() => setSelectedCategory('all')}
-                className="whitespace-nowrap"
-              >
-                All Items
-              </Button>
-              {categories.map(category => (
-                <Button
-                  key={category.id}
-                  variant={selectedCategory === category.id.toString() ? 'default' : 'outline'}
-                  size="sm"
-                  onClick={() => setSelectedCategory(category.id.toString())}
-                  className="whitespace-nowrap"
-                >
-                  {category.name}
-                </Button>
-              ))}
-              </div>
-
-              {/* Search Bar */}
-              <div className="relative w-full sm:w-64">
+            <div className="flex flex-col gap-3 mb-4">
+              {/* Search Bar - Mobile First */}
+              <div className="relative">
                 <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 h-4 w-4" />
                 <Input
                   type="text"
@@ -501,56 +499,126 @@ export default function QROrderPage() {
                   className="pl-10"
                 />
               </div>
+
+              {/* Category Filter */}
+              <div className="flex gap-2 overflow-x-auto pb-2">
+                <Button
+                  variant={selectedCategory === 'all' ? 'default' : 'outline'}
+                  size="sm"
+                  onClick={() => setSelectedCategory('all')}
+                  className="whitespace-nowrap flex-shrink-0"
+                >
+                  All Items
+                </Button>
+                {categories.map(category => (
+                  <Button
+                    key={category.id}
+                    variant={selectedCategory === category.id.toString() ? 'default' : 'outline'}
+                    size="sm"
+                    onClick={() => setSelectedCategory(category.id.toString())}
+                    className="whitespace-nowrap flex-shrink-0"
+                  >
+                    {category.name}
+                  </Button>
+                ))}
+              </div>
             </div>
           </div>
 
-          <div className="space-y-3">
-            {getFilteredDishes().map(dish => (
-              <div key={dish.id} className="flex items-center justify-between p-4 border border-gray-200 rounded-lg hover:bg-gray-50 transition-colors">
-                <div className="flex-1">
-                  <h3 className="font-medium text-lg">{dish.name}</h3>
-                  <p className="text-green-600 font-semibold text-lg mt-1">Rs. {dish.price}</p>
-                  {dish.description && (
-                    <p className="text-sm text-gray-600 mt-1">{dish.description}</p>
-                  )}
-                  <div className="flex items-center gap-2 mt-2">
-                    <Badge variant="secondary" className="text-xs">
-                      {categories.find(cat => cat.id === dish.categoryId)?.name}
-                    </Badge>
-                    {dish.isVegetarian && <Badge variant="outline" className="text-green-600 text-xs">Veg</Badge>}
-                    {dish.isVegan && <Badge variant="outline" className="text-green-700 text-xs">Vegan</Badge>}
-                    {dish.spiceLevel && (
-                      <Badge variant="outline" className="text-red-600 text-xs">
-                        {dish.spiceLevel}
-                      </Badge>
+          {/* Mobile Grid Layout */}
+          <div className="lg:space-y-3">
+            {/* Mobile Card Grid */}
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:hidden gap-3 mb-4">
+              {getFilteredDishes().map(dish => (
+                <div key={dish.id} className="bg-white border border-gray-200 rounded-lg p-3 hover:shadow-md transition-shadow">
+                  <div className="flex flex-col h-full">
+                    <h3 className="font-medium text-sm leading-tight mb-1">{dish.name}</h3>
+                    <p className="text-green-600 font-semibold text-lg mb-2">Rs. {dish.price}</p>
+
+                    {dish.description && (
+                      <p className="text-xs text-gray-600 mb-2 line-clamp-2">{dish.description}</p>
                     )}
-                    {dish.preparationTime && (
-                      <Badge variant="outline" className="text-blue-600 text-xs flex items-center gap-1">
-                        <Clock className="h-3 w-3" />
-                        {dish.preparationTime}min
+
+                    <div className="flex flex-wrap items-center gap-1 mb-3 flex-grow">
+                      <Badge variant="secondary" className="text-xs px-1 py-0">
+                        {categories.find(cat => cat.id === dish.categoryId)?.name}
                       </Badge>
-                    )}
+                      {dish.isVegetarian && <Badge variant="outline" className="text-green-600 text-xs px-1 py-0">Veg</Badge>}
+                      {dish.isVegan && <Badge variant="outline" className="text-green-700 text-xs px-1 py-0">Vegan</Badge>}
+                      {dish.spiceLevel && (
+                        <Badge variant="outline" className="text-red-600 text-xs px-1 py-0">
+                          {dish.spiceLevel}
+                        </Badge>
+                      )}
+                      {dish.preparationTime && (
+                        <Badge variant="outline" className="text-blue-600 text-xs px-1 py-0 flex items-center gap-1">
+                          <Clock className="h-3 w-3" />
+                          {dish.preparationTime}min
+                        </Badge>
+                      )}
+                    </div>
+
+                    <Button 
+                      onClick={() => addToCart(dish)} 
+                      className="bg-blue-500 hover:bg-blue-600 text-white rounded-lg px-3 py-2 text-sm w-full mt-auto"
+                    >
+                      <Plus className="h-3 w-3 mr-1" />
+                      Add to Cart
+                    </Button>
                   </div>
                 </div>
-                <Button 
-                  onClick={() => addToCart(dish)} 
-                  className="bg-blue-500 hover:bg-blue-600 text-white rounded-lg px-4 py-2"
-                >
-                  <Plus className="h-4 w-4" />
-                </Button>
-              </div>
-            ))}
+              ))}
+            </div>
+
+            {/* Desktop List Layout */}
+            <div className="hidden lg:block space-y-3">
+              {getFilteredDishes().map(dish => (
+                <div key={dish.id} className="flex items-center justify-between p-4 border border-gray-200 rounded-lg hover:bg-gray-50 transition-colors">
+                  <div className="flex-1">
+                    <h3 className="font-medium text-lg">{dish.name}</h3>
+                    <p className="text-green-600 font-semibold text-lg mt-1">Rs. {dish.price}</p>
+                    {dish.description && (
+                      <p className="text-sm text-gray-600 mt-1">{dish.description}</p>
+                    )}
+                    <div className="flex items-center gap-2 mt-2">
+                      <Badge variant="secondary" className="text-xs">
+                        {categories.find(cat => cat.id === dish.categoryId)?.name}
+                      </Badge>
+                      {dish.isVegetarian && <Badge variant="outline" className="text-green-600 text-xs">Veg</Badge>}
+                      {dish.isVegan && <Badge variant="outline" className="text-green-700 text-xs">Vegan</Badge>}
+                      {dish.spiceLevel && (
+                        <Badge variant="outline" className="text-red-600 text-xs">
+                          {dish.spiceLevel}
+                        </Badge>
+                      )}
+                      {dish.preparationTime && (
+                        <Badge variant="outline" className="text-blue-600 text-xs flex items-center gap-1">
+                          <Clock className="h-3 w-3" />
+                          {dish.preparationTime}min
+                        </Badge>
+                      )}
+                    </div>
+                  </div>
+                  <Button 
+                    onClick={() => addToCart(dish)} 
+                    className="bg-blue-500 hover:bg-blue-600 text-white rounded-lg px-4 py-2"
+                  >
+                    <Plus className="h-4 w-4" />
+                  </Button>
+                </div>
+              ))}
+            </div>
 
             {getFilteredDishes().length === 0 && (
               <div className="text-center py-8">
-                <p className="text-gray-500">No dishes found in this category</p>
+                <p className="text-gray-500">No dishes found</p>
               </div>
             )}
           </div>
         </div>
 
-        {/* Order Summary - Right Side */}
-        <div className="bg-gray-100 p-6 border-l">
+        {/* Order Summary - Right Side / Mobile Bottom Sheet */}
+        <div className="bg-gray-100 p-3 lg:p-6 border-l lg:block">
           <div className="sticky top-6">
             <div className="flex items-center gap-2 mb-6">
               <ShoppingCart className="h-5 w-5" />
