@@ -466,20 +466,9 @@ export default function QROrderPage() {
               <h1 className="text-2xl font-bold">Menu Items</h1>
             </div>
             
-            {/* Search Bar */}
-            <div className="relative mb-4">
-              <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 h-4 w-4" />
-              <Input
-                type="text"
-                placeholder="Search dishes..."
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-                className="pl-10"
-              />
-            </div>
-            
-            {/* Category Filter */}
-            <div className="flex gap-2 overflow-x-auto pb-2 mb-4">
+            {/* Category Filter and Search */}
+            <div className="flex flex-col sm:flex-row gap-3 mb-4">
+              <div className="flex gap-2 overflow-x-auto pb-2 flex-1">
               <Button
                 variant={selectedCategory === 'all' ? 'default' : 'outline'}
                 size="sm"
@@ -499,6 +488,19 @@ export default function QROrderPage() {
                   {category.name}
                 </Button>
               ))}
+              </div>
+              
+              {/* Search Bar */}
+              <div className="relative w-full sm:w-64">
+                <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 h-4 w-4" />
+                <Input
+                  type="text"
+                  placeholder="Search dishes..."
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                  className="pl-10"
+                />
+              </div>
             </div>
           </div>
 
@@ -731,11 +733,11 @@ export default function QROrderPage() {
               )}
 
               {/* Follow Us Section with Social Media */}
-              {(hotelSettings.facebookUrl || hotelSettings.instagramUrl || hotelSettings.tiktokUrl || hotelSettings.youtubeUrl) && (
+              {(hotelSettings?.facebookUrl || hotelSettings?.instagramUrl || hotelSettings?.tiktokUrl || hotelSettings?.youtubeUrl) && (
                 <div className="bg-white p-4 rounded-lg mb-4">
                   <h4 className="font-medium mb-3">Follow Us</h4>
                   <div className="flex flex-wrap gap-3">
-                    {hotelSettings.facebookUrl && (
+                    {hotelSettings?.facebookUrl && hotelSettings.facebookUrl.trim() && (
                       <a 
                         href={hotelSettings.facebookUrl} 
                         target="_blank" 
@@ -746,7 +748,7 @@ export default function QROrderPage() {
                         Facebook
                       </a>
                     )}
-                    {hotelSettings.instagramUrl && (
+                    {hotelSettings?.instagramUrl && hotelSettings.instagramUrl.trim() && (
                       <a 
                         href={hotelSettings.instagramUrl} 
                         target="_blank" 
@@ -757,7 +759,7 @@ export default function QROrderPage() {
                         Instagram
                       </a>
                     )}
-                    {hotelSettings.youtubeUrl && (
+                    {hotelSettings?.youtubeUrl && hotelSettings.youtubeUrl.trim() && (
                       <a 
                         href={hotelSettings.youtubeUrl} 
                         target="_blank" 
@@ -768,7 +770,7 @@ export default function QROrderPage() {
                         YouTube
                       </a>
                     )}
-                    {hotelSettings.tiktokUrl && (
+                    {hotelSettings?.tiktokUrl && hotelSettings.tiktokUrl.trim() && (
                       <a 
                         href={hotelSettings.tiktokUrl} 
                         target="_blank" 

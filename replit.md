@@ -31,6 +31,11 @@ A comprehensive hotel and restaurant management system with real-time order sync
 - ✅ Fixed guest order submission endpoint with immediate sync broadcasts
 - ✅ Reduced polling intervals to 2 seconds for instant order updates
 - ✅ Tested complete QR order flow with real-time synchronization
+- ✅ Enhanced guest order page with preparation time display and search functionality
+- ✅ Moved social media fields to General settings tab
+- ✅ Added company information and social media integration to guest orders
+- ✅ Only display filled social media links with proper icons
+- ✅ Implemented search functionality alongside category filters
 
 ## Database Status
 - PostgreSQL database provisioned and connected
