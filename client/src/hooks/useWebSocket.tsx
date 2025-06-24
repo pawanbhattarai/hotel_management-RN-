@@ -49,8 +49,7 @@ export function useWebSocket(options?: UseWebSocketOptions) {
           if (wsRef.current && wsRef.current.readyState === WebSocket.OPEN) {
             wsRef.current.send(JSON.stringify({
               type: 'auth',
-              userId: user.id,
-              branchId: user.branchId
+              timestamp: new Date().toISOString()
             }));
           }
         } catch (error) {
@@ -99,11 +98,9 @@ export function useWebSocket(options?: UseWebSocketOptions) {
       wsRef.current.onclose = (event) => {
         clearTimeout(connectionTimeout);
         // Only attempt reconnect for unexpected closures
-        if (event.code !== 1000 && event.code !== 1001 && user) {
+        if (event.code !== 1000 && event.code !== 1001) {
           reconnectTimeoutRef.current = setTimeout(() => {
-            if (user) {
-              connect();
-            }
+            connect();
           }, 3000);
         }
       };
@@ -115,17 +112,13 @@ export function useWebSocket(options?: UseWebSocketOptions) {
     } catch (error) {
       // Retry connection after delay for setup errors
       reconnectTimeoutRef.current = setTimeout(() => {
-        if (user) {
-          connect();
-        }
+        connect();
       }, 5000);
     }
   };
 
   useEffect(() => {
-    if (user) {
-      connect();
-    }
+    connect();
 
     return () => {
       if (reconnectTimeoutRef.current) {
@@ -135,7 +128,7 @@ export function useWebSocket(options?: UseWebSocketOptions) {
         wsRef.current.close();
       }
     };
-  }, [user]);
+  }, []);
 
   return {
     isConnected: wsRef.current?.readyState === WebSocket.OPEN
