@@ -61,6 +61,7 @@ export default function QROrderPage() {
   const [customerName, setCustomerName] = useState('');
   const [customerPhone, setCustomerPhone] = useState('');
   const [notes, setNotes] = useState('');
+  const [selectedCategory, setSelectedCategory] = useState<string>('all');
 
   // Extract token from URL path like /order/token or /qr-order/token
   const token = location.startsWith('/order/') 
@@ -369,6 +370,13 @@ export default function QROrderPage() {
     return remaining;
   };
 
+  const getFilteredDishes = () => {
+    if (selectedCategory === 'all') {
+      return dishes;
+    }
+    return dishes.filter(dish => dish.categoryId === parseInt(selectedCategory));
+  };
+
   if (loading) {
     return (
       <div className="min-h-screen flex items-center justify-center">
@@ -412,10 +420,7 @@ export default function QROrderPage() {
     );
   }
 
-  const groupedDishes = categories.map(category => ({
-    ...category,
-    dishes: dishes.filter(dish => dish.categoryId === category.id)
-  }));
+  
 
   return (
     <div className="min-h-screen bg-gray-50">
@@ -423,55 +428,70 @@ export default function QROrderPage() {
         {/* Menu Section - Left Side */}
         <div className="lg:col-span-2 bg-white p-6 overflow-y-auto">
           <div className="mb-6">
-            <div className="flex items-center justify-between">
+            <div className="flex items-center justify-between mb-4">
               <h1 className="text-2xl font-bold">Menu Items</h1>
-              <Select value="all" onValueChange={() => {}}>
-                <SelectTrigger className="w-48">
-                  <SelectValue placeholder="All Categories" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="all">All Categories</SelectItem>
-                  {categories.map(category => (
-                    <SelectItem key={category.id} value={category.id.toString()}>
-                      {category.name}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
+            </div>
+            
+            {/* Category Filter */}
+            <div className="flex gap-2 overflow-x-auto pb-2 mb-4">
+              <Button
+                variant={selectedCategory === 'all' ? 'default' : 'outline'}
+                size="sm"
+                onClick={() => setSelectedCategory('all')}
+                className="whitespace-nowrap"
+              >
+                All Items
+              </Button>
+              {categories.map(category => (
+                <Button
+                  key={category.id}
+                  variant={selectedCategory === category.id.toString() ? 'default' : 'outline'}
+                  size="sm"
+                  onClick={() => setSelectedCategory(category.id.toString())}
+                  className="whitespace-nowrap"
+                >
+                  {category.name}
+                </Button>
+              ))}
             </div>
           </div>
 
-          <div className="space-y-6">
-            {groupedDishes.map(category => (
-              <div key={category.id}>
-                {category.dishes.map(dish => (
-                  <div key={dish.id} className="flex items-center justify-between p-4 border-b border-gray-100 hover:bg-gray-50 transition-colors">
-                    <div className="flex-1">
-                      <h3 className="font-medium text-lg">{dish.name}</h3>
-                      <p className="text-green-600 font-semibold text-lg mt-1">Rs. {dish.price}</p>
-                      {dish.description && (
-                        <p className="text-sm text-gray-600 mt-1">{dish.description}</p>
-                      )}
-                      <div className="flex items-center gap-2 mt-2">
-                        {dish.isVegetarian && <Badge variant="outline" className="text-green-600 text-xs">Veg</Badge>}
-                        {dish.isVegan && <Badge variant="outline" className="text-green-700 text-xs">Vegan</Badge>}
-                        {dish.spiceLevel && (
-                          <Badge variant="outline" className="text-red-600 text-xs">
-                            {dish.spiceLevel}
-                          </Badge>
-                        )}
-                      </div>
-                    </div>
-                    <Button 
-                      onClick={() => addToCart(dish)} 
-                      className="bg-blue-500 hover:bg-blue-600 text-white rounded-lg px-4 py-2"
-                    >
-                      <Plus className="h-4 w-4" />
-                    </Button>
+          <div className="space-y-3">
+            {getFilteredDishes().map(dish => (
+              <div key={dish.id} className="flex items-center justify-between p-4 border border-gray-200 rounded-lg hover:bg-gray-50 transition-colors">
+                <div className="flex-1">
+                  <h3 className="font-medium text-lg">{dish.name}</h3>
+                  <p className="text-green-600 font-semibold text-lg mt-1">Rs. {dish.price}</p>
+                  {dish.description && (
+                    <p className="text-sm text-gray-600 mt-1">{dish.description}</p>
+                  )}
+                  <div className="flex items-center gap-2 mt-2">
+                    <Badge variant="secondary" className="text-xs">
+                      {dish.category?.name}
+                    </Badge>
+                    {dish.isVegetarian && <Badge variant="outline" className="text-green-600 text-xs">Veg</Badge>}
+                    {dish.isVegan && <Badge variant="outline" className="text-green-700 text-xs">Vegan</Badge>}
+                    {dish.spiceLevel && (
+                      <Badge variant="outline" className="text-red-600 text-xs">
+                        {dish.spiceLevel}
+                      </Badge>
+                    )}
                   </div>
-                ))}
+                </div>
+                <Button 
+                  onClick={() => addToCart(dish)} 
+                  className="bg-blue-500 hover:bg-blue-600 text-white rounded-lg px-4 py-2"
+                >
+                  <Plus className="h-4 w-4" />
+                </Button>
               </div>
             ))}
+            
+            {getFilteredDishes().length === 0 && (
+              <div className="text-center py-8">
+                <p className="text-gray-500">No dishes found in this category</p>
+              </div>
+            )}
           </div>
         </div>
 

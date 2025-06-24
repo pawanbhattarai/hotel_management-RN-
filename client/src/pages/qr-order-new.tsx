@@ -109,6 +109,9 @@ export default function QROrder() {
   
   // Settings
   const [hotelSettings, setHotelSettings] = useState<HotelSettings>({});
+  
+  // Filter state
+  const [selectedCategory, setSelectedCategory] = useState<string>('all');
 
   const token = location.split('/').pop();
 
@@ -400,6 +403,13 @@ export default function QROrder() {
     return remaining;
   };
 
+  const getFilteredDishes = () => {
+    if (selectedCategory === 'all') {
+      return dishes;
+    }
+    return dishes.filter(dish => dish.categoryId === parseInt(selectedCategory));
+  };
+
   if (loading) {
     return (
       <div className="min-h-screen flex items-center justify-center">
@@ -415,95 +425,120 @@ export default function QROrder() {
     switch (activeTab) {
       case 'dishes':
         return (
-          <div className="space-y-6">
-            {categories.map(category => {
-              const categoryDishes = dishes.filter(dish => dish.categoryId === category.id);
-              if (categoryDishes.length === 0) return null;
-              
-              return (
-                <div key={category.id}>
-                  <h3 className="text-lg font-semibold mb-4 sticky top-0 bg-white py-2 z-10">
+          <div className="space-y-4">
+            {/* Category Filter */}
+            <div className="sticky top-0 bg-gray-50 py-3 z-10">
+              <div className="flex gap-2 overflow-x-auto pb-2">
+                <Button
+                  variant={selectedCategory === 'all' ? 'default' : 'outline'}
+                  size="sm"
+                  onClick={() => setSelectedCategory('all')}
+                  className="whitespace-nowrap"
+                >
+                  All Items
+                </Button>
+                {categories.map(category => (
+                  <Button
+                    key={category.id}
+                    variant={selectedCategory === category.id.toString() ? 'default' : 'outline'}
+                    size="sm"
+                    onClick={() => setSelectedCategory(category.id.toString())}
+                    className="whitespace-nowrap"
+                  >
                     {category.name}
-                  </h3>
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    {categoryDishes.map(dish => {
-                      const cartItem = cart.find(item => item.dishId === dish.id);
-                      const existingItem = existingItems.find(item => item.dishId === dish.id);
+                  </Button>
+                ))}
+              </div>
+            </div>
+
+            {/* Dishes Grid */}
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              {getFilteredDishes().map(dish => {
+                const cartItem = cart.find(item => item.dishId === dish.id);
+                const existingItem = existingItems.find(item => item.dishId === dish.id);
+                
+                return (
+                  <Card key={dish.id} className="hover:shadow-md transition-shadow">
+                    <CardContent className="p-4">
+                      <div className="flex justify-between items-start mb-2">
+                        <h4 className="font-medium text-sm leading-tight">{dish.name}</h4>
+                        <span className="text-sm font-semibold text-green-600">
+                          ₹{parseFloat(dish.price).toFixed(0)}
+                        </span>
+                      </div>
                       
-                      return (
-                        <Card key={dish.id} className="hover:shadow-md transition-shadow">
-                          <CardContent className="p-4">
-                            <div className="flex justify-between items-start mb-2">
-                              <h4 className="font-medium text-sm leading-tight">{dish.name}</h4>
-                              <span className="text-sm font-semibold text-green-600">
-                                ₹{parseFloat(dish.price).toFixed(0)}
-                              </span>
-                            </div>
-                            
-                            {dish.description && (
-                              <p className="text-xs text-gray-600 mb-2 line-clamp-2">
-                                {dish.description}
-                              </p>
-                            )}
-                            
-                            <div className="flex items-center gap-2 mb-3">
-                              {dish.isVegetarian && (
-                                <Badge variant="outline" className="text-xs px-1 py-0">Veg</Badge>
-                              )}
-                              {dish.isVegan && (
-                                <Badge variant="outline" className="text-xs px-1 py-0">Vegan</Badge>
-                              )}
-                              {dish.preparationTime && (
-                                <Badge variant="secondary" className="text-xs px-1 py-0">
-                                  <Clock className="w-3 h-3 mr-1" />
-                                  {dish.preparationTime}min
-                                </Badge>
-                              )}
-                            </div>
-                            
-                            <div className="flex items-center justify-between">
-                              {cartItem ? (
-                                <div className="flex items-center gap-2">
-                                  <Button
-                                    size="sm"
-                                    variant="outline"
-                                    className="h-8 w-8 p-0"
-                                    onClick={() => updateQuantity(dish.id, cartItem.quantity - 1)}
-                                    disabled={existingItem && cartItem.quantity <= existingItem.quantity}
-                                  >
-                                    <Minus className="h-3 w-3" />
-                                  </Button>
-                                  <span className="min-w-[2rem] text-center font-medium">
-                                    {cartItem.quantity}
-                                  </span>
-                                  <Button
-                                    size="sm"
-                                    variant="outline"
-                                    className="h-8 w-8 p-0"
-                                    onClick={() => updateQuantity(dish.id, cartItem.quantity + 1, true)}
-                                  >
-                                    <Plus className="h-3 w-3" />
-                                  </Button>
-                                </div>
-                              ) : (
-                                <Button
-                                  size="sm"
-                                  onClick={() => addToCart(dish)}
-                                  className="h-8 px-3 text-xs"
-                                >
-                                  <Plus className="h-3 w-3 mr-1" />
-                                  Add
-                                </Button>
-                              )}
-                            </div>
-                          </CardContent>
-                        </Card>
-                      );
-                    })}
-                  </div>
-                </div>
-              );
-            })}
+                      {dish.description && (
+                        <p className="text-xs text-gray-600 mb-2 line-clamp-2">
+                          {dish.description}
+                        </p>
+                      )}
+                      
+                      <div className="flex items-center gap-2 mb-3">
+                        {dish.category && (
+                          <Badge variant="secondary" className="text-xs px-2 py-0">
+                            {dish.category.name}
+                          </Badge>
+                        )}
+                        {dish.isVegetarian && (
+                          <Badge variant="outline" className="text-xs px-1 py-0">Veg</Badge>
+                        )}
+                        {dish.isVegan && (
+                          <Badge variant="outline" className="text-xs px-1 py-0">Vegan</Badge>
+                        )}
+                        {dish.preparationTime && (
+                          <Badge variant="outline" className="text-xs px-1 py-0">
+                            <Clock className="w-3 h-3 mr-1" />
+                            {dish.preparationTime}min
+                          </Badge>
+                        )}
+                      </div>
+                      
+                      <div className="flex items-center justify-between">
+                        {cartItem ? (
+                          <div className="flex items-center gap-2">
+                            <Button
+                              size="sm"
+                              variant="outline"
+                              className="h-8 w-8 p-0"
+                              onClick={() => updateQuantity(dish.id, cartItem.quantity - 1)}
+                              disabled={existingItem && cartItem.quantity <= existingItem.quantity}
+                            >
+                              <Minus className="h-3 w-3" />
+                            </Button>
+                            <span className="min-w-[2rem] text-center font-medium">
+                              {cartItem.quantity}
+                            </span>
+                            <Button
+                              size="sm"
+                              variant="outline"
+                              className="h-8 w-8 p-0"
+                              onClick={() => updateQuantity(dish.id, cartItem.quantity + 1, true)}
+                            >
+                              <Plus className="h-3 w-3" />
+                            </Button>
+                          </div>
+                        ) : (
+                          <Button
+                            size="sm"
+                            onClick={() => addToCart(dish)}
+                            className="h-8 px-3 text-xs"
+                          >
+                            <Plus className="h-3 w-3 mr-1" />
+                            Add
+                          </Button>
+                        )}
+                      </div>
+                    </CardContent>
+                  </Card>
+                );
+              })}
+            </div>
+            
+            {getFilteredDishes().length === 0 && (
+              <div className="text-center py-8">
+                <p className="text-gray-500">No dishes found in this category</p>
+              </div>
+            )}
           </div>
         );
         
