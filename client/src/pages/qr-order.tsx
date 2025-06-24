@@ -733,11 +733,14 @@ export default function QROrderPage() {
               )}
 
               {/* Follow Us Section with Social Media */}
-              {(hotelSettings?.facebookUrl || hotelSettings?.instagramUrl || hotelSettings?.tiktokUrl || hotelSettings?.youtubeUrl) && (
+              {hotelSettings && ((hotelSettings.facebookUrl && hotelSettings.facebookUrl.trim() !== '') || 
+                (hotelSettings.instagramUrl && hotelSettings.instagramUrl.trim() !== '') || 
+                (hotelSettings.tiktokUrl && hotelSettings.tiktokUrl.trim() !== '') || 
+                (hotelSettings.youtubeUrl && hotelSettings.youtubeUrl.trim() !== '')) && (
                 <div className="bg-white p-4 rounded-lg mb-4">
                   <h4 className="font-medium mb-3">Follow Us</h4>
                   <div className="flex flex-wrap gap-3">
-                    {hotelSettings?.facebookUrl && hotelSettings.facebookUrl.trim() && (
+                    {hotelSettings?.facebookUrl && hotelSettings.facebookUrl.trim() !== '' && (
                       <a 
                         href={hotelSettings.facebookUrl} 
                         target="_blank" 
@@ -748,7 +751,7 @@ export default function QROrderPage() {
                         Facebook
                       </a>
                     )}
-                    {hotelSettings?.instagramUrl && hotelSettings.instagramUrl.trim() && (
+                    {hotelSettings?.instagramUrl && hotelSettings.instagramUrl.trim() !== '' && (
                       <a 
                         href={hotelSettings.instagramUrl} 
                         target="_blank" 
@@ -759,7 +762,7 @@ export default function QROrderPage() {
                         Instagram
                       </a>
                     )}
-                    {hotelSettings?.youtubeUrl && hotelSettings.youtubeUrl.trim() && (
+                    {hotelSettings?.youtubeUrl && hotelSettings.youtubeUrl.trim() !== '' && (
                       <a 
                         href={hotelSettings.youtubeUrl} 
                         target="_blank" 
@@ -770,7 +773,7 @@ export default function QROrderPage() {
                         YouTube
                       </a>
                     )}
-                    {hotelSettings?.tiktokUrl && hotelSettings.tiktokUrl.trim() && (
+                    {hotelSettings?.tiktokUrl && hotelSettings.tiktokUrl.trim() !== '' && (
                       <a 
                         href={hotelSettings.tiktokUrl} 
                         target="_blank" 
@@ -786,7 +789,7 @@ export default function QROrderPage() {
               )}
 
               {/* Copyright Section */}
-              <div className="bg-white p-4 rounded-lg text-center">
+              <div className="bg-white p-4 rounded-lg text-center mt-4">
                 <p className="text-xs text-gray-500">
                   Powered by{' '}
                   <a 
