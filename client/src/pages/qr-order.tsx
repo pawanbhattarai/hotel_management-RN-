@@ -67,7 +67,7 @@ export default function QROrderPage() {
   const [selectedCategory, setSelectedCategory] = useState<string>('all');
 
   // Extract token from URL path like /order/token or /qr-order/token
-  const token = location.startsWith('/order/') 
+  const token = location.startsWith('/order/')
     ? location.replace('/order/', '')
     : location.replace('/qr-order/', '');
 
@@ -223,8 +223,8 @@ export default function QROrderPage() {
 
     const existingItem = cart.find(item => item.dishId === dish.id);
     if (existingItem) {
-      setCart(cart.map(item => 
-        item.dishId === dish.id 
+      setCart(cart.map(item =>
+        item.dishId === dish.id
           ? { ...item, quantity: item.quantity + 1 }
           : item
       ));
@@ -251,8 +251,8 @@ export default function QROrderPage() {
     if (quantity === 0) {
       setCart(cart.filter(item => item.dishId !== dishId));
     } else {
-      setCart(cart.map(item => 
-        item.dishId === dishId 
+      setCart(cart.map(item =>
+        item.dishId === dishId
           ? { ...item, quantity }
           : item
       ));
@@ -264,7 +264,7 @@ export default function QROrderPage() {
   };
 
   // Filter dishes based on search query
-  const filteredDishes = dishes.filter(dish => 
+  const filteredDishes = dishes.filter(dish =>
     dish.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
     dish.description?.toLowerCase().includes(searchQuery.toLowerCase()) ||
     categories.find(cat => cat.id === dish.categoryId)?.name.toLowerCase().includes(searchQuery.toLowerCase())
@@ -291,8 +291,8 @@ export default function QROrderPage() {
 
     setSubmitting(true);
     try {
-      const endpoint = existingOrderId 
-        ? `/api/order/update/${existingOrderId}` 
+      const endpoint = existingOrderId
+        ? `/api/order/update/${existingOrderId}`
         : `/api/order/submit/${token}`;
 
       const response = await fetch(endpoint, {
@@ -402,7 +402,7 @@ export default function QROrderPage() {
     // Then filter by search query
     if (searchQuery.trim()) {
       const searchTerm = searchQuery.toLowerCase().trim();
-      filtered = filtered.filter(dish => 
+      filtered = filtered.filter(dish =>
         dish.name.toLowerCase().includes(searchTerm) ||
         dish.description?.toLowerCase().includes(searchTerm) ||
         categories.find(cat => cat.id === dish.categoryId)?.name.toLowerCase().includes(searchTerm)
@@ -564,8 +564,8 @@ export default function QROrderPage() {
                       )}
                     </div>
 
-                    <Button 
-                      onClick={() => addToCart(dish)} 
+                    <Button
+                      onClick={() => addToCart(dish)}
                       className="bg-blue-500 hover:bg-blue-600 text-white rounded-lg px-3 py-2 text-sm w-full mt-auto"
                     >
                       <Plus className="h-3 w-3 mr-1" />
@@ -605,8 +605,8 @@ export default function QROrderPage() {
                       )}
                     </div>
                   </div>
-                  <Button 
-                    onClick={() => addToCart(dish)} 
+                  <Button
+                    onClick={() => addToCart(dish)}
                     className="bg-blue-500 hover:bg-blue-600 text-white rounded-lg px-4 py-2"
                   >
                     <Plus className="h-4 w-4" />
@@ -694,8 +694,8 @@ export default function QROrderPage() {
                     </div>
                     <div className="flex items-center justify-between">
                       <div className="flex items-center gap-2">
-                        <Button 
-                          size="sm" 
+                        <Button
+                          size="sm"
                           variant="outline"
                           onClick={() => updateQuantity(item.dishId, item.quantity - 1)}
                           className="w-8 h-8 p-0"
@@ -703,8 +703,8 @@ export default function QROrderPage() {
                           -
                         </Button>
                         <span className="w-8 text-center font-medium">{item.quantity}</span>
-                        <Button 
-                          size="sm" 
+                        <Button
+                          size="sm"
                           variant="outline"
                           onClick={() => updateQuantity(item.dishId, item.quantity + 1)}
                           className="w-8 h-8 p-0"
@@ -770,12 +770,12 @@ export default function QROrderPage() {
                   />
                 </div>
 
-                <Button 
+                <Button
                   className="w-full bg-blue-500 hover:bg-blue-600 text-white py-3 text-lg font-semibold rounded-lg"
                   onClick={submitOrder}
                   disabled={submitting || cart.length === 0 || (!canModifyOrder && existingOrderId && orderStatus !== 'pending')}
                 >
-                  {submitting 
+                  {submitting
                     ? (existingOrderId ? "Updating Order..." : "Creating Order...")
                     : (existingOrderId ? "Update Order" : "Create Order")
                   }
@@ -807,17 +807,17 @@ export default function QROrderPage() {
               )}
 
               {/* Follow Us Section with Social Media */}
-              {hotelSettings && ((hotelSettings.facebookUrl && hotelSettings.facebookUrl.trim() !== '') || 
-                (hotelSettings.instagramUrl && hotelSettings.instagramUrl.trim() !== '') || 
-                (hotelSettings.tiktokUrl && hotelSettings.tiktokUrl.trim() !== '') || 
+              {hotelSettings && ((hotelSettings.facebookUrl && hotelSettings.facebookUrl.trim() !== '') ||
+                (hotelSettings.instagramUrl && hotelSettings.instagramUrl.trim() !== '') ||
+                (hotelSettings.tiktokUrl && hotelSettings.tiktokUrl.trim() !== '') ||
                 (hotelSettings.youtubeUrl && hotelSettings.youtubeUrl.trim() !== '')) && (
                 <div className="bg-white p-3 lg:p-4 rounded-lg mb-4">
                   <h4 className="font-medium mb-3 text-sm lg:text-base">Follow Us</h4>
                   <div className="flex flex-wrap gap-2 lg:gap-3">
                     {hotelSettings?.facebookUrl && hotelSettings.facebookUrl.trim() !== '' && (
-                      <a 
-                        href={hotelSettings.facebookUrl} 
-                        target="_blank" 
+                      <a
+                        href={hotelSettings.facebookUrl}
+                        target="_blank"
                         rel="noopener noreferrer"
                         className="flex items-center gap-1 lg:gap-2 text-blue-600 hover:text-blue-800 text-xs lg:text-sm"
                       >
@@ -826,9 +826,9 @@ export default function QROrderPage() {
                       </a>
                     )}
                     {hotelSettings?.instagramUrl && hotelSettings.instagramUrl.trim() !== '' && (
-                      <a 
-                        href={hotelSettings.instagramUrl} 
-                        target="_blank" 
+                      <a
+                        href={hotelSettings.instagramUrl}
+                        target="_blank"
                         rel="noopener noreferrer"
                         className="flex items-center gap-1 lg:gap-2 text-pink-600 hover:text-pink-800 text-xs lg:text-sm"
                       >
@@ -837,9 +837,9 @@ export default function QROrderPage() {
                       </a>
                     )}
                     {hotelSettings?.youtubeUrl && hotelSettings.youtubeUrl.trim() !== '' && (
-                      <a 
-                        href={hotelSettings.youtubeUrl} 
-                        target="_blank" 
+                      <a
+                        href={hotelSettings.youtubeUrl}
+                        target="_blank"
                         rel="noopener noreferrer"```text
  className="flex items-center gap-1 lg:gap-2 text-red-600 hover:text-red-800 text-xs lg:text-sm"
                       >
@@ -848,9 +848,9 @@ export default function QROrderPage() {
                       </a>
                     )}
                     {hotelSettings?.tiktokUrl && hotelSettings.tiktokUrl.trim() !== '' && (
-                      <a 
-                        href={hotelSettings.tiktokUrl} 
-                        target="_blank" 
+                      <a
+                        href={hotelSettings.tiktokUrl}
+                        target="_blank"
                         rel="noopener noreferrer"
                         className="flex items-center gap-1 lg:gap-2 text-gray-800 hover:text-black text-xs lg:text-sm"
                       >
@@ -866,15 +866,15 @@ export default function QROrderPage() {
               <div className="bg-white p-3 lg:p-4 rounded-lg text-center mt-4">
                 <p className="text-xs text-gray-500">
                   Powered by{' '}
-                  <a 
-                    href="https://maptechnepal.com" 
-                    target="_blank" 
+                  <a
+                    href="https://maptechnepal.com"
+                    target="_blank"
                     rel="noopener noreferrer"
                     className="inline-flex items-center gap-1 text-blue-600 hover:text-blue-800"
                   >
-                    <img 
-                      src="https://maptechnepal.com/_next/static/media/company__logo.388080d1.webp" 
-                      alt="MapTech Nepal" 
+                    <img
+                      src="https://maptechnepal.com/_next/static/media/company__logo.388080d1.webp"
+                      alt="MapTech Nepal"
                       className="h-3 lg:h-4 w-auto inline"
                     />
                     <span className="text-xs">MapTech Nepal</span>
