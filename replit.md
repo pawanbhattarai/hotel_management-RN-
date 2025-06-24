@@ -107,10 +107,13 @@ HotelPro PMS is a comprehensive hotel property management system built with mode
 ## Recent Changes
 ```
 - June 24, 2025: Successfully migrated project from Replit Agent to Replit environment
-- June 24, 2025: Fixed QR ordering system for guest users - public ordering endpoints now working correctly
-- June 21, 2025: Updated Stock Item creation form with new layout including Opening Stock section with Quantity, Rate, and Value fields for better inventory management
-- June 21, 2025: Implemented bulk add functionality for all inventory management following RMS pattern - Stock Categories, Measuring Units, Suppliers, and Stock Items now have dedicated bulk dialogs with proper state management
-- June 21, 2025: Removed stock items/categories from restaurant orders section to keep inventory and restaurant management separate
+- June 24, 2025: Implemented comprehensive KOT (Kitchen Order Ticket) system with incremental order support
+- June 24, 2025: Fixed QR code guest ordering functionality - guests can now scan QR codes and place orders
+- June 24, 2025: Added KOT management interface at /restaurant/kot with status tracking (pending, preparing, ready, served)
+- June 24, 2025: Created separate KOT tickets for incremental orders - kitchen only sees new items when guests add more to existing orders
+- June 24, 2025: Implemented guest order API endpoint for QR code-based ordering without authentication
+- June 24, 2025: Added database schema changes for KOT tracking with timestamps and status management
+- June 24, 2025: Added KOT menu item to sidebar navigation under RMS section
 ```
 
 ## User Preferences

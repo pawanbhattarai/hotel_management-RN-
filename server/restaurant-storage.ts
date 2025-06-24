@@ -649,6 +649,121 @@ export class RestaurantStorage {
     });
   }
 
+  // KOT Management
+  async getKotTickets(branchId?: number, status?: string): Promise<(KotTicket & { 
+    table?: { name: string };
+    order: { orderNumber: string };
+    items: (RestaurantOrderItem & { dish: { name: string } })[];
+  })[]> {
+    let conditions = [];
+    if (branchId) conditions.push(eq(kotTickets.branchId, branchId));
+    if (status) conditions.push(eq(kotTickets.status, status));
+
+    const tickets = await db
+      .select({
+        id: kotTickets.id,
+        kotNumber: kotTickets.kotNumber,
+        orderId: kotTickets.orderId,
+        tableId: kotTickets.tableId,
+        roomId: kotTickets.roomId,
+        branchId: kotTickets.branchId,
+        customerName: kotTickets.customerName,
+        status: kotTickets.status,
+        itemCount: kotTickets.itemCount,
+        notes: kotTickets.notes,
+        createdById: kotTickets.createdById,
+        printedAt: kotTickets.printedAt,
+        startedAt: kotTickets.startedAt,
+        completedAt: kotTickets.completedAt,
+        servedAt: kotTickets.servedAt,
+        createdAt: kotTickets.createdAt,
+        updatedAt: kotTickets.updatedAt,
+        table: {
+          name: restaurantTables.name,
+        },
+        order: {
+          orderNumber: restaurantOrders.orderNumber,
+        },
+      })
+      .from(kotTickets)
+      .leftJoin(restaurantTables, eq(kotTickets.tableId, restaurantTables.id))
+      .innerJoin(restaurantOrders, eq(kotTickets.orderId, restaurantOrders.id))
+      .where(conditions.length > 0 ? and(...conditions) : undefined)
+      .orderBy(desc(kotTickets.createdAt));
+
+    // Get items for each KOT
+    const ticketsWithItems = await Promise.all(
+      tickets.map(async (ticket) => {
+        const items = await db
+          .select({
+            id: restaurantOrderItems.id,
+            orderId: restaurantOrderItems.orderId,
+            dishId: restaurantOrderItems.dishId,
+            quantity: restaurantOrderItems.quantity,
+            unitPrice: restaurantOrderItems.unitPrice,
+            totalPrice: restaurantOrderItems.totalPrice,
+            specialInstructions: restaurantOrderItems.specialInstructions,
+            status: restaurantOrderItems.status,
+            isKot: restaurantOrderItems.isKot,
+            isBot: restaurantOrderItems.isBot,
+            kotNumber: restaurantOrderItems.kotNumber,
+            botNumber: restaurantOrderItems.botNumber,
+            kotGeneratedAt: restaurantOrderItems.kotGeneratedAt,
+            botGeneratedAt: restaurantOrderItems.botGeneratedAt,
+            createdAt: restaurantOrderItems.createdAt,
+            dish: {
+              name: menuDishes.name,
+            },
+          })
+          .from(restaurantOrderItems)
+          .innerJoin(menuDishes, eq(restaurantOrderItems.dishId, menuDishes.id))
+          .where(eq(restaurantOrderItems.kotNumber, ticket.kotNumber));
+
+        return { ...ticket, items };
+      })
+    );
+
+    return ticketsWithItems;
+  }
+
+  async updateKotStatus(kotId: number, status: string, userId?: string): Promise<KotTicket> {
+    const updateData: any = { 
+      status,
+      updatedAt: sql`NOW()`,
+    };
+
+    // Set timestamps based on status
+    switch (status) {
+      case 'preparing':
+        updateData.startedAt = sql`NOW()`;
+        break;
+      case 'ready':
+        updateData.completedAt = sql`NOW()`;
+        break;
+      case 'served':
+        updateData.servedAt = sql`NOW()`;
+        break;
+    }
+
+    const [result] = await db
+      .update(kotTickets)
+      .set(updateData)
+      .where(eq(kotTickets.id, kotId))
+      .returning();
+
+    return result;
+  }
+
+  async markKotPrinted(kotId: number): Promise<KotTicket> {
+    const [result] = await db
+      .update(kotTickets)
+      .set({ printedAt: sql`NOW()` })
+      .where(eq(kotTickets.id, kotId))
+      .returning();
+
+    return result;
+  }
+
   async getRestaurantDashboardMetrics(branchId?: number) {
     const whereClause = branchId ? eq(restaurantOrders.branchId, branchId) : undefined;
     const tableWhereClause = branchId ? eq(restaurantTables.branchId, branchId) : undefined;
