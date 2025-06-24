@@ -401,10 +401,11 @@ export default function QROrderPage() {
 
     // Then filter by search query
     if (searchQuery.trim()) {
+      const searchTerm = searchQuery.toLowerCase().trim();
       filtered = filtered.filter(dish => 
-        dish.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        dish.description?.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        categories.find(cat => cat.id === dish.categoryId)?.name.toLowerCase().includes(searchQuery.toLowerCase())
+        dish.name.toLowerCase().includes(searchTerm) ||
+        dish.description?.toLowerCase().includes(searchTerm) ||
+        categories.find(cat => cat.id === dish.categoryId)?.name.toLowerCase().includes(searchTerm)
       );
     }
 
@@ -536,7 +537,7 @@ export default function QROrderPage() {
                     
                     <div className="flex items-center justify-between mb-2">
                       <p className="text-green-600 font-semibold text-lg">Rs. {dish.price}</p>
-                      {dish.preparationTime && (
+                      {dish.preparationTime && dish.preparationTime > 0 && (
                         <div className="flex items-center gap-1 text-blue-600 text-xs">
                           <Clock className="h-3 w-3" />
                           <span>{dish.preparationTime}min</span>
@@ -594,7 +595,7 @@ export default function QROrderPage() {
                           {dish.spiceLevel}
                         </Badge>
                       )}
-                      {dish.preparationTime && (
+                      {dish.preparationTime && dish.preparationTime > 0 && (
                         <Badge variant="outline" className="text-blue-600 text-xs flex items-center gap-1">
                           <Clock className="h-3 w-3" />
                           {dish.preparationTime}min
@@ -786,8 +787,8 @@ export default function QROrderPage() {
 
               {/* Company Information */}
               {hotelSettings && Object.keys(hotelSettings).length > 0 && (
-                <div className="bg-white p-4 rounded-lg mb-4">
-                  <h4 className="font-medium mb-2">About Us</h4>
+                <div className="bg-white p-3 lg:p-4 rounded-lg mb-4">
+                  <h4 className="font-medium mb-2 text-sm lg:text-base">About Us</h4>
                   {hotelSettings.hotelName && (
                     <p className="text-sm text-gray-600 mb-1">{hotelSettings.hotelName}</p>
                   )}
@@ -808,18 +809,18 @@ export default function QROrderPage() {
                 (hotelSettings.instagramUrl && hotelSettings.instagramUrl.trim() !== '') || 
                 (hotelSettings.tiktokUrl && hotelSettings.tiktokUrl.trim() !== '') || 
                 (hotelSettings.youtubeUrl && hotelSettings.youtubeUrl.trim() !== '')) && (
-                <div className="bg-white p-4 rounded-lg mb-4">
-                  <h4 className="font-medium mb-3">Follow Us</h4>
-                  <div className="flex flex-wrap gap-3">
+                <div className="bg-white p-3 lg:p-4 rounded-lg mb-4">
+                  <h4 className="font-medium mb-3 text-sm lg:text-base">Follow Us</h4>
+                  <div className="flex flex-wrap gap-2 lg:gap-3">
                     {hotelSettings?.facebookUrl && hotelSettings.facebookUrl.trim() !== '' && (
                       <a 
                         href={hotelSettings.facebookUrl} 
                         target="_blank" 
                         rel="noopener noreferrer"
-                        className="flex items-center gap-2 text-blue-600 hover:text-blue-800 text-sm"
+                        className="flex items-center gap-1 lg:gap-2 text-blue-600 hover:text-blue-800 text-xs lg:text-sm"
                       >
-                        <Facebook className="h-4 w-4" />
-                        Facebook
+                        <Facebook className="h-3 w-3 lg:h-4 lg:w-4" />
+                        <span className="hidden sm:inline">Facebook</span>
                       </a>
                     )}
                     {hotelSettings?.instagramUrl && hotelSettings.instagramUrl.trim() !== '' && (
@@ -827,10 +828,10 @@ export default function QROrderPage() {
                         href={hotelSettings.instagramUrl} 
                         target="_blank" 
                         rel="noopener noreferrer"
-                        className="flex items-center gap-2 text-pink-600 hover:text-pink-800 text-sm"
+                        className="flex items-center gap-1 lg:gap-2 text-pink-600 hover:text-pink-800 text-xs lg:text-sm"
                       >
-                        <Instagram className="h-4 w-4" />
-                        Instagram
+                        <Instagram className="h-3 w-3 lg:h-4 lg:w-4" />
+                        <span className="hidden sm:inline">Instagram</span>
                       </a>
                     )}
                     {hotelSettings?.youtubeUrl && hotelSettings.youtubeUrl.trim() !== '' && (
@@ -838,10 +839,10 @@ export default function QROrderPage() {
                         href={hotelSettings.youtubeUrl} 
                         target="_blank" 
                         rel="noopener noreferrer"
-                        className="flex items-center gap-2 text-red-600 hover:text-red-800 text-sm"
+                        className="flex items-center gap-1 lg:gap-2 text-red-600 hover:text-red-800 text-xs lg:text-sm"
                       >
-                        <Youtube className="h-4 w-4" />
-                        YouTube
+                        <Youtube className="h-3 w-3 lg:h-4 lg:w-4" />
+                        <span className="hidden sm:inline">YouTube</span>
                       </a>
                     )}
                     {hotelSettings?.tiktokUrl && hotelSettings.tiktokUrl.trim() !== '' && (
@@ -849,10 +850,10 @@ export default function QROrderPage() {
                         href={hotelSettings.tiktokUrl} 
                         target="_blank" 
                         rel="noopener noreferrer"
-                        className="flex items-center gap-2 text-gray-800 hover:text-black text-sm"
+                        className="flex items-center gap-1 lg:gap-2 text-gray-800 hover:text-black text-xs lg:text-sm"
                       >
-                        <ExternalLink className="h-4 w-4" />
-                        TikTok
+                        <ExternalLink className="h-3 w-3 lg:h-4 lg:w-4" />
+                        <span className="hidden sm:inline">TikTok</span>
                       </a>
                     )}
                   </div>
@@ -860,7 +861,7 @@ export default function QROrderPage() {
               )}
 
               {/* Copyright Section */}
-              <div className="bg-white p-4 rounded-lg text-center mt-4">
+              <div className="bg-white p-3 lg:p-4 rounded-lg text-center mt-4">
                 <p className="text-xs text-gray-500">
                   Powered by{' '}
                   <a 
@@ -872,9 +873,9 @@ export default function QROrderPage() {
                     <img 
                       src="https://maptechnepal.com/_next/static/media/company__logo.388080d1.webp" 
                       alt="MapTech Nepal" 
-                      className="h-4 w-auto inline"
+                      className="h-3 lg:h-4 w-auto inline"
                     />
-                    MapTech Nepal
+                    <span className="text-xs">MapTech Nepal</span>
                   </a>
                 </p>
               </div>
