@@ -2192,7 +2192,23 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  // KOT/BOT Generation
+  // KOT Management
+  app.get("/api/restaurant/kot", isAuthenticated, async (req: any, res) => {
+    try {
+      const user = await storage.getUser(req.session.user.id);
+      if (!user) return res.status(401).json({ message: "User not found" });
+
+      const branchId = user.role === "superadmin" ? undefined : user.branchId!;
+      const status = req.query.status as string;
+      
+      const kotTickets = await restaurantStorage.getKotTickets(branchId, status);
+      res.json(kotTickets);
+    } catch (error) {
+      console.error("Error fetching KOT tickets:", error);
+      res.status(500).json({ message: "Failed to fetch KOT tickets" });
+    }
+  });
+
   app.post("/api/restaurant/orders/:id/kot", isAuthenticated, async (req: any, res) => {
     try {
       const user = await storage.getUser(req.session.user.id);
@@ -2209,11 +2225,45 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(403).json({ message: "Insufficient permissions for this order" });
       }
 
-      const kotData = await restaurantStorage.generateKOT(orderId);
+      const kotData = await restaurantStorage.generateKOT(orderId, user.id);
       res.json(kotData);
     } catch (error) {
       console.error("Error generating KOT:", error);
-      res.status(500).json({ message: "Failed to generate KOT" });
+      res.status(500).json({ message: error.message || "Failed to generate KOT" });
+    }
+  });
+
+  app.patch("/api/restaurant/kot/:id/status", isAuthenticated, async (req: any, res) => {
+    try {
+      const user = await storage.getUser(req.session.user.id);
+      if (!user) return res.status(401).json({ message: "User not found" });
+
+      const kotId = parseInt(req.params.id);
+      const { status } = req.body;
+
+      if (!status || !["preparing", "ready", "served"].includes(status)) {
+        return res.status(400).json({ message: "Invalid status" });
+      }
+
+      const kotTicket = await restaurantStorage.updateKotStatus(kotId, status, user.id);
+      res.json(kotTicket);
+    } catch (error) {
+      console.error("Error updating KOT status:", error);
+      res.status(500).json({ message: "Failed to update KOT status" });
+    }
+  });
+
+  app.patch("/api/restaurant/kot/:id/print", isAuthenticated, async (req: any, res) => {
+    try {
+      const user = await storage.getUser(req.session.user.id);
+      if (!user) return res.status(401).json({ message: "User not found" });
+
+      const kotId = parseInt(req.params.id);
+      const kotTicket = await restaurantStorage.markKotPrinted(kotId);
+      res.json(kotTicket);
+    } catch (error) {
+      console.error("Error marking KOT as printed:", error);
+      res.status(500).json({ message: "Failed to mark KOT as printed" });
     }
   });
 
@@ -2928,6 +2978,111 @@ export async function registerRoutes(app: Express): Promise<Server> {
     } catch (error) {
       console.error("Error validating QR token:", error);
       res.status(500).json({ message: "Failed to validate QR code" });
+    }
+  });
+
+  // Guest order creation/update (no authentication required)
+  app.post("/api/order/guest", async (req: any, res) => {
+    try {
+      const { token, customerName, customerPhone, notes, items } = req.body;
+      
+      if (!token || !items || items.length === 0) {
+        return res.status(400).json({ message: "Token and items are required" });
+      }
+
+      const orderInfo = await QRService.validateQRToken(token);
+      if (!orderInfo) {
+        return res.status(404).json({ message: "Invalid QR code" });
+      }
+
+      // Check for existing active order
+      const existingOrders = await restaurantStorage.getRestaurantOrders(orderInfo.branchId);
+      let existingOrder = existingOrders.find((order: any) => 
+        orderInfo.type === 'table' 
+          ? order.tableId === orderInfo.id && ["pending", "confirmed", "preparing", "ready"].includes(order.status)
+          : order.roomId === orderInfo.id && ["pending", "confirmed", "preparing", "ready"].includes(order.status)
+      );
+
+      if (existingOrder) {
+        // Add new items to existing order
+        const orderItems = items.map((item: any) => ({
+          orderId: existingOrder.id,
+          dishId: item.dishId,
+          quantity: item.quantity,
+          unitPrice: item.unitPrice || "0",
+          totalPrice: (parseFloat(item.unitPrice || "0") * item.quantity).toString(),
+          specialInstructions: item.specialInstructions || null,
+        }));
+
+        // Insert new items
+        for (const item of orderItems) {
+          await restaurantStorage.createRestaurantOrderItem(item);
+        }
+
+        // Update order totals
+        const allItems = await restaurantStorage.getRestaurantOrderItems(existingOrder.id);
+        const newSubtotal = allItems.reduce((sum, item) => sum + parseFloat(item.totalPrice), 0);
+        
+        await restaurantStorage.updateRestaurantOrder(existingOrder.id, {
+          subtotal: newSubtotal.toString(),
+          totalAmount: newSubtotal.toString(),
+          customerName: customerName || existingOrder.customerName,
+          customerPhone: customerPhone || existingOrder.customerPhone,
+          notes: notes || existingOrder.notes,
+        });
+
+        res.json({ 
+          success: true, 
+          orderId: existingOrder.id,
+          message: "Items added to existing order",
+          itemsAdded: items.length
+        });
+      } else {
+        // Create new order
+        const orderNumber = `ORD-${Date.now()}`;
+        const subtotal = items.reduce((sum: number, item: any) => 
+          sum + (parseFloat(item.unitPrice || "0") * item.quantity), 0);
+
+        const orderData = {
+          orderNumber,
+          tableId: orderInfo.type === 'table' ? orderInfo.id : null,
+          roomId: orderInfo.type === 'room' ? orderInfo.id : null,
+          branchId: orderInfo.branchId,
+          status: "pending" as const,
+          orderType: orderInfo.type as any,
+          customerName: customerName || null,
+          customerPhone: customerPhone || null,
+          subtotal: subtotal.toString(),
+          totalAmount: subtotal.toString(),
+          notes: notes || null,
+        };
+
+        const newOrder = await restaurantStorage.createRestaurantOrder(orderData);
+
+        // Add items to order
+        const orderItems = items.map((item: any) => ({
+          orderId: newOrder.id,
+          dishId: item.dishId,
+          quantity: item.quantity,
+          unitPrice: item.unitPrice || "0",
+          totalPrice: (parseFloat(item.unitPrice || "0") * item.quantity).toString(),
+          specialInstructions: item.specialInstructions || null,
+        }));
+
+        for (const item of orderItems) {
+          await restaurantStorage.createRestaurantOrderItem(item);
+        }
+
+        res.json({ 
+          success: true, 
+          orderId: newOrder.id,
+          orderNumber: newOrder.orderNumber,
+          message: "New order created successfully"
+        });
+      }
+    } catch (error) {
+      console.error("Error creating/updating guest order:", error);
+      res.status(500).json({ message: "Failed to process order" });
     }
   });
 

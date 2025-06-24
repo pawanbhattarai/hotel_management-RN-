@@ -25,6 +25,7 @@ import RestaurantOrders from "@/pages/restaurant-orders";
 import RestaurantBilling from "@/pages/restaurant-billing";
 import RestaurantCategories from "@/pages/restaurant-categories";
 import RestaurantDishes from "@/pages/restaurant-dishes";
+import RestaurantKOT from "@/pages/restaurant-kot";
 import TaxManagement from "@/pages/tax-management";
 import StockCategories from "@/pages/stock-categories";
 import StockItems from "@/pages/stock-items";
@@ -84,6 +85,7 @@ function Router() {
           <Route path="/restaurant/categories" component={RestaurantCategories} />
           <Route path="/restaurant/dishes" component={RestaurantDishes} />
           <Route path="/restaurant/orders" component={RestaurantOrders} />
+          <Route path="/restaurant/kot" component={RestaurantKOT} />
           <Route path="/restaurant/billing" component={RestaurantBilling} />
           <Route path="/tax-management" component={TaxManagement} />
           <Route path="/inventory/stock-categories" component={StockCategories} />

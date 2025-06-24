@@ -6,6 +6,7 @@ import {
   restaurantOrderItems,
   restaurantBills,
   taxes,
+  kotTickets,
   type RestaurantTable,
   type InsertRestaurantTable,
   type MenuCategory,
@@ -20,6 +21,8 @@ import {
   type InsertRestaurantBill,
   type Tax,
   type InsertTax,
+  type KotTicket,
+  type InsertKotTicket,
 } from "@shared/schema";
 import { db } from "./db";
 import { eq, and, or, desc, sql, ilike, count, sum, gte, lt } from "drizzle-orm";
@@ -512,41 +515,97 @@ export class RestaurantStorage {
   }
 
   // KOT/BOT Operations
-  async generateKOT(orderId: string): Promise<{ kotItems: RestaurantOrderItem[]; orderNumber: string }> {
+  async generateKOT(orderId: string, createdById?: string): Promise<{ 
+    kotNumber: string; 
+    kotItems: (RestaurantOrderItem & { dish: { name: string } })[]; 
+    kotTicket: KotTicket;
+  }> {
     return await db.transaction(async (tx) => {
-      // Get order details
-      const [order] = await tx.select().from(restaurantOrders).where(eq(restaurantOrders.id, orderId));
+      // Get order details with table/room info
+      const [order] = await tx
+        .select({
+          id: restaurantOrders.id,
+          orderNumber: restaurantOrders.orderNumber,
+          tableId: restaurantOrders.tableId,
+          roomId: restaurantOrders.roomId,
+          branchId: restaurantOrders.branchId,
+          customerName: restaurantOrders.customerName,
+          notes: restaurantOrders.notes,
+        })
+        .from(restaurantOrders)
+        .where(eq(restaurantOrders.id, orderId));
+
       if (!order) throw new Error('Order not found');
 
       // Get items that need KOT (not already generated)
       const kotItems = await tx
-        .select()
+        .select({
+          id: restaurantOrderItems.id,
+          orderId: restaurantOrderItems.orderId,
+          dishId: restaurantOrderItems.dishId,
+          quantity: restaurantOrderItems.quantity,
+          unitPrice: restaurantOrderItems.unitPrice,
+          totalPrice: restaurantOrderItems.totalPrice,
+          specialInstructions: restaurantOrderItems.specialInstructions,
+          status: restaurantOrderItems.status,
+          isKot: restaurantOrderItems.isKot,
+          isBot: restaurantOrderItems.isBot,
+          kotNumber: restaurantOrderItems.kotNumber,
+          botNumber: restaurantOrderItems.botNumber,
+          kotGeneratedAt: restaurantOrderItems.kotGeneratedAt,
+          botGeneratedAt: restaurantOrderItems.botGeneratedAt,
+          createdAt: restaurantOrderItems.createdAt,
+          dish: {
+            name: menuDishes.name,
+          },
+        })
         .from(restaurantOrderItems)
+        .innerJoin(menuDishes, eq(restaurantOrderItems.dishId, menuDishes.id))
         .where(and(
           eq(restaurantOrderItems.orderId, orderId),
           eq(restaurantOrderItems.isKot, false)
         ));
 
-      // Mark items as KOT generated
-      if (kotItems.length > 0) {
-        await tx
-          .update(restaurantOrderItems)
-          .set({ isKot: true })
-          .where(and(
-            eq(restaurantOrderItems.orderId, orderId),
-            eq(restaurantOrderItems.isKot, false)
-          ));
-
-        // Mark order as KOT generated
-        await tx
-          .update(restaurantOrders)
-          .set({ kotGenerated: true, kotGeneratedAt: sql`NOW()` })
-          .where(eq(restaurantOrders.id, orderId));
+      if (kotItems.length === 0) {
+        throw new Error('No items available for KOT generation');
       }
 
+      // Generate KOT number
+      const kotNumber = `KOT-${Date.now()}`;
+
+      // Create KOT ticket
+      const [kotTicket] = await tx
+        .insert(kotTickets)
+        .values({
+          kotNumber,
+          orderId,
+          tableId: order.tableId,
+          roomId: order.roomId,
+          branchId: order.branchId,
+          customerName: order.customerName,
+          itemCount: kotItems.length,
+          notes: order.notes,
+          createdById,
+        })
+        .returning();
+
+      // Mark items as KOT generated with KOT number
+      await tx
+        .update(restaurantOrderItems)
+        .set({ 
+          isKot: true, 
+          kotNumber,
+          kotGeneratedAt: sql`NOW()`,
+        })
+        .where(and(
+          eq(restaurantOrderItems.orderId, orderId),
+          eq(restaurantOrderItems.isKot, false)
+        ));
+
       return { 
-        kotItems, 
-        orderNumber: order.orderNumber 
+        kotNumber,
+        kotItems,
+        kotTicket,
       };
     });
   }

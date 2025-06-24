@@ -548,7 +548,34 @@ export const restaurantOrderItems = pgTable("restaurant_order_items", {
   }).notNull().default("pending"),
   isKot: boolean("is_kot").default(false), // Kitchen Order Ticket item
   isBot: boolean("is_bot").default(false), // Beverage Order Ticket item
+  kotNumber: varchar("kot_number", { length: 20 }), // KOT batch number
+  botNumber: varchar("bot_number", { length: 20 }), // BOT batch number
+  kotGeneratedAt: timestamp("kot_generated_at"),
+  botGeneratedAt: timestamp("bot_generated_at"),
   createdAt: timestamp("created_at").defaultNow(),
+});
+
+// KOT (Kitchen Order Ticket) table for tracking individual KOTs
+export const kotTickets = pgTable("kot_tickets", {
+  id: serial("id").primaryKey(),
+  kotNumber: varchar("kot_number", { length: 20 }).notNull().unique(),
+  orderId: uuid("order_id").notNull(),
+  tableId: integer("table_id"),
+  roomId: integer("room_id"),
+  branchId: integer("branch_id").notNull(),
+  customerName: varchar("customer_name", { length: 100 }),
+  status: varchar("status", { 
+    enum: ["pending", "preparing", "ready", "served"] 
+  }).notNull().default("pending"),
+  itemCount: integer("item_count").notNull().default(0),
+  notes: text("notes"),
+  createdById: text("created_by_id"),
+  printedAt: timestamp("printed_at"),
+  startedAt: timestamp("started_at"), // When kitchen started preparing
+  completedAt: timestamp("completed_at"), // When kitchen finished
+  servedAt: timestamp("served_at"), // When served to customer
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
 });
 
 // Restaurant billing
@@ -660,6 +687,25 @@ export const restaurantOrderItemsRelations = relations(restaurantOrderItems, ({ 
   }),
 }));
 
+export const kotTicketsRelations = relations(kotTickets, ({ one, many }) => ({
+  order: one(restaurantOrders, {
+    fields: [kotTickets.orderId],
+    references: [restaurantOrders.id],
+  }),
+  table: one(restaurantTables, {
+    fields: [kotTickets.tableId],
+    references: [restaurantTables.id],
+  }),
+  branch: one(branches, {
+    fields: [kotTickets.branchId],
+    references: [branches.id],
+  }),
+  createdBy: one(users, {
+    fields: [kotTickets.createdById],
+    references: [users.id],
+  }),
+}));
+
 export const restaurantBillsRelations = relations(restaurantBills, ({ one }) => ({
   order: one(restaurantOrders, {
     fields: [restaurantBills.orderId],
@@ -711,6 +757,14 @@ export const insertRestaurantOrderSchema = createInsertSchema(restaurantOrders).
 export const insertRestaurantOrderItemSchema = createInsertSchema(restaurantOrderItems).omit({
   id: true,
   createdAt: true,
+  kotGeneratedAt: true,
+  botGeneratedAt: true,
+});
+
+export const insertKotTicketSchema = createInsertSchema(kotTickets).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
 });
 
 export const insertRestaurantBillSchema = createInsertSchema(restaurantBills).omit({
@@ -754,6 +808,8 @@ export type RestaurantOrderItem = typeof restaurantOrderItems.$inferSelect;
 export type InsertRestaurantOrderItem = z.infer<typeof insertRestaurantOrderItemSchema>;
 export type RestaurantBill = typeof restaurantBills.$inferSelect;
 export type InsertRestaurantBill = z.infer<typeof insertRestaurantBillSchema>;
+export type KotTicket = typeof kotTickets.$inferSelect;
+export type InsertKotTicket = z.infer<typeof insertKotTicketSchema>;
 
 // Tax/Charges Schemas and Types
 export const insertTaxSchema = createInsertSchema(taxes).omit({
