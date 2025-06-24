@@ -90,7 +90,7 @@ export default function RestaurantKOT() {
   const { toast } = useToast();
   const { user } = useAuth();
   const queryClient = useQueryClient();
-  const [activeTab, setActiveTab] = useState('all');
+  const [activeTab, setActiveTab] = useState('pending');
 
   const { data: kotTickets = [], isLoading } = useQuery({
     queryKey: ['/api/restaurant/kot', activeTab],
@@ -99,6 +99,27 @@ export default function RestaurantKOT() {
       const response = await fetch(`/api/restaurant/kot?status=${status}`);
       if (!response.ok) throw new Error('Failed to fetch KOT tickets');
       return response.json();
+    },
+    refetchInterval: 5000, // Fallback polling every 5 seconds
+  });
+
+  // WebSocket for real-time updates
+  useWebSocket({
+    onMessage: (message) => {
+      try {
+        const data = JSON.parse(message);
+        switch (data.type) {
+          case 'NEW_KOT':
+          case 'KOT_STATUS_UPDATE':
+          case 'NEW_ORDER':
+          case 'ORDER_UPDATED':
+            // Invalidate and refetch KOT data
+            queryClient.invalidateQueries({ queryKey: ['/api/restaurant/kot'] });
+            break;
+        }
+      } catch (error) {
+        console.error('Error parsing WebSocket message:', error);
+      }
     }
   });
 
@@ -113,7 +134,9 @@ export default function RestaurantKOT() {
       return response.json();
     },
     onSuccess: () => {
+      // Real-time update via WebSocket, but also invalidate for safety
       queryClient.invalidateQueries({ queryKey: ['/api/restaurant/kot'] });
+      queryClient.invalidateQueries({ queryKey: ['/api/restaurant/orders'] });
       toast({
         title: "Success",
         description: "KOT status updated successfully",

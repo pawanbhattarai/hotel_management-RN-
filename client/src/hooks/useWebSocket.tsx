@@ -3,15 +3,17 @@ import { useEffect, useRef } from 'react';
 import { useQueryClient } from '@tanstack/react-query';
 import { useToast } from '@/hooks/use-toast';
 
-export function useWebSocket(user: any) {
+interface UseWebSocketOptions {
+  onMessage?: (message: string) => void;
+}
+
+export function useWebSocket(options?: UseWebSocketOptions) {
   const queryClient = useQueryClient();
   const { toast } = useToast();
   const wsRef = useRef<WebSocket | null>(null);
   const reconnectTimeoutRef = useRef<NodeJS.Timeout | null>(null);
 
   const connect = () => {
-    if (!user) return;
-
     // Don't connect in development mode to avoid conflicts with Vite HMR
     if (import.meta.env.DEV) {
       console.log('WebSocket disabled in development mode to avoid Vite conflicts');

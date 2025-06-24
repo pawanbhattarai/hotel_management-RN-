@@ -2226,6 +2226,26 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
 
       const kotData = await restaurantStorage.generateKOT(orderId, user.id);
+      
+      // Broadcast new KOT via WebSocket if available
+      if (global.wss) {
+        const newKotMessage = {
+          type: 'NEW_KOT',
+          data: {
+            kotTicket: kotData.kotTicket,
+            kotItems: kotData.kotItems,
+            orderId: orderId,
+            createdAt: new Date().toISOString()
+          }
+        };
+        
+        global.wss.clients.forEach((client: any) => {
+          if (client.readyState === 1) { // WebSocket.OPEN
+            client.send(JSON.stringify(newKotMessage));
+          }
+        });
+      }
+      
       res.json(kotData);
     } catch (error) {
       console.error("Error generating KOT:", error);
@@ -2246,6 +2266,26 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
 
       const kotTicket = await restaurantStorage.updateKotStatus(kotId, status, user.id);
+      
+      // Broadcast KOT update via WebSocket if available
+      if (global.wss) {
+        const updateMessage = {
+          type: 'KOT_STATUS_UPDATE',
+          data: {
+            kotId,
+            status,
+            orderId: kotTicket.orderId,
+            updatedAt: new Date().toISOString()
+          }
+        };
+        
+        global.wss.clients.forEach((client: any) => {
+          if (client.readyState === 1) { // WebSocket.OPEN
+            client.send(JSON.stringify(updateMessage));
+          }
+        });
+      }
+      
       res.json(kotTicket);
     } catch (error) {
       console.error("Error updating KOT status:", error);
@@ -3031,6 +3071,25 @@ export async function registerRoutes(app: Express): Promise<Server> {
           notes: notes || existingOrder.notes,
         });
 
+        // Broadcast order update via WebSocket if available
+        if (global.wss) {
+          const orderUpdateMessage = {
+            type: 'ORDER_UPDATED',
+            data: {
+              orderId: existingOrder.id,
+              itemsAdded: items.length,
+              newTotal: newSubtotal,
+              updatedAt: new Date().toISOString()
+            }
+          };
+          
+          global.wss.clients.forEach((client: any) => {
+            if (client.readyState === 1) { // WebSocket.OPEN
+              client.send(JSON.stringify(orderUpdateMessage));
+            }
+          });
+        }
+
         res.json({ 
           success: true, 
           orderId: existingOrder.id,
@@ -3071,6 +3130,24 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
         for (const item of orderItems) {
           await restaurantStorage.createRestaurantOrderItem(item);
+        }
+
+        // Broadcast new order via WebSocket if available
+        if (global.wss) {
+          const newOrderMessage = {
+            type: 'NEW_ORDER',
+            data: {
+              order: newOrder,
+              items: orderItems,
+              createdAt: new Date().toISOString()
+            }
+          };
+          
+          global.wss.clients.forEach((client: any) => {
+            if (client.readyState === 1) { // WebSocket.OPEN
+              client.send(JSON.stringify(newOrderMessage));
+            }
+          });
         }
 
         res.json({ 

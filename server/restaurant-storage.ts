@@ -602,6 +602,15 @@ export class RestaurantStorage {
           eq(restaurantOrderItems.isKot, false)
         ));
 
+      // Update order status to confirmed when first KOT is generated
+      await tx
+        .update(restaurantOrders)
+        .set({ 
+          status: 'confirmed',
+          updatedAt: sql`NOW()`
+        })
+        .where(eq(restaurantOrders.id, orderId));
+
       return { 
         kotNumber,
         kotItems,
