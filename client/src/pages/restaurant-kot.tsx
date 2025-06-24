@@ -75,7 +75,7 @@ const statusConfig = {
     color: 'bg-green-100 text-green-800', 
     icon: CheckCircle,
     action: 'Mark Served',
-    nextStatus: 'ready'
+    nextStatus: 'served'
   },
   served: { 
     label: 'Served', 
@@ -90,7 +90,7 @@ export default function RestaurantKOT() {
   const { toast } = useToast();
   const { user } = useAuth();
   const queryClient = useQueryClient();
-  const [activeTab, setActiveTab] = useState('pending');
+  const [activeTab, setActiveTab] = useState('all');
 
   const { data: kotTickets = [], isLoading } = useQuery({
     queryKey: ['/api/restaurant/kot', activeTab],
@@ -209,11 +209,11 @@ export default function RestaurantKOT() {
             <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
               <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6">
                 <TabsList className="grid w-full grid-cols-5 sm:w-auto">
-                  <TabsTrigger value="pending" className="text-xs sm:text-sm">Pending</TabsTrigger>
-                  <TabsTrigger value="preparing" className="text-xs sm:text-sm">Preparing</TabsTrigger>
-                  <TabsTrigger value="ready" className="text-xs sm:text-sm">Ready</TabsTrigger>
-                  <TabsTrigger value="served" className="text-xs sm:text-sm">Served</TabsTrigger>
-                  <TabsTrigger value="all" className="text-xs sm:text-sm">All</TabsTrigger>
+                  <TabsTrigger value="all" className="text-xs sm:text-sm font-medium">All</TabsTrigger>
+                  <TabsTrigger value="pending" className="text-xs sm:text-sm font-medium">Pending</TabsTrigger>
+                  <TabsTrigger value="preparing" className="text-xs sm:text-sm font-medium">Preparing</TabsTrigger>
+                  <TabsTrigger value="ready" className="text-xs sm:text-sm font-medium">Ready</TabsTrigger>
+                  <TabsTrigger value="served" className="text-xs sm:text-sm font-medium">Served</TabsTrigger>
                 </TabsList>
 
                 <div className="flex items-center gap-2 text-sm text-gray-600">
