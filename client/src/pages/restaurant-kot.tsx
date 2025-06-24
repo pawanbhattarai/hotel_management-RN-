@@ -13,12 +13,12 @@ import {
   Timer,
   Users,
   FileText,
-  Menu as MenuIcon
+  Plus
 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { format } from "date-fns";
 import Sidebar from "@/components/layout/sidebar";
-import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
+import Header from "@/components/layout/header";
 import { useAuth } from "@/hooks/useAuth";
 
 interface KotItem {
@@ -75,7 +75,7 @@ const statusConfig = {
     color: 'bg-green-100 text-green-800', 
     icon: CheckCircle,
     action: 'Mark Served',
-    nextStatus: 'served'
+    nextStatus: 'ready'
   },
   served: { 
     label: 'Served', 
@@ -91,7 +91,6 @@ export default function RestaurantKOT() {
   const { user } = useAuth();
   const queryClient = useQueryClient();
   const [activeTab, setActiveTab] = useState('pending');
-  const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
 
   const { data: kotTickets = [], isLoading } = useQuery({
     queryKey: ['/api/restaurant/kot', activeTab],
@@ -172,86 +171,41 @@ export default function RestaurantKOT() {
 
   if (isLoading) {
     return (
-      <div className="min-h-screen flex items-center justify-center">
-        <div className="animate-spin rounded-full h-32 w-32 border-b-2 border-primary"></div>
+      <div className="flex h-screen bg-gray-50">
+        <div className="hidden lg:block">
+          <Sidebar />
+        </div>
+        <div className="flex-1 flex flex-col">
+          <Header 
+            title="Kitchen Order Tickets (KOT)"
+            subtitle="Manage kitchen orders and track preparation status"
+          />
+          <div className="flex-1 flex items-center justify-center">
+            <div className="animate-spin rounded-full h-32 w-32 border-b-2 border-primary"></div>
+          </div>
+        </div>
       </div>
     );
   }
 
   return (
     <div className="flex h-screen bg-gray-50">
-      {/* Desktop Sidebar */}
-      <div className="hidden lg:block w-64 flex-shrink-0">
+      {/* Sidebar */}
+      <div className="hidden lg:block">
         <Sidebar />
       </div>
 
-      {/* Mobile Sidebar */}
-      <Sheet open={isMobileMenuOpen} onOpenChange={setIsMobileMenuOpen}>
-        <SheetContent side="left" className="p-0 w-64">
-          <Sidebar 
-            isMobileMenuOpen={isMobileMenuOpen}
-            setIsMobileMenuOpen={setIsMobileMenuOpen}
-          />
-        </SheetContent>
-      </Sheet>
-
       {/* Main Content */}
-      <div className="flex-1 flex flex-col overflow-hidden">
+      <div className="flex-1 flex flex-col lg:ml-64">
         {/* Header */}
-        <header className="bg-white border-b border-gray-200 px-4 lg:px-6 py-4">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center space-x-4">
-              {/* Mobile menu button */}
-              <Sheet>
-                <SheetTrigger asChild>
-                  <Button 
-                    variant="ghost" 
-                    size="sm" 
-                    className="lg:hidden"
-                    onClick={() => setIsMobileMenuOpen(true)}
-                  >
-                    <MenuIcon className="h-5 w-5" />
-                  </Button>
-                </SheetTrigger>
-              </Sheet>
-              
-              <div>
-                <h1 className="text-2xl lg:text-3xl font-bold text-gray-900">
-                  Kitchen Order Tickets (KOT)
-                </h1>
-                <p className="text-sm text-gray-600 mt-1">
-                  Manage kitchen orders and track preparation status
-                </p>
-              </div>
-            </div>
-            
-            <div className="flex items-center gap-3">
-              <div className="hidden sm:flex items-center gap-2 text-sm text-gray-600">
-                <Clock className="h-4 w-4" />
-                <span>{format(new Date(), 'PPp')}</span>
-              </div>
-              
-              {user && (
-                <div className="flex items-center gap-2">
-                  <div className="w-8 h-8 bg-primary rounded-full flex items-center justify-center">
-                    <span className="text-white text-sm font-medium">
-                      {user.firstName?.[0]}{user.lastName?.[0]}
-                    </span>
-                  </div>
-                  <div className="hidden sm:block">
-                    <p className="text-sm font-medium">{user.firstName} {user.lastName}</p>
-                    <p className="text-xs text-gray-600 capitalize">{user.role?.replace('-', ' ')}</p>
-                  </div>
-                </div>
-              )}
-            </div>
-          </div>
-        </header>
+        <Header 
+          title="Kitchen Order Tickets (KOT)"
+          subtitle="Manage kitchen orders and track preparation status"
+        />
 
         {/* Content Area */}
         <main className="flex-1 overflow-auto p-4 lg:p-6">
           <div className="max-w-7xl mx-auto space-y-6">
-
             <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
               <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6">
                 <TabsList className="grid w-full grid-cols-5 sm:w-auto">
@@ -261,7 +215,7 @@ export default function RestaurantKOT() {
                   <TabsTrigger value="served" className="text-xs sm:text-sm">Served</TabsTrigger>
                   <TabsTrigger value="all" className="text-xs sm:text-sm">All</TabsTrigger>
                 </TabsList>
-                
+
                 <div className="flex items-center gap-2 text-sm text-gray-600">
                   <span className="font-medium">Total KOTs: {kotTickets.length}</span>
                 </div>
@@ -297,27 +251,27 @@ export default function RestaurantKOT() {
                                 <span className="hidden sm:inline">{config.label}</span>
                               </Badge>
                             </div>
-                            
+
                             <div className="space-y-2 text-xs lg:text-sm text-muted-foreground">
                               <div className="flex items-center gap-2">
                                 <FileText className="h-3 w-3 lg:h-4 lg:w-4 flex-shrink-0" />
                                 <span className="truncate">Order: {kot.order.orderNumber}</span>
                               </div>
-                              
+
                               {kot.table && (
                                 <div className="flex items-center gap-2">
                                   <Utensils className="h-3 w-3 lg:h-4 lg:w-4 flex-shrink-0" />
                                   <span className="truncate">Table: {kot.table.name}</span>
                                 </div>
                               )}
-                              
+
                               {kot.customerName && (
                                 <div className="flex items-center gap-2">
                                   <Users className="h-3 w-3 lg:h-4 lg:w-4 flex-shrink-0" />
                                   <span className="truncate">{kot.customerName}</span>
                                 </div>
                               )}
-                              
+
                               <div className="flex items-center gap-2">
                                 <Timer className="h-3 w-3 lg:h-4 lg:w-4 flex-shrink-0" />
                                 <span className="truncate">
@@ -371,7 +325,7 @@ export default function RestaurantKOT() {
                                   <span className="hidden sm:inline">Print</span>
                                 </Button>
                               )}
-                              
+
                               {config.action && config.nextStatus && (
                                 <Button
                                   size="sm"
