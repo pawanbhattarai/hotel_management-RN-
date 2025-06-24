@@ -534,15 +534,17 @@ export default function QROrderPage() {
                 <div key={dish.id} className="bg-white border border-gray-200 rounded-lg p-3 hover:shadow-md transition-shadow">
                   <div className="flex flex-col h-full">
                     <h3 className="font-medium text-sm leading-tight mb-1">{dish.name}</h3>
-                    
+
                     <div className="flex items-center justify-between mb-2">
-                      <p className="text-green-600 font-semibold text-lg">Rs. {dish.price}</p>
-                      {dish.preparationTime && dish.preparationTime > 0 && (
-                        <div className="flex items-center gap-1 text-blue-600 text-xs">
-                          <Clock className="h-3 w-3" />
-                          <span>{dish.preparationTime}min</span>
-                        </div>
-                      )}
+                      <div className="flex items-center gap-2">
+                        <p className="text-green-600 font-semibold text-lg">Rs. {dish.price}</p>
+                        {dish.preparationTime && (
+                          <div className="flex items-center gap-1 text-blue-600 text-xs">
+                            <Clock className="h-3 w-3" />
+                            <span>{dish.preparationTime}min</span>
+                          </div>
+                        )}
+                      </div>
                     </div>
 
                     {dish.description && (
@@ -838,8 +840,8 @@ export default function QROrderPage() {
                       <a 
                         href={hotelSettings.youtubeUrl} 
                         target="_blank" 
-                        rel="noopener noreferrer"
-                        className="flex items-center gap-1 lg:gap-2 text-red-600 hover:text-red-800 text-xs lg:text-sm"
+                        rel="noopener noreferrer"```text
+ className="flex items-center gap-1 lg:gap-2 text-red-600 hover:text-red-800 text-xs lg:text-sm"
                       >
                         <Youtube className="h-3 w-3 lg:h-4 lg:w-4" />
                         <span className="hidden sm:inline">YouTube</span>
