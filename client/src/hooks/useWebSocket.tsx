@@ -14,12 +14,8 @@ export function useWebSocket(options?: UseWebSocketOptions) {
   const reconnectTimeoutRef = useRef<NodeJS.Timeout | null>(null);
 
   const connect = () => {
-    // Don't connect in development mode to avoid conflicts with Vite HMR
-    if (import.meta.env.DEV) {
-      console.log('WebSocket disabled in development mode to avoid Vite conflicts');
-      // In development, we'll use polling for real-time updates instead
-      return;
-    }
+    // Enable WebSocket in all environments for real-time updates
+    console.log('WebSocket connecting for real-time updates');
 
     // Clean up existing connection
     if (wsRef.current) {
@@ -84,6 +80,21 @@ export function useWebSocket(options?: UseWebSocketOptions) {
                 queryClient.invalidateQueries({ queryKey: ['/api/analytics/guests'] });
                 queryClient.invalidateQueries({ queryKey: ['/api/analytics/rooms'] });
                 queryClient.invalidateQueries({ queryKey: ['/api/analytics/operations'] });
+                break;
+              case 'restaurant-orders':
+                queryClient.invalidateQueries({ queryKey: ['/api/restaurant/orders'] });
+                queryClient.invalidateQueries({ queryKey: ['/api/restaurant/dashboard/metrics'] });
+                queryClient.invalidateQueries({ queryKey: ['/api/restaurant/dashboard/today-orders'] });
+                break;
+              case 'restaurant-kot':
+                queryClient.invalidateQueries({ queryKey: ['/api/restaurant/kot'] });
+                break;
+              case 'restaurant-bills':
+                queryClient.invalidateQueries({ queryKey: ['/api/restaurant/bills'] });
+                break;
+              case 'restaurant-dashboard':
+                queryClient.invalidateQueries({ queryKey: ['/api/restaurant/dashboard/metrics'] });
+                queryClient.invalidateQueries({ queryKey: ['/api/restaurant/dashboard/today-orders'] });
                 break;
               default:
                 // Invalidate all queries for unknown updates

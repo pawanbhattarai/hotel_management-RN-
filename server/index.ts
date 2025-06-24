@@ -4,6 +4,7 @@ import { registerRoutes } from "./routes";
 import { setupVite, serveStatic, log } from "./vite";
 import { setupAuth } from "./replitAuth";
 import { seedDefaultUsers } from "./seedUsers";
+import { wsManager } from "./websocket";
 
 // rest of your code...
 
@@ -73,25 +74,21 @@ app.use((req, res, next) => {
     log(`serving on port ${port}`);
   });
 
-  // Only initialize WebSocket server in production
-  if (app.get("env") !== "development") {
-    wsManager.init(server);
-    
-    // Graceful shutdown
-    process.on('SIGTERM', () => {
-      console.log('Received SIGTERM, shutting down gracefully...');
-      wsManager.close();
-      process.exit(0);
-    });
+  // Initialize WebSocket server in all environments for real-time updates
+  wsManager.init(server);
+  
+  // Graceful shutdown
+  process.on('SIGTERM', () => {
+    console.log('Received SIGTERM, shutting down gracefully...');
+    wsManager.close();
+    process.exit(0);
+  });
 
-    process.on('SIGINT', () => {
-      console.log('Received SIGINT, shutting down gracefully...');
-      wsManager.close();
-      process.exit(0);
-    });
-  } else {
-    console.log('WebSocket server disabled in development mode');
-  }
+  process.on('SIGINT', () => {
+    console.log('Received SIGINT, shutting down gracefully...');
+    wsManager.close();
+    process.exit(0);
+  });
 
   // Seed default users if none exist
   await seedDefaultUsers();

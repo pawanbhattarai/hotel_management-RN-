@@ -37,6 +37,7 @@ import { restaurantOrderItems } from "@shared/schema";
 import { db } from "./db";
 import { z } from "zod";
 import { broadcastChange } from "./middleware/websocket";
+import { wsManager } from "./websocket";
 import { enforceBranchIsolation, getBranchFilter, canAccessBranch } from "./middleware/branchIsolation";
 
 // Helper function to check user permissions based on role and branch
@@ -2160,6 +2161,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
       };
 
       const order = await restaurantStorage.createRestaurantOrder(orderWithNumber, itemsData);
+      
+      // Broadcast new order creation
+      wsManager.broadcastDataUpdate('restaurant-orders', orderData.branchId?.toString());
+      wsManager.broadcastDataUpdate('restaurant-dashboard', orderData.branchId?.toString());
+      
       res.status(201).json(order);
     } catch (error) {
       console.error("Error creating restaurant order:", error);
@@ -2185,6 +2191,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
 
       const order = await restaurantStorage.updateRestaurantOrderStatus(orderId, status);
+      
+      // Broadcast order status update
+      wsManager.broadcastDataUpdate('restaurant-orders', existingOrder.branchId?.toString());
+      wsManager.broadcastDataUpdate('restaurant-kot', existingOrder.branchId?.toString());
+      wsManager.broadcastDataUpdate('restaurant-dashboard', existingOrder.branchId?.toString());
+      
       res.json(order);
     } catch (error) {
       console.error("Error updating order status:", error);
@@ -2227,24 +2239,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       const kotData = await restaurantStorage.generateKOT(orderId, user.id);
       
-      // Broadcast new KOT via WebSocket if available
-      if (global.wss) {
-        const newKotMessage = {
-          type: 'NEW_KOT',
-          data: {
-            kotTicket: kotData.kotTicket,
-            kotItems: kotData.kotItems,
-            orderId: orderId,
-            createdAt: new Date().toISOString()
-          }
-        };
-        
-        global.wss.clients.forEach((client: any) => {
-          if (client.readyState === 1) { // WebSocket.OPEN
-            client.send(JSON.stringify(newKotMessage));
-          }
-        });
-      }
+      // Broadcast new KOT creation
+      wsManager.broadcastDataUpdate('restaurant-kot', existingOrder.branchId?.toString());
+      wsManager.broadcastDataUpdate('restaurant-orders', existingOrder.branchId?.toString());
       
       res.json(kotData);
     } catch (error) {
@@ -2267,24 +2264,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       const kotTicket = await restaurantStorage.updateKotStatus(kotId, status, user.id);
       
-      // Broadcast KOT update via WebSocket if available
-      if (global.wss) {
-        const updateMessage = {
-          type: 'KOT_STATUS_UPDATE',
-          data: {
-            kotId,
-            status,
-            orderId: kotTicket.orderId,
-            updatedAt: new Date().toISOString()
-          }
-        };
-        
-        global.wss.clients.forEach((client: any) => {
-          if (client.readyState === 1) { // WebSocket.OPEN
-            client.send(JSON.stringify(updateMessage));
-          }
-        });
-      }
+      // Broadcast KOT status update
+      wsManager.broadcastDataUpdate('restaurant-kot');
+      wsManager.broadcastDataUpdate('restaurant-orders');
       
       res.json(kotTicket);
     } catch (error) {
@@ -2421,6 +2403,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
 
       const bill = await restaurantStorage.createRestaurantBill(billData);
+      
+      // Broadcast new bill creation
+      wsManager.broadcastDataUpdate('restaurant-bills', billData.branchId?.toString());
+      wsManager.broadcastDataUpdate('restaurant-dashboard', billData.branchId?.toString());
+      
       res.status(201).json(bill);
     } catch (error) {
       console.error("Error creating restaurant bill:", error);
@@ -2446,6 +2433,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
 
       const bill = await restaurantStorage.updateRestaurantBill(billId, billData);
+      
+      // Broadcast bill update
+      wsManager.broadcastDataUpdate('restaurant-bills', existingBill.branchId?.toString());
+      wsManager.broadcastDataUpdate('restaurant-dashboard', existingBill.branchId?.toString());
+      
       res.json(bill);
     } catch (error) {
       console.error("Error updating restaurant bill:", error);
@@ -3071,24 +3063,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
           notes: notes || existingOrder.notes,
         });
 
-        // Broadcast order update via WebSocket if available
-        if (global.wss) {
-          const orderUpdateMessage = {
-            type: 'ORDER_UPDATED',
-            data: {
-              orderId: existingOrder.id,
-              itemsAdded: items.length,
-              newTotal: newSubtotal,
-              updatedAt: new Date().toISOString()
-            }
-          };
-          
-          global.wss.clients.forEach((client: any) => {
-            if (client.readyState === 1) { // WebSocket.OPEN
-              client.send(JSON.stringify(orderUpdateMessage));
-            }
-          });
-        }
+        // Broadcast order update
+        wsManager.broadcastDataUpdate('restaurant-orders', orderInfo.branchId?.toString());
+        wsManager.broadcastDataUpdate('restaurant-dashboard', orderInfo.branchId?.toString());
 
         res.json({ 
           success: true, 
@@ -3132,23 +3109,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
           await restaurantStorage.createRestaurantOrderItem(item);
         }
 
-        // Broadcast new order via WebSocket if available
-        if (global.wss) {
-          const newOrderMessage = {
-            type: 'NEW_ORDER',
-            data: {
-              order: newOrder,
-              items: orderItems,
-              createdAt: new Date().toISOString()
-            }
-          };
-          
-          global.wss.clients.forEach((client: any) => {
-            if (client.readyState === 1) { // WebSocket.OPEN
-              client.send(JSON.stringify(newOrderMessage));
-            }
-          });
-        }
+        // Broadcast new order creation
+        wsManager.broadcastDataUpdate('restaurant-orders', orderInfo.branchId?.toString());
+        wsManager.broadcastDataUpdate('restaurant-dashboard', orderInfo.branchId?.toString());
 
         res.json({ 
           success: true, 
