@@ -128,22 +128,41 @@ export default function RestaurantOrders() {
       }
       return responseData;
     },
-    onSuccess: () => {
+    onSuccess: async (data) => {
       queryClient.invalidateQueries({ queryKey: ["/api/restaurant/orders"] });
       const existingOrder = selectedTable
         ? getTableOrder(selectedTable.id)
         : null;
+      
+      // Automatically generate KOT for new orders
+      if (!existingOrder && data?.id) {
+        try {
+          await generateKOTMutation.mutateAsync(data.id);
+          toast({
+            title: "Order created successfully",
+            description: "Your order has been placed and KOT generated!",
+          });
+        } catch (error) {
+          toast({
+            title: "Order created but KOT generation failed",
+            description: "Please generate KOT manually from the order view",
+            variant: "destructive",
+          });
+        }
+      } else {
+        toast({
+          title: existingOrder
+            ? "Order updated successfully"
+            : "Order created successfully",
+          description: existingOrder
+            ? "Items have been added to the order!"
+            : "Your order has been placed!",
+        });
+      }
+      
       setSelectedTable(null);
       setSelectedItems([]);
       setOriginalItems([]);
-      toast({
-        title: existingOrder
-          ? "Order updated successfully"
-          : "Order created successfully",
-        description: existingOrder
-          ? "Items have been added to the order!"
-          : "Your order has been placed!",
-      });
     },
     onError: (error: any) => {
       console.error("Order creation failed:", error);
@@ -177,11 +196,26 @@ export default function RestaurantOrders() {
       const response = await fetch(`/api/restaurant/orders/${orderId}/kot`, {
         method: "POST",
       });
-      if (!response.ok) throw new Error("Failed to generate KOT");
+      if (!response.ok) {
+        const error = await response.json();
+        throw new Error(error.message || "Failed to generate KOT");
+      }
       return response.json();
     },
-    onSuccess: () => {
-      toast({ title: "KOT generated successfully" });
+    onSuccess: (data) => {
+      queryClient.invalidateQueries({ queryKey: ["/api/restaurant/orders"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/restaurant/kot"] });
+      toast({ 
+        title: "KOT generated successfully",
+        description: `KOT ${data.kotNumber} has been created and sent to kitchen`
+      });
+    },
+    onError: (error: any) => {
+      toast({
+        title: "Failed to generate KOT",
+        description: error.message || "An error occurred while generating KOT",
+        variant: "destructive",
+      });
     },
   });
 
@@ -519,7 +553,7 @@ export default function RestaurantOrders() {
                           Total: Rs. {existingOrder.totalAmount}
                         </p>
                       </div>
-                      <div className="space-x-2">
+                      <div className="flex flex-wrap gap-2">
                         <Button
                           variant="outline"
                           size="sm"
@@ -527,6 +561,16 @@ export default function RestaurantOrders() {
                         >
                           <Eye className="h-4 w-4 mr-1" />
                           View
+                        </Button>
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() => generateKOTMutation.mutate(existingOrder.id)}
+                          disabled={generateKOTMutation.isPending}
+                          className="bg-orange-50 hover:bg-orange-100 text-orange-700 border-orange-200"
+                        >
+                          <FileText className="h-4 w-4 mr-1" />
+                          {generateKOTMutation.isPending ? "Generating..." : "Generate KOT"}
                         </Button>
                         <Select
                           value={existingOrder.status}
