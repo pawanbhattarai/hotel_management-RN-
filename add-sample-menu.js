@@ -1,7 +1,7 @@
 
 import { drizzle } from 'drizzle-orm/postgres-js';
 import postgres from 'postgres';
-import { menuCategories, menuDishes } from './shared/schema.js';
+import { menuCategories, menuDishes } from './shared/schema.ts';
 
 // Database connection
 const connectionString = process.env.DATABASE_URL || 'postgresql://localhost:5432/hotel_management';
