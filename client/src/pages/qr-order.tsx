@@ -7,7 +7,7 @@ import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Badge } from '@/components/ui/badge';
 import { Separator } from '@/components/ui/separator';
-import { Minus, Plus, ShoppingCart, CheckCircle } from 'lucide-react';
+import { Minus, Plus, ShoppingCart, CheckCircle, Search, Clock, Facebook, Instagram, Youtube, ExternalLink } from 'lucide-react';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { useToast } from '@/hooks/use-toast';
 
@@ -28,6 +28,7 @@ interface MenuDish {
   isVegetarian?: boolean;
   isVegan?: boolean;
   spiceLevel?: string;
+  preparationTime?: number;
 }
 
 interface MenuCategory {
@@ -49,6 +50,8 @@ export default function QROrderPage() {
   const [submitting, setSubmitting] = useState(false);
   const [orderComplete, setOrderComplete] = useState(false);
   const [orderNumber, setOrderNumber] = useState('');
+  const [searchQuery, setSearchQuery] = useState('');
+  const [hotelSettings, setHotelSettings] = useState<any>({});
   const [existingOrderId, setExistingOrderId] = useState<string | null>(null);
   const [orderStatus, setOrderStatus] = useState<string>('');
   const [orderCreatedAt, setOrderCreatedAt] = useState<Date | null>(null);
@@ -138,6 +141,17 @@ export default function QROrderPage() {
       
       console.log(`📍 QR Order - Location: ${data.location.type} ${data.location.name}`);
       console.log(`🍽️ QR Order - Menu: ${data.menu.categories?.length || 0} categories, ${data.menu.dishes?.length || 0} dishes`);
+      
+      // Fetch hotel settings for company information
+      try {
+        const settingsResponse = await fetch('/api/hotel-settings');
+        if (settingsResponse.ok) {
+          const settingsData = await settingsResponse.json();
+          setHotelSettings(settingsData);
+        }
+      } catch (error) {
+        console.error('Failed to fetch hotel settings:', error);
+      }
       
       // Check for existing order
       await checkExistingOrder();
@@ -248,6 +262,13 @@ export default function QROrderPage() {
   const getTotal = () => {
     return cart.reduce((total, item) => total + (parseFloat(item.price) * item.quantity), 0);
   };
+
+  // Filter dishes based on search query
+  const filteredDishes = dishes.filter(dish => 
+    dish.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+    dish.description?.toLowerCase().includes(searchQuery.toLowerCase()) ||
+    categories.find(cat => cat.id === dish.categoryId)?.name.toLowerCase().includes(searchQuery.toLowerCase())
+  );
 
   const submitOrder = async () => {
     if (!customerName || !customerPhone) {
@@ -371,10 +392,23 @@ export default function QROrderPage() {
   };
 
   const getFilteredDishes = () => {
-    if (selectedCategory === 'all') {
-      return dishes;
+    let filtered = dishes;
+    
+    // Filter by category first
+    if (selectedCategory !== 'all') {
+      filtered = filtered.filter(dish => dish.categoryId === parseInt(selectedCategory));
     }
-    return dishes.filter(dish => dish.categoryId === parseInt(selectedCategory));
+    
+    // Then filter by search query
+    if (searchQuery.trim()) {
+      filtered = filtered.filter(dish => 
+        dish.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+        dish.description?.toLowerCase().includes(searchQuery.toLowerCase()) ||
+        categories.find(cat => cat.id === dish.categoryId)?.name.toLowerCase().includes(searchQuery.toLowerCase())
+      );
+    }
+    
+    return filtered;
   };
 
   if (loading) {
@@ -432,6 +466,18 @@ export default function QROrderPage() {
               <h1 className="text-2xl font-bold">Menu Items</h1>
             </div>
             
+            {/* Search Bar */}
+            <div className="relative mb-4">
+              <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 h-4 w-4" />
+              <Input
+                type="text"
+                placeholder="Search dishes..."
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                className="pl-10"
+              />
+            </div>
+            
             {/* Category Filter */}
             <div className="flex gap-2 overflow-x-auto pb-2 mb-4">
               <Button
@@ -467,8 +513,14 @@ export default function QROrderPage() {
                   )}
                   <div className="flex items-center gap-2 mt-2">
                     <Badge variant="secondary" className="text-xs">
-                      {dish.category?.name}
+                      {categories.find(cat => cat.id === dish.categoryId)?.name}
                     </Badge>
+                    {dish.preparationTime && (
+                      <Badge variant="outline" className="text-blue-600 text-xs flex items-center gap-1">
+                        <Clock className="h-3 w-3" />
+                        {dish.preparationTime} min
+                      </Badge>
+                    )}
                     {dish.isVegetarian && <Badge variant="outline" className="text-green-600 text-xs">Veg</Badge>}
                     {dish.isVegan && <Badge variant="outline" className="text-green-700 text-xs">Vegan</Badge>}
                     {dish.spiceLevel && (
@@ -654,6 +706,103 @@ export default function QROrderPage() {
                 </Button>
               </div>
             )}
+
+            {/* More Section with Company Information */}
+            <div className="mt-6 pt-6 border-t border-gray-200">
+              <h3 className="font-semibold text-lg mb-4">More</h3>
+              
+              {/* Company Information */}
+              {hotelSettings && Object.keys(hotelSettings).length > 0 && (
+                <div className="bg-white p-4 rounded-lg mb-4">
+                  <h4 className="font-medium mb-2">About Us</h4>
+                  {hotelSettings.hotelName && (
+                    <p className="text-sm text-gray-600 mb-1">{hotelSettings.hotelName}</p>
+                  )}
+                  {hotelSettings.address && (
+                    <p className="text-xs text-gray-500 mb-1">{hotelSettings.address}</p>
+                  )}
+                  {hotelSettings.phone && (
+                    <p className="text-xs text-gray-500 mb-1">Phone: {hotelSettings.phone}</p>
+                  )}
+                  {hotelSettings.email && (
+                    <p className="text-xs text-gray-500">Email: {hotelSettings.email}</p>
+                  )}
+                </div>
+              )}
+
+              {/* Follow Us Section with Social Media */}
+              {(hotelSettings.facebookUrl || hotelSettings.instagramUrl || hotelSettings.tiktokUrl || hotelSettings.youtubeUrl) && (
+                <div className="bg-white p-4 rounded-lg mb-4">
+                  <h4 className="font-medium mb-3">Follow Us</h4>
+                  <div className="flex flex-wrap gap-3">
+                    {hotelSettings.facebookUrl && (
+                      <a 
+                        href={hotelSettings.facebookUrl} 
+                        target="_blank" 
+                        rel="noopener noreferrer"
+                        className="flex items-center gap-2 text-blue-600 hover:text-blue-800 text-sm"
+                      >
+                        <Facebook className="h-4 w-4" />
+                        Facebook
+                      </a>
+                    )}
+                    {hotelSettings.instagramUrl && (
+                      <a 
+                        href={hotelSettings.instagramUrl} 
+                        target="_blank" 
+                        rel="noopener noreferrer"
+                        className="flex items-center gap-2 text-pink-600 hover:text-pink-800 text-sm"
+                      >
+                        <Instagram className="h-4 w-4" />
+                        Instagram
+                      </a>
+                    )}
+                    {hotelSettings.youtubeUrl && (
+                      <a 
+                        href={hotelSettings.youtubeUrl} 
+                        target="_blank" 
+                        rel="noopener noreferrer"
+                        className="flex items-center gap-2 text-red-600 hover:text-red-800 text-sm"
+                      >
+                        <Youtube className="h-4 w-4" />
+                        YouTube
+                      </a>
+                    )}
+                    {hotelSettings.tiktokUrl && (
+                      <a 
+                        href={hotelSettings.tiktokUrl} 
+                        target="_blank" 
+                        rel="noopener noreferrer"
+                        className="flex items-center gap-2 text-gray-800 hover:text-black text-sm"
+                      >
+                        <ExternalLink className="h-4 w-4" />
+                        TikTok
+                      </a>
+                    )}
+                  </div>
+                </div>
+              )}
+
+              {/* Copyright Section */}
+              <div className="bg-white p-4 rounded-lg text-center">
+                <p className="text-xs text-gray-500">
+                  Powered by{' '}
+                  <a 
+                    href="https://maptechnepal.com" 
+                    target="_blank" 
+                    rel="noopener noreferrer"
+                    className="inline-flex items-center gap-1 text-blue-600 hover:text-blue-800"
+                  >
+                    <img 
+                      src="https://maptechnepal.com/_next/static/media/company__logo.388080d1.webp" 
+                      alt="MapTech Nepal" 
+                      className="h-4 w-auto inline"
+                    />
+                    MapTech Nepal
+                  </a>
+                </p>
+              </div>
+            </div>
           </div>
         </div>
       </div>

@@ -1419,18 +1419,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  // Hotel settings
-  app.get("/api/hotel-settings", isAuthenticated, async (req: any, res) => {
+  // Hotel settings - public endpoint for guest access
+  app.get("/api/hotel-settings", async (req: any, res) => {
     try {
-      const user = await storage.getUser(req.session.user.id);
-      if (!user) return res.status(401).json({ message: "User not found" });
-
       const { branchId } = req.query;
       const targetBranchId = branchId ? parseInt(branchId as string) : undefined;
-
-      if (targetBranchId && !checkBranchPermissions(user.role, user.branchId, targetBranchId)) {
-        return res.status(403).json({ message: "Insufficient permissions for this branch" });
-      }
 
       const settings = await storage.getHotelSettings(targetBranchId);
       res.json(settings || {});
