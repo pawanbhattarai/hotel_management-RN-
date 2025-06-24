@@ -6,6 +6,7 @@ import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { useToast } from '@/hooks/use-toast';
 import { 
   ShoppingCart, 
@@ -428,7 +429,28 @@ export default function QROrder() {
           <div className="space-y-4">
             {/* Category Filter */}
             <div className="sticky top-0 bg-gray-50 py-3 z-10">
-              <div className="flex gap-2 overflow-x-auto pb-2">
+              {/* Dropdown for mobile/smaller screens */}
+              <div className="block md:hidden mb-3">
+                <Select
+                  value={selectedCategory}
+                  onValueChange={setSelectedCategory}
+                >
+                  <SelectTrigger className="w-full">
+                    <SelectValue placeholder="Select category" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="all">All Items</SelectItem>
+                    {categories.map(category => (
+                      <SelectItem key={category.id} value={category.id.toString()}>
+                        {category.name}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+              
+              {/* Buttons for larger screens */}
+              <div className="hidden md:flex gap-2 overflow-x-auto pb-2">
                 <Button
                   variant={selectedCategory === 'all' ? 'default' : 'outline'}
                   size="sm"
