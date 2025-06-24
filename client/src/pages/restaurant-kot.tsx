@@ -103,25 +103,7 @@ export default function RestaurantKOT() {
     refetchInterval: 5000, // Fallback polling every 5 seconds
   });
 
-  // WebSocket for real-time updates
-  useWebSocket({
-    onMessage: (message) => {
-      try {
-        const data = JSON.parse(message);
-        switch (data.type) {
-          case 'NEW_KOT':
-          case 'KOT_STATUS_UPDATE':
-          case 'NEW_ORDER':
-          case 'ORDER_UPDATED':
-            // Invalidate and refetch KOT data
-            queryClient.invalidateQueries({ queryKey: ['/api/restaurant/kot'] });
-            break;
-        }
-      } catch (error) {
-        console.error('Error parsing WebSocket message:', error);
-      }
-    }
-  });
+  // Real-time updates via polling (WebSocket disabled in dev mode)
 
   const updateStatusMutation = useMutation({
     mutationFn: async ({ kotId, status }: { kotId: number; status: string }) => {
