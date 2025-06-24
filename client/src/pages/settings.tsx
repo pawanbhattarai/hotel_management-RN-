@@ -160,6 +160,12 @@ export default function Settings() {
         billingFooter: (settings as any).billingFooter || "",
         termsAndConditions: (settings as any).termsAndConditions || "",
         cancellationPolicy: (settings as any).cancellationPolicy || "",
+        facebookUrl: (settings as any).facebookUrl || "",
+        instagramUrl: (settings as any).instagramUrl || "",
+        tiktokUrl: (settings as any).tiktokUrl || "",
+        youtubeUrl: (settings as any).youtubeUrl || "",
+        contactInfo: (settings as any).contactInfo || "",
+        reviewsUrl: (settings as any).reviewsUrl || "",
       });
     }
   }, [settings, reset]);

@@ -101,20 +101,20 @@ export default function QROrderPage() {
   const fetchOrderInfo = async () => {
     try {
       console.log('🔍 QR Order - Fetching order info for token:', token);
-      
+
       if (!token || token.length < 10) {
         throw new Error('Invalid or missing QR token');
       }
 
       const response = await fetch(`/api/order/info/${token}`);
-      
+
       console.log('📡 QR Order - Response status:', response.status);
       console.log('📡 QR Order - Response ok:', response.ok);
-      
+
       if (!response.ok) {
         const errorText = await response.text();
         console.error('❌ QR Order - API Error:', response.status, errorText);
-        
+
         if (response.status === 404) {
           throw new Error('QR code not found. Please check if the QR code is valid.');
         } else if (response.status === 500) {
@@ -123,10 +123,10 @@ export default function QROrderPage() {
           throw new Error(`Failed to load menu: ${response.status}`);
         }
       }
-      
+
       const data = await response.json();
       console.log('✅ QR Order - Order info data:', data);
-      
+
       if (!data.location) {
         throw new Error('Invalid QR code - no location information found');
       }
@@ -134,14 +134,14 @@ export default function QROrderPage() {
       if (!data.menu || !data.menu.categories || !data.menu.dishes) {
         console.warn('⚠️ QR Order - Menu data incomplete:', data.menu);
       }
-      
+
       setLocationInfo(data.location);
       setCategories(data.menu.categories || []);
       setDishes(data.menu.dishes || []);
-      
+
       console.log(`📍 QR Order - Location: ${data.location.type} ${data.location.name}`);
       console.log(`🍽️ QR Order - Menu: ${data.menu.categories?.length || 0} categories, ${data.menu.dishes?.length || 0} dishes`);
-      
+
       // Fetch hotel settings for company information
       try {
         const settingsResponse = await fetch('/api/hotel-settings');
@@ -152,7 +152,7 @@ export default function QROrderPage() {
       } catch (error) {
         console.error('Failed to fetch hotel settings:', error);
       }
-      
+
       // Check for existing order
       await checkExistingOrder();
     } catch (error) {
@@ -179,7 +179,7 @@ export default function QROrderPage() {
         setCustomerName(orderData.customerName || '');
         setCustomerPhone(orderData.customerPhone || '');
         setNotes(orderData.notes || '');
-        
+
         // Load existing order items into cart
         if (orderData.items) {
           const existingItems = orderData.items.map((item: any) => {
@@ -294,7 +294,7 @@ export default function QROrderPage() {
       const endpoint = existingOrderId 
         ? `/api/order/update/${existingOrderId}` 
         : `/api/order/submit/${token}`;
-      
+
       const response = await fetch(endpoint, {
         method: existingOrderId ? 'PUT' : 'POST',
         headers: {
@@ -320,12 +320,12 @@ export default function QROrderPage() {
       setOrderNumber(data.orderNumber);
       setExistingOrderId(data.orderId);
       setOrderCreatedAt(new Date());
-      
+
       toast({
         title: existingOrderId ? "Order Updated!" : "Order Placed!",
         description: `Your order ${data.orderNumber} has been ${existingOrderId ? 'updated' : 'placed'} successfully`,
       });
-      
+
       // Refresh order status
       await checkExistingOrder();
     } catch (error) {
@@ -344,7 +344,7 @@ export default function QROrderPage() {
       const response = await fetch(`/api/order/clear/${token}`, {
         method: 'POST'
       });
-      
+
       if (response.ok) {
         // Reset all state
         setExistingOrderId(null);
@@ -356,7 +356,7 @@ export default function QROrderPage() {
         setCustomerPhone('');
         setNotes('');
         setOrderComplete(false);
-        
+
         toast({
           title: "Table Cleared",
           description: "Table is now available for new orders",
@@ -393,12 +393,12 @@ export default function QROrderPage() {
 
   const getFilteredDishes = () => {
     let filtered = dishes;
-    
+
     // Filter by category first
     if (selectedCategory !== 'all') {
       filtered = filtered.filter(dish => dish.categoryId === parseInt(selectedCategory));
     }
-    
+
     // Then filter by search query
     if (searchQuery.trim()) {
       filtered = filtered.filter(dish => 
@@ -407,7 +407,7 @@ export default function QROrderPage() {
         categories.find(cat => cat.id === dish.categoryId)?.name.toLowerCase().includes(searchQuery.toLowerCase())
       );
     }
-    
+
     return filtered;
   };
 
@@ -454,7 +454,7 @@ export default function QROrderPage() {
     );
   }
 
-  
+
 
   return (
     <div className="min-h-screen bg-gray-50">
@@ -465,7 +465,7 @@ export default function QROrderPage() {
             <div className="flex items-center justify-between mb-4">
               <h1 className="text-2xl font-bold">Menu Items</h1>
             </div>
-            
+
             {/* Category Filter and Search */}
             <div className="flex flex-col sm:flex-row gap-3 mb-4">
               <div className="flex gap-2 overflow-x-auto pb-2 flex-1">
@@ -489,7 +489,7 @@ export default function QROrderPage() {
                 </Button>
               ))}
               </div>
-              
+
               {/* Search Bar */}
               <div className="relative w-full sm:w-64">
                 <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 h-4 w-4" />
@@ -517,17 +517,17 @@ export default function QROrderPage() {
                     <Badge variant="secondary" className="text-xs">
                       {categories.find(cat => cat.id === dish.categoryId)?.name}
                     </Badge>
-                    {dish.preparationTime && (
-                      <Badge variant="outline" className="text-blue-600 text-xs flex items-center gap-1">
-                        <Clock className="h-3 w-3" />
-                        {dish.preparationTime} min
-                      </Badge>
-                    )}
                     {dish.isVegetarian && <Badge variant="outline" className="text-green-600 text-xs">Veg</Badge>}
                     {dish.isVegan && <Badge variant="outline" className="text-green-700 text-xs">Vegan</Badge>}
                     {dish.spiceLevel && (
                       <Badge variant="outline" className="text-red-600 text-xs">
                         {dish.spiceLevel}
+                      </Badge>
+                    )}
+                    {dish.preparationTime && (
+                      <Badge variant="outline" className="text-blue-600 text-xs flex items-center gap-1">
+                        <Clock className="h-3 w-3" />
+                        {dish.preparationTime}min
                       </Badge>
                     )}
                   </div>
@@ -540,7 +540,7 @@ export default function QROrderPage() {
                 </Button>
               </div>
             ))}
-            
+
             {getFilteredDishes().length === 0 && (
               <div className="text-center py-8">
                 <p className="text-gray-500">No dishes found in this category</p>
@@ -712,7 +712,7 @@ export default function QROrderPage() {
             {/* More Section with Company Information */}
             <div className="mt-6 pt-6 border-t border-gray-200">
               <h3 className="font-semibold text-lg mb-4">More</h3>
-              
+
               {/* Company Information */}
               {hotelSettings && Object.keys(hotelSettings).length > 0 && (
                 <div className="bg-white p-4 rounded-lg mb-4">

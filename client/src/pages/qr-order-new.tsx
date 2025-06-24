@@ -21,7 +21,9 @@ import {
   Phone,
   Star,
   Clock,
-  Users
+  Users,
+  Search,
+  ExternalLink
 } from 'lucide-react';
 
 interface LocationInfo {
@@ -113,6 +115,7 @@ export default function QROrder() {
   
   // Filter state
   const [selectedCategory, setSelectedCategory] = useState<string>('all');
+  const [searchQuery, setSearchQuery] = useState('');
 
   const token = location.split('/').pop();
 
@@ -402,10 +405,23 @@ export default function QROrder() {
   };
 
   const getFilteredDishes = () => {
-    if (selectedCategory === 'all') {
-      return dishes;
+    let filtered = dishes;
+    
+    // Filter by category first
+    if (selectedCategory !== 'all') {
+      filtered = filtered.filter(dish => dish.categoryId === parseInt(selectedCategory));
     }
-    return dishes.filter(dish => dish.categoryId === parseInt(selectedCategory));
+    
+    // Then filter by search query
+    if (searchQuery.trim()) {
+      filtered = filtered.filter(dish => 
+        dish.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+        dish.description?.toLowerCase().includes(searchQuery.toLowerCase()) ||
+        categories.find(cat => cat.id === dish.categoryId)?.name.toLowerCase().includes(searchQuery.toLowerCase())
+      );
+    }
+    
+    return filtered;
   };
 
   if (loading) {
@@ -424,9 +440,23 @@ export default function QROrder() {
       case 'dishes':
         return (
           <div className="space-y-4">
-            {/* Category Filter */}
+            {/* Category Filter and Search */}
             <div className="sticky top-0 bg-gray-50 py-3 z-10">
-              {/* Dropdown for all screen sizes */}
+              {/* Search Bar */}
+              <div className="mb-3">
+                <div className="relative">
+                  <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 h-4 w-4" />
+                  <Input
+                    type="text"
+                    placeholder="Search dishes..."
+                    value={searchQuery}
+                    onChange={(e) => setSearchQuery(e.target.value)}
+                    className="pl-10"
+                  />
+                </div>
+              </div>
+              
+              {/* Category Dropdown */}
               <div className="mb-3">
                 <Select
                   value={selectedCategory}
@@ -482,8 +512,8 @@ export default function QROrder() {
                           <Badge variant="outline" className="text-xs px-1 py-0">Vegan</Badge>
                         )}
                         {dish.preparationTime && (
-                          <Badge variant="outline" className="text-xs px-1 py-0 hidden md:inline-flex">
-                            <Clock className="w-3 h-3 mr-1" />
+                          <Badge variant="outline" className="text-xs px-1 py-0 flex items-center gap-1">
+                            <Clock className="w-3 h-3" />
                             {dish.preparationTime}min
                           </Badge>
                         )}
@@ -729,6 +759,13 @@ export default function QROrder() {
                     </div>
                   )}
                   
+                  {hotelSettings.address && (
+                    <div>
+                      <h4 className="font-medium text-gray-700">Address</h4>
+                      <p className="text-gray-600">{hotelSettings.address}</p>
+                    </div>
+                  )}
+                  
                   {hotelSettings.phone && (
                     <div>
                       <h4 className="font-medium text-gray-700">Contact Us</h4>
@@ -749,66 +786,78 @@ export default function QROrder() {
                       </a>
                     </div>
                   )}
-                </div>
-              </CardContent>
-            </Card>
-
-            <Card>
-              <CardContent className="p-6">
-                <h3 className="text-lg font-semibold mb-4">Follow Us</h3>
-                <div className="grid grid-cols-2 gap-4">
-                  {hotelSettings.facebookUrl && (
-                    <a 
-                      href={hotelSettings.facebookUrl} 
-                      target="_blank" 
-                      rel="noopener noreferrer"
-                      className="flex items-center gap-2 p-3 border rounded-lg hover:bg-gray-50"
-                    >
-                      <Facebook className="w-5 h-5 text-blue-600" />
-                      <span>Facebook</span>
-                    </a>
-                  )}
                   
-                  {hotelSettings.instagramUrl && (
-                    <a 
-                      href={hotelSettings.instagramUrl} 
-                      target="_blank" 
-                      rel="noopener noreferrer"
-                      className="flex items-center gap-2 p-3 border rounded-lg hover:bg-gray-50"
-                    >
-                      <Instagram className="w-5 h-5 text-pink-600" />
-                      <span>Instagram</span>
-                    </a>
-                  )}
-                  
-                  {hotelSettings.tiktokUrl && (
-                    <a 
-                      href={hotelSettings.tiktokUrl} 
-                      target="_blank" 
-                      rel="noopener noreferrer"
-                      className="flex items-center gap-2 p-3 border rounded-lg hover:bg-gray-50"
-                    >
-                      <span className="w-5 h-5 text-black font-bold">TT</span>
-                      <span>TikTok</span>
-                    </a>
-                  )}
-                  
-                  {hotelSettings.youtubeUrl && (
-                    <a 
-                      href={hotelSettings.youtubeUrl} 
-                      target="_blank" 
-                      rel="noopener noreferrer"
-                      className="flex items-center gap-2 p-3 border rounded-lg hover:bg-gray-50"
-                    >
-                      <Youtube className="w-5 h-5 text-red-600" />
-                      <span>YouTube</span>
-                    </a>
+                  {hotelSettings.website && (
+                    <div className="flex items-center gap-2">
+                      <ExternalLink className="w-4 h-4" />
+                      <a href={hotelSettings.website} target="_blank" rel="noopener noreferrer" className="text-blue-600">
+                        {hotelSettings.website}
+                      </a>
+                    </div>
                   )}
                 </div>
               </CardContent>
             </Card>
 
-            {hotelSettings.reviewsUrl && (
+            {/* Follow Us Section - Only show if at least one social media URL exists */}
+            {(hotelSettings.facebookUrl || hotelSettings.instagramUrl || hotelSettings.tiktokUrl || hotelSettings.youtubeUrl) && (
+              <Card>
+                <CardContent className="p-6">
+                  <h3 className="text-lg font-semibold mb-4">Follow Us</h3>
+                  <div className="grid grid-cols-2 gap-4">
+                    {hotelSettings.facebookUrl && hotelSettings.facebookUrl.trim() !== '' && (
+                      <a 
+                        href={hotelSettings.facebookUrl} 
+                        target="_blank" 
+                        rel="noopener noreferrer"
+                        className="flex items-center gap-2 p-3 border rounded-lg hover:bg-gray-50"
+                      >
+                        <Facebook className="w-5 h-5 text-blue-600" />
+                        <span>Facebook</span>
+                      </a>
+                    )}
+                    
+                    {hotelSettings.instagramUrl && hotelSettings.instagramUrl.trim() !== '' && (
+                      <a 
+                        href={hotelSettings.instagramUrl} 
+                        target="_blank" 
+                        rel="noopener noreferrer"
+                        className="flex items-center gap-2 p-3 border rounded-lg hover:bg-gray-50"
+                      >
+                        <Instagram className="w-5 h-5 text-pink-600" />
+                        <span>Instagram</span>
+                      </a>
+                    )}
+                    
+                    {hotelSettings.tiktokUrl && hotelSettings.tiktokUrl.trim() !== '' && (
+                      <a 
+                        href={hotelSettings.tiktokUrl} 
+                        target="_blank" 
+                        rel="noopener noreferrer"
+                        className="flex items-center gap-2 p-3 border rounded-lg hover:bg-gray-50"
+                      >
+                        <span className="w-5 h-5 text-black font-bold">TT</span>
+                        <span>TikTok</span>
+                      </a>
+                    )}
+                    
+                    {hotelSettings.youtubeUrl && hotelSettings.youtubeUrl.trim() !== '' && (
+                      <a 
+                        href={hotelSettings.youtubeUrl} 
+                        target="_blank" 
+                        rel="noopener noreferrer"
+                        className="flex items-center gap-2 p-3 border rounded-lg hover:bg-gray-50"
+                      >
+                        <Youtube className="w-5 h-5 text-red-600" />
+                        <span>YouTube</span>
+                      </a>
+                    )}
+                  </div>
+                </CardContent>
+              </Card>
+            )}
+
+            {hotelSettings.reviewsUrl && hotelSettings.reviewsUrl.trim() !== '' && (
               <Card>
                 <CardContent className="p-6">
                   <h3 className="text-lg font-semibold mb-4">Review Us</h3>
@@ -824,6 +873,28 @@ export default function QROrder() {
                 </CardContent>
               </Card>
             )}
+
+            {/* Copyright Section */}
+            <Card>
+              <CardContent className="p-6 text-center">
+                <p className="text-xs text-gray-500">
+                  Powered by{' '}
+                  <a 
+                    href="https://maptechnepal.com" 
+                    target="_blank" 
+                    rel="noopener noreferrer"
+                    className="inline-flex items-center gap-1 text-blue-600 hover:text-blue-800"
+                  >
+                    <img 
+                      src="https://maptechnepal.com/_next/static/media/company__logo.388080d1.webp" 
+                      alt="MapTech Nepal" 
+                      className="h-4 w-auto inline"
+                    />
+                    MapTech Nepal
+                  </a>
+                </p>
+              </CardContent>
+            </Card>
           </div>
         );
     }
