@@ -100,7 +100,7 @@ export default function RestaurantKOT() {
       if (!response.ok) throw new Error('Failed to fetch KOT tickets');
       return response.json();
     },
-    refetchInterval: 5000, // Fallback polling every 5 seconds
+    refetchInterval: 2000, // Real-time polling every 2 seconds for immediate updates
   });
 
   // Real-time updates via polling (WebSocket disabled in dev mode)

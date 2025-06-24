@@ -74,8 +74,12 @@ app.use((req, res, next) => {
     log(`serving on port ${port}`);
   });
 
-  // Initialize WebSocket server in all environments for real-time updates
-  wsManager.init(server);
+  // Initialize WebSocket server only in production to avoid Vite conflicts
+  if (app.get("env") !== "development") {
+    wsManager.init(server);
+  } else {
+    console.log('WebSocket server disabled in development mode to avoid Vite conflicts');
+  }
   
   // Graceful shutdown
   process.on('SIGTERM', () => {

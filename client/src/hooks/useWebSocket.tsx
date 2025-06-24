@@ -14,7 +14,12 @@ export function useWebSocket(options?: UseWebSocketOptions) {
   const reconnectTimeoutRef = useRef<NodeJS.Timeout | null>(null);
 
   const connect = () => {
-    // Enable WebSocket in all environments for real-time updates
+    // Skip WebSocket in development mode to avoid Vite conflicts
+    if (import.meta.env.DEV) {
+      console.log('WebSocket disabled in development mode - using polling for real-time updates');
+      return;
+    }
+    
     console.log('WebSocket connecting for real-time updates');
 
     // Clean up existing connection

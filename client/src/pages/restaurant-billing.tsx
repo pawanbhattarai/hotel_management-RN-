@@ -40,10 +40,12 @@ export default function RestaurantBilling() {
 
   const { data: bills, isLoading } = useQuery({
     queryKey: ['/api/restaurant/bills'],
+    refetchInterval: 2000, // Real-time polling every 2 seconds
   });
 
   const { data: orders } = useQuery({
     queryKey: ['/api/restaurant/orders'],
+    refetchInterval: 2000, // Real-time polling every 2 seconds
   });
 
   const { data: tables } = useQuery({
