@@ -32,8 +32,8 @@ import MeasuringUnits from "@/pages/measuring-units";
 import Suppliers from "@/pages/suppliers";
 import StockConsumption from "@/pages/stock-consumption";
 import DishIngredients from "@/pages/dish-ingredients";
-import QROrderPage from "@/pages/qr-order";
 import { lazy, Suspense } from "react";
+import QROrderNew from "@/pages/qr-order-new";
 
 const RestaurantAnalytics = lazy(() => import("./pages/restaurant-analytics"));
 
@@ -44,7 +44,15 @@ function Router() {
   return (
     <Switch>
       {/* Public QR order page - no authentication required */}
-      <Route path="/order/:token" component={lazy(() => import('./pages/qr-order-new'))} />
+      <Route path="/order/:token">
+        <Suspense fallback={
+          <div className="min-h-screen flex items-center justify-center">
+            <div className="animate-spin rounded-full h-32 w-32 border-b-2 border-primary"></div>
+          </div>
+        }>
+          <QROrderNew />
+        </Suspense>
+      </Route>
       {isLoading || !isAuthenticated ? (
         <Route path="/" component={Login} />
       ) : (
