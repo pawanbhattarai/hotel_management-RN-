@@ -111,9 +111,37 @@ export default function MultiRoomModal({
         
         if (!response.ok) {
           console.error("Room fetch failed with status:", response.status);
-          const errorText = await response.text();
+          const contentType = response.headers.get('content-type');
+          console.error("Response content type:", contentType);
+          
+          let errorText;
+          if (contentType && contentType.includes('application/json')) {
+            try {
+              const errorJson = await response.json();
+              errorText = JSON.stringify(errorJson);
+            } catch {
+              errorText = await response.text();
+            }
+          } else {
+            errorText = await response.text();
+          }
+          
           console.error("Error response:", errorText);
+          
+          // If we got HTML instead of JSON, it's likely a server error
+          if (errorText.includes('<!DOCTYPE')) {
+            throw new Error(`Server returned HTML instead of JSON. Status: ${response.status}`);
+          }
+          
           throw new Error(`Failed to fetch rooms: ${response.status} - ${errorText}`);
+        }
+        
+        const contentType = response.headers.get('content-type');
+        if (!contentType || !contentType.includes('application/json')) {
+          console.error("Unexpected content type:", contentType);
+          const text = await response.text();
+          console.error("Response text:", text);
+          throw new Error("Server returned non-JSON response");
         }
         
         const rooms = await response.json();
@@ -126,6 +154,13 @@ export default function MultiRoomModal({
       }
     },
     enabled: isOpen && !!user && (user?.role === "superadmin" ? !!selectedBranchId : !!user?.branchId),
+    retry: (failureCount, error) => {
+      // Don't retry if we're getting HTML responses (server errors)
+      if (error instanceof Error && error.message.includes('HTML instead of JSON')) {
+        return false;
+      }
+      return failureCount < 3;
+    },
   });
 
   const createReservationMutation = useMutation({

@@ -373,11 +373,15 @@ export async function registerRoutes(app: Express): Promise<Server> {
       
       // Ensure we always return a valid JSON response
       const response = rooms || [];
-      res.status(200).json(response);
+      
+      // Set proper headers
+      res.setHeader('Content-Type', 'application/json');
+      return res.status(200).json(response);
     } catch (error) {
       console.error("❌ Error fetching rooms:", error);
       // Make sure we return JSON even on error
-      res.status(500).json({ 
+      res.setHeader('Content-Type', 'application/json');
+      return res.status(500).json({ 
         message: "Failed to fetch rooms",
         error: error instanceof Error ? error.message : "Unknown error"
       });
