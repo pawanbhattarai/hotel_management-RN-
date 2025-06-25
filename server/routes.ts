@@ -61,6 +61,34 @@ function checkBranchPermissions(
   return false;
 }
 
+// Helper function to check user permissions for specific actions
+async function checkUserPermission(
+  userId: string,
+  module: string,
+  action: 'read' | 'write' | 'delete'
+): Promise<boolean> {
+  try {
+    const user = await storage.getUser(userId);
+    if (!user) return false;
+
+    // Superadmin has all permissions
+    if (user.role === "superadmin") {
+      return true;
+    }
+
+    // For custom roles, check specific permissions
+    if (user.role === "custom") {
+      const userPermissions = await roleStorage.getUserPermissions(userId);
+      return userPermissions[module]?.[action] || false;
+    }
+
+    return false;
+  } catch (error) {
+    console.error("Error checking user permission:", error);
+    return false;
+  }
+}
+
 export async function registerRoutes(app: Express): Promise<Server> {
   // Import session with ES6 syntax
   const session = (await import('express-session')).default;
@@ -331,6 +359,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(403).json({ message: "Insufficient permissions" });
       }
 
+      // Check delete permission for users module
+      const hasDeletePermission = await checkUserPermission(req.session.user.id, 'users', 'delete');
+      if (!hasDeletePermission) {
+        return res.status(403).json({ message: "Insufficient permissions to delete users" });
+      }
+
       const userId = req.params.id;
       await storage.updateUser(userId, { isActive: false });
       broadcastChange('users', 'deleted', { id: userId }); // Broadcast change
@@ -449,6 +483,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const user = await storage.getUser(req.session.user.id);
       if (!user || !["superadmin", "branch-admin"].includes(user.role)) {
         return res.status(403).json({ message: "Insufficient permissions" });
+      }
+
+      // Check delete permission for rooms module
+      const hasDeletePermission = await checkUserPermission(req.session.user.id, 'rooms', 'delete');
+      if (!hasDeletePermission) {
+        return res.status(403).json({ message: "Insufficient permissions to delete rooms" });
       }
 
       const roomId = parseInt(req.params.id);
@@ -586,6 +626,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(403).json({ message: "Insufficient permissions. Only superadmin can delete room types." });
       }
 
+      // Check delete permission for room-types module
+      const hasDeletePermission = await checkUserPermission(req.session.user.id, 'room-types', 'delete');
+      if (!hasDeletePermission) {
+        return res.status(403).json({ message: "Insufficient permissions to delete room types" });
+      }
+
       const roomTypeId = parseInt(req.params.id);
       await storage.updateRoomType(roomTypeId, { isActive: false });
       broadcastChange('room-types', 'deleted', { id: roomTypeId }); // Broadcast change
@@ -700,6 +746,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
     try {
       const user = await storage.getUser(req.session.user.id);
       if (!user) return res.status(401).json({ message: "User not found" });
+
+      // Check delete permission for guests module
+      const hasDeletePermission = await checkUserPermission(req.session.user.id, 'guests', 'delete');
+      if (!hasDeletePermission) {
+        return res.status(403).json({ message: "Insufficient permissions to delete guests" });
+      }
 
       const guestId = parseInt(req.params.id);
 
@@ -1002,6 +1054,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const user = await storage.getUser(req.session.user.id);
       if (!user) return res.status(401).json({ message: "User not found" });
 
+      // Check delete permission for reservations module
+      const hasDeletePermission = await checkUserPermission(req.session.user.id, 'reservations', 'delete');
+      if (!hasDeletePermission) {
+        return res.status(403).json({ message: "Insufficient permissions to delete reservations" });
+      }
+
       const reservationId = req.params.id;
       const existingReservation = await storage.getReservation(reservationId);
 
@@ -1280,7 +1338,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
     try {
       const user = await storage.getUser(req.session.user.id);
       if (!user || user.role !== "superadmin") {
-        return res.status(403).json({ message: "Only superadmins can delete roles" });
+        return res.status(403).json({ message: "Insufficient permissions" });
+      }
+
+      // Check delete permission for role management
+      const hasDeletePermission = await checkUserPermission(req.session.user.id, 'users', 'delete');
+      if (!hasDeletePermission) {
+        return res.status(403).json({ message: "Insufficient permissions to delete roles" });
       }
 
       const roleId = parseInt(req.params.id);
@@ -1869,6 +1933,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const user = await storage.getUser(req.session.user.id);
       if (!user) return res.status(401).json({ message: "User not found" });
 
+      // Check delete permission for restaurant-tables module
+      const hasDeletePermission = await checkUserPermission(req.session.user.id, 'restaurant-tables', 'delete');
+      if (!hasDeletePermission) {
+        return res.status(403).json({ message: "Insufficient permissions to delete restaurant tables" });
+      }
+
       const tableId = parseInt(req.params.id);
 
       const existingTable = await restaurantStorage.getRestaurantTable(tableId);
@@ -1972,6 +2042,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
     try {
       const user = await storage.getUser(req.session.user.id);
       if (!user) return res.status(401).json({ message: "User not found" });
+
+      // Check delete permission for restaurant-categories module
+      const hasDeletePermission = await checkUserPermission(req.session.user.id, 'restaurant-categories', 'delete');
+      if (!hasDeletePermission) {
+        return res.status(403).json({ message: "Insufficient permissions to delete menu categories" });
+      }
 
       const categoryId = parseInt(req.params.id);
 
@@ -2101,6 +2177,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
     try {
       const user = await storage.getUser(req.session.user.id);
       if (!user) return res.status(401).json({ message: "User not found" });
+
+      // Check delete permission for restaurant-dishes module
+      const hasDeletePermission = await checkUserPermission(req.session.user.id, 'restaurant-dishes', 'delete');
+      if (!hasDeletePermission) {
+        return res.status(403).json({ message: "Insufficient permissions to delete menu dishes" });
+      }
 
       const dishId = parseInt(req.params.id);
 
@@ -2483,12 +2565,31 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Delete restaurant bill
   app.delete("/api/restaurant/bills/:id", isAuthenticated, async (req: any, res) => {
     try {
-      const { id } = req.params;
-      await restaurantStorage.deleteBill(id);
-      res.json({ message: "Bill deleted successfully" });
+      const user = await storage.getUser(req.session.user.id);
+      if (!user) return res.status(401).json({ message: "User not found" });
+
+      // Check delete permission for restaurant-billing module
+      const hasDeletePermission = await checkUserPermission(req.session.user.id, 'restaurant-billing', 'delete');
+      if (!hasDeletePermission) {
+        return res.status(403).json({ message: "Insufficient permissions to delete restaurant bills" });
+      }
+
+      const billId = req.params.id;
+      const existingBill = await restaurantStorage.getRestaurantBill(billId);
+      
+      if (!existingBill) {
+        return res.status(404).json({ message: "Bill not found" });
+      }
+
+      if (!checkBranchPermissions(user.role, user.branchId, existingBill.branchId)) {
+        return res.status(403).json({ message: "Insufficient permissions for this branch" });
+      }
+
+      await restaurantStorage.deleteBill(billId);
+      res.status(204).send();
     } catch (error) {
       console.error("Error deleting restaurant bill:", error);
-      res.status(500).json({ message: "Failed to delete bill" });
+      res.status(500).json({ message: "Failed to delete restaurant bill" });
     }
   });
 
@@ -2616,20 +2717,20 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const user = await storage.getUser(req.session.user.id);
       if (!user) return res.status(401).json({ message: "User not found" });
 
+      // Check delete permission for tax-management module
+      const hasDeletePermission = await checkUserPermission(req.session.user.id, 'tax-management', 'delete');
+      if (!hasDeletePermission) {
+        return res.status(403).json({ message: "Insufficient permissions to delete taxes" });
+      }
+
       // Only allow superadmin and branch-admin to delete taxes
       if (!["superadmin", "branch-admin"].includes(user.role)) {
         return res.status(403).json({ message: "Insufficient permissions" });
       }
 
       const taxId = parseInt(req.params.id);
-
-      const existingTax = await restaurantStorage.getTax(taxId);
-      if (!existingTax) {
-        return res.status(404).json({ message: "Tax not found" });
-      }
-
       await restaurantStorage.deleteTax(taxId);
-      res.json({ message: "Tax deleted successfully" });
+      res.status(204).send();
     } catch (error) {
       console.error("Error deleting tax:", error);
       res.status(500).json({ message: "Failed to delete tax" });
@@ -2690,6 +2791,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   app.delete("/api/inventory/measuring-units/:id", isAuthenticated, async (req: any, res) => {
     try {
+      // Check delete permission for inventory-measuring-units module
+      const hasDeletePermission = await checkUserPermission(req.session.user.id, 'inventory-measuring-units', 'delete');
+      if (!hasDeletePermission) {
+        return res.status(403).json({ message: "Insufficient permissions to delete measuring units" });
+      }
+
       const unitId = parseInt(req.params.id);
       await inventoryStorage.deleteMeasuringUnit(unitId);
       res.json({ message: "Measuring unit deleted successfully" });
@@ -2773,6 +2880,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   app.delete("/api/inventory/stock-categories/:id", isAuthenticated, async (req: any, res) => {
     try {
+      // Check delete permission for inventory-stock-categories module
+      const hasDeletePermission = await checkUserPermission(req.session.user.id, 'inventory-stock-categories', 'delete');
+      if (!hasDeletePermission) {
+        return res.status(403).json({ message: "Insufficient permissions to delete stock categories" });
+      }
+
       const categoryId = parseInt(req.params.id);
       await inventoryStorage.deleteStockCategory(categoryId);
       res.json({ message: "Stock category deleted successfully" });
@@ -2831,6 +2944,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   app.delete("/api/inventory/suppliers/:id", isAuthenticated, async (req: any, res) => {
     try {
+      // Check delete permission for inventory-suppliers module
+      const hasDeletePermission = await checkUserPermission(req.session.user.id, 'inventory-suppliers', 'delete');
+      if (!hasDeletePermission) {
+        return res.status(403).json({ message: "Insufficient permissions to delete suppliers" });
+      }
+
       const supplierId = parseInt(req.params.id);
       await inventoryStorage.deleteSupplier(supplierId);
       res.json({ message: "Supplier deleted successfully" });
@@ -2903,6 +3022,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   app.delete("/api/inventory/stock-items/:id", isAuthenticated, async (req: any, res) => {
     try {
+      // Check delete permission for inventory-stock-items module
+      const hasDeletePermission = await checkUserPermission(req.session.user.id, 'inventory-stock-items', 'delete');
+      if (!hasDeletePermission) {
+        return res.status(403).json({ message: "Insufficient permissions to delete stock items" });
+      }
+
       const itemId = parseInt(req.params.id);
       await inventoryStorage.deleteStockItem(itemId);
       res.json({ message: "Stock item deleted successfully" });
