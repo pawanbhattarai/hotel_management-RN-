@@ -6,6 +6,8 @@ import { inventoryStorage } from "./inventory-storage";
 import { dishIngredientsStorage } from "./dish-ingredients-storage";
 import { roleStorage } from "./role-storage";
 import { NotificationService } from "./notifications";
+import { sanitizeInput, authRateLimit, generalRateLimit, strictRateLimit, validateEmail, validatePhone } from "./security";
+import helmet from "helmet";
 import {
   insertBranchSchema,
   insertRoomSchema,
@@ -63,6 +65,18 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Import session with ES6 syntax
   const session = (await import('express-session')).default;
 
+  // Trust proxy for rate limiting in Replit environment
+  app.set('trust proxy', 1);
+
+  // Security middleware - relaxed for development
+  app.use(helmet({
+    contentSecurityPolicy: false, // Disable CSP in development
+    hsts: false // Disable HSTS in development
+  }));
+
+  // Apply rate limiting only to specific sensitive API routes
+  // Skip general rate limiting in development to avoid blocking the application
+
   // Auth middleware for session handling
   app.use(session({
     secret: process.env.SESSION_SECRET || 'your-secret-key',
@@ -88,8 +102,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Combined auth and branch isolation middleware
   const requireAuthWithBranchIsolation = [isAuthenticated, enforceBranchIsolation];
 
-  // Auth routes
-  app.post("/api/auth/login", async (req: any, res) => {
+  // Auth routes with rate limiting
+  app.post("/api/auth/login", authRateLimit, async (req: any, res) => {
     try {
       const { email, password } = req.body;
 
@@ -183,7 +197,18 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(403).json({ message: "Insufficient permissions" });
       }
 
-      const branchData = insertBranchSchema.parse(req.body);
+      // Sanitize input data
+      const sanitizedBody = sanitizeInput(req.body);
+      const branchData = insertBranchSchema.parse(sanitizedBody);
+      
+      // Additional validation
+      if (branchData.email && !validateEmail(branchData.email)) {
+        return res.status(400).json({ message: "Invalid email format" });
+      }
+      if (branchData.phone && !validatePhone(branchData.phone)) {
+        return res.status(400).json({ message: "Invalid phone format" });
+      }
+
       const branch = await storage.createBranch(branchData);
       broadcastChange('branches', 'created', branch); // Broadcast change
       res.status(201).json(branch);
@@ -612,8 +637,17 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const user = await storage.getUser(req.session.user.id);
       if (!user) return res.status(401).json({ message: "User not found" });
 
-      // Guests are now centrally stored, no branch isolation needed
-      const guestData = insertGuestSchema.parse(req.body);
+      // Apply sanitization fix for remaining XSS vulnerability
+      const sanitizedBody = sanitizeInput(req.body);
+      const guestData = insertGuestSchema.parse(sanitizedBody);
+      
+      // Additional validation
+      if (guestData.email && !validateEmail(guestData.email)) {
+        return res.status(400).json({ message: "Invalid email format" });
+      }
+      if (guestData.phone && !validatePhone(guestData.phone)) {
+        return res.status(400).json({ message: "Invalid phone format" });
+      }
       
       // Check if guest with this phone number already exists
       if (guestData.phone) {
@@ -1865,7 +1899,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const user = await storage.getUser(req.session.user.id);
       if (!user) return res.status(401).json({ message: "User not found" });
 
-      const categoryData = insertMenuCategorySchema.parse(req.body);
+      // Sanitize input data
+      const sanitizedBody = sanitizeInput(req.body);
+      const categoryData = insertMenuCategorySchema.parse(sanitizedBody);
 
       if (!checkBranchPermissions(user.role, user.branchId, categoryData.branchId)) {
         return res.status(403).json({ message: "Insufficient permissions for this branch" });
@@ -1969,7 +2005,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const user = await storage.getUser(req.session.user.id);
       if (!user) return res.status(401).json({ message: "User not found" });
 
-      const dishData = insertMenuDishSchema.parse(req.body);
+      // Sanitize input data
+      const sanitizedBody = sanitizeInput(req.body);
+      const dishData = insertMenuDishSchema.parse(sanitizedBody);
 
       if (!checkBranchPermissions(user.role, user.branchId, dishData.branchId)) {
         return res.status(403).json({ message: "Insufficient permissions for this branch" });
