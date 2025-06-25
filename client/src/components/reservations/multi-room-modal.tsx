@@ -169,7 +169,10 @@ export default function MultiRoomModal({
         `/api/guests?phone=${encodeURIComponent(phone)}`,
       );
       if (response.ok) {
-        const guests = await response.json();
+        const result = await response.json();
+        // Handle both array response and single guest response
+        const guests = Array.isArray(result) ? result : result ? [result] : [];
+        
         if (guests && guests.length > 0) {
           const guest = guests[0];
           setExistingGuest(guest);
