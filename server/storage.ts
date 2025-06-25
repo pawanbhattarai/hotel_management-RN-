@@ -470,7 +470,8 @@ export class DatabaseStorage implements IStorage {
       .from(reservations)
       .leftJoin(guests, eq(reservations.guestId, guests.id));
 
-    if (branchId) {
+    if (branchId !== undefined && branchId !== null) {
+      console.log("🔍 Filtering reservations for branchId:", branchId);
       reservationQuery = reservationQuery.where(eq(reservations.branchId, branchId));
     }
 

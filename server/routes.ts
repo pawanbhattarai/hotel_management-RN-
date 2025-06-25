@@ -831,6 +831,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const user = await storage.getUser(req.session.user.id);
       if (!user) return res.status(401).json({ message: "User not found" });
 
+      // Check read permission for reservations module
+      const hasReadPermission = await checkUserPermission(req.session.user.id, 'reservations', 'read');
+      if (!hasReadPermission) {
+        return res.status(403).json({ message: "You do not have permission to view reservations" });
+      }
+
       const branchId = user.role === "superadmin" ? undefined : user.branchId!;
       const reservations = await storage.getReservations(branchId);
       res.json(reservations);
@@ -959,7 +965,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
         totalAmount: finalTotalAmount.toString(),
         appliedTaxes: JSON.stringify(appliedTaxes),
         taxAmount: totalTaxAmount.toString(),
+        branchId: reservationData.branchId, // Ensure branchId is preserved
       };
+
+      console.log("🏨 Creating reservation with branchId:", reservationWithConfirmation.branchId, "for user:", user.id, "role:", user.role);
 
       const reservation = await storage.createReservation(
         reservationWithConfirmation,
