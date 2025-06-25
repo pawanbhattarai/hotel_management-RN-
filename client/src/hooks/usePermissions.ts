@@ -91,12 +91,18 @@ export function usePermissions() {
       'restaurant-dishes': 'Menu Dishes',
       'restaurant-orders': 'Restaurant Orders',
       'restaurant-billing': 'Restaurant Billing',
+      'room-types': 'Room Types',
+      'inventory-stock-categories': 'Stock Categories',
+      'inventory-stock-items': 'Stock Items',
+      'inventory-measuring-units': 'Measuring Units',
+      'inventory-suppliers': 'Suppliers',
+      'tax-management': 'Tax Management',
     };
 
-    const moduleName = moduleNames[module] || module;
+    const moduleName = moduleNames[module] || module.replace('-', ' ').replace(/\b\w/g, l => l.toUpperCase());
     const actionText = action === 'read' ? 'access' : action === 'write' ? 'modify' : 'delete';
     
-    return `You do not have permission to ${actionText} ${moduleName}`;
+    return `You do not have permission to ${actionText} ${moduleName}. Contact your administrator to update your role permissions.`;
   };
 
   const checkPermissionWithMessage = (module: string, action: 'read' | 'write' | 'delete'): { allowed: boolean; message?: string } => {

@@ -133,7 +133,12 @@ export default function Reservations() {
 
   const deleteReservationMutation = useMutation({
     mutationFn: async (id: string) => {
-      return await apiRequest("DELETE", `/api/reservations/${id}`);
+      const response = await apiRequest("DELETE", `/api/reservations/${id}`);
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({}));
+        throw new Error(errorData.message || "Failed to cancel reservation");
+      }
+      return response;
     },
     onSuccess: () => {
       toast({
@@ -146,23 +151,17 @@ export default function Reservations() {
       setIsDeleteDialogOpen(false);
       setSelectedReservation(null);
     },
-    onError: (error) => {
-      if (isUnauthorizedError(error)) {
-        toast({
-          title: "Unauthorized",
-          description: "You are logged out. Logging in again...",
-          variant: "destructive",
-        });
-        setTimeout(() => {
-          window.location.href = "/api/login";
-        }, 500);
-        return;
-      }
+    onError: (error: any) => {
+      console.error("Error cancelling reservation:", error);
+      const errorMessage = error.message || "Failed to cancel reservation. Please try again.";
+
       toast({
-        title: "Error",
-        description: "Failed to cancel reservation. Please try again.",
+        title: "Permission Denied",
+        description: errorMessage,
         variant: "destructive",
       });
+      setIsDeleteDialogOpen(false);
+      setSelectedReservation(null);
     },
   });
 

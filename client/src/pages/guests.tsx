@@ -1,4 +1,3 @@
-
 import { useEffect, useState } from "react";
 import { useAuth } from "@/hooks/useAuth";
 import { useToast } from "@/hooks/use-toast";
@@ -100,7 +99,12 @@ export default function Guests() {
 
   const deleteGuestMutation = useMutation({
     mutationFn: async (id: number) => {
-      return await apiRequest("DELETE", `/api/guests/${id}`);
+      const response = await apiRequest("DELETE", `/api/guests/${id}`);
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({}));
+        throw new Error(errorData.message || "Failed to delete guest");
+      }
+      return response;
     },
     onSuccess: () => {
       toast({
@@ -111,12 +115,17 @@ export default function Guests() {
       setIsDeleteDialogOpen(false);
       setSelectedGuest(null);
     },
-    onError: () => {
+    onError: (error: any) => {
+      console.error("Error deleting guest:", error);
+      const errorMessage = error.message || "Failed to delete guest. Please try again.";
+
       toast({
-        title: "Error",
-        description: "Failed to delete guest. Please try again.",
+        title: "Permission Denied",
+        description: errorMessage,
         variant: "destructive",
       });
+      setIsDeleteDialogOpen(false);
+      setSelectedGuest(null);
     },
   });
 

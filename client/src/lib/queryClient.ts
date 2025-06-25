@@ -28,6 +28,9 @@ export const apiRequest = async (
   }
 
   const response = await fetch(endpoint, config);
+  
+  // Don't automatically throw for non-200 responses here, let the caller handle it
+  // This allows proper error handling in mutations
   return response;
 };
 
