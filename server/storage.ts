@@ -68,12 +68,20 @@ export interface IStorage {
   getRoomTypes(branchId?: number): Promise<RoomType[]>;
   getRoomType(id: number): Promise<RoomType | undefined>;
   createRoomType(roomType: InsertRoomType): Promise<RoomType>;
-  updateRoomType(id: number, roomType: Partial<InsertRoomType>): Promise<RoomType>;
+  updateRoomType(
+    id: number,
+    roomType: Partial<InsertRoomType>,
+  ): Promise<RoomType>;
   deleteRoomType(id: number): Promise<void>;
 
   // Room operations
-  getRooms(branchId?: number, status?: string): Promise<(Room & { roomType: RoomType; branch: Branch })[]>;
-  getRoom(id: number): Promise<(Room & { roomType: RoomType; branch: Branch }) | undefined>;
+  getRooms(
+    branchId?: number,
+    status?: string,
+  ): Promise<(Room & { roomType: RoomType; branch: Branch })[]>;
+  getRoom(
+    id: number,
+  ): Promise<(Room & { roomType: RoomType; branch: Branch }) | undefined>;
   createRoom(room: InsertRoom): Promise<Room>;
   updateRoom(id: number, room: Partial<InsertRoom>): Promise<Room>;
   deleteRoom(id: number): Promise<void>;
@@ -88,27 +96,42 @@ export interface IStorage {
   findGuestByPhone(phone: string): Promise<Guest | undefined>;
 
   // Reservation operations
-  getReservations(branchId?: number): Promise<(Reservation & {
-    guest: Guest;
-    reservationRooms: (ReservationRoom & {
-      room: Room & { roomType: RoomType };
-    })[];
-  })[]>;
-  getReservation(id: string): Promise<(Reservation & {
-    guest: Guest;
-    reservationRooms: (ReservationRoom & {
-      room: Room & { roomType: RoomType };
-    })[];
-  }) | undefined>;
-  createReservation(reservation: InsertReservation, roomsData?: InsertReservationRoom[]): Promise<Reservation>;
-  updateReservation(id: string, reservation: Partial<InsertReservation>): Promise<Reservation>;
+  getReservations(branchId?: number): Promise<
+    (Reservation & {
+      guest: Guest;
+      reservationRooms: (ReservationRoom & {
+        room: Room & { roomType: RoomType };
+      })[];
+    })[]
+  >;
+  getReservation(id: string): Promise<
+    | (Reservation & {
+        guest: Guest;
+        reservationRooms: (ReservationRoom & {
+          room: Room & { roomType: RoomType };
+        })[];
+      })
+    | undefined
+  >;
+  createReservation(
+    reservation: InsertReservation,
+    roomsData?: InsertReservationRoom[],
+  ): Promise<Reservation>;
+  updateReservation(
+    id: string,
+    reservation: Partial<InsertReservation>,
+  ): Promise<Reservation>;
   deleteReservation(id: string): Promise<void>;
 
   // Reservation Room operations
-  createReservationRoom(reservationRoom: InsertReservationRoom): Promise<ReservationRoom>;
-  getReservationRooms(reservationId: string): Promise<(ReservationRoom & {
-    room: Room & { roomType: RoomType };
-  })[]>;
+  createReservationRoom(
+    reservationRoom: InsertReservationRoom,
+  ): Promise<ReservationRoom>;
+  getReservationRooms(reservationId: string): Promise<
+    (ReservationRoom & {
+      room: Room & { roomType: RoomType };
+    })[]
+  >;
 
   // Hotel Settings operations
   getHotelSettings(): Promise<HotelSettings | undefined>;
@@ -119,15 +142,27 @@ export interface IStorage {
   getPushSubscriptions(userId?: string): Promise<PushSubscription[]>;
   removePushSubscription(endpoint: string): Promise<void>;
   clearAllPushSubscriptions(): Promise<void>;
-  createPushSubscription(subscription: InsertPushSubscription): Promise<PushSubscription>;
-  getPushSubscription(userId: string, endpoint: string): Promise<PushSubscription | undefined>;
+  createPushSubscription(
+    subscription: InsertPushSubscription,
+  ): Promise<PushSubscription>;
+  getPushSubscription(
+    userId: string,
+    endpoint: string,
+  ): Promise<PushSubscription | undefined>;
   deletePushSubscription(userId: string, endpoint: string): Promise<void>;
   getAllAdminSubscriptions(): Promise<(PushSubscription & { user?: User })[]>;
 
   // Notification History operations
-  saveNotificationHistory(notification: InsertNotificationHistory): Promise<void>;
-  getNotificationHistory(userId?: string, limit?: number): Promise<NotificationHistory[]>;
-  createNotificationHistory(notification: InsertNotificationHistory): Promise<NotificationHistory>;
+  saveNotificationHistory(
+    notification: InsertNotificationHistory,
+  ): Promise<void>;
+  getNotificationHistory(
+    userId?: string,
+    limit?: number,
+  ): Promise<NotificationHistory[]>;
+  createNotificationHistory(
+    notification: InsertNotificationHistory,
+  ): Promise<NotificationHistory>;
   markNotificationAsRead(notificationId: number, userId: string): Promise<void>;
   markAllNotificationsAsRead(userId: string): Promise<void>;
   getUnreadNotificationCount(userId: string): Promise<number>;
@@ -156,14 +191,16 @@ export interface IStorage {
   }>;
 
   // 24-hour specific methods
-  getTodayReservations(branchId?: number): Promise<(Reservation & {
-    guest: Guest;
-    reservationRooms: (ReservationRoom & {
-      room: Room & { roomType: RoomType };
-    })[];
-  })[]>;
-    // User operations - mandatory for Replit Auth
-    getUsers(): Promise<any[]>;
+  getTodayReservations(branchId?: number): Promise<
+    (Reservation & {
+      guest: Guest;
+      reservationRooms: (ReservationRoom & {
+        room: Room & { roomType: RoomType };
+      })[];
+    })[]
+  >;
+  // User operations - mandatory for Replit Auth
+  getUsers(): Promise<any[]>;
 }
 
 export class DatabaseStorage implements IStorage {
@@ -184,7 +221,7 @@ export class DatabaseStorage implements IStorage {
       .values(user)
       .onConflictDoUpdate({
         target: users.id,
-        set: { 
+        set: {
           email: user.email,
           firstName: user.firstName,
           lastName: user.lastName,
@@ -199,7 +236,9 @@ export class DatabaseStorage implements IStorage {
     return await db.select().from(users);
   }
 
-  async getAllUsersWithCustomRoles(): Promise<(User & { customRoleIds: number[] })[]> {
+  async getAllUsersWithCustomRoles(): Promise<
+    (User & { customRoleIds: number[] })[]
+  > {
     const allUsers = await db.select().from(users);
 
     const usersWithRoles = await Promise.all(
@@ -209,13 +248,15 @@ export class DatabaseStorage implements IStorage {
           ...user,
           customRoleIds,
         };
-      })
+      }),
     );
 
     return usersWithRoles;
   }
 
-  async getUserWithCustomRoles(userId: string): Promise<(User & { customRoleIds: number[] }) | undefined> {
+  async getUserWithCustomRoles(
+    userId: string,
+  ): Promise<(User & { customRoleIds: number[] }) | undefined> {
     const user = await this.getUser(userId);
     if (!user) return undefined;
 
@@ -245,7 +286,10 @@ export class DatabaseStorage implements IStorage {
   }
 
   async getBranch(id: number): Promise<Branch | undefined> {
-    const [branch] = await db.select().from(branches).where(eq(branches.id, id));
+    const [branch] = await db
+      .select()
+      .from(branches)
+      .where(eq(branches.id, id));
     return branch;
   }
 
@@ -254,7 +298,10 @@ export class DatabaseStorage implements IStorage {
     return result;
   }
 
-  async updateBranch(id: number, branch: Partial<InsertBranch>): Promise<Branch> {
+  async updateBranch(
+    id: number,
+    branch: Partial<InsertBranch>,
+  ): Promise<Branch> {
     const [result] = await db
       .update(branches)
       .set(branch)
@@ -273,10 +320,7 @@ export class DatabaseStorage implements IStorage {
 
     if (branchId) {
       query = query.where(
-        or(
-          eq(roomTypes.branchId, branchId),
-          isNull(roomTypes.branchId)
-        )
+        or(eq(roomTypes.branchId, branchId), isNull(roomTypes.branchId)),
       );
     }
 
@@ -284,7 +328,10 @@ export class DatabaseStorage implements IStorage {
   }
 
   async getRoomType(id: number): Promise<RoomType | undefined> {
-    const [roomType] = await db.select().from(roomTypes).where(eq(roomTypes.id, id));
+    const [roomType] = await db
+      .select()
+      .from(roomTypes)
+      .where(eq(roomTypes.id, id));
     return roomType;
   }
 
@@ -293,7 +340,10 @@ export class DatabaseStorage implements IStorage {
     return result;
   }
 
-  async updateRoomType(id: number, roomType: Partial<InsertRoomType>): Promise<RoomType> {
+  async updateRoomType(
+    id: number,
+    roomType: Partial<InsertRoomType>,
+  ): Promise<RoomType> {
     const [result] = await db
       .update(roomTypes)
       .set(roomType)
@@ -307,7 +357,10 @@ export class DatabaseStorage implements IStorage {
   }
 
   // Room operations
-  async getRooms(branchId?: number, status?: string): Promise<(Room & { roomType: RoomType; branch: Branch })[]> {
+  async getRooms(
+    branchId?: number,
+    status?: string,
+  ): Promise<(Room & { roomType: RoomType; branch: Branch })[]> {
     try {
       console.log("🏨 getRooms called with:", { branchId, status });
 
@@ -339,20 +392,46 @@ export class DatabaseStorage implements IStorage {
       const results = await query.orderBy(rooms.number);
       console.log("✅ Query executed, found", results.length, "results");
 
-      const mappedResults = results.map(result => {
-        if (!result.rooms) {
-          console.warn("⚠️ Found result without rooms data:", result);
-          return null;
-        }
+      const mappedResults = results
+        .map((result) => {
+          if (!result.rooms) {
+            console.warn("⚠️ Found result without rooms data:", result);
+            return null;
+          }
 
-        return {
-          ...result.rooms,
-          roomType: result.room_types || { id: 0, name: 'Unknown', description: '', basePrice: '0', maxOccupancy: 1, amenities: [], isActive: true, branchId: null, createdAt: new Date(), updatedAt: new Date() },
-          branch: result.branches || { id: 0, name: 'Unknown', address: '', phone: '', email: '', isActive: true, createdAt: new Date(), updatedAt: new Date() },
-        };
-      }).filter(Boolean);
+          return {
+            ...result.rooms,
+            roomType: result.room_types || {
+              id: 0,
+              name: "Unknown",
+              description: "",
+              basePrice: "0",
+              maxOccupancy: 1,
+              amenities: [],
+              isActive: true,
+              branchId: null,
+              createdAt: new Date(),
+              updatedAt: new Date(),
+            },
+            branch: result.branches || {
+              id: 0,
+              name: "Unknown",
+              address: "",
+              phone: "",
+              email: "",
+              isActive: true,
+              createdAt: new Date(),
+              updatedAt: new Date(),
+            },
+          };
+        })
+        .filter(Boolean);
 
-      console.log("✅ getRooms completed successfully with", mappedResults.length, "rooms");
+      console.log(
+        "✅ getRooms completed successfully with",
+        mappedResults.length,
+        "rooms",
+      );
       return mappedResults as (Room & { roomType: RoomType; branch: Branch })[];
     } catch (error) {
       console.error("❌ Error in getRooms:", error);
@@ -360,7 +439,9 @@ export class DatabaseStorage implements IStorage {
     }
   }
 
-  async getRoom(id: number): Promise<(Room & { roomType: RoomType; branch: Branch }) | undefined> {
+  async getRoom(
+    id: number,
+  ): Promise<(Room & { roomType: RoomType; branch: Branch }) | undefined> {
     const [result] = await db
       .select()
       .from(rooms)
@@ -380,7 +461,7 @@ export class DatabaseStorage implements IStorage {
   async createRoom(roomData: typeof rooms.$inferInsert): Promise<Room> {
     const roomWithToken = {
       ...roomData,
-      qrToken: roomData.qrToken || crypto.randomUUID()
+      qrToken: roomData.qrToken || crypto.randomUUID(),
     };
     const [room] = await db.insert(rooms).values(roomWithToken).returning();
     return room;
@@ -403,7 +484,11 @@ export class DatabaseStorage implements IStorage {
   async getGuests(branchId?: number): Promise<Guest[]> {
     // Guests are now centrally stored and accessible to all branches
     // Branch filtering is only applied for reservations, not guest management
-    return await db.select().from(guests).where(eq(guests.isActive, true)).orderBy(desc(guests.createdAt));
+    return await db
+      .select()
+      .from(guests)
+      .where(eq(guests.isActive, true))
+      .orderBy(desc(guests.createdAt));
   }
 
   async getGuest(id: number): Promise<Guest | undefined> {
@@ -436,15 +521,12 @@ export class DatabaseStorage implements IStorage {
         sql`${guests.firstName} ILIKE ${`%${query}%`}`,
         sql`${guests.lastName} ILIKE ${`%${query}%`}`,
         sql`${guests.phone} ILIKE ${`%${query}%`}`,
-        sql`${guests.email} ILIKE ${`%${query}%`}`
-      )
+        sql`${guests.email} ILIKE ${`%${query}%`}`,
+      ),
     );
 
     // Search all active guests regardless of branch
-    const searchQuery = db
-      .select()
-      .from(guests)
-      .where(searchConditions);
+    const searchQuery = db.select().from(guests).where(searchConditions);
 
     return await searchQuery.orderBy(desc(guests.createdAt)).limit(10);
   }
@@ -459,12 +541,14 @@ export class DatabaseStorage implements IStorage {
   }
 
   // Reservation operations
-  async getReservations(branchId?: number): Promise<(Reservation & {
-    guest: Guest;
-    reservationRooms: (ReservationRoom & {
-      room: Room & { roomType: RoomType };
-    })[];
-  })[]> {
+  async getReservations(branchId?: number): Promise<
+    (Reservation & {
+      guest: Guest;
+      reservationRooms: (ReservationRoom & {
+        room: Room & { roomType: RoomType };
+      })[];
+    })[]
+  > {
     let reservationQuery = db
       .select()
       .from(reservations)
@@ -472,10 +556,14 @@ export class DatabaseStorage implements IStorage {
 
     if (branchId !== undefined && branchId !== null) {
       console.log("🔍 Filtering reservations for branchId:", branchId);
-      reservationQuery = reservationQuery.where(eq(reservations.branchId, branchId));
+      reservationQuery = reservationQuery.where(
+        eq(reservations.branchId, branchId),
+      );
     }
 
-    const reservationResults = await reservationQuery.orderBy(desc(reservations.createdAt));
+    const reservationResults = await reservationQuery.orderBy(
+      desc(reservations.createdAt),
+    );
 
     const reservationsWithRooms = await Promise.all(
       reservationResults.map(async (result) => {
@@ -489,7 +577,7 @@ export class DatabaseStorage implements IStorage {
           .leftJoin(roomTypes, eq(rooms.roomTypeId, roomTypes.id))
           .where(eq(reservationRooms.reservationId, reservation.id));
 
-        const reservationRoomsData = roomResults.map(roomResult => ({
+        const reservationRoomsData = roomResults.map((roomResult) => ({
           ...roomResult.reservation_rooms,
           room: {
             ...roomResult.rooms!,
@@ -502,18 +590,21 @@ export class DatabaseStorage implements IStorage {
           guest,
           reservationRooms: reservationRoomsData,
         };
-      })
+      }),
     );
 
     return reservationsWithRooms;
   }
 
-  async getReservation(id: string): Promise<(Reservation & {
-    guest: Guest;
-    reservationRooms: (ReservationRoom & {
-      room: Room & { roomType: RoomType };
-    })[];
-  }) | undefined> {
+  async getReservation(id: string): Promise<
+    | (Reservation & {
+        guest: Guest;
+        reservationRooms: (ReservationRoom & {
+          room: Room & { roomType: RoomType };
+        })[];
+      })
+    | undefined
+  > {
     const [result] = await db
       .select()
       .from(reservations)
@@ -532,7 +623,7 @@ export class DatabaseStorage implements IStorage {
       .leftJoin(roomTypes, eq(rooms.roomTypeId, roomTypes.id))
       .where(eq(reservationRooms.reservationId, reservation.id));
 
-    const reservationRoomsData = roomResults.map(roomResult => ({
+    const reservationRoomsData = roomResults.map((roomResult) => ({
       ...roomResult.reservation_rooms,
       room: {
         ...roomResult.rooms!,
@@ -547,12 +638,18 @@ export class DatabaseStorage implements IStorage {
     };
   }
 
-  async createReservation(reservation: InsertReservation, roomsData?: InsertReservationRoom[]): Promise<Reservation> {
+  async createReservation(
+    reservation: InsertReservation,
+    roomsData?: InsertReservationRoom[],
+  ): Promise<Reservation> {
     return await db.transaction(async (tx) => {
-      const [newReservation] = await tx.insert(reservations).values(reservation).returning();
+      const [newReservation] = await tx
+        .insert(reservations)
+        .values(reservation)
+        .returning();
 
       if (roomsData && roomsData.length > 0) {
-        const roomsWithReservationId = roomsData.map(room => ({
+        const roomsWithReservationId = roomsData.map((room) => ({
           ...room,
           reservationId: newReservation.id,
         }));
@@ -563,8 +660,8 @@ export class DatabaseStorage implements IStorage {
         if (reservation.guestId) {
           await tx
             .update(guests)
-            .set({ 
-              reservationCount: sql`${guests.reservationCount} + 1`
+            .set({
+              reservationCount: sql`${guests.reservationCount} + 1`,
             })
             .where(eq(guests.id, reservation.guestId));
         }
@@ -574,7 +671,10 @@ export class DatabaseStorage implements IStorage {
     });
   }
 
-  async updateReservation(id: string, reservation: Partial<InsertReservation>): Promise<Reservation> {
+  async updateReservation(
+    id: string,
+    reservation: Partial<InsertReservation>,
+  ): Promise<Reservation> {
     const [result] = await db
       .update(reservations)
       .set(reservation)
@@ -588,14 +688,21 @@ export class DatabaseStorage implements IStorage {
   }
 
   // Reservation Room operations
-  async createReservationRoom(reservationRoom: InsertReservationRoom): Promise<ReservationRoom> {
-    const [result] = await db.insert(reservationRooms).values(reservationRoom).returning();
+  async createReservationRoom(
+    reservationRoom: InsertReservationRoom,
+  ): Promise<ReservationRoom> {
+    const [result] = await db
+      .insert(reservationRooms)
+      .values(reservationRoom)
+      .returning();
     return result;
   }
 
-  async getReservationRooms(reservationId: string): Promise<(ReservationRoom & {
-    room: Room & { roomType: RoomType };
-  })[]> {
+  async getReservationRooms(reservationId: string): Promise<
+    (ReservationRoom & {
+      room: Room & { roomType: RoomType };
+    })[]
+  > {
     const results = await db
       .select()
       .from(reservationRooms)
@@ -603,7 +710,7 @@ export class DatabaseStorage implements IStorage {
       .leftJoin(roomTypes, eq(rooms.roomTypeId, roomTypes.id))
       .where(eq(reservationRooms.reservationId, reservationId));
 
-    return results.map(result => ({
+    return results.map((result) => ({
       ...result.reservation_rooms,
       room: {
         ...result.rooms!,
@@ -618,7 +725,9 @@ export class DatabaseStorage implements IStorage {
     return settings;
   }
 
-  async upsertHotelSettings(settings: InsertHotelSettings): Promise<HotelSettings> {
+  async upsertHotelSettings(
+    settings: InsertHotelSettings,
+  ): Promise<HotelSettings> {
     const existingSettings = await this.getHotelSettings();
 
     if (existingSettings) {
@@ -629,13 +738,18 @@ export class DatabaseStorage implements IStorage {
         .returning();
       return result;
     } else {
-      const [result] = await db.insert(hotelSettings).values(settings).returning();
+      const [result] = await db
+        .insert(hotelSettings)
+        .values(settings)
+        .returning();
       return result;
     }
   }
 
   // Push Subscription operations
-  async savePushSubscription(subscription: InsertPushSubscription): Promise<void> {
+  async savePushSubscription(
+    subscription: InsertPushSubscription,
+  ): Promise<void> {
     await db
       .insert(pushSubscriptions)
       .values(subscription)
@@ -658,14 +772,18 @@ export class DatabaseStorage implements IStorage {
   }
 
   async removePushSubscription(endpoint: string): Promise<void> {
-    await db.delete(pushSubscriptions).where(eq(pushSubscriptions.endpoint, endpoint));
+    await db
+      .delete(pushSubscriptions)
+      .where(eq(pushSubscriptions.endpoint, endpoint));
   }
 
   async clearAllPushSubscriptions(): Promise<void> {
     await db.delete(pushSubscriptions);
   }
 
-  async createPushSubscription(subscription: InsertPushSubscription): Promise<PushSubscription> {
+  async createPushSubscription(
+    subscription: InsertPushSubscription,
+  ): Promise<PushSubscription> {
     const [result] = await db
       .insert(pushSubscriptions)
       .values({
@@ -686,43 +804,46 @@ export class DatabaseStorage implements IStorage {
     return result;
   }
 
-  async getPushSubscription(userId: string, endpoint: string): Promise<PushSubscription | undefined> {
+  async getPushSubscription(
+    userId: string,
+    endpoint: string,
+  ): Promise<PushSubscription | undefined> {
     const [subscription] = await db
       .select()
       .from(pushSubscriptions)
       .where(
         and(
           eq(pushSubscriptions.userId, userId),
-          eq(pushSubscriptions.endpoint, endpoint)
-        )
+          eq(pushSubscriptions.endpoint, endpoint),
+        ),
       );
     return subscription;
   }
 
-  async deletePushSubscription(userId: string, endpoint: string): Promise<void> {
+  async deletePushSubscription(
+    userId: string,
+    endpoint: string,
+  ): Promise<void> {
     await db
       .delete(pushSubscriptions)
       .where(
         and(
           eq(pushSubscriptions.userId, userId),
-          eq(pushSubscriptions.endpoint, endpoint)
-        )
+          eq(pushSubscriptions.endpoint, endpoint),
+        ),
       );
   }
 
-  async getAllAdminSubscriptions(): Promise<(PushSubscription & { user?: User })[]> {
+  async getAllAdminSubscriptions(): Promise<
+    (PushSubscription & { user?: User })[]
+  > {
     const results = await db
       .select()
       .from(pushSubscriptions)
       .leftJoin(users, eq(pushSubscriptions.userId, users.id))
-      .where(
-        or(
-          eq(users.role, 'superadmin'),
-          eq(users.role, 'branch-admin')
-        )
-      );
+      .where(or(eq(users.role, "superadmin"), eq(users.role, "branch-admin")));
 
-    return results.map(result => ({
+    return results.map((result) => ({
       ...result.push_subscriptions,
       p256dh: result.push_subscriptions.p256dhKey,
       auth: result.push_subscriptions.authKey,
@@ -731,32 +852,47 @@ export class DatabaseStorage implements IStorage {
   }
 
   // Notification History operations
-  async saveNotificationHistory(notification: InsertNotificationHistory): Promise<void> {
+  async saveNotificationHistory(
+    notification: InsertNotificationHistory,
+  ): Promise<void> {
     await db.insert(notificationHistory).values(notification);
   }
 
-  async getNotificationHistory(userId?: string, limit: number = 50): Promise<NotificationHistory[]> {
+  async getNotificationHistory(
+    userId?: string,
+    limit: number = 50,
+  ): Promise<NotificationHistory[]> {
     let query = db.select().from(notificationHistory);
     if (userId) {
       query = query.where(eq(notificationHistory.userId, userId));
     }
-    return await query.orderBy(desc(notificationHistory.createdAt)).limit(limit);
+    return await query
+      .orderBy(desc(notificationHistory.createdAt))
+      .limit(limit);
   }
 
-  async createNotificationHistory(notification: InsertNotificationHistory): Promise<NotificationHistory> {
-    const [result] = await db.insert(notificationHistory).values(notification).returning();
+  async createNotificationHistory(
+    notification: InsertNotificationHistory,
+  ): Promise<NotificationHistory> {
+    const [result] = await db
+      .insert(notificationHistory)
+      .values(notification)
+      .returning();
     return result;
   }
 
-  async markNotificationAsRead(notificationId: number, userId: string): Promise<void> {
+  async markNotificationAsRead(
+    notificationId: number,
+    userId: string,
+  ): Promise<void> {
     await db
       .update(notificationHistory)
       .set({ isRead: true, readAt: new Date() })
       .where(
         and(
           eq(notificationHistory.id, notificationId),
-          eq(notificationHistory.userId, userId)
-        )
+          eq(notificationHistory.userId, userId),
+        ),
       );
   }
 
@@ -774,8 +910,8 @@ export class DatabaseStorage implements IStorage {
       .where(
         and(
           eq(notificationHistory.userId, userId),
-          eq(notificationHistory.isRead, false)
-        )
+          eq(notificationHistory.isRead, false),
+        ),
       );
     return result.count;
   }
@@ -784,10 +920,12 @@ export class DatabaseStorage implements IStorage {
   async getTaxes(applicationType?: string): Promise<Tax[]> {
     let query = db.select().from(taxes).where(eq(taxes.isActive, true));
     if (applicationType) {
-      query = query.where(and(
-        eq(taxes.isActive, true),
-        eq(taxes.applicationType, applicationType)
-      ));
+      query = query.where(
+        and(
+          eq(taxes.isActive, true),
+          eq(taxes.applicationType, applicationType),
+        ),
+      );
     }
     return await query.orderBy(taxes.taxName);
   }
@@ -816,11 +954,14 @@ export class DatabaseStorage implements IStorage {
   }
 
   // Analytics operations
-  async getRevenueAnalytics(branchId?: number, period: string = '30d'): Promise<any> {
-    const days = parseInt(period.replace('d', ''));
+  async getRevenueAnalytics(
+    branchId?: number,
+    period: string = "30d",
+  ): Promise<any> {
+    const days = parseInt(period.replace("d", ""));
     const startDate = new Date();
     startDate.setDate(startDate.getDate() - days);
-    const startDateString = startDate.toISOString().split('T')[0];
+    const startDateString = startDate.toISOString().split("T")[0];
 
     let query = db
       .select({
@@ -831,34 +972,42 @@ export class DatabaseStorage implements IStorage {
       .where(
         and(
           sql`DATE(${reservations.createdAt}) >= ${startDateString}`,
-          branchId ? eq(reservations.branchId, branchId) : undefined
-        )
+          branchId ? eq(reservations.branchId, branchId) : undefined,
+        ),
       )
       .groupBy(sql`DATE(${reservations.createdAt})`)
       .orderBy(sql`DATE(${reservations.createdAt})`);
 
     const dailyRevenue = await query;
 
-    const totalRevenue = dailyRevenue.reduce((sum, day) => sum + (Number(day.revenue) || 0), 0);
+    const totalRevenue = dailyRevenue.reduce(
+      (sum, day) => sum + (Number(day.revenue) || 0),
+      0,
+    );
 
     return {
-      dailyRevenue: dailyRevenue.map(day => ({
+      dailyRevenue: dailyRevenue.map((day) => ({
         date: day.date,
-        revenue: Number(day.revenue) || 0
+        revenue: Number(day.revenue) || 0,
       })),
       totalRevenue,
-      period: `${days} days`
+      period: `${days} days`,
     };
   }
 
-  async getOccupancyAnalytics(branchId?: number, period: string = '30d'): Promise<any> {
-    const days = parseInt(period.replace('d', ''));
+  async getOccupancyAnalytics(
+    branchId?: number,
+    period: string = "30d",
+  ): Promise<any> {
+    const days = parseInt(period.replace("d", ""));
     const startDate = new Date();
     startDate.setDate(startDate.getDate() - days);
-    const startDateString = startDate.toISOString().split('T')[0];
+    const startDateString = startDate.toISOString().split("T")[0];
 
     // Get total rooms
-    let totalRoomsQuery = db.select({ count: sql<number>`count(*)` }).from(rooms);
+    let totalRoomsQuery = db
+      .select({ count: sql<number>`count(*)` })
+      .from(rooms);
     if (branchId) {
       totalRoomsQuery = totalRoomsQuery.where(eq(rooms.branchId, branchId));
     }
@@ -872,12 +1021,15 @@ export class DatabaseStorage implements IStorage {
         occupiedRooms: sql<number>`COUNT(DISTINCT ${reservationRooms.roomId})`,
       })
       .from(reservationRooms)
-      .leftJoin(reservations, eq(reservationRooms.reservationId, reservations.id))
+      .leftJoin(
+        reservations,
+        eq(reservationRooms.reservationId, reservations.id),
+      )
       .where(
         and(
           sql`DATE(${reservationRooms.checkInDate}) >= ${startDateString}`,
-          branchId ? eq(reservations.branchId, branchId) : undefined
-        )
+          branchId ? eq(reservations.branchId, branchId) : undefined,
+        ),
       )
       .groupBy(sql`DATE(${reservationRooms.checkInDate})`)
       .orderBy(sql`DATE(${reservationRooms.checkInDate})`);
@@ -885,15 +1037,22 @@ export class DatabaseStorage implements IStorage {
     const dailyOccupancy = await occupancyQuery;
 
     return {
-      dailyOccupancy: dailyOccupancy.map(day => ({
+      dailyOccupancy: dailyOccupancy.map((day) => ({
         date: day.date,
         occupiedRooms: day.occupiedRooms,
-        occupancyRate: totalRooms > 0 ? Math.round((day.occupiedRooms / totalRooms) * 100) : 0
+        occupancyRate:
+          totalRooms > 0
+            ? Math.round((day.occupiedRooms / totalRooms) * 100)
+            : 0,
       })),
       totalRooms,
-      averageOccupancy: dailyOccupancy.length > 0 
-        ? Math.round(dailyOccupancy.reduce((sum, day) => sum + day.occupiedRooms, 0) / dailyOccupancy.length)
-        : 0
+      averageOccupancy:
+        dailyOccupancy.length > 0
+          ? Math.round(
+              dailyOccupancy.reduce((sum, day) => sum + day.occupiedRooms, 0) /
+                dailyOccupancy.length,
+            )
+          : 0,
     };
   }
 
@@ -919,7 +1078,13 @@ export class DatabaseStorage implements IStorage {
       })
       .from(guests)
       .leftJoin(reservations, eq(guests.id, reservations.guestId))
-            .groupBy(guests.id, guests.firstName, guests.lastName, guests.email, guests.reservationCount)
+      .groupBy(
+        guests.id,
+        guests.firstName,
+        guests.lastName,
+        guests.email,
+        guests.reservationCount,
+      )
       .orderBy(desc(guests.reservationCount))
       .limit(10);
 
@@ -952,25 +1117,32 @@ export class DatabaseStorage implements IStorage {
       .where(
         and(
           gte(guests.createdAt, currentMonth),
-          branchId ? eq(guests.branchId, branchId) : undefined
-        )
+          branchId ? eq(guests.branchId, branchId) : undefined,
+        ),
       );
 
     return {
       totalGuests: allGuests.length,
-      topGuests: topGuests.map(guest => ({
+      topGuests: topGuests.map((guest) => ({
         guest: guest.guest,
         totalBookings: guest.totalBookings,
         totalSpent: Number(guest.totalSpent) || 0,
       })),
-      guestsByNationality: guestsByNationality.filter(g => g.nationality).map(g => ({
-        nationality: g.nationality || 'Unknown',
-        count: g.count,
-      })),
+      guestsByNationality: guestsByNationality
+        .filter((g) => g.nationality)
+        .map((g) => ({
+          nationality: g.nationality || "Unknown",
+          count: g.count,
+        })),
       newGuestsThisMonth: newGuestsResult.count,
-      repeatGuestRate: allGuests.length > 0 
-        ? Math.round((allGuests.filter(g => g.reservationCount > 1).length / allGuests.length) * 100)
-        : 0
+      repeatGuestRate:
+        allGuests.length > 0
+          ? Math.round(
+              (allGuests.filter((g) => g.reservationCount > 1).length /
+                allGuests.length) *
+                100,
+            )
+          : 0,
     };
   }
 
@@ -1011,16 +1183,17 @@ export class DatabaseStorage implements IStorage {
     const roomStatusDistribution = await statusQuery;
 
     return {
-      roomTypePerformance: roomTypePerformance.map(rt => ({
+      roomTypePerformance: roomTypePerformance.map((rt) => ({
         roomTypeId: rt.roomTypeId,
         roomTypeName: rt.roomTypeName,
         totalRooms: rt.totalRooms,
         totalReservations: rt.totalReservations,
-        utilizationRate: rt.totalRooms > 0 
-          ? Math.round((rt.totalReservations / rt.totalRooms) * 100)
-          : 0
+        utilizationRate:
+          rt.totalRooms > 0
+            ? Math.round((rt.totalReservations / rt.totalRooms) * 100)
+            : 0,
       })),
-      roomStatusDistribution
+      roomStatusDistribution,
     };
   }
 
@@ -1046,12 +1219,15 @@ export class DatabaseStorage implements IStorage {
         avgStay: sql<number>`AVG(EXTRACT(DAY FROM (${reservationRooms.checkOutDate}::timestamp - ${reservationRooms.checkInDate}::timestamp)))`,
       })
       .from(reservationRooms)
-      .leftJoin(reservations, eq(reservationRooms.reservationId, reservations.id))
+      .leftJoin(
+        reservations,
+        eq(reservationRooms.reservationId, reservations.id),
+      )
       .where(
         and(
           sql`${reservationRooms.checkOutDate} IS NOT NULL`,
-          sql`${reservationRooms.checkInDate} IS NOT NULL`
-        )
+          sql`${reservationRooms.checkInDate} IS NOT NULL`,
+        ),
       );
 
     if (branchId) {
@@ -1059,8 +1235,8 @@ export class DatabaseStorage implements IStorage {
         and(
           eq(reservations.branchId, branchId),
           sql`${reservationRooms.checkOutDate} IS NOT NULL`,
-          sql`${reservationRooms.checkInDate} IS NOT NULL`
-        )
+          sql`${reservationRooms.checkInDate} IS NOT NULL`,
+        ),
       );
     }
 
@@ -1073,13 +1249,22 @@ export class DatabaseStorage implements IStorage {
         count: sql<number>`COUNT(*)`,
       })
       .from(reservationRooms)
-      .leftJoin(reservations, eq(reservationRooms.reservationId, reservations.id))
+      .leftJoin(
+        reservations,
+        eq(reservationRooms.reservationId, reservations.id),
+      )
       .where(sql`${reservationRooms.actualCheckIn} IS NOT NULL`)
-      .groupBy(sql`EXTRACT(HOUR FROM ${reservationRooms.actualCheckIn}::timestamp)`)
-      .orderBy(sql`EXTRACT(HOUR FROM ${reservationRooms.actualCheckIn}::timestamp)`);
+      .groupBy(
+        sql`EXTRACT(HOUR FROM ${reservationRooms.actualCheckIn}::timestamp)`,
+      )
+      .orderBy(
+        sql`EXTRACT(HOUR FROM ${reservationRooms.actualCheckIn}::timestamp)`,
+      );
 
     if (branchId) {
-      checkInTimesQuery = checkInTimesQuery.where(eq(reservations.branchId, branchId));
+      checkInTimesQuery = checkInTimesQuery.where(
+        eq(reservations.branchId, branchId),
+      );
     }
 
     const checkInTimes = await checkInTimesQuery;
@@ -1087,10 +1272,10 @@ export class DatabaseStorage implements IStorage {
     return {
       reservationStatusDistribution,
       averageLengthOfStay: Math.round(Number(avgStayResult?.avgStay) || 0),
-      checkInTimes: checkInTimes.map(ct => ({
+      checkInTimes: checkInTimes.map((ct) => ({
         hour: ct.hour,
-        count: ct.count
-      }))
+        count: ct.count,
+      })),
     };
   }
 
@@ -1121,12 +1306,15 @@ export class DatabaseStorage implements IStorage {
       .select({ count: sql<number>`count(distinct ${rooms.id})` })
       .from(rooms)
       .leftJoin(reservationRooms, eq(rooms.id, reservationRooms.roomId))
-      .leftJoin(reservations, eq(reservationRooms.reservationId, reservations.id))
+      .leftJoin(
+        reservations,
+        eq(reservationRooms.reservationId, reservations.id),
+      )
       .where(
         and(
-          eq(reservations.status, 'checked-in'),
-          branchId ? eq(rooms.branchId, branchId) : undefined
-        )
+          eq(reservations.status, "checked-in"),
+          branchId ? eq(rooms.branchId, branchId) : undefined,
+        ),
       );
 
     const [occupiedRoomsResult] = await occupiedQuery;
@@ -1140,8 +1328,8 @@ export class DatabaseStorage implements IStorage {
         and(
           gte(reservations.createdAt, today),
           lt(reservations.createdAt, tomorrow),
-          branchId ? eq(reservations.branchId, branchId) : undefined
-        )
+          branchId ? eq(reservations.branchId, branchId) : undefined,
+        ),
       );
 
     const [todayReservationsResult] = await todayReservationsQuery;
@@ -1149,16 +1337,16 @@ export class DatabaseStorage implements IStorage {
 
     // Get today's revenue (from reservations created today)
     let todayRevenueQuery = db
-      .select({ 
-        revenue: sql<number>`coalesce(sum(cast(${reservations.totalAmount} as decimal)), 0)` 
+      .select({
+        revenue: sql<number>`coalesce(sum(cast(${reservations.totalAmount} as decimal)), 0)`,
       })
       .from(reservations)
       .where(
         and(
           gte(reservations.createdAt, today),
           lt(reservations.createdAt, tomorrow),
-          branchId ? eq(reservations.branchId, branchId) : undefined
-        )
+          branchId ? eq(reservations.branchId, branchId) : undefined,
+        ),
       );
 
     const [todayRevenueResult] = await todayRevenueQuery;
@@ -1168,7 +1356,7 @@ export class DatabaseStorage implements IStorage {
     let statusQuery = db
       .select({
         status: rooms.status,
-        count: sql<number>`count(*)`
+        count: sql<number>`count(*)`,
       })
       .from(rooms)
       .groupBy(rooms.status);
@@ -1178,10 +1366,13 @@ export class DatabaseStorage implements IStorage {
     }
 
     const statusResults = await statusQuery;
-    const roomStatusCounts = statusResults.reduce((acc, result) => {
-      acc[result.status] = result.count;
-      return acc;
-    }, {} as Record<string, number>);
+    const roomStatusCounts = statusResults.reduce(
+      (acc, result) => {
+        acc[result.status] = result.count;
+        return acc;
+      },
+      {} as Record<string, number>,
+    );
 
     return {
       totalRooms,
@@ -1193,12 +1384,17 @@ export class DatabaseStorage implements IStorage {
   }
 
   // 24-hour specific methods
-  async getTodayReservations(branchId?: number, limit?: number): Promise<(Reservation & {
-    guest: Guest;
-    reservationRooms: (ReservationRoom & {
-      room: Room & { roomType: RoomType };
-    })[];
-  })[]> {
+  async getTodayReservations(
+    branchId?: number,
+    limit?: number,
+  ): Promise<
+    (Reservation & {
+      guest: Guest;
+      reservationRooms: (ReservationRoom & {
+        room: Room & { roomType: RoomType };
+      })[];
+    })[]
+  > {
     // Get today's date range (24 hours)
     const today = new Date();
     today.setHours(0, 0, 0, 0);
@@ -1213,8 +1409,8 @@ export class DatabaseStorage implements IStorage {
         and(
           gte(reservations.createdAt, today),
           lt(reservations.createdAt, tomorrow),
-          branchId ? eq(reservations.branchId, branchId) : undefined
-        )
+          branchId ? eq(reservations.branchId, branchId) : undefined,
+        ),
       );
 
     const reservationResults = await reservationQuery
@@ -1233,7 +1429,7 @@ export class DatabaseStorage implements IStorage {
           .leftJoin(roomTypes, eq(rooms.roomTypeId, roomTypes.id))
           .where(eq(reservationRooms.reservationId, reservation.id));
 
-        const reservationRoomsData = roomResults.map(roomResult => ({
+        const reservationRoomsData = roomResults.map((roomResult) => ({
           ...roomResult.reservation_rooms,
           room: {
             ...roomResult.rooms!,
@@ -1246,7 +1442,7 @@ export class DatabaseStorage implements IStorage {
           guest,
           reservationRooms: reservationRoomsData,
         };
-      })
+      }),
     );
 
     return reservationsWithRooms;
@@ -1288,22 +1484,22 @@ export class DatabaseStorage implements IStorage {
       .where(
         and(
           gte(reservations.createdAt, today),
-          lt(reservations.createdAt, tomorrow)
-        )
+          lt(reservations.createdAt, tomorrow),
+        ),
       );
     const totalReservations = totalReservationsResult.count;
 
     // Get total revenue (today)
     const [totalRevenueResult] = await db
-      .select({ 
-        revenue: sql<number>`coalesce(sum(cast(${reservations.totalAmount} as decimal)), 0)` 
+      .select({
+        revenue: sql<number>`coalesce(sum(cast(${reservations.totalAmount} as decimal)), 0)`,
       })
       .from(reservations)
       .where(
         and(
           gte(reservations.createdAt, today),
-          lt(reservations.createdAt, tomorrow)
-        )
+          lt(reservations.createdAt, tomorrow),
+        ),
       );
     const totalRevenue = Number(totalRevenueResult.revenue);
 
@@ -1335,12 +1531,15 @@ export class DatabaseStorage implements IStorage {
           .select({ count: sql<number>`count(distinct ${rooms.id})` })
           .from(rooms)
           .leftJoin(reservationRooms, eq(rooms.id, reservationRooms.roomId))
-          .leftJoin(reservations, eq(reservationRooms.reservationId, reservations.id))
+          .leftJoin(
+            reservations,
+            eq(reservationRooms.reservationId, reservations.id),
+          )
           .where(
             and(
               eq(rooms.branchId, branch.branchId),
-              eq(reservations.status, 'checked-in')
-            )
+              eq(reservations.status, "checked-in"),
+            ),
           );
         const bookedRooms = bookedRoomsResult.count;
 
@@ -1352,32 +1551,38 @@ export class DatabaseStorage implements IStorage {
             and(
               eq(reservations.branchId, branch.branchId),
               gte(reservations.createdAt, today),
-              lt(reservations.createdAt, tomorrow)
-            )
+              lt(reservations.createdAt, tomorrow),
+            ),
           );
         const branchTotalReservations = branchReservationsResult.count;
 
         // Get today's revenue for this branch
         const [branchRevenueResult] = await db
-          .select({ 
-            revenue: sql<number>`coalesce(sum(cast(${reservations.totalAmount} as decimal)), 0)` 
+          .select({
+            revenue: sql<number>`coalesce(sum(cast(${reservations.totalAmount} as decimal)), 0)`,
           })
           .from(reservations)
           .where(
             and(
               eq(reservations.branchId, branch.branchId),
               gte(reservations.createdAt, today),
-              lt(reservations.createdAt, tomorrow)
-            )
+              lt(reservations.createdAt, tomorrow),
+            ),
           );
         const branchRevenue = Number(branchRevenueResult.revenue);
 
         // Get restaurant data for this branch (using restaurant-storage import)
-        const { restaurantStorage } = await import('./restaurant-storage');
-        const restaurantMetrics = await restaurantStorage.getRestaurantDashboardMetrics(branch.branchId);
+        const { restaurantStorage } = await import("./restaurant-storage");
+        const restaurantMetrics =
+          await restaurantStorage.getRestaurantDashboardMetrics(
+            branch.branchId,
+          );
 
         const availableRooms = branchTotalRooms - bookedRooms;
-        const occupancyRate = branchTotalRooms > 0 ? Math.round((bookedRooms / branchTotalRooms) * 100) : 0;
+        const occupancyRate =
+          branchTotalRooms > 0
+            ? Math.round((bookedRooms / branchTotalRooms) * 100)
+            : 0;
 
         return {
           branchId: branch.branchId,
@@ -1391,7 +1596,7 @@ export class DatabaseStorage implements IStorage {
           totalOrders: restaurantMetrics.totalOrders,
           restaurantRevenue: restaurantMetrics.totalRevenue,
         };
-      })
+      }),
     );
 
     return {
@@ -1402,8 +1607,11 @@ export class DatabaseStorage implements IStorage {
       branchMetrics,
     };
   }
-    async getUsers() {
-    const allUsers = await db.select().from(users).orderBy(desc(users.createdAt));
+  async getUsers() {
+    const allUsers = await db
+      .select()
+      .from(users)
+      .orderBy(desc(users.createdAt));
 
     // For each user, get their custom role information
     const usersWithRoles = await Promise.all(
@@ -1413,7 +1621,7 @@ export class DatabaseStorage implements IStorage {
           return { ...user, customRoleIds };
         }
         return user;
-      })
+      }),
     );
 
     return usersWithRoles;

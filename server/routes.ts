@@ -6,7 +6,14 @@ import { inventoryStorage } from "./inventory-storage";
 import { dishIngredientsStorage } from "./dish-ingredients-storage";
 import { roleStorage } from "./role-storage";
 import { NotificationService } from "./notifications";
-import { sanitizeInput, authRateLimit, generalRateLimit, strictRateLimit, validateEmail, validatePhone } from "./security";
+import {
+  sanitizeInput,
+  authRateLimit,
+  generalRateLimit,
+  strictRateLimit,
+  validateEmail,
+  validatePhone,
+} from "./security";
 import helmet from "helmet";
 import {
   insertBranchSchema,
@@ -40,7 +47,11 @@ import { db } from "./db";
 import { z } from "zod";
 import { broadcastChange } from "./middleware/websocket";
 import { wsManager } from "./websocket";
-import { enforceBranchIsolation, getBranchFilter, canAccessBranch } from "./middleware/branchIsolation";
+import {
+  enforceBranchIsolation,
+  getBranchFilter,
+  canAccessBranch,
+} from "./middleware/branchIsolation";
 
 // Helper function to check user permissions based on role and branch
 function checkBranchPermissions(
@@ -65,7 +76,7 @@ function checkBranchPermissions(
 async function checkUserPermission(
   userId: string,
   module: string,
-  action: 'read' | 'write' | 'delete'
+  action: "read" | "write" | "delete",
 ): Promise<boolean> {
   try {
     const user = await storage.getUser(userId);
@@ -79,18 +90,25 @@ async function checkUserPermission(
     // Built-in roles permissions
     if (user.role === "branch-admin") {
       // Branch admin has most permissions except user management and some settings
-      const restrictedModules = ['users', 'branches', 'settings'];
+      const restrictedModules = ["users", "branches", "settings"];
       if (restrictedModules.includes(module)) return false;
       return true;
     }
 
     if (user.role === "front-desk") {
       // Front desk has limited permissions
-      const allowedModules = ['dashboard', 'reservations', 'rooms', 'guests', 'billing'];
+      const allowedModules = [
+        "dashboard",
+        "reservations",
+        "rooms",
+        "guests",
+        "billing",
+      ];
       if (!allowedModules.includes(module)) return false;
-      
+
       // Front desk can't delete most things
-      if (action === 'delete' && !['reservations'].includes(module)) return false;
+      if (action === "delete" && !["reservations"].includes(module))
+        return false;
       return true;
     }
 
@@ -109,32 +127,36 @@ async function checkUserPermission(
 
 export async function registerRoutes(app: Express): Promise<Server> {
   // Import session with ES6 syntax
-  const session = (await import('express-session')).default;
+  const session = (await import("express-session")).default;
 
   // Trust proxy for rate limiting in Replit environment
-  app.set('trust proxy', 1);
+  app.set("trust proxy", 1);
 
   // Security middleware - relaxed for development
-  app.use(helmet({
-    contentSecurityPolicy: false, // Disable CSP in development
-    hsts: false // Disable HSTS in development
-  }));
+  app.use(
+    helmet({
+      contentSecurityPolicy: false, // Disable CSP in development
+      hsts: false, // Disable HSTS in development
+    }),
+  );
 
   // Apply rate limiting only to specific sensitive API routes
   // Skip general rate limiting in development to avoid blocking the application
 
   // Auth middleware for session handling
-  app.use(session({
-    secret: process.env.SESSION_SECRET || 'your-secret-key',
-    resave: false,
-    saveUninitialized: false,
-    rolling: true, // Reset maxAge on every request
-    cookie: {
-      httpOnly: true,
-      secure: false, // Set to true in production with HTTPS
-      maxAge: 30 * 24 * 60 * 60 * 1000, // 30 days - persistent until logout
-    },
-  }));
+  app.use(
+    session({
+      secret: process.env.SESSION_SECRET || "your-secret-key",
+      resave: false,
+      saveUninitialized: false,
+      rolling: true, // Reset maxAge on every request
+      cookie: {
+        httpOnly: true,
+        secure: false, // Set to true in production with HTTPS
+        maxAge: 30 * 24 * 60 * 60 * 1000, // 30 days - persistent until logout
+      },
+    }),
+  );
 
   // Custom auth middleware
   const isAuthenticated = (req: any, res: any, next: any) => {
@@ -146,7 +168,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
   };
 
   // Combined auth and branch isolation middleware
-  const requireAuthWithBranchIsolation = [isAuthenticated, enforceBranchIsolation];
+  const requireAuthWithBranchIsolation = [
+    isAuthenticated,
+    enforceBranchIsolation,
+  ];
 
   // Auth routes with rate limiting
   app.post("/api/auth/login", authRateLimit, async (req: any, res) => {
@@ -154,7 +179,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const { email, password } = req.body;
 
       if (!email || !password) {
-        return res.status(400).json({ message: "Email and password are required" });
+        return res
+          .status(400)
+          .json({ message: "Email and password are required" });
       }
 
       // Get user by email
@@ -175,10 +202,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
         id: user.id,
         email: user.email,
         role: user.role,
-        branchId: user.branchId
+        branchId: user.branchId,
       };
 
-      res.json({ 
+      res.json({
         message: "Login successful",
         user: {
           id: user.id,
@@ -186,8 +213,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
           firstName: user.firstName,
           lastName: user.lastName,
           role: user.role,
-          branchId: user.branchId
-        }
+          branchId: user.branchId,
+        },
       });
     } catch (error) {
       console.error("Error during login:", error);
@@ -242,15 +269,21 @@ export async function registerRoutes(app: Express): Promise<Server> {
       if (!user) return res.status(401).json({ message: "User not found" });
 
       // Check write permission for branches module
-      const hasWritePermission = await checkUserPermission(req.session.user.id, 'branches', 'write');
+      const hasWritePermission = await checkUserPermission(
+        req.session.user.id,
+        "branches",
+        "write",
+      );
       if (!hasWritePermission) {
-        return res.status(403).json({ message: "You do not have permission to create branches" });
+        return res
+          .status(403)
+          .json({ message: "You do not have permission to create branches" });
       }
 
       // Sanitize input data
       const sanitizedBody = sanitizeInput(req.body);
       const branchData = insertBranchSchema.parse(sanitizedBody);
-      
+
       // Additional validation
       if (branchData.email && !validateEmail(branchData.email)) {
         return res.status(400).json({ message: "Invalid email format" });
@@ -260,7 +293,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
 
       const branch = await storage.createBranch(branchData);
-      broadcastChange('branches', 'created', branch); // Broadcast change
+      broadcastChange("branches", "created", branch); // Broadcast change
       res.status(201).json(branch);
     } catch (error) {
       console.error("Error creating branch:", error);
@@ -274,15 +307,21 @@ export async function registerRoutes(app: Express): Promise<Server> {
       if (!user) return res.status(401).json({ message: "User not found" });
 
       // Check write permission for branches module
-      const hasWritePermission = await checkUserPermission(req.session.user.id, 'branches', 'write');
+      const hasWritePermission = await checkUserPermission(
+        req.session.user.id,
+        "branches",
+        "write",
+      );
       if (!hasWritePermission) {
-        return res.status(403).json({ message: "You do not have permission to update branches" });
+        return res
+          .status(403)
+          .json({ message: "You do not have permission to update branches" });
       }
 
       const branchId = parseInt(req.params.id);
       const branchData = insertBranchSchema.partial().parse(req.body);
       const branch = await storage.updateBranch(branchId, branchData);
-      broadcastChange('branches', 'updated', branch); // Broadcast change
+      broadcastChange("branches", "updated", branch); // Broadcast change
       res.json(branch);
     } catch (error) {
       console.error("Error updating branch:", error);
@@ -299,7 +338,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       const branchId = parseInt(req.params.id);
       await storage.updateBranch(branchId, { isActive: false });
-      broadcastChange('branches', 'deleted', { id: branchId }); // Broadcast change
+      broadcastChange("branches", "deleted", { id: branchId }); // Broadcast change
       res.status(204).send();
     } catch (error) {
       console.error("Error deleting branch:", error);
@@ -329,9 +368,15 @@ export async function registerRoutes(app: Express): Promise<Server> {
       if (!user) return res.status(401).json({ message: "User not found" });
 
       // Check write permission for users module
-      const hasWritePermission = await checkUserPermission(req.session.user.id, 'users', 'write');
+      const hasWritePermission = await checkUserPermission(
+        req.session.user.id,
+        "users",
+        "write",
+      );
       if (!hasWritePermission) {
-        return res.status(403).json({ message: "You do not have permission to create users" });
+        return res
+          .status(403)
+          .json({ message: "You do not have permission to create users" });
       }
 
       const { customRoleIds, ...userData } = req.body;
@@ -346,7 +391,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // Get user with custom roles for response
       const userWithRoles = await storage.getUserWithCustomRoles(newUser.id);
 
-      broadcastChange('users', 'created', userWithRoles); // Broadcast change
+      broadcastChange("users", "created", userWithRoles); // Broadcast change
       res.status(201).json(userWithRoles);
     } catch (error) {
       console.error("Error creating user:", error);
@@ -360,9 +405,15 @@ export async function registerRoutes(app: Express): Promise<Server> {
       if (!user) return res.status(401).json({ message: "User not found" });
 
       // Check write permission for users module
-      const hasWritePermission = await checkUserPermission(req.session.user.id, 'users', 'write');
+      const hasWritePermission = await checkUserPermission(
+        req.session.user.id,
+        "users",
+        "write",
+      );
       if (!hasWritePermission) {
-        return res.status(403).json({ message: "You do not have permission to update users" });
+        return res
+          .status(403)
+          .json({ message: "You do not have permission to update users" });
       }
 
       const userId = req.params.id;
@@ -378,7 +429,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // Get user with custom roles for response
       const userWithRoles = await storage.getUserWithCustomRoles(userId);
 
-      broadcastChange('users', 'updated', userWithRoles); // Broadcast change
+      broadcastChange("users", "updated", userWithRoles); // Broadcast change
       res.json(userWithRoles);
     } catch (error) {
       console.error("Error updating user:", error);
@@ -394,14 +445,20 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
 
       // Check delete permission for users module
-      const hasDeletePermission = await checkUserPermission(req.session.user.id, 'users', 'delete');
+      const hasDeletePermission = await checkUserPermission(
+        req.session.user.id,
+        "users",
+        "delete",
+      );
       if (!hasDeletePermission) {
-        return res.status(403).json({ message: "Insufficient permissions to delete users" });
+        return res
+          .status(403)
+          .json({ message: "Insufficient permissions to delete users" });
       }
 
       const userId = req.params.id;
       await storage.updateUser(userId, { isActive: false });
-      broadcastChange('users', 'deleted', { id: userId }); // Broadcast change
+      broadcastChange("users", "deleted", { id: userId }); // Broadcast change
       res.status(204).send();
     } catch (error) {
       console.error("Error deleting user:", error);
@@ -419,15 +476,18 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
 
       const { branchId: queryBranchId, status } = req.query;
-      let branchId = user.role === "superadmin" ? 
-        (queryBranchId ? parseInt(queryBranchId as string) : undefined) : 
-        user.branchId!;
+      let branchId =
+        user.role === "superadmin"
+          ? queryBranchId
+            ? parseInt(queryBranchId as string)
+            : undefined
+          : user.branchId!;
 
-      console.log("🔍 Fetching rooms with filters:", { 
-        branchId, 
-        status, 
+      console.log("🔍 Fetching rooms with filters:", {
+        branchId,
+        status,
         userRole: user.role,
-        queryBranchId: queryBranchId 
+        queryBranchId: queryBranchId,
       });
 
       // Validate branchId if provided
@@ -438,20 +498,20 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       const rooms = await storage.getRooms(branchId, status as string);
       console.log("✅ Rooms found:", rooms?.length || 0);
-      
+
       // Ensure we always return a valid JSON response
       const response = rooms || [];
-      
+
       // Set proper headers
-      res.setHeader('Content-Type', 'application/json');
+      res.setHeader("Content-Type", "application/json");
       return res.status(200).json(response);
     } catch (error) {
       console.error("❌ Error fetching rooms:", error);
       // Make sure we return JSON even on error
-      res.setHeader('Content-Type', 'application/json');
-      return res.status(500).json({ 
+      res.setHeader("Content-Type", "application/json");
+      return res.status(500).json({
         message: "Failed to fetch rooms",
-        error: error instanceof Error ? error.message : "Unknown error"
+        error: error instanceof Error ? error.message : "Unknown error",
       });
     }
   });
@@ -462,9 +522,15 @@ export async function registerRoutes(app: Express): Promise<Server> {
       if (!user) return res.status(401).json({ message: "User not found" });
 
       // Check write permission for rooms module
-      const hasWritePermission = await checkUserPermission(req.session.user.id, 'rooms', 'write');
+      const hasWritePermission = await checkUserPermission(
+        req.session.user.id,
+        "rooms",
+        "write",
+      );
       if (!hasWritePermission) {
-        return res.status(403).json({ message: "You do not have permission to create rooms" });
+        return res
+          .status(403)
+          .json({ message: "You do not have permission to create rooms" });
       }
 
       const roomData = insertRoomSchema.parse(req.body);
@@ -478,7 +544,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
 
       const room = await storage.createRoom(roomData);
-      broadcastChange('rooms', 'created', room); // Broadcast change
+      broadcastChange("rooms", "created", room); // Broadcast change
       res.status(201).json(room);
     } catch (error) {
       console.error("Error creating room:", error);
@@ -492,9 +558,15 @@ export async function registerRoutes(app: Express): Promise<Server> {
       if (!user) return res.status(401).json({ message: "User not found" });
 
       // Check write permission for rooms module
-      const hasWritePermission = await checkUserPermission(req.session.user.id, 'rooms', 'write');
+      const hasWritePermission = await checkUserPermission(
+        req.session.user.id,
+        "rooms",
+        "write",
+      );
       if (!hasWritePermission) {
-        return res.status(403).json({ message: "You do not have permission to update rooms" });
+        return res
+          .status(403)
+          .json({ message: "You do not have permission to update rooms" });
       }
 
       const roomId = parseInt(req.params.id);
@@ -512,7 +584,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
 
       const room = await storage.updateRoom(roomId, roomData);
-      broadcastChange('rooms', 'updated', room); // Broadcast change
+      broadcastChange("rooms", "updated", room); // Broadcast change
       res.json(room);
     } catch (error) {
       console.error("Error updating room:", error);
@@ -528,9 +600,15 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
 
       // Check delete permission for rooms module
-      const hasDeletePermission = await checkUserPermission(req.session.user.id, 'rooms', 'delete');
+      const hasDeletePermission = await checkUserPermission(
+        req.session.user.id,
+        "rooms",
+        "delete",
+      );
       if (!hasDeletePermission) {
-        return res.status(403).json({ message: "Insufficient permissions to delete rooms" });
+        return res
+          .status(403)
+          .json({ message: "Insufficient permissions to delete rooms" });
       }
 
       const roomId = parseInt(req.params.id);
@@ -547,7 +625,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
 
       await storage.updateRoom(roomId, { isActive: false });
-      broadcastChange('rooms', 'deleted', { id: roomId }); // Broadcast change
+      broadcastChange("rooms", "deleted", { id: roomId }); // Broadcast change
       res.status(204).send();
     } catch (error) {
       console.error("Error deleting room:", error);
@@ -577,29 +655,44 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       const roomData = insertRoomSchema.partial().parse(req.body);
       const room = await storage.updateRoom(roomId, roomData);
-        broadcastChange('rooms', 'updated', room); // Broadcast change
+      broadcastChange("rooms", "updated", room); // Broadcast change
 
       // Send maintenance notification if room status changed to maintenance
-      if (roomData.status && (roomData.status === 'maintenance' || roomData.status === 'out-of-order')) {
+      if (
+        roomData.status &&
+        (roomData.status === "maintenance" ||
+          roomData.status === "out-of-order")
+      ) {
         try {
-          console.log(`🔧 Room ${existingRoom.number} status changed to ${roomData.status}, sending notification...`);
+          console.log(
+            `🔧 Room ${existingRoom.number} status changed to ${roomData.status}, sending notification...`,
+          );
 
           const branch = await storage.getBranch(existingRoom.branchId);
           const roomType = await storage.getRoomType(existingRoom.roomTypeId);
 
           if (branch && roomType) {
-            console.log(`📨 Sending maintenance notification for room ${existingRoom.number} at branch ${branch.name}`);
+            console.log(
+              `📨 Sending maintenance notification for room ${existingRoom.number} at branch ${branch.name}`,
+            );
             await NotificationService.sendMaintenanceNotification(
               { ...existingRoom, roomType },
               branch,
-              roomData.status
+              roomData.status,
             );
-            console.log(`Maintenance notification sent for room ${existingRoom.number}`);
+            console.log(
+              `Maintenance notification sent for room ${existingRoom.number}`,
+            );
           } else {
-            console.warn(` Missing branch or room type data for maintenance notification`);
+            console.warn(
+              ` Missing branch or room type data for maintenance notification`,
+            );
           }
         } catch (notificationError) {
-          console.error("Failed to send maintenance notification:", notificationError);
+          console.error(
+            "Failed to send maintenance notification:",
+            notificationError,
+          );
         }
       }
 
@@ -630,12 +723,15 @@ export async function registerRoutes(app: Express): Promise<Server> {
     try {
       const user = await storage.getUser(req.session.user.id);
       if (!user || user.role !== "superadmin") {
-        return res.status(403).json({ message: "Insufficient permissions. Only superadmin can create room types." });
+        return res.status(403).json({
+          message:
+            "Insufficient permissions. Only superadmin can create room types.",
+        });
       }
 
       const roomTypeData = insertRoomTypeSchema.parse(req.body);
       const roomType = await storage.createRoomType(roomTypeData);
-      broadcastChange('room-types', 'created', roomType); // Broadcast change
+      broadcastChange("room-types", "created", roomType); // Broadcast change
       res.status(201).json(roomType);
     } catch (error) {
       console.error("Error creating room type:", error);
@@ -647,13 +743,16 @@ export async function registerRoutes(app: Express): Promise<Server> {
     try {
       const user = await storage.getUser(req.session.user.id);
       if (!user || user.role !== "superadmin") {
-        return res.status(403).json({ message: "Insufficient permissions. Only superadmin can update room types." });
+        return res.status(403).json({
+          message:
+            "Insufficient permissions. Only superadmin can update room types.",
+        });
       }
 
       const roomTypeId = parseInt(req.params.id);
       const roomTypeData = insertRoomTypeSchema.partial().parse(req.body);
       const roomType = await storage.updateRoomType(roomTypeId, roomTypeData);
-      broadcastChange('room-types', 'updated', roomType); // Broadcast change
+      broadcastChange("room-types", "updated", roomType); // Broadcast change
       res.json(roomType);
     } catch (error) {
       console.error("Error updating room type:", error);
@@ -665,18 +764,27 @@ export async function registerRoutes(app: Express): Promise<Server> {
     try {
       const user = await storage.getUser(req.session.user.id);
       if (!user || user.role !== "superadmin") {
-        return res.status(403).json({ message: "Insufficient permissions. Only superadmin can delete room types." });
+        return res.status(403).json({
+          message:
+            "Insufficient permissions. Only superadmin can delete room types.",
+        });
       }
 
       // Check delete permission for room-types module
-      const hasDeletePermission = await checkUserPermission(req.session.user.id, 'room-types', 'delete');
+      const hasDeletePermission = await checkUserPermission(
+        req.session.user.id,
+        "room-types",
+        "delete",
+      );
       if (!hasDeletePermission) {
-        return res.status(403).json({ message: "Insufficient permissions to delete room types" });
+        return res
+          .status(403)
+          .json({ message: "Insufficient permissions to delete room types" });
       }
 
       const roomTypeId = parseInt(req.params.id);
       await storage.updateRoomType(roomTypeId, { isActive: false });
-      broadcastChange('room-types', 'deleted', { id: roomTypeId }); // Broadcast change
+      broadcastChange("room-types", "deleted", { id: roomTypeId }); // Broadcast change
       res.status(204).send();
     } catch (error) {
       console.error("Error deleting room type:", error);
@@ -730,15 +838,21 @@ export async function registerRoutes(app: Express): Promise<Server> {
       if (!user) return res.status(401).json({ message: "User not found" });
 
       // Check write permission for guests module
-      const hasWritePermission = await checkUserPermission(req.session.user.id, 'guests', 'write');
+      const hasWritePermission = await checkUserPermission(
+        req.session.user.id,
+        "guests",
+        "write",
+      );
       if (!hasWritePermission) {
-        return res.status(403).json({ message: "You do not have permission to create guests" });
+        return res
+          .status(403)
+          .json({ message: "You do not have permission to create guests" });
       }
 
       // Apply sanitization fix for remaining XSS vulnerability
       const sanitizedBody = sanitizeInput(req.body);
       const guestData = insertGuestSchema.parse(sanitizedBody);
-      
+
       // Additional validation
       if (guestData.email && !validateEmail(guestData.email)) {
         return res.status(400).json({ message: "Invalid email format" });
@@ -746,20 +860,20 @@ export async function registerRoutes(app: Express): Promise<Server> {
       if (guestData.phone && !validatePhone(guestData.phone)) {
         return res.status(400).json({ message: "Invalid phone format" });
       }
-      
+
       // Check if guest with this phone number already exists
       if (guestData.phone) {
         const existingGuest = await storage.findGuestByPhone(guestData.phone);
         if (existingGuest) {
-          return res.status(409).json({ 
+          return res.status(409).json({
             message: "Guest with this phone number already exists",
-            guest: existingGuest 
+            guest: existingGuest,
           });
         }
       }
 
       const guest = await storage.createGuest(guestData);
-      broadcastChange('guests', 'created', guest); // Broadcast change
+      broadcastChange("guests", "created", guest); // Broadcast change
       res.status(201).json(guest);
     } catch (error) {
       console.error("Error creating guest:", error);
@@ -773,9 +887,15 @@ export async function registerRoutes(app: Express): Promise<Server> {
       if (!user) return res.status(401).json({ message: "User not found" });
 
       // Check write permission for guests module
-      const hasWritePermission = await checkUserPermission(req.session.user.id, 'guests', 'write');
+      const hasWritePermission = await checkUserPermission(
+        req.session.user.id,
+        "guests",
+        "write",
+      );
       if (!hasWritePermission) {
-        return res.status(403).json({ message: "You do not have permission to update guests" });
+        return res
+          .status(403)
+          .json({ message: "You do not have permission to update guests" });
       }
 
       const guestId = parseInt(req.params.id);
@@ -788,7 +908,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
 
       const guest = await storage.updateGuest(guestId, guestData);
-      broadcastChange('guests', 'updated', guest); // Broadcast change
+      broadcastChange("guests", "updated", guest); // Broadcast change
       res.json(guest);
     } catch (error) {
       console.error("Error updating guest:", error);
@@ -802,9 +922,15 @@ export async function registerRoutes(app: Express): Promise<Server> {
       if (!user) return res.status(401).json({ message: "User not found" });
 
       // Check delete permission for guests module
-      const hasDeletePermission = await checkUserPermission(req.session.user.id, 'guests', 'delete');
+      const hasDeletePermission = await checkUserPermission(
+        req.session.user.id,
+        "guests",
+        "delete",
+      );
       if (!hasDeletePermission) {
-        return res.status(403).json({ message: "You do not have permission to delete guests" });
+        return res
+          .status(403)
+          .json({ message: "You do not have permission to delete guests" });
       }
 
       const guestId = parseInt(req.params.id);
@@ -817,7 +943,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       // Instead of hard delete, we'll mark as inactive
       await storage.updateGuest(guestId, { isActive: false });
-      broadcastChange('guests', 'deleted', { id: guestId }); // Broadcast change
+      broadcastChange("guests", "deleted", { id: guestId }); // Broadcast change
       res.status(204).send();
     } catch (error) {
       console.error("Error deleting guest:", error);
@@ -826,23 +952,96 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Reservation routes
-  app.get("/api/reservations", isAuthenticated, async (req: any, res) => {
+  app.post("/api/reservations", isAuthenticated, async (req: any, res) => {
     try {
       const user = await storage.getUser(req.session.user.id);
       if (!user) return res.status(401).json({ message: "User not found" });
 
-      // Check read permission for reservations module
-      const hasReadPermission = await checkUserPermission(req.session.user.id, 'reservations', 'read');
-      if (!hasReadPermission) {
-        return res.status(403).json({ message: "You do not have permission to view reservations" });
+      // Parse the request body first without validation that requires generated fields
+      const requestData = req.body;
+      const guestData = requestData.guest;
+      const reservationData = requestData.reservation;
+      const roomsData = requestData.rooms;
+
+      if (
+        !checkBranchPermissions(
+          user.role,
+          user.branchId,
+          reservationData.branchId,
+        )
+      ) {
+        return res
+          .status(403)
+          .json({ message: "Insufficient permissions for this branch" });
       }
 
-      const branchId = user.role === "superadmin" ? undefined : user.branchId!;
-      const reservations = await storage.getReservations(branchId);
-      res.json(reservations);
+      // Check if guest already exists by phone number
+      let guest;
+      if (guestData.phone) {
+        const existingGuests = await storage.searchGuests(guestData.phone);
+        if (existingGuests.length > 0) {
+          guest = existingGuests[0];
+        }
+      }
+
+      // Create new guest if not found
+      if (!guest) {
+        guest = await storage.createGuest({
+          ...guestData,
+          branchId: reservationData.branchId,
+        });
+      }
+
+      // Generate confirmation number
+      const confirmationNumber = `RES${Date.now().toString().slice(-8)}`;
+      const reservationWithConfirmation = {
+        ...reservationData,
+        guestId: guest.id,
+        confirmationNumber,
+        createdById: user.id,
+      };
+
+      const reservation = await storage.createReservation(
+        reservationWithConfirmation,
+        roomsData,
+      );
+      broadcastChange("reservations", "created", reservation); // Broadcast change
+
+      // Update room status to reserved
+      for (const roomData of roomsData) {
+        await storage.updateRoom(roomData.roomId, { status: "reserved" });
+      }
+
+      // Send new reservation notification
+      try {
+        const branch = await storage.getBranch(reservationData.branchId);
+        const room = await storage.getRoom(roomsData[0].roomId);
+        const roomType = await storage.getRoomType(room?.roomTypeId || 0);
+
+        if (branch && room && roomType) {
+          await NotificationService.sendNewReservationNotification(
+            guest,
+            { ...room, roomType },
+            branch,
+            reservation.id,
+            roomsData[0].checkInDate,
+            roomsData[0].checkOutDate,
+          );
+          console.log(
+            `📧 New reservation notification sent for reservation ${reservation.id}`,
+          );
+        }
+      } catch (notificationError) {
+        console.error(
+          "Failed to send new reservation notification:",
+          notificationError,
+        );
+      }
+
+      res.status(201).json(reservation);
     } catch (error) {
-      console.error("Error fetching reservations:", error);
-      res.status(500).json({ message: "Failed to fetch reservations" });
+      console.error("Error creating reservation:", error);
+      res.status(500).json({ message: "Failed to create reservation" });
     }
   });
 
@@ -874,14 +1073,16 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   const createReservationSchema = z.object({
     guest: insertGuestSchema,
-    reservation: insertReservationSchema.omit({ 
-      guestId: true, 
-      confirmationNumber: true, 
-      createdById: true 
+    reservation: insertReservationSchema.omit({
+      guestId: true,
+      confirmationNumber: true,
+      createdById: true,
     }),
-    rooms: z.array(insertReservationRoomSchema.omit({ 
-      reservationId: true 
-    })),
+    rooms: z.array(
+      insertReservationRoomSchema.omit({
+        reservationId: true,
+      }),
+    ),
   });
 
   app.post("/api/reservations", isAuthenticated, async (req: any, res) => {
@@ -890,9 +1091,15 @@ export async function registerRoutes(app: Express): Promise<Server> {
       if (!user) return res.status(401).json({ message: "User not found" });
 
       // Check write permission for reservations module
-      const hasWritePermission = await checkUserPermission(req.session.user.id, 'reservations', 'write');
+      const hasWritePermission = await checkUserPermission(
+        req.session.user.id,
+        "reservations",
+        "write",
+      );
       if (!hasWritePermission) {
-        return res.status(403).json({ message: "You do not have permission to create reservations" });
+        return res.status(403).json({
+          message: "You do not have permission to create reservations",
+        });
       }
 
       // Parse the request body first without validation that requires generated fields
@@ -904,18 +1111,23 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // For custom role users, automatically set their assigned branchId
       if (user.role === "custom") {
         if (!user.branchId) {
-          return res
-            .status(403)
-            .json({ message: "Custom role user must have a branch assignment" });
+          return res.status(403).json({
+            message: "Custom role user must have a branch assignment",
+          });
         }
-        
+
         // Override branchId with user's assigned branch for custom role users
         reservationData = {
           ...reservationData,
-          branchId: user.branchId
+          branchId: user.branchId,
         };
-        
-        console.log("🏨 Custom role user - setting branchId to:", user.branchId, "for user:", user.id);
+
+        console.log(
+          "🏨 Custom role user - setting branchId to:",
+          user.branchId,
+          "for user:",
+          user.id,
+        );
       } else if (
         !checkBranchPermissions(
           user.role,
@@ -963,7 +1175,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
             taxId: tax.id,
             taxName: tax.taxName,
             rate: tax.rate,
-            amount: taxAmount.toFixed(2)
+            amount: taxAmount.toFixed(2),
           });
         });
       }
@@ -983,13 +1195,20 @@ export async function registerRoutes(app: Express): Promise<Server> {
         branchId: reservationData.branchId, // Ensure branchId is preserved
       };
 
-      console.log("🏨 Creating reservation with branchId:", reservationWithConfirmation.branchId, "for user:", user.id, "role:", user.role);
+      console.log(
+        "🏨 Creating reservation with branchId:",
+        reservationWithConfirmation.branchId,
+        "for user:",
+        user.id,
+        "role:",
+        user.role,
+      );
 
       const reservation = await storage.createReservation(
         reservationWithConfirmation,
         roomsData,
       );
-      broadcastChange('reservations', 'created', reservation); // Broadcast change
+      broadcastChange("reservations", "created", reservation); // Broadcast change
 
       // Update room status to reserved
       for (const roomData of roomsData) {
@@ -1009,12 +1228,17 @@ export async function registerRoutes(app: Express): Promise<Server> {
             branch,
             reservation.id,
             roomsData[0].checkInDate,
-            roomsData[0].checkOutDate
+            roomsData[0].checkOutDate,
           );
-          console.log(`📧 New reservation notification sent for reservation ${reservation.id}`);
+          console.log(
+            `📧 New reservation notification sent for reservation ${reservation.id}`,
+          );
         }
       } catch (notificationError) {
-        console.error("Failed to send new reservation notification:", notificationError);
+        console.error(
+          "Failed to send new reservation notification:",
+          notificationError,
+        );
       }
 
       res.status(201).json(reservation);
@@ -1030,15 +1254,21 @@ export async function registerRoutes(app: Express): Promise<Server> {
       if (!user) return res.status(401).json({ message: "User not found" });
 
       // Check write permission for reservations module
-      const hasWritePermission = await checkUserPermission(req.session.user.id, 'reservations', 'write');
+      const hasWritePermission = await checkUserPermission(
+        req.session.user.id,
+        "reservations",
+        "write",
+      );
       if (!hasWritePermission) {
-        return res.status(403).json({ message: "You do not have permission to update reservations" });
+        return res.status(403).json({
+          message: "You do not have permission to update reservations",
+        });
       }
 
       const reservationId = req.params.id;
       const existingReservation = await storage.getReservation(reservationId);
 
-      if (!existingReservation){
+      if (!existingReservation) {
         return res.status(404).json({ message: "Reservation not found" });
       }
 
@@ -1056,13 +1286,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       const bodyData = req.body;
       // Convert numeric fields to strings if they're numbers
-      if (bodyData.paidAmount && typeof bodyData.paidAmount === 'number') {
+      if (bodyData.paidAmount && typeof bodyData.paidAmount === "number") {
         bodyData.paidAmount = bodyData.paidAmount.toString();
       }
-      if (bodyData.totalAmount && typeof bodyData.totalAmount === 'number') {
+      if (bodyData.totalAmount && typeof bodyData.totalAmount === "number") {
         bodyData.totalAmount = bodyData.totalAmount.toString();
       }
-      if (bodyData.taxAmount && typeof bodyData.taxAmount === 'number') {
+      if (bodyData.taxAmount && typeof bodyData.taxAmount === "number") {
         bodyData.taxAmount = bodyData.taxAmount.toString();
       }
       const validatedData = insertReservationSchema.partial().parse(bodyData);
@@ -1070,65 +1300,85 @@ export async function registerRoutes(app: Express): Promise<Server> {
         reservationId,
         validatedData,
       );
-      broadcastChange('reservations', 'updated', reservation); // Broadcast change
+      broadcastChange("reservations", "updated", reservation); // Broadcast change
 
       // Update room status based on reservation status
       if (validatedData.status) {
         for (const roomReservation of existingReservation.reservationRooms) {
           let newRoomStatus;
           switch (validatedData.status) {
-            case 'checked-in':
-              newRoomStatus = 'occupied';
+            case "checked-in":
+              newRoomStatus = "occupied";
               break;
-            case 'checked-out':
-              newRoomStatus = 'available';
+            case "checked-out":
+              newRoomStatus = "available";
               break;
-            case 'cancelled':
-              newRoomStatus = 'available';
+            case "cancelled":
+              newRoomStatus = "available";
               break;
-            case 'confirmed':
-            case 'pending':
-              newRoomStatus = 'reserved';
+            case "confirmed":
+            case "pending":
+              newRoomStatus = "reserved";
               break;
             default:
-              newRoomStatus = 'reserved';
+              newRoomStatus = "reserved";
           }
-          await storage.updateRoom(roomReservation.roomId, { status: newRoomStatus });
-          broadcastChange('rooms', 'updated', { id: roomReservation.roomId, status: newRoomStatus });
+          await storage.updateRoom(roomReservation.roomId, {
+            status: newRoomStatus,
+          });
+          broadcastChange("rooms", "updated", {
+            id: roomReservation.roomId,
+            status: newRoomStatus,
+          });
         }
 
         // Send notifications for status changes
         try {
-          console.log(`Reservation ${reservationId} status changed to ${validatedData.status}, sending notification...`);
+          console.log(
+            `Reservation ${reservationId} status changed to ${validatedData.status}, sending notification...`,
+          );
 
           const branch = await storage.getBranch(existingReservation.branchId);
           const firstRoom = existingReservation.reservationRooms[0];
 
           if (branch && firstRoom) {
-            if (validatedData.status === 'checked-in') {
-              console.log(`Sending check-in notification for reservation ${reservationId}`);
+            if (validatedData.status === "checked-in") {
+              console.log(
+                `Sending check-in notification for reservation ${reservationId}`,
+              );
               await NotificationService.sendCheckInNotification(
                 existingReservation.guest,
                 firstRoom.room,
                 branch,
-                reservationId
+                reservationId,
               );
-              console.log(`Check-in notification sent for reservation ${reservationId}`);
-            } else if (validatedData.status === 'checked-out') {
-              console.log(`Sending check-out notification for reservation ${reservationId}`);
+              console.log(
+                `Check-in notification sent for reservation ${reservationId}`,
+              );
+            } else if (validatedData.status === "checked-out") {
+              console.log(
+                `Sending check-out notification for reservation ${reservationId}`,
+              );
               await NotificationService.sendCheckOutNotification(
                 existingReservation.guest,
                 firstRoom.room,
                 branch,
-                reservationId
+                reservationId,
               );
-              console.log(`Check-out notification sent for reservation ${reservationId}`);
+              console.log(
+                `Check-out notification sent for reservation ${reservationId}`,
+              );
             }
           } else {
-            console.warn(`Missing branch or room data for status change notification`);
+            console.warn(
+              `Missing branch or room data for status change notification`,
+            );
           }
         } catch (notificationError) {
-          console.error("Failed to send status change notification:", notificationError);
+          console.error(
+            "Failed to send status change notification:",
+            notificationError,
+          );
         }
       }
 
@@ -1139,51 +1389,67 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.delete("/api/reservations/:id", isAuthenticated, async (req: any, res) => {
-    try {
-      const user = await storage.getUser(req.session.user.id);
-      if (!user) return res.status(401).json({ message: "User not found" });
+  app.delete(
+    "/api/reservations/:id",
+    isAuthenticated,
+    async (req: any, res) => {
+      try {
+        const user = await storage.getUser(req.session.user.id);
+        if (!user) return res.status(401).json({ message: "User not found" });
 
-      // Check delete permission for reservations module
-      const hasDeletePermission = await checkUserPermission(req.session.user.id, 'reservations', 'delete');
-      if (!hasDeletePermission) {
-        return res.status(403).json({ message: "You do not have permission to delete reservations" });
+        // Check delete permission for reservations module
+        const hasDeletePermission = await checkUserPermission(
+          req.session.user.id,
+          "reservations",
+          "delete",
+        );
+        if (!hasDeletePermission) {
+          return res.status(403).json({
+            message: "You do not have permission to delete reservations",
+          });
+        }
+
+        const reservationId = req.params.id;
+        const existingReservation = await storage.getReservation(reservationId);
+
+        if (!existingReservation) {
+          return res.status(404).json({ message: "Reservation not found" });
+        }
+
+        if (
+          !checkBranchPermissions(
+            user.role,
+            user.branchId,
+            existingReservation.branchId,
+          )
+        ) {
+          return res
+            .status(403)
+            .json({ message: "Insufficient permissions for this branch" });
+        }
+
+        // Cancel the reservation and free up rooms
+        await storage.updateReservation(reservationId, { status: "cancelled" });
+        broadcastChange("reservations", "deleted", { id: reservationId }); // Broadcast change
+
+        // Update room status back to available
+        for (const roomReservation of existingReservation.reservationRooms) {
+          await storage.updateRoom(roomReservation.roomId, {
+            status: "available",
+          });
+          broadcastChange("rooms", "updated", {
+            id: roomReservation.roomId,
+            status: "available",
+          });
+        }
+
+        res.status(204).send();
+      } catch (error) {
+        console.error("Error cancelling reservation:", error);
+        res.status(500).json({ message: "Failed to cancel reservation" });
       }
-
-      const reservationId = req.params.id;
-      const existingReservation = await storage.getReservation(reservationId);
-
-      if (!existingReservation) {
-        return res.status(404).json({ message: "Reservation not found" });
-      }
-
-      if (
-        !checkBranchPermissions(
-          user.role,
-          user.branchId,
-          existingReservation.branchId,
-        )      ) {
-        return res
-          .status(403)
-          .json({ message: "Insufficient permissions for this branch" });
-      }
-
-      // Cancel the reservation and free up rooms
-      await storage.updateReservation(reservationId, { status: "cancelled" });
-      broadcastChange('reservations', 'deleted', { id: reservationId }); // Broadcast change
-
-      // Update room status back to available
-      for (const roomReservation of existingReservation.reservationRooms) {
-        await storage.updateRoom(roomReservation.roomId, { status: "available" });
-        broadcastChange('rooms', 'updated', { id: roomReservation.roomId, status: "available" });
-      }
-
-      res.status(204).send();
-    } catch (error) {
-      console.error("Error cancelling reservation:", error);
-      res.status(500).json({ message: "Failed to cancel reservation" });
-    }
-  });
+    },
+  );
 
   // Dashboard metrics
   app.get("/api/dashboard/metrics", isAuthenticated, async (req: any, res) => {
@@ -1201,52 +1467,73 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Today's reservations
-  app.get("/api/dashboard/today-reservations", isAuthenticated, async (req: any, res) => {
-    try {
-      const user = await storage.getUser(req.session.user.id);
-      if (!user) return res.status(401).json({ message: "User not found" });
+  app.get(
+    "/api/dashboard/today-reservations",
+    isAuthenticated,
+    async (req: any, res) => {
+      try {
+        const user = await storage.getUser(req.session.user.id);
+        if (!user) return res.status(401).json({ message: "User not found" });
 
-      const branchId = user.role === "superadmin" ? undefined : user.branchId!;
-      const limit = parseInt(req.query.limit as string) || 5;
-      const reservations = await storage.getTodayReservations(branchId, limit);
-      res.json(reservations);
-    } catch (error) {
-      console.error("Error fetching today's reservations:", error);
-      res.status(500).json({ message: "Failed to fetch today's reservations" });
-    }
-  });
+        const branchId =
+          user.role === "superadmin" ? undefined : user.branchId!;
+        const limit = parseInt(req.query.limit as string) || 5;
+        const reservations = await storage.getTodayReservations(
+          branchId,
+          limit,
+        );
+        res.json(reservations);
+      } catch (error) {
+        console.error("Error fetching today's reservations:", error);
+        res
+          .status(500)
+          .json({ message: "Failed to fetch today's reservations" });
+      }
+    },
+  );
 
   // Today's restaurant orders
-  app.get("/api/restaurant/dashboard/today-orders", isAuthenticated, async (req: any, res) => {
-    try {
-      const user = await storage.getUser(req.session.user.id);
-      if (!user) return res.status(401).json({ message: "User not found" });
+  app.get(
+    "/api/restaurant/dashboard/today-orders",
+    isAuthenticated,
+    async (req: any, res) => {
+      try {
+        const user = await storage.getUser(req.session.user.id);
+        if (!user) return res.status(401).json({ message: "User not found" });
 
-      const branchId = user.role === "superadmin" ? undefined : user.branchId!;
-      const limit = parseInt(req.query.limit as string) || 5;
-      const orders = await restaurantStorage.getTodayOrders(branchId, limit);
-      res.json(orders);
-    } catch (error) {
-      console.error("Error fetching today's orders:", error);
-      res.status(500).json({ message: "Failed to fetch today's orders" });
-    }
-  });
+        const branchId =
+          user.role === "superadmin" ? undefined : user.branchId!;
+        const limit = parseInt(req.query.limit as string) || 5;
+        const orders = await restaurantStorage.getTodayOrders(branchId, limit);
+        res.json(orders);
+      } catch (error) {
+        console.error("Error fetching today's orders:", error);
+        res.status(500).json({ message: "Failed to fetch today's orders" });
+      }
+    },
+  );
 
   // Super admin dashboard metrics
-  app.get("/api/dashboard/super-admin-metrics", isAuthenticated, async (req: any, res) => {
-    try {
-      const user = await storage.getUser(req.session.user.id);
-      if (!user || user.role !== "superadmin") {
-        return res.status(403).json({ message: "Insufficient permissions" });
-      }
+  app.get(
+    "/api/dashboard/super-admin-metrics",
+    isAuthenticated,
+    async (req: any, res) => {
+      try {
+        const user = await storage.getUser(req.session.user.id);
+        if (!user || user.role !== "superadmin") {
+          return res.status(403).json({ message: "Insufficient permissions" });
+        }
 
-      const metrics = await storage.getSuperAdminDashboardMetrics();
-      res.json(metrics);
-    } catch (error) {
-      console.error("Error fetching super admin metrics:", error);
-      res.status(500).json({ message: "Failed to fetch super admin metrics" });
-    }
-  });
+        const metrics = await storage.getSuperAdminDashboardMetrics();
+        res.json(metrics);
+      } catch (error) {
+        console.error("Error fetching super admin metrics:", error);
+        res
+          .status(500)
+          .json({ message: "Failed to fetch super admin metrics" });
+      }
+    },
+  );
 
   // Advanced Analytics Endpoints
   app.get("/api/analytics/revenue", isAuthenticated, async (req: any, res) => {
@@ -1255,8 +1542,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
       if (!user) return res.status(401).json({ message: "User not found" });
 
       const branchId = user.role === "superadmin" ? undefined : user.branchId!;
-      const period = req.query.period || '30d';
-      const analytics = await storage.getRevenueAnalytics(branchId, period as string);
+      const period = req.query.period || "30d";
+      const analytics = await storage.getRevenueAnalytics(
+        branchId,
+        period as string,
+      );
       res.json(analytics);
     } catch (error) {
       console.error("Error fetching revenue analytics:", error);
@@ -1264,20 +1554,30 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.get("/api/analytics/occupancy", isAuthenticated, async (req: any, res) => {
-    try {
-      const user = await storage.getUser(req.session.user.id);
-      if (!user) return res.status(401).json({ message: "User not found" });
+  app.get(
+    "/api/analytics/occupancy",
+    isAuthenticated,
+    async (req: any, res) => {
+      try {
+        const user = await storage.getUser(req.session.user.id);
+        if (!user) return res.status(401).json({ message: "User not found" });
 
-      const branchId = user.role === "superadmin" ? undefined : user.branchId!;
-      const period = req.query.period || '30d';
-      const analytics = await storage.getOccupancyAnalytics(branchId, period as string);
-      res.json(analytics);
-    } catch (error) {
-      console.error("Error fetching occupancy analytics:", error);
-      res.status(500).json({ message: "Failed to fetch occupancy analytics" });
-    }
-  });
+        const branchId =
+          user.role === "superadmin" ? undefined : user.branchId!;
+        const period = req.query.period || "30d";
+        const analytics = await storage.getOccupancyAnalytics(
+          branchId,
+          period as string,
+        );
+        res.json(analytics);
+      } catch (error) {
+        console.error("Error fetching occupancy analytics:", error);
+        res
+          .status(500)
+          .json({ message: "Failed to fetch occupancy analytics" });
+      }
+    },
+  );
 
   app.get("/api/analytics/guests", isAuthenticated, async (req: any, res) => {
     try {
@@ -1303,30 +1603,41 @@ export async function registerRoutes(app: Express): Promise<Server> {
       res.json(analytics);
     } catch (error) {
       console.error("Error fetching room performance analytics:", error);
-      res.status(500).json({ message: "Failed to fetch room performance analytics" });
+      res
+        .status(500)
+        .json({ message: "Failed to fetch room performance analytics" });
     }
   });
 
-  app.get("/api/analytics/operations", isAuthenticated, async (req: any, res) => {
-    try {
-      const user = await storage.getUser(req.session.user.id);
-      if (!user) return res.status(401).json({ message: "User not found" });
+  app.get(
+    "/api/analytics/operations",
+    isAuthenticated,
+    async (req: any, res) => {
+      try {
+        const user = await storage.getUser(req.session.user.id);
+        if (!user) return res.status(401).json({ message: "User not found" });
 
-      const branchId = user.role === "superadmin" ? undefined : user.branchId!;
-      const analytics = await storage.getOperationalAnalytics(branchId);
-      res.json(analytics);
-    } catch (error) {
-      console.error("Error fetching operational analytics:", error);
-      res.status(500).json({ message: "Failed to fetch operational analytics" });
-    }
-  });
+        const branchId =
+          user.role === "superadmin" ? undefined : user.branchId!;
+        const analytics = await storage.getOperationalAnalytics(branchId);
+        res.json(analytics);
+      } catch (error) {
+        console.error("Error fetching operational analytics:", error);
+        res
+          .status(500)
+          .json({ message: "Failed to fetch operational analytics" });
+      }
+    },
+  );
 
   // Custom Role Management Routes
   app.get("/api/roles", isAuthenticated, async (req: any, res) => {
     try {
       const user = await storage.getUser(req.session.user.id);
       if (!user || user.role !== "superadmin") {
-        return res.status(403).json({ message: "Only superadmins can access role management" });
+        return res
+          .status(403)
+          .json({ message: "Only superadmins can access role management" });
       }
 
       const roles = await roleStorage.getCustomRoles();
@@ -1336,7 +1647,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         roles.map(async (role) => {
           const permissions = await roleStorage.getRolePermissions(role.id);
           return { ...role, permissions };
-        })
+        }),
       );
 
       res.json(rolesWithPermissions);
@@ -1346,26 +1657,34 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.get("/api/roles/modules/available", isAuthenticated, async (req: any, res) => {
-    try {
-      const user = await storage.getUser(req.session.user.id);
-      if (!user || user.role !== "superadmin") {
-        return res.status(403).json({ message: "Only superadmins can access modules" });
-      }
+  app.get(
+    "/api/roles/modules/available",
+    isAuthenticated,
+    async (req: any, res) => {
+      try {
+        const user = await storage.getUser(req.session.user.id);
+        if (!user || user.role !== "superadmin") {
+          return res
+            .status(403)
+            .json({ message: "Only superadmins can access modules" });
+        }
 
-      const modules = roleStorage.getAvailableModules();
-      res.json(modules);
-    } catch (error) {
-      console.error("Error fetching available modules:", error);
-      res.status(500).json({ message: "Failed to fetch available modules" });
-    }
-  });
+        const modules = roleStorage.getAvailableModules();
+        res.json(modules);
+      } catch (error) {
+        console.error("Error fetching available modules:", error);
+        res.status(500).json({ message: "Failed to fetch available modules" });
+      }
+    },
+  );
 
   app.post("/api/roles", isAuthenticated, async (req: any, res) => {
     try {
       const user = await storage.getUser(req.session.user.id);
       if (!user || user.role !== "superadmin") {
-        return res.status(403).json({ message: "Only superadmins can create roles" });
+        return res
+          .status(403)
+          .json({ message: "Only superadmins can create roles" });
       }
 
       const { name, description, permissions } = req.body;
@@ -1398,7 +1717,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
     try {
       const user = await storage.getUser(req.session.user.id);
       if (!user || user.role !== "superadmin") {
-        return res.status(403).json({ message: "Only superadmins can update roles" });
+        return res
+          .status(403)
+          .json({ message: "Only superadmins can update roles" });
       }
 
       const roleId = parseInt(req.params.id);
@@ -1432,9 +1753,15 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
 
       // Check delete permission for role management
-      const hasDeletePermission = await checkUserPermission(req.session.user.id, 'users', 'delete');
+      const hasDeletePermission = await checkUserPermission(
+        req.session.user.id,
+        "users",
+        "delete",
+      );
       if (!hasDeletePermission) {
-        return res.status(403).json({ message: "Insufficient permissions to delete roles" });
+        return res
+          .status(403)
+          .json({ message: "Insufficient permissions to delete roles" });
       }
 
       const roleId = parseInt(req.params.id);
@@ -1447,175 +1774,258 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Inventory Bulk Operations
-  app.post("/api/inventory/stock-categories/bulk", isAuthenticated, async (req: any, res) => {
-    try {
-      const { categories } = req.body;
-      const user = await storage.getUser(req.session.user.id);
-      if (!user) return res.status(401).json({ message: "User not found" });
+  app.post(
+    "/api/inventory/stock-categories/bulk",
+    isAuthenticated,
+    async (req: any, res) => {
+      try {
+        const { categories } = req.body;
+        const user = await storage.getUser(req.session.user.id);
+        if (!user) return res.status(401).json({ message: "User not found" });
 
-      const results = [];
-      for (const category of categories) {
-        const validatedData = insertStockCategorySchema.parse(category);
-        const newCategory = await inventoryStorage.createStockCategory(validatedData);
-        results.push(newCategory);
-      }
-
-      res.status(201).json(results);
-    } catch (error) {
-      console.error("Error creating stock categories in bulk:", error);
-      res.status(500).json({ message: "Failed to create stock categories in bulk" });
-    }
-  });
-
-  app.post("/api/inventory/measuring-units/bulk", isAuthenticated, async (req: any, res) => {
-    try {
-      const { units } = req.body;
-      const user = await storage.getUser(req.session.user.id);
-      if (!user) return res.status(401).json({ message: "User not found" });
-
-      const results = [];
-      for (const unit of units) {
-        const validatedData = insertMeasuringUnitSchema.parse(unit);
-        const newUnit = await inventoryStorage.createMeasuringUnit(validatedData);
-        results.push(newUnit);
-      }
-
-      res.status(201).json(results);
-    } catch (error) {
-      console.error("Error creating measuring units in bulk:", error);
-      res.status(500).json({ message: "Failed to create measuring units in bulk" });
-    }
-  });
-
-  app.post("/api/inventory/suppliers/bulk", isAuthenticated, async (req: any, res) => {
-    try {
-      const { suppliers } = req.body;
-      const user = await storage.getUser(req.session.user.id);
-      if (!user) return res.status(401).json({ message: "User not found" });
-
-      const results = [];
-      for (const supplier of suppliers) {
-        const validatedData = insertSupplierSchema.parse(supplier);
-        const newSupplier = await inventoryStorage.createSupplier(validatedData);
-        results.push(newSupplier);
-      }
-
-      res.status(201).json(results);
-    } catch (error) {
-      console.error("Error creating suppliers in bulk:", error);
-      res.status(500).json({ message: "Failed to create suppliers in bulk" });
-    }
-  });
-
-  app.post("/api/inventory/stock-items/bulk", isAuthenticated, async (req: any, res) => {
-    try {
-      const { items } = req.body;
-      const user = await storage.getUser(req.session.user.id);
-      if (!user) return res.status(401).json({ message: "User not found" });
-
-      const results = [];
-      for (const item of items) {
-        // Ensure branchId is set properly
-        const itemWithBranch = {
-          ...item,
-          branchId: user.role === "superadmin" ? item.branchId || user.branchId : user.branchId,
-        };
-
-        // Check permissions
-        if (!checkBranchPermissions(user.role, user.branchId, itemWithBranch.branchId)) {
-          return res.status(403).json({ message: "Insufficient permissions for one or more items" });
+        const results = [];
+        for (const category of categories) {
+          const validatedData = insertStockCategorySchema.parse(category);
+          const newCategory =
+            await inventoryStorage.createStockCategory(validatedData);
+          results.push(newCategory);
         }
 
-        const validatedData = insertStockItemSchema.parse(itemWithBranch);
-        const newItem = await inventoryStorage.createStockItem(validatedData);
-        results.push(newItem);
+        res.status(201).json(results);
+      } catch (error) {
+        console.error("Error creating stock categories in bulk:", error);
+        res
+          .status(500)
+          .json({ message: "Failed to create stock categories in bulk" });
       }
+    },
+  );
 
-      res.status(201).json(results);
-    } catch (error) {
-      console.error("Error creating stock items in bulk:", error);
-      res.status(500).json({ message: "Failed to create stock items in bulk" });
-    }
-  });
+  app.post(
+    "/api/inventory/measuring-units/bulk",
+    isAuthenticated,
+    async (req: any, res) => {
+      try {
+        const { units } = req.body;
+        const user = await storage.getUser(req.session.user.id);
+        if (!user) return res.status(401).json({ message: "User not found" });
+
+        const results = [];
+        for (const unit of units) {
+          const validatedData = insertMeasuringUnitSchema.parse(unit);
+          const newUnit =
+            await inventoryStorage.createMeasuringUnit(validatedData);
+          results.push(newUnit);
+        }
+
+        res.status(201).json(results);
+      } catch (error) {
+        console.error("Error creating measuring units in bulk:", error);
+        res
+          .status(500)
+          .json({ message: "Failed to create measuring units in bulk" });
+      }
+    },
+  );
+
+  app.post(
+    "/api/inventory/suppliers/bulk",
+    isAuthenticated,
+    async (req: any, res) => {
+      try {
+        const { suppliers } = req.body;
+        const user = await storage.getUser(req.session.user.id);
+        if (!user) return res.status(401).json({ message: "User not found" });
+
+        const results = [];
+        for (const supplier of suppliers) {
+          const validatedData = insertSupplierSchema.parse(supplier);
+          const newSupplier =
+            await inventoryStorage.createSupplier(validatedData);
+          results.push(newSupplier);
+        }
+
+        res.status(201).json(results);
+      } catch (error) {
+        console.error("Error creating suppliers in bulk:", error);
+        res.status(500).json({ message: "Failed to create suppliers in bulk" });
+      }
+    },
+  );
+
+  app.post(
+    "/api/inventory/stock-items/bulk",
+    isAuthenticated,
+    async (req: any, res) => {
+      try {
+        const { items } = req.body;
+        const user = await storage.getUser(req.session.user.id);
+        if (!user) return res.status(401).json({ message: "User not found" });
+
+        const results = [];
+        for (const item of items) {
+          // Ensure branchId is set properly
+          const itemWithBranch = {
+            ...item,
+            branchId:
+              user.role === "superadmin"
+                ? item.branchId || user.branchId
+                : user.branchId,
+          };
+
+          // Check permissions
+          if (
+            !checkBranchPermissions(
+              user.role,
+              user.branchId,
+              itemWithBranch.branchId,
+            )
+          ) {
+            return res.status(403).json({
+              message: "Insufficient permissions for one or more items",
+            });
+          }
+
+          const validatedData = insertStockItemSchema.parse(itemWithBranch);
+          const newItem = await inventoryStorage.createStockItem(validatedData);
+          results.push(newItem);
+        }
+
+        res.status(201).json(results);
+      } catch (error) {
+        console.error("Error creating stock items in bulk:", error);
+        res
+          .status(500)
+          .json({ message: "Failed to create stock items in bulk" });
+      }
+    },
+  );
 
   // Restaurant Analytics Endpoints
-  app.get("/api/restaurant/analytics/revenue", isAuthenticated, async (req: any, res) => {
-    try {
-      const user = await storage.getUser(req.session.user.id);
-      if (!user) return res.status(401).json({ message: "User not found" });
+  app.get(
+    "/api/restaurant/analytics/revenue",
+    isAuthenticated,
+    async (req: any, res) => {
+      try {
+        const user = await storage.getUser(req.session.user.id);
+        if (!user) return res.status(401).json({ message: "User not found" });
 
-      const branchId = user.role === "superadmin" ? undefined : user.branchId!;
-      const period = req.query.period || '30d';
-      const analytics = await restaurantStorage.getRevenueAnalytics(branchId, period as string);
-      res.json(analytics);
-    } catch (error) {
-      console.error("Error fetching restaurant revenue analytics:", error);
-      res.status(500).json({ message: "Failed to fetch restaurant revenue analytics" });
-    }
-  });
+        const branchId =
+          user.role === "superadmin" ? undefined : user.branchId!;
+        const period = req.query.period || "30d";
+        const analytics = await restaurantStorage.getRevenueAnalytics(
+          branchId,
+          period as string,
+        );
+        res.json(analytics);
+      } catch (error) {
+        console.error("Error fetching restaurant revenue analytics:", error);
+        res
+          .status(500)
+          .json({ message: "Failed to fetch restaurant revenue analytics" });
+      }
+    },
+  );
 
-  app.get("/api/restaurant/analytics/orders", isAuthenticated, async (req: any, res) => {
-    try {
-      const user = await storage.getUser(req.session.user.id);
-      if (!user) return res.status(401).json({ message: "User not found" });
+  app.get(
+    "/api/restaurant/analytics/orders",
+    isAuthenticated,
+    async (req: any, res) => {
+      try {
+        const user = await storage.getUser(req.session.user.id);
+        if (!user) return res.status(401).json({ message: "User not found" });
 
-      const branchId = user.role === "superadmin" ? undefined : user.branchId!;
-      const period = req.query.period || '30d';
-      const analytics = await restaurantStorage.getOrderAnalytics(branchId, period as string);
-      res.json(analytics);
-    } catch (error) {
-      console.error("Error fetching restaurant order analytics:", error);
-      res.status(500).json({ message: "Failed to fetch restaurant order analytics" });
-    }
-  });
+        const branchId =
+          user.role === "superadmin" ? undefined : user.branchId!;
+        const period = req.query.period || "30d";
+        const analytics = await restaurantStorage.getOrderAnalytics(
+          branchId,
+          period as string,
+        );
+        res.json(analytics);
+      } catch (error) {
+        console.error("Error fetching restaurant order analytics:", error);
+        res
+          .status(500)
+          .json({ message: "Failed to fetch restaurant order analytics" });
+      }
+    },
+  );
 
-  app.get("/api/restaurant/analytics/dishes", isAuthenticated, async (req: any, res) => {
-    try {
-      const user = await storage.getUser(req.session.user.id);
-      if (!user) return res.status(401).json({ message: "User not found" });
+  app.get(
+    "/api/restaurant/analytics/dishes",
+    isAuthenticated,
+    async (req: any, res) => {
+      try {
+        const user = await storage.getUser(req.session.user.id);
+        if (!user) return res.status(401).json({ message: "User not found" });
 
-      const branchId = user.role === "superadmin" ? undefined : user.branchId!;
-      const analytics = await restaurantStorage.getDishAnalytics(branchId);
-      res.json(analytics);
-    } catch (error) {
-      console.error("Error fetching restaurant dish analytics:", error);
-      res.status(500).json({ message: "Failed to fetch restaurant dish analytics" });
-    }
-  });
+        const branchId =
+          user.role === "superadmin" ? undefined : user.branchId!;
+        const analytics = await restaurantStorage.getDishAnalytics(branchId);
+        res.json(analytics);
+      } catch (error) {
+        console.error("Error fetching restaurant dish analytics:", error);
+        res
+          .status(500)
+          .json({ message: "Failed to fetch restaurant dish analytics" });
+      }
+    },
+  );
 
-  app.get("/api/restaurant/analytics/tables", isAuthenticated, async (req: any, res) => {
-    try {
-      const user = await storage.getUser(req.session.user.id);
-      if (!user) return res.status(401).json({ message: "User not found" });
+  app.get(
+    "/api/restaurant/analytics/tables",
+    isAuthenticated,
+    async (req: any, res) => {
+      try {
+        const user = await storage.getUser(req.session.user.id);
+        if (!user) return res.status(401).json({ message: "User not found" });
 
-      const branchId = user.role === "superadmin" ? undefined : user.branchId!;
-      const analytics = await restaurantStorage.getTableAnalytics(branchId);
-      res.json(analytics);
-    } catch (error) {
-      console.error("Error fetching restaurant table analytics:", error);
-      res.status(500).json({ message: "Failed to fetch restaurant table analytics" });
-    }
-  });
+        const branchId =
+          user.role === "superadmin" ? undefined : user.branchId!;
+        const analytics = await restaurantStorage.getTableAnalytics(branchId);
+        res.json(analytics);
+      } catch (error) {
+        console.error("Error fetching restaurant table analytics:", error);
+        res
+          .status(500)
+          .json({ message: "Failed to fetch restaurant table analytics" });
+      }
+    },
+  );
 
-  app.get("/api/restaurant/analytics/operations", isAuthenticated, async (req: any, res) => {
-    try {
-      const user = await storage.getUser(req.session.user.id);
-      if (!user) return res.status(401).json({ message: "User not found" });
+  app.get(
+    "/api/restaurant/analytics/operations",
+    isAuthenticated,
+    async (req: any, res) => {
+      try {
+        const user = await storage.getUser(req.session.user.id);
+        if (!user) return res.status(401).json({ message: "User not found" });
 
-      const branchId = user.role === "superadmin" ? undefined : user.branchId!;
-      const analytics = await restaurantStorage.getOperationalAnalytics(branchId);
-      res.json(analytics);
-    } catch (error) {
-      console.error("Error fetching restaurant operational analytics:", error);
-      res.status(500).json({ message: "Failed to fetch restaurant operational analytics" });
-    }
-  });
+        const branchId =
+          user.role === "superadmin" ? undefined : user.branchId!;
+        const analytics =
+          await restaurantStorage.getOperationalAnalytics(branchId);
+        res.json(analytics);
+      } catch (error) {
+        console.error(
+          "Error fetching restaurant operational analytics:",
+          error,
+        );
+        res.status(500).json({
+          message: "Failed to fetch restaurant operational analytics",
+        });
+      }
+    },
+  );
 
   // Hotel settings - public endpoint for guest access
   app.get("/api/hotel-settings", async (req: any, res) => {
     try {
       const { branchId } = req.query;
-      const targetBranchId = branchId ? parseInt(branchId as string) : undefined;
+      const targetBranchId = branchId
+        ? parseInt(branchId as string)
+        : undefined;
 
       const settings = await storage.getHotelSettings(targetBranchId);
       res.json(settings || {});
@@ -1634,7 +2044,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       const settingsData = insertHotelSettingsSchema.parse(req.body);
       const settings = await storage.upsertHotelSettings(settingsData);
-      broadcastChange('hotel-settings', 'created', settings); // Broadcast change
+      broadcastChange("hotel-settings", "created", settings); // Broadcast change
       res.json(settings);
     } catch (error) {
       console.error("Error saving hotel settings:", error);
@@ -1651,7 +2061,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       const settingsData = insertHotelSettingsSchema.parse(req.body);
       const settings = await storage.upsertHotelSettings(settingsData);
-       broadcastChange('hotel-settings', 'updated', settings); // Broadcast change
+      broadcastChange("hotel-settings", "updated", settings); // Broadcast change
       res.json(settings);
     } catch (error) {
       console.error("Error updating hotel settings:", error);
@@ -1679,7 +2089,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       const updateData = insertUserSchema.partial().parse(req.body);
       const updatedUser = await storage.updateUser(user.id, updateData);
-       broadcastChange('profile', 'updated', updatedUser); // Broadcast change
+      broadcastChange("profile", "updated", updatedUser); // Broadcast change
       res.json(updatedUser);
     } catch (error) {
       console.error("Error updating profile:", error);
@@ -1724,208 +2134,281 @@ export async function registerRoutes(app: Express): Promise<Server> {
     res.json({ publicKey: NotificationService.getVapidPublicKey() });
   });
 
-  app.post("/api/notifications/subscribe", isAuthenticated, async (req: any, res) => {
-    try {
-      const user = await storage.getUser(req.session.user.id);
-      if (!user) {
-        console.error(" User not found during subscription");
-        return res.status(401).json({ message: "User not found" });
-      }
-
-      console.log(`👤 User subscribing: ${user.id} (${user.email}) - Role: ${user.role}, Branch: ${user.branchId}`);
-
-      // Only allow admin users to subscribe to notifications
-      if (user.role !== 'superadmin' && user.role !== 'branch-admin') {
-        console.warn(` Non-admin user ${user.id} (${user.role}) tried to subscribe to notifications`);
-        return res.status(403).json({ message: "Only admin users can subscribe to notifications" });
-      }
-
-      const { endpoint, p256dh, auth } = req.body;
-
-      if (!endpoint || !p256dh || !auth) {
-        console.error(" Missing subscription data:", { 
-          endpoint: !!endpoint, 
-          p256dh: !!p256dh, 
-          auth: !!auth,
-          endpointType: typeof endpoint,
-          p256dhType: typeof p256dh,
-          authType: typeof auth
-        });
-        return res.status(400).json({ message: "Missing required subscription data" });
-      }
-
-      // Validate subscription data format
-      if (typeof endpoint !== 'string' || typeof p256dh !== 'string' || typeof auth !== 'string') {
-        console.error(" Invalid subscription data types");
-        return res.status(400).json({ message: "Invalid subscription data format" });
-      }
-
-      console.log(`📝 Creating push subscription for user ${user.id} (${user.email}):`, {
-        endpoint: endpoint.substring(0, 50) + '...',
-        endpointLength: endpoint.length,
-        p256dhLength: p256dh.length,
-        authLength: auth.length,
-        userRole: user.role,
-        branchId: user.branchId
-      });
-
-      // Check if subscription already exists
+  app.post(
+    "/api/notifications/subscribe",
+    isAuthenticated,
+    async (req: any, res) => {
       try {
-        const existingSubscription = await storage.getPushSubscription(user.id, endpoint);
-        if (existingSubscription) {
-          console.log(`♻️ Push subscription already exists for user ${user.id}, returning existing`);
-
-          // Verify it's still in the admin subscriptions list
-          const allSubscriptions = await storage.getAllAdminSubscriptions();
-          const isInAdminList = allSubscriptions.some(sub => sub.userId === user.id && sub.endpoint === endpoint);
-          console.log(` Subscription found in admin list: ${isInAdminList}`);
-
-          return res.json(existingSubscription);
+        const user = await storage.getUser(req.session.user.id);
+        if (!user) {
+          console.error(" User not found during subscription");
+          return res.status(401).json({ message: "User not found" });
         }
-      } catch (error) {
-        console.error(" Error checking existing subscription:", error);
-        // Continue with creating new subscription
-      }
 
-      // Create new subscription
-      const subscription = await storage.createPushSubscription({
-        userId: user.id,
-        endpoint,
-        p256dh,
-        auth,
-      });
-
-      console.log(` Push subscription created successfully for user ${user.id} (${user.email})`);
-
-      // Verify the subscription was saved and is accessible
-      try {
-        const allSubscriptions = await storage.getAllAdminSubscriptions();
-        console.log(` Total admin subscriptions after creation: ${allSubscriptions.length}`);
-
-        const userSubscriptions = allSubscriptions.filter(sub => sub.userId === user.id);
-        console.log(`👤 Subscriptions for user ${user.id}: ${userSubscriptions.length}`);
-
-        const adminUsers = allSubscriptions.map(sub => ({ 
-          userId: sub.userId, 
-          email: sub.user?.email, 
-          role: sub.user?.role 
-        }));
-        console.log(`👥 All subscribed admin users:`, adminUsers);
-
-        // Double-check the newly created subscription is in the list
-        const newSubInList = allSubscriptions.some(sub => 
-          sub.userId === user.id && sub.endpoint === endpoint
+        console.log(
+          `👤 User subscribing: ${user.id} (${user.email}) - Role: ${user.role}, Branch: ${user.branchId}`,
         );
-        console.log(` New subscription found in admin list: ${newSubInList}`);
 
-        if (!newSubInList) {
-          console.error(` CRITICAL: New subscription not found in admin list!`);
+        // Only allow admin users to subscribe to notifications
+        if (user.role !== "superadmin" && user.role !== "branch-admin") {
+          console.warn(
+            ` Non-admin user ${user.id} (${user.role}) tried to subscribe to notifications`,
+          );
+          return res.status(403).json({
+            message: "Only admin users can subscribe to notifications",
+          });
         }
-      } catch (verifyError) {
-        console.error(" Error verifying subscription creation:", verifyError);
-      }
 
-      res.json({
-        ...subscription,
-        message: "Subscription created successfully"
+        const { endpoint, p256dh, auth } = req.body;
+
+        if (!endpoint || !p256dh || !auth) {
+          console.error(" Missing subscription data:", {
+            endpoint: !!endpoint,
+            p256dh: !!p256dh,
+            auth: !!auth,
+            endpointType: typeof endpoint,
+            p256dhType: typeof p256dh,
+            authType: typeof auth,
+          });
+          return res
+            .status(400)
+            .json({ message: "Missing required subscription data" });
+        }
+
+        // Validate subscription data format
+        if (
+          typeof endpoint !== "string" ||
+          typeof p256dh !== "string" ||
+          typeof auth !== "string"
+        ) {
+          console.error(" Invalid subscription data types");
+          return res
+            .status(400)
+            .json({ message: "Invalid subscription data format" });
+        }
+
+        console.log(
+          `📝 Creating push subscription for user ${user.id} (${user.email}):`,
+          {
+            endpoint: endpoint.substring(0, 50) + "...",
+            endpointLength: endpoint.length,
+            p256dhLength: p256dh.length,
+            authLength: auth.length,
+            userRole: user.role,
+            branchId: user.branchId,
+          },
+        );
+
+        // Check if subscription already exists
+        try {
+          const existingSubscription = await storage.getPushSubscription(
+            user.id,
+            endpoint,
+          );
+          if (existingSubscription) {
+            console.log(
+              `♻️ Push subscription already exists for user ${user.id}, returning existing`,
+            );
+
+            // Verify it's still in the admin subscriptions list
+            const allSubscriptions = await storage.getAllAdminSubscriptions();
+            const isInAdminList = allSubscriptions.some(
+              (sub) => sub.userId === user.id && sub.endpoint === endpoint,
+            );
+            console.log(` Subscription found in admin list: ${isInAdminList}`);
+
+            return res.json(existingSubscription);
+          }
+        } catch (error) {
+          console.error(" Error checking existing subscription:", error);
+          // Continue with creating new subscription
+        }
+
+        // Create new subscription
+        const subscription = await storage.createPushSubscription({
+          userId: user.id,
+          endpoint,
+          p256dh,
+          auth,
         });
-    } catch (error) {
-      console.error(" Error creating push subscription:", error);
-      res.status(500).json({ 
-        message: "Failed to create push subscription",
-        error: error instanceof Error ? error.message : "Unknown error"
-      });
-    }
-  });
 
-  app.delete("/api/notifications/unsubscribe", isAuthenticated, async (req: any, res) => {
-    try {
-      const user = await storage.getUser(req.session.user.id);
-      if (!user) return res.status(401).json({ message: "User not found" });
+        console.log(
+          ` Push subscription created successfully for user ${user.id} (${user.email})`,
+        );
 
-      const { endpoint } = req.body;
+        // Verify the subscription was saved and is accessible
+        try {
+          const allSubscriptions = await storage.getAllAdminSubscriptions();
+          console.log(
+            ` Total admin subscriptions after creation: ${allSubscriptions.length}`,
+          );
 
-      if (!endpoint) {
-        return res.status(400).json({ message: "Missing endpoint" });
+          const userSubscriptions = allSubscriptions.filter(
+            (sub) => sub.userId === user.id,
+          );
+          console.log(
+            `👤 Subscriptions for user ${user.id}: ${userSubscriptions.length}`,
+          );
+
+          const adminUsers = allSubscriptions.map((sub) => ({
+            userId: sub.userId,
+            email: sub.user?.email,
+            role: sub.user?.role,
+          }));
+          console.log(`👥 All subscribed admin users:`, adminUsers);
+
+          // Double-check the newly created subscription is in the list
+          const newSubInList = allSubscriptions.some(
+            (sub) => sub.userId === user.id && sub.endpoint === endpoint,
+          );
+          console.log(` New subscription found in admin list: ${newSubInList}`);
+
+          if (!newSubInList) {
+            console.error(
+              ` CRITICAL: New subscription not found in admin list!`,
+            );
+          }
+        } catch (verifyError) {
+          console.error(" Error verifying subscription creation:", verifyError);
+        }
+
+        res.json({
+          ...subscription,
+          message: "Subscription created successfully",
+        });
+      } catch (error) {
+        console.error(" Error creating push subscription:", error);
+        res.status(500).json({
+          message: "Failed to create push subscription",
+          error: error instanceof Error ? error.message : "Unknown error",
+        });
       }
+    },
+  );
 
-      await storage.deletePushSubscription(user.id, endpoint);
-      console.log(` Push subscription deleted for user ${user.id}`);
-      res.json({ message: "Unsubscribed successfully" });
-    } catch (error) {
-      console.error("Error deleting push subscription:", error);
-      res.status(500).json({ message: "Failed to unsubscribe" });
-    }
-  });
+  app.delete(
+    "/api/notifications/unsubscribe",
+    isAuthenticated,
+    async (req: any, res) => {
+      try {
+        const user = await storage.getUser(req.session.user.id);
+        if (!user) return res.status(401).json({ message: "User not found" });
+
+        const { endpoint } = req.body;
+
+        if (!endpoint) {
+          return res.status(400).json({ message: "Missing endpoint" });
+        }
+
+        await storage.deletePushSubscription(user.id, endpoint);
+        console.log(` Push subscription deleted for user ${user.id}`);
+        res.json({ message: "Unsubscribed successfully" });
+      } catch (error) {
+        console.error("Error deleting push subscription:", error);
+        res.status(500).json({ message: "Failed to unsubscribe" });
+      }
+    },
+  );
 
   // Notification history routes
-  app.get("/api/notifications/history", isAuthenticated, async (req: any, res) => {
-    try {
-      const user = await storage.getUser(req.session.user.id);
-      if (!user) return res.status(401).json({ message: "User not found" });
+  app.get(
+    "/api/notifications/history",
+    isAuthenticated,
+    async (req: any, res) => {
+      try {
+        const user = await storage.getUser(req.session.user.id);
+        if (!user) return res.status(401).json({ message: "User not found" });
 
-      // Only allow admin users to view notification history
-      if (user.role !== 'superadmin' && user.role !== 'branch-admin') {
-        return res.status(403).json({ message: "Only admin users can view notification history" });
+        // Only allow admin users to view notification history
+        if (user.role !== "superadmin" && user.role !== "branch-admin") {
+          return res.status(403).json({
+            message: "Only admin users can view notification history",
+          });
+        }
+
+        const limit = parseInt(req.query.limit as string) || 50;
+        const notifications = await storage.getNotificationHistory(
+          user.id,
+          limit,
+        );
+
+        res.json(notifications);
+      } catch (error) {
+        console.error("Error fetching notification history:", error);
+        res
+          .status(500)
+          .json({ message: "Failed to fetch notification history" });
       }
+    },
+  );
 
-      const limit = parseInt(req.query.limit as string) || 50;
-      const notifications = await storage.getNotificationHistory(user.id, limit);
+  app.patch(
+    "/api/notifications/history/:id/read",
+    isAuthenticated,
+    async (req: any, res) => {
+      try {
+        const user = await storage.getUser(req.session.user.id);
+        if (!user) return res.status(401).json({ message: "User not found" });
 
-      res.json(notifications);
-    } catch (error) {
-      console.error("Error fetching notification history:", error);
-      res.status(500).json({ message: "Failed to fetch notification history" });
-    }
-  });
+        const notificationId = parseInt(req.params.id);
+        await storage.markNotificationAsRead(notificationId, user.id);
 
-  app.patch("/api/notifications/history/:id/read", isAuthenticated, async (req: any, res) => {
-    try {
-      const user = await storage.getUser(req.session.user.id);
-      if (!user) return res.status(401).json({ message: "User not found" });
-
-      const notificationId = parseInt(req.params.id);
-      await storage.markNotificationAsRead(notificationId, user.id);
-
-      res.json({ message: "Notification marked as read" });
-    } catch (error) {
-      console.error("Error marking notification as read:", error);
-      res.status(500).json({ message: "Failed to mark notification as read" });
-    }
-  });
-
-  app.patch("/api/notifications/history/read-all", isAuthenticated, async (req: any, res) => {
-    try {
-      const user = await storage.getUser(req.session.user.id);
-      if (!user) return res.status(401).json({ message: "User not found" });
-
-      await storage.markAllNotificationsAsRead(user.id);
-
-      res.json({ message: "All notifications marked as read" });
-    } catch (error) {
-      console.error("Error marking all notifications as read:", error);
-      res.status(500).json({ message: "Failed to mark all notifications as read" });
-    }
-  });
-
-  app.get("/api/notifications/unread-count", isAuthenticated, async (req: any, res) => {
-    try {
-      const user = await storage.getUser(req.session.user.id);
-      if (!user) return res.status(401).json({ message: "User not found" });
-
-      // Only allow admin users to view unread count
-      if (user.role !== 'superadmin' && user.role !== 'branch-admin') {
-        return res.status(403).json({ message: "Only admin users can view notification count" });
+        res.json({ message: "Notification marked as read" });
+      } catch (error) {
+        console.error("Error marking notification as read:", error);
+        res
+          .status(500)
+          .json({ message: "Failed to mark notification as read" });
       }
+    },
+  );
 
-      const count = await storage.getUnreadNotificationCount(user.id);
+  app.patch(
+    "/api/notifications/history/read-all",
+    isAuthenticated,
+    async (req: any, res) => {
+      try {
+        const user = await storage.getUser(req.session.user.id);
+        if (!user) return res.status(401).json({ message: "User not found" });
 
-      res.json({ count });
-    } catch (error) {
-      console.error("Error fetching unread notification count:", error);
-      res.status(500).json({ message: "Failed to fetch unread notification count" });
-    }
-  });
+        await storage.markAllNotificationsAsRead(user.id);
+
+        res.json({ message: "All notifications marked as read" });
+      } catch (error) {
+        console.error("Error marking all notifications as read:", error);
+        res
+          .status(500)
+          .json({ message: "Failed to mark all notifications as read" });
+      }
+    },
+  );
+
+  app.get(
+    "/api/notifications/unread-count",
+    isAuthenticated,
+    async (req: any, res) => {
+      try {
+        const user = await storage.getUser(req.session.user.id);
+        if (!user) return res.status(401).json({ message: "User not found" });
+
+        // Only allow admin users to view unread count
+        if (user.role !== "superadmin" && user.role !== "branch-admin") {
+          return res
+            .status(403)
+            .json({ message: "Only admin users can view notification count" });
+        }
+
+        const count = await storage.getUnreadNotificationCount(user.id);
+
+        res.json({ count });
+      } catch (error) {
+        console.error("Error fetching unread notification count:", error);
+        res
+          .status(500)
+          .json({ message: "Failed to fetch unread notification count" });
+      }
+    },
+  );
 
   // Restaurant Management System (RMS) Routes
 
@@ -1951,11 +2434,15 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       const tableData = insertRestaurantTableSchema.parse({
         ...req.body,
-        qrToken: req.body.qrToken || crypto.randomUUID()
+        qrToken: req.body.qrToken || crypto.randomUUID(),
       });
 
-      if (!checkBranchPermissions(user.role, user.branchId, tableData.branchId)) {
-        return res.status(403).json({ message: "Insufficient permissions for this branch" });
+      if (
+        !checkBranchPermissions(user.role, user.branchId, tableData.branchId)
+      ) {
+        return res
+          .status(403)
+          .json({ message: "Insufficient permissions for this branch" });
       }
 
       const table = await restaurantStorage.createRestaurantTable(tableData);
@@ -1967,192 +2454,309 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Bulk create tables
-  app.post("/api/restaurant/tables/bulk", isAuthenticated, async (req: any, res) => {
-    try {
-      const user = await storage.getUser(req.session.user.id);
-      if (!user) return res.status(401).json({ message: "User not found" });
+  app.post(
+    "/api/restaurant/tables/bulk",
+    isAuthenticated,
+    async (req: any, res) => {
+      try {
+        const user = await storage.getUser(req.session.user.id);
+        if (!user) return res.status(401).json({ message: "User not found" });
 
-      const { tables } = req.body;
-      if (!Array.isArray(tables) || tables.length === 0) {
-        return res.status(400).json({ message: "Tables array is required" });
-      }
-
-      const validatedTables = tables.map(table => insertRestaurantTableSchema.parse({
-        ...table,
-        qrToken: table.qrToken || crypto.randomUUID()
-      }));
-
-      // Check permissions for all tables
-      for (const table of validatedTables) {
-        if (!checkBranchPermissions(user.role, user.branchId, table.branchId)) {
-          return res.status(403).json({ message: "Insufficient permissions for one or more tables" });
+        const { tables } = req.body;
+        if (!Array.isArray(tables) || tables.length === 0) {
+          return res.status(400).json({ message: "Tables array is required" });
         }
+
+        const validatedTables = tables.map((table) =>
+          insertRestaurantTableSchema.parse({
+            ...table,
+            qrToken: table.qrToken || crypto.randomUUID(),
+          }),
+        );
+
+        // Check permissions for all tables
+        for (const table of validatedTables) {
+          if (
+            !checkBranchPermissions(user.role, user.branchId, table.branchId)
+          ) {
+            return res.status(403).json({
+              message: "Insufficient permissions for one or more tables",
+            });
+          }
+        }
+
+        const createdTables =
+          await restaurantStorage.createRestaurantTablesBulk(validatedTables);
+        res.status(201).json(createdTables);
+      } catch (error) {
+        console.error("Error creating restaurant tables in bulk:", error);
+        res.status(500).json({ message: "Failed to create restaurant tables" });
       }
+    },
+  );
 
-      const createdTables = await restaurantStorage.createRestaurantTablesBulk(validatedTables);
-      res.status(201).json(createdTables);
-    } catch (error) {
-      console.error("Error creating restaurant tables in bulk:", error);
-      res.status(500).json({ message: "Failed to create restaurant tables" });
-    }
-  });
+  app.put(
+    "/api/restaurant/tables/:id",
+    isAuthenticated,
+    async (req: any, res) => {
+      try {
+        const user = await storage.getUser(req.session.user.id);
+        if (!user) return res.status(401).json({ message: "User not found" });
 
-  app.put("/api/restaurant/tables/:id", isAuthenticated, async (req: any, res) => {
-    try {
-      const user = await storage.getUser(req.session.user.id);
-      if (!user) return res.status(401).json({ message: "User not found" });
+        const tableId = parseInt(req.params.id);
+        const tableData = insertRestaurantTableSchema.partial().parse(req.body);
 
-      const tableId = parseInt(req.params.id);
-      const tableData = insertRestaurantTableSchema.partial().parse(req.body);
+        const existingTable =
+          await restaurantStorage.getRestaurantTable(tableId);
+        if (
+          !existingTable ||
+          !checkBranchPermissions(
+            user.role,
+            user.branchId,
+            existingTable.branchId,
+          )
+        ) {
+          return res
+            .status(403)
+            .json({ message: "Insufficient permissions for this table" });
+        }
 
-      const existingTable = await restaurantStorage.getRestaurantTable(tableId);
-      if (!existingTable || !checkBranchPermissions(user.role, user.branchId, existingTable.branchId)) {
-        return res.status(403).json({ message: "Insufficient permissions for this table" });
+        const table = await restaurantStorage.updateRestaurantTable(
+          tableId,
+          tableData,
+        );
+        res.json(table);
+      } catch (error) {
+        console.error("Error updating restaurant table:", error);
+        res.status(500).json({ message: "Failed to update restaurant table" });
       }
+    },
+  );
 
-      const table = await restaurantStorage.updateRestaurantTable(tableId, tableData);
-      res.json(table);
-    } catch (error) {
-      console.error("Error updating restaurant table:", error);
-      res.status(500).json({ message: "Failed to update restaurant table" });
-    }
-  });
+  app.delete(
+    "/api/restaurant/tables/:id",
+    isAuthenticated,
+    async (req: any, res) => {
+      try {
+        const user = await storage.getUser(req.session.user.id);
+        if (!user) return res.status(401).json({ message: "User not found" });
 
-  app.delete("/api/restaurant/tables/:id", isAuthenticated, async (req: any, res) => {
-    try {
-      const user = await storage.getUser(req.session.user.id);
-      if (!user) return res.status(401).json({ message: "User not found" });
+        // Check delete permission for restaurant-tables module
+        const hasDeletePermission = await checkUserPermission(
+          req.session.user.id,
+          "restaurant-tables",
+          "delete",
+        );
+        if (!hasDeletePermission) {
+          return res.status(403).json({
+            message: "Insufficient permissions to delete restaurant tables",
+          });
+        }
 
-      // Check delete permission for restaurant-tables module
-      const hasDeletePermission = await checkUserPermission(req.session.user.id, 'restaurant-tables', 'delete');
-      if (!hasDeletePermission) {
-        return res.status(403).json({ message: "Insufficient permissions to delete restaurant tables" });
+        const tableId = parseInt(req.params.id);
+
+        const existingTable =
+          await restaurantStorage.getRestaurantTable(tableId);
+        if (
+          !existingTable ||
+          !checkBranchPermissions(
+            user.role,
+            user.branchId,
+            existingTable.branchId,
+          )
+        ) {
+          return res
+            .status(403)
+            .json({ message: "Insufficient permissions for this table" });
+        }
+
+        await restaurantStorage.deleteRestaurantTable(tableId);
+        res.status(204).send();
+      } catch (error) {
+        console.error("Error deleting restaurant table:", error);
+        res.status(500).json({ message: "Failed to delete restaurant table" });
       }
-
-      const tableId = parseInt(req.params.id);
-
-      const existingTable = await restaurantStorage.getRestaurantTable(tableId);
-      if (!existingTable || !checkBranchPermissions(user.role, user.branchId, existingTable.branchId)) {
-        return res.status(403).json({ message: "Insufficient permissions for this table" });
-      }
-
-      await restaurantStorage.deleteRestaurantTable(tableId);
-      res.status(204).send();
-    } catch (error) {
-      console.error("Error deleting restaurant table:", error);
-      res.status(500).json({ message: "Failed to delete restaurant table" });
-    }
-  });
+    },
+  );
 
   // Menu Categories
-  app.get("/api/restaurant/categories", isAuthenticated, async (req: any, res) => {
-    try {
-      const user = await storage.getUser(req.session.user.id);      if (!user) return res.status(401).json({ message: "User not found" });
+  app.get(
+    "/api/restaurant/categories",
+    isAuthenticated,
+    async (req: any, res) => {
+      try {
+        const user = await storage.getUser(req.session.user.id);
+        if (!user) return res.status(401).json({ message: "User not found" });
 
-      const branchId = user.role === "superadmin" ? undefined : user.branchId!;
-      const categories = await restaurantStorage.getMenuCategories(branchId);
-      res.json(categories);
-    } catch (error) {
-      console.error("Error fetching menu categories:", error);
-      res.status(500).json({ message: "Failed to fetch menu categories" });
-    }
-  });
-
-  app.post("/api/restaurant/categories", isAuthenticated, async (req: any, res) => {
-    try {
-      const user = await storage.getUser(req.session.user.id);
-      if (!user) return res.status(401).json({ message: "User not found" });
-
-      // Sanitize input data
-      const sanitizedBody = sanitizeInput(req.body);
-      const categoryData = insertMenuCategorySchema.parse(sanitizedBody);
-
-      if (!checkBranchPermissions(user.role, user.branchId, categoryData.branchId)) {
-        return res.status(403).json({ message: "Insufficient permissions for this branch" });
+        const branchId =
+          user.role === "superadmin" ? undefined : user.branchId!;
+        const categories = await restaurantStorage.getMenuCategories(branchId);
+        res.json(categories);
+      } catch (error) {
+        console.error("Error fetching menu categories:", error);
+        res.status(500).json({ message: "Failed to fetch menu categories" });
       }
+    },
+  );
 
-      const category = await restaurantStorage.createMenuCategory(categoryData);
-      res.status(201).json(category);
-    } catch (error) {
-      console.error("Error creating menu category:", error);
-      res.status(500).json({ message: "Failed to create menu category" });
-    }
-  });
+  app.post(
+    "/api/restaurant/categories",
+    isAuthenticated,
+    async (req: any, res) => {
+      try {
+        const user = await storage.getUser(req.session.user.id);
+        if (!user) return res.status(401).json({ message: "User not found" });
+
+        // Sanitize input data
+        const sanitizedBody = sanitizeInput(req.body);
+        const categoryData = insertMenuCategorySchema.parse(sanitizedBody);
+
+        if (
+          !checkBranchPermissions(
+            user.role,
+            user.branchId,
+            categoryData.branchId,
+          )
+        ) {
+          return res
+            .status(403)
+            .json({ message: "Insufficient permissions for this branch" });
+        }
+
+        const category =
+          await restaurantStorage.createMenuCategory(categoryData);
+        res.status(201).json(category);
+      } catch (error) {
+        console.error("Error creating menu category:", error);
+        res.status(500).json({ message: "Failed to create menu category" });
+      }
+    },
+  );
 
   // Bulk create categories
-  app.post("/api/restaurant/categories/bulk", isAuthenticated, async (req: any, res) => {
-    try {
-      const user = await storage.getUser(req.session.user.id);
-      if (!user) return res.status(401).json({ message: "User not found" });
+  app.post(
+    "/api/restaurant/categories/bulk",
+    isAuthenticated,
+    async (req: any, res) => {
+      try {
+        const user = await storage.getUser(req.session.user.id);
+        if (!user) return res.status(401).json({ message: "User not found" });
 
-      const { categories } = req.body;
-      if (!Array.isArray(categories) || categories.length === 0) {
-        return res.status(400).json({ message: "Categories array is required" });
-      }
-
-      const validatedCategories = categories.map(category => insertMenuCategorySchema.parse(category));
-
-      // Check permissions for all categories
-      for (const category of validatedCategories) {
-        if (!checkBranchPermissions(user.role, user.branchId, category.branchId)) {
-          return res.status(403).json({ message: "Insufficient permissions for one or more categories" });
+        const { categories } = req.body;
+        if (!Array.isArray(categories) || categories.length === 0) {
+          return res
+            .status(400)
+            .json({ message: "Categories array is required" });
         }
+
+        const validatedCategories = categories.map((category) =>
+          insertMenuCategorySchema.parse(category),
+        );
+
+        // Check permissions for all categories
+        for (const category of validatedCategories) {
+          if (
+            !checkBranchPermissions(user.role, user.branchId, category.branchId)
+          ) {
+            return res.status(403).json({
+              message: "Insufficient permissions for one or more categories",
+            });
+          }
+        }
+
+        const createdCategories =
+          await restaurantStorage.createMenuCategoriesBulk(validatedCategories);
+        res.status(201).json(createdCategories);
+      } catch (error) {
+        console.error("Error creating menu categories in bulk:", error);
+        res.status(500).json({ message: "Failed to create menu categories" });
       }
+    },
+  );
 
-      const createdCategories = await restaurantStorage.createMenuCategoriesBulk(validatedCategories);
-      res.status(201).json(createdCategories);
-    } catch (error) {
-      console.error("Error creating menu categories in bulk:", error);
-      res.status(500).json({ message: "Failed to create menu categories" });
-    }
-  });
+  app.put(
+    "/api/restaurant/categories/:id",
+    isAuthenticated,
+    async (req: any, res) => {
+      try {
+        const user = await storage.getUser(req.session.user.id);
+        if (!user) return res.status(401).json({ message: "User not found" });
 
-  app.put("/api/restaurant/categories/:id", isAuthenticated, async (req: any, res) => {
-    try {
-      const user = await storage.getUser(req.session.user.id);
-      if (!user) return res.status(401).json({ message: "User not found" });
+        const categoryId = parseInt(req.params.id);
+        const categoryData = insertMenuCategorySchema.partial().parse(req.body);
 
-      const categoryId = parseInt(req.params.id);
-      const categoryData = insertMenuCategorySchema.partial().parse(req.body);
+        const existingCategory =
+          await restaurantStorage.getMenuCategory(categoryId);
+        if (
+          !existingCategory ||
+          !checkBranchPermissions(
+            user.role,
+            user.branchId,
+            existingCategory.branchId,
+          )
+        ) {
+          return res
+            .status(403)
+            .json({ message: "Insufficient permissions for this category" });
+        }
 
-      const existingCategory = await restaurantStorage.getMenuCategory(categoryId);
-      if (!existingCategory || !checkBranchPermissions(user.role, user.branchId, existingCategory.branchId)) {
-        return res.status(403).json({ message: "Insufficient permissions for this category" });
+        const category = await restaurantStorage.updateMenuCategory(
+          categoryId,
+          categoryData,
+        );
+        res.json(category);
+      } catch (error) {
+        console.error("Error updating menu category:", error);
+        res.status(500).json({ message: "Failed to update menu category" });
       }
+    },
+  );
 
-      const category = await restaurantStorage.updateMenuCategory(categoryId, categoryData);
-      res.json(category);
-    } catch (error) {
-      console.error("Error updating menu category:", error);
-      res.status(500).json({ message: "Failed to update menu category" });
-    }
-  });
+  app.delete(
+    "/api/restaurant/categories/:id",
+    isAuthenticated,
+    async (req: any, res) => {
+      try {
+        const user = await storage.getUser(req.session.user.id);
+        if (!user) return res.status(401).json({ message: "User not found" });
 
-  app.delete("/api/restaurant/categories/:id", isAuthenticated, async (req: any, res) => {
-    try {
-      const user = await storage.getUser(req.session.user.id);
-      if (!user) return res.status(401).json({ message: "User not found" });
+        // Check delete permission for restaurant-categories module
+        const hasDeletePermission = await checkUserPermission(
+          req.session.user.id,
+          "restaurant-categories",
+          "delete",
+        );
+        if (!hasDeletePermission) {
+          return res.status(403).json({
+            message: "Insufficient permissions to delete menu categories",
+          });
+        }
 
-      // Check delete permission for restaurant-categories module
-      const hasDeletePermission = await checkUserPermission(req.session.user.id, 'restaurant-categories', 'delete');
-      if (!hasDeletePermission) {
-        return res.status(403).json({ message: "Insufficient permissions to delete menu categories" });
+        const categoryId = parseInt(req.params.id);
+
+        const existingCategory =
+          await restaurantStorage.getMenuCategory(categoryId);
+        if (
+          !existingCategory ||
+          !checkBranchPermissions(
+            user.role,
+            user.branchId,
+            existingCategory.branchId,
+          )
+        ) {
+          return res
+            .status(403)
+            .json({ message: "Insufficient permissions for this category" });
+        }
+
+        await restaurantStorage.deleteMenuCategory(categoryId);
+        res.status(204).send();
+      } catch (error) {
+        console.error("Error deleting menu category:", error);
+        res.status(500).json({ message: "Failed to delete menu category" });
       }
-
-      const categoryId = parseInt(req.params.id);
-
-      const existingCategory = await restaurantStorage.getMenuCategory(categoryId);
-      if (!existingCategory || !checkBranchPermissions(user.role, user.branchId, existingCategory.branchId)) {
-        return res.status(403).json({ message: "Insufficient permissions for this category" });
-      }
-
-      await restaurantStorage.deleteMenuCategory(categoryId);
-      res.status(204).send();
-    } catch (error) {
-      console.error("Error deleting menu category:", error);
-      res.status(500).json({ message: "Failed to delete menu category" });
-    }
-  });
+    },
+  );
 
   // Menu Dishes
   app.get("/api/restaurant/dishes", isAuthenticated, async (req: any, res) => {
@@ -2161,8 +2765,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
       if (!user) return res.status(401).json({ message: "User not found" });
 
       const branchId = user.role === "superadmin" ? undefined : user.branchId!;
-      const categoryId = req.query.categoryId ? parseInt(req.query.categoryId as string) : undefined;
-      const dishes = await restaurantStorage.getMenuDishes(branchId, categoryId);
+      const categoryId = req.query.categoryId
+        ? parseInt(req.query.categoryId as string)
+        : undefined;
+      const dishes = await restaurantStorage.getMenuDishes(
+        branchId,
+        categoryId,
+      );
       res.json(dishes);
     } catch (error) {
       console.error("Error fetching menu dishes:", error);
@@ -2179,8 +2788,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const sanitizedBody = sanitizeInput(req.body);
       const dishData = insertMenuDishSchema.parse(sanitizedBody);
 
-      if (!checkBranchPermissions(user.role, user.branchId, dishData.branchId)) {
-        return res.status(403).json({ message: "Insufficient permissions for this branch" });
+      if (
+        !checkBranchPermissions(user.role, user.branchId, dishData.branchId)
+      ) {
+        return res
+          .status(403)
+          .json({ message: "Insufficient permissions for this branch" });
       }
 
       const dish = await restaurantStorage.createMenuDish(dishData);
@@ -2192,102 +2805,151 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Bulk create dishes
-  app.post("/api/restaurant/dishes/bulk", isAuthenticated, async (req: any, res) => {
-    try {
-      const user = await storage.getUser(req.session.user.id);
-      if (!user) return res.status(401).json({ message: "User not found" });
+  app.post(
+    "/api/restaurant/dishes/bulk",
+    isAuthenticated,
+    async (req: any, res) => {
+      try {
+        const user = await storage.getUser(req.session.user.id);
+        if (!user) return res.status(401).json({ message: "User not found" });
 
-      const { dishes } = req.body;
-      if (!Array.isArray(dishes) || dishes.length === 0) {
-        return res.status(400).json({ message: "Dishes array is required" });
-      }
-
-      const validatedDishes = dishes.map(dish => insertMenuDishSchema.parse(dish));
-
-      // Check permissions for all dishes
-      for (const dish of validatedDishes) {
-        if (!checkBranchPermissions(user.role, user.branchId, dish.branchId)) {
-          return res.status(403).json({ message: "Insufficient permissions for one or more dishes" });
+        const { dishes } = req.body;
+        if (!Array.isArray(dishes) || dishes.length === 0) {
+          return res.status(400).json({ message: "Dishes array is required" });
         }
+
+        const validatedDishes = dishes.map((dish) =>
+          insertMenuDishSchema.parse(dish),
+        );
+
+        // Check permissions for all dishes
+        for (const dish of validatedDishes) {
+          if (
+            !checkBranchPermissions(user.role, user.branchId, dish.branchId)
+          ) {
+            return res.status(403).json({
+              message: "Insufficient permissions for one or more dishes",
+            });
+          }
+        }
+
+        const createdDishes =
+          await restaurantStorage.createMenuDishesBulk(validatedDishes);
+        res.status(201).json(createdDishes);
+      } catch (error) {
+        console.error("Error creating menu dishes in bulk:", error);
+        res.status(500).json({ message: "Failed to create menu dishes" });
       }
+    },
+  );
 
-      const createdDishes = await restaurantStorage.createMenuDishesBulk(validatedDishes);
-      res.status(201).json(createdDishes);
-    } catch (error) {
-      console.error("Error creating menu dishes in bulk:", error);
-      res.status(500).json({ message: "Failed to create menu dishes" });
-    }
-  });
+  app.get(
+    "/api/restaurant/dishes/:id",
+    isAuthenticated,
+    async (req: any, res) => {
+      try {
+        const user = await storage.getUser(req.session.user.id);
+        if (!user) return res.status(401).json({ message: "User not found" });
 
-  app.get("/api/restaurant/dishes/:id", isAuthenticated, async (req: any, res) => {
-    try {
-      const user = await storage.getUser(req.session.user.id);
-      if (!user) return res.status(401).json({ message: "User not found" });
+        const dishId = parseInt(req.params.id);
+        const dish = await restaurantStorage.getMenuDish(dishId);
 
-      const dishId = parseInt(req.params.id);
-      const dish = await restaurantStorage.getMenuDish(dishId);
-      
-      if (!dish) {
-        return res.status(404).json({ message: "Dish not found" });
+        if (!dish) {
+          return res.status(404).json({ message: "Dish not found" });
+        }
+
+        if (!checkBranchPermissions(user.role, user.branchId, dish.branchId)) {
+          return res
+            .status(403)
+            .json({ message: "Insufficient permissions for this dish" });
+        }
+
+        res.json(dish);
+      } catch (error) {
+        console.error("Error fetching menu dish:", error);
+        res.status(500).json({ message: "Failed to fetch menu dish" });
       }
+    },
+  );
 
-      if (!checkBranchPermissions(user.role, user.branchId, dish.branchId)) {
-        return res.status(403).json({ message: "Insufficient permissions for this dish" });
+  app.put(
+    "/api/restaurant/dishes/:id",
+    isAuthenticated,
+    async (req: any, res) => {
+      try {
+        const user = await storage.getUser(req.session.user.id);
+        if (!user) return res.status(401).json({ message: "User not found" });
+
+        const dishId = parseInt(req.params.id);
+        const dishData = insertMenuDishSchema.partial().parse(req.body);
+
+        const existingDish = await restaurantStorage.getMenuDish(dishId);
+        if (
+          !existingDish ||
+          !checkBranchPermissions(
+            user.role,
+            user.branchId,
+            existingDish.branchId,
+          )
+        ) {
+          return res
+            .status(403)
+            .json({ message: "Insufficient permissions for this dish" });
+        }
+
+        const dish = await restaurantStorage.updateMenuDish(dishId, dishData);
+        res.json(dish);
+      } catch (error) {
+        console.error("Error updating menu dish:", error);
+        res.status(500).json({ message: "Failed to update menu dish" });
       }
+    },
+  );
 
-      res.json(dish);
-    } catch (error) {
-      console.error("Error fetching menu dish:", error);
-      res.status(500).json({ message: "Failed to fetch menu dish" });
-    }
-  });
+  app.delete(
+    "/api/restaurant/dishes/:id",
+    isAuthenticated,
+    async (req: any, res) => {
+      try {
+        const user = await storage.getUser(req.session.user.id);
+        if (!user) return res.status(401).json({ message: "User not found" });
 
-  app.put("/api/restaurant/dishes/:id", isAuthenticated, async (req: any, res) => {
-    try {
-      const user = await storage.getUser(req.session.user.id);
-      if (!user) return res.status(401).json({ message: "User not found" });
+        // Check delete permission for restaurant-dishes module
+        const hasDeletePermission = await checkUserPermission(
+          req.session.user.id,
+          "restaurant-dishes",
+          "delete",
+        );
+        if (!hasDeletePermission) {
+          return res.status(403).json({
+            message: "Insufficient permissions to delete menu dishes",
+          });
+        }
 
-      const dishId = parseInt(req.params.id);
-      const dishData = insertMenuDishSchema.partial().parse(req.body);
+        const dishId = parseInt(req.params.id);
 
-      const existingDish = await restaurantStorage.getMenuDish(dishId);
-      if (!existingDish || !checkBranchPermissions(user.role, user.branchId, existingDish.branchId)) {
-        return res.status(403).json({ message: "Insufficient permissions for this dish" });
+        const existingDish = await restaurantStorage.getMenuDish(dishId);
+        if (
+          !existingDish ||
+          !checkBranchPermissions(
+            user.role,
+            user.branchId,
+            existingDish.branchId,
+          )
+        ) {
+          return res
+            .status(403)
+            .json({ message: "Insufficient permissions for this dish" });
+        }
+
+        await restaurantStorage.deleteMenuDish(dishId);
+        res.status(204).send();
+      } catch (error) {
+        console.error("Error deleting menu dish:", error);
+        res.status(500).json({ message: "Failed to delete menu dish" });
       }
-
-      const dish = await restaurantStorage.updateMenuDish(dishId, dishData);
-      res.json(dish);
-    } catch (error) {
-      console.error("Error updating menu dish:", error);
-      res.status(500).json({ message: "Failed to update menu dish" });
-    }
-  });
-
-  app.delete("/api/restaurant/dishes/:id", isAuthenticated, async (req: any, res) => {
-    try {
-      const user = await storage.getUser(req.session.user.id);
-      if (!user) return res.status(401).json({ message: "User not found" });
-
-      // Check delete permission for restaurant-dishes module
-      const hasDeletePermission = await checkUserPermission(req.session.user.id, 'restaurant-dishes', 'delete');
-      if (!hasDeletePermission) {
-        return res.status(403).json({ message: "Insufficient permissions to delete menu dishes" });
-      }
-
-      const dishId = parseInt(req.params.id);
-
-      const existingDish = await restaurantStorage.getMenuDish(dishId);
-      if (!existingDish || !checkBranchPermissions(user.role, user.branchId, existingDish.branchId)) {
-        return res.status(403).json({ message: "Insufficient permissions for this dish" });
-      }
-
-      await restaurantStorage.deleteMenuDish(dishId);
-      res.status(204).send();
-    } catch (error) {
-      console.error("Error deleting menu dish:", error);
-      res.status(500).json({ message: "Failed to delete menu dish" });
-    }
-  });
+    },
+  );
 
   // Restaurant Orders
   app.get("/api/restaurant/orders", isAuthenticated, async (req: any, res) => {
@@ -2297,14 +2959,19 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       const branchId = user.role === "superadmin" ? undefined : user.branchId!;
       const status = req.query.status as string;
-      const orders = await restaurantStorage.getRestaurantOrders(branchId, status);
+      const orders = await restaurantStorage.getRestaurantOrders(
+        branchId,
+        status,
+      );
 
       // Get order items for each order
       const ordersWithItems = await Promise.all(
         orders.map(async (order) => {
-          const items = await restaurantStorage.getRestaurantOrderItems(order.id);
+          const items = await restaurantStorage.getRestaurantOrderItems(
+            order.id,
+          );
           return { ...order, items };
-        })
+        }),
       );
 
       res.json(ordersWithItems);
@@ -2314,38 +2981,46 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.get("/api/restaurant/orders/:id", isAuthenticated, async (req: any, res) => {
-    try {
-      const user = await storage.getUser(req.session.user.id);
-      if (!user) return res.status(401).json({ message: "User not found" });
+  app.get(
+    "/api/restaurant/orders/:id",
+    isAuthenticated,
+    async (req: any, res) => {
+      try {
+        const user = await storage.getUser(req.session.user.id);
+        if (!user) return res.status(401).json({ message: "User not found" });
 
-      const order = await restaurantStorage.getRestaurantOrder(req.params.id);
-      if (!order) {
-        return res.status(404).json({ message: "Order not found" });
+        const order = await restaurantStorage.getRestaurantOrder(req.params.id);
+        if (!order) {
+          return res.status(404).json({ message: "Order not found" });
+        }
+
+        if (!checkBranchPermissions(user.role, user.branchId, order.branchId)) {
+          return res
+            .status(403)
+            .json({ message: "Insufficient permissions for this order" });
+        }
+
+        const items = await restaurantStorage.getRestaurantOrderItems(order.id);
+        res.json({ ...order, items });
+      } catch (error) {
+        console.error("Error fetching restaurant order:", error);
+        res.status(500).json({ message: "Failed to fetch restaurant order" });
       }
-
-      if (!checkBranchPermissions(user.role, user.branchId, order.branchId)) {
-        return res.status(403).json({ message: "Insufficient permissions for this order" });
-      }
-
-      const items = await restaurantStorage.getRestaurantOrderItems(order.id);
-      res.json({ ...order, items });
-    } catch (error) {
-      console.error("Error fetching restaurant order:", error);
-      res.status(500).json({ message: "Failed to fetch restaurant order" });
-    }
-  });
+    },
+  );
 
   const createOrderSchema = z.object({
-    order: insertRestaurantOrderSchema.omit({ 
+    order: insertRestaurantOrderSchema.omit({
       id: true,
-      orderNumber: true, 
-      createdById: true 
+      orderNumber: true,
+      createdById: true,
     }),
-    items: z.array(insertRestaurantOrderItemSchema.omit({ 
-      id: true,
-      orderId: true 
-    })),
+    items: z.array(
+      insertRestaurantOrderItemSchema.omit({
+        id: true,
+        orderId: true,
+      }),
+    ),
   });
 
   app.post("/api/restaurant/orders", isAuthenticated, async (req: any, res) => {
@@ -2353,10 +3028,16 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const user = await storage.getUser(req.session.user.id);
       if (!user) return res.status(401).json({ message: "User not found" });
 
-      const { order: orderData, items: itemsData } = createOrderSchema.parse(req.body);
+      const { order: orderData, items: itemsData } = createOrderSchema.parse(
+        req.body,
+      );
 
-      if (!checkBranchPermissions(user.role, user.branchId, orderData.branchId)) {
-        return res.status(403).json({ message: "Insufficient permissions for this branch" });
+      if (
+        !checkBranchPermissions(user.role, user.branchId, orderData.branchId)
+      ) {
+        return res
+          .status(403)
+          .json({ message: "Insufficient permissions for this branch" });
       }
 
       // Generate order number
@@ -2367,12 +3048,21 @@ export async function registerRoutes(app: Express): Promise<Server> {
         createdById: user.id,
       };
 
-      const order = await restaurantStorage.createRestaurantOrder(orderWithNumber, itemsData);
-      
+      const order = await restaurantStorage.createRestaurantOrder(
+        orderWithNumber,
+        itemsData,
+      );
+
       // Broadcast new order creation
-      wsManager.broadcastDataUpdate('restaurant-orders', orderData.branchId?.toString());
-      wsManager.broadcastDataUpdate('restaurant-dashboard', orderData.branchId?.toString());
-      
+      wsManager.broadcastDataUpdate(
+        "restaurant-orders",
+        orderData.branchId?.toString(),
+      );
+      wsManager.broadcastDataUpdate(
+        "restaurant-dashboard",
+        orderData.branchId?.toString(),
+      );
+
       res.status(201).json(order);
     } catch (error) {
       console.error("Error creating restaurant order:", error);
@@ -2380,36 +3070,61 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.patch("/api/restaurant/orders/:id/status", isAuthenticated, async (req: any, res) => {
-    try {
-      const user = await storage.getUser(req.session.user.id);
-      if (!user) return res.status(401).json({ message: "User not found" });
+  app.patch(
+    "/api/restaurant/orders/:id/status",
+    isAuthenticated,
+    async (req: any, res) => {
+      try {
+        const user = await storage.getUser(req.session.user.id);
+        if (!user) return res.status(401).json({ message: "User not found" });
 
-      const orderId = req.params.id;
-      const { status } = req.body;
+        const orderId = req.params.id;
+        const { status } = req.body;
 
-      const existingOrder = await restaurantStorage.getRestaurantOrder(orderId);
-      if (!existingOrder) {
-        return res.status(404).json({ message: "Order not found" });
+        const existingOrder =
+          await restaurantStorage.getRestaurantOrder(orderId);
+        if (!existingOrder) {
+          return res.status(404).json({ message: "Order not found" });
+        }
+
+        if (
+          !checkBranchPermissions(
+            user.role,
+            user.branchId,
+            existingOrder.branchId,
+          )
+        ) {
+          return res
+            .status(403)
+            .json({ message: "Insufficient permissions for this order" });
+        }
+
+        const order = await restaurantStorage.updateRestaurantOrderStatus(
+          orderId,
+          status,
+        );
+
+        // Broadcast order status update
+        wsManager.broadcastDataUpdate(
+          "restaurant-orders",
+          existingOrder.branchId?.toString(),
+        );
+        wsManager.broadcastDataUpdate(
+          "restaurant-kot",
+          existingOrder.branchId?.toString(),
+        );
+        wsManager.broadcastDataUpdate(
+          "restaurant-dashboard",
+          existingOrder.branchId?.toString(),
+        );
+
+        res.json(order);
+      } catch (error) {
+        console.error("Error updating order status:", error);
+        res.status(500).json({ message: "Failed to update order status" });
       }
-
-      if (!checkBranchPermissions(user.role, user.branchId, existingOrder.branchId)) {
-        return res.status(403).json({ message: "Insufficient permissions for this order" });
-      }
-
-      const order = await restaurantStorage.updateRestaurantOrderStatus(orderId, status);
-      
-      // Broadcast order status update
-      wsManager.broadcastDataUpdate('restaurant-orders', existingOrder.branchId?.toString());
-      wsManager.broadcastDataUpdate('restaurant-kot', existingOrder.branchId?.toString());
-      wsManager.broadcastDataUpdate('restaurant-dashboard', existingOrder.branchId?.toString());
-      
-      res.json(order);
-    } catch (error) {
-      console.error("Error updating order status:", error);
-      res.status(500).json({ message: "Failed to update order status" });
-    }
-  });
+    },
+  );
 
   // KOT Management
   app.get("/api/restaurant/kot", isAuthenticated, async (req: any, res) => {
@@ -2419,8 +3134,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       const branchId = user.role === "superadmin" ? undefined : user.branchId!;
       const status = req.query.status as string;
-      
-      const kotTickets = await restaurantStorage.getKotTickets(branchId, status);
+
+      const kotTickets = await restaurantStorage.getKotTickets(
+        branchId,
+        status,
+      );
       res.json(kotTickets);
     } catch (error) {
       console.error("Error fetching KOT tickets:", error);
@@ -2428,138 +3146,201 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.post("/api/restaurant/orders/:id/kot", isAuthenticated, async (req: any, res) => {
-    try {
-      const user = await storage.getUser(req.session.user.id);
-      if (!user) return res.status(401).json({ message: "User not found" });
+  app.post(
+    "/api/restaurant/orders/:id/kot",
+    isAuthenticated,
+    async (req: any, res) => {
+      try {
+        const user = await storage.getUser(req.session.user.id);
+        if (!user) return res.status(401).json({ message: "User not found" });
 
-      const orderId = req.params.id;
-      const existingOrder = await restaurantStorage.getRestaurantOrder(orderId);
+        const orderId = req.params.id;
+        const existingOrder =
+          await restaurantStorage.getRestaurantOrder(orderId);
 
-      if (!existingOrder) {
-        return res.status(404).json({ message: "Order not found" });
+        if (!existingOrder) {
+          return res.status(404).json({ message: "Order not found" });
+        }
+
+        if (
+          !checkBranchPermissions(
+            user.role,
+            user.branchId,
+            existingOrder.branchId,
+          )
+        ) {
+          return res
+            .status(403)
+            .json({ message: "Insufficient permissions for this order" });
+        }
+
+        const kotData = await restaurantStorage.generateKOT(orderId, user.id);
+
+        // Broadcast new KOT creation
+        wsManager.broadcastDataUpdate(
+          "restaurant-kot",
+          existingOrder.branchId?.toString(),
+        );
+        wsManager.broadcastDataUpdate(
+          "restaurant-orders",
+          existingOrder.branchId?.toString(),
+        );
+
+        res.json(kotData);
+      } catch (error) {
+        console.error("Error generating KOT:", error);
+        res
+          .status(500)
+          .json({ message: error.message || "Failed to generate KOT" });
       }
+    },
+  );
 
-      if (!checkBranchPermissions(user.role, user.branchId, existingOrder.branchId)) {
-        return res.status(403).json({ message: "Insufficient permissions for this order" });
+  app.patch(
+    "/api/restaurant/kot/:id/status",
+    isAuthenticated,
+    async (req: any, res) => {
+      try {
+        const user = await storage.getUser(req.session.user.id);
+        if (!user) return res.status(401).json({ message: "User not found" });
+
+        const kotId = parseInt(req.params.id);
+        const { status } = req.body;
+
+        if (!status || !["preparing", "ready", "served"].includes(status)) {
+          return res.status(400).json({ message: "Invalid status" });
+        }
+
+        const kotTicket = await restaurantStorage.updateKotStatus(
+          kotId,
+          status,
+          user.id,
+        );
+
+        // Broadcast KOT status update
+        wsManager.broadcastDataUpdate("restaurant-kot");
+        wsManager.broadcastDataUpdate("restaurant-orders");
+
+        res.json(kotTicket);
+      } catch (error) {
+        console.error("Error updating KOT status:", error);
+        res.status(500).json({ message: "Failed to update KOT status" });
       }
+    },
+  );
 
-      const kotData = await restaurantStorage.generateKOT(orderId, user.id);
-      
-      // Broadcast new KOT creation
-      wsManager.broadcastDataUpdate('restaurant-kot', existingOrder.branchId?.toString());
-      wsManager.broadcastDataUpdate('restaurant-orders', existingOrder.branchId?.toString());
-      
-      res.json(kotData);
-    } catch (error) {
-      console.error("Error generating KOT:", error);
-      res.status(500).json({ message: error.message || "Failed to generate KOT" });
-    }
-  });
+  app.patch(
+    "/api/restaurant/kot/:id/print",
+    isAuthenticated,
+    async (req: any, res) => {
+      try {
+        const user = await storage.getUser(req.session.user.id);
+        if (!user) return res.status(401).json({ message: "User not found" });
 
-  app.patch("/api/restaurant/kot/:id/status", isAuthenticated, async (req: any, res) => {
-    try {
-      const user = await storage.getUser(req.session.user.id);
-      if (!user) return res.status(401).json({ message: "User not found" });
-
-      const kotId = parseInt(req.params.id);
-      const { status } = req.body;
-
-      if (!status || !["preparing", "ready", "served"].includes(status)) {
-        return res.status(400).json({ message: "Invalid status" });
+        const kotId = parseInt(req.params.id);
+        const kotTicket = await restaurantStorage.markKotPrinted(kotId);
+        res.json(kotTicket);
+      } catch (error) {
+        console.error("Error marking KOT as printed:", error);
+        res.status(500).json({ message: "Failed to mark KOT as printed" });
       }
+    },
+  );
 
-      const kotTicket = await restaurantStorage.updateKotStatus(kotId, status, user.id);
-      
-      // Broadcast KOT status update
-      wsManager.broadcastDataUpdate('restaurant-kot');
-      wsManager.broadcastDataUpdate('restaurant-orders');
-      
-      res.json(kotTicket);
-    } catch (error) {
-      console.error("Error updating KOT status:", error);
-      res.status(500).json({ message: "Failed to update KOT status" });
-    }
-  });
+  app.post(
+    "/api/restaurant/orders/:id/bot",
+    isAuthenticated,
+    async (req: any, res) => {
+      try {
+        const user = await storage.getUser(req.session.user.id);
+        if (!user) return res.status(401).json({ message: "User not found" });
 
-  app.patch("/api/restaurant/kot/:id/print", isAuthenticated, async (req: any, res) => {
-    try {
-      const user = await storage.getUser(req.session.user.id);
-      if (!user) return res.status(401).json({ message: "User not found" });
+        const orderId = req.params.id;
+        const existingOrder =
+          await restaurantStorage.getRestaurantOrder(orderId);
 
-      const kotId = parseInt(req.params.id);
-      const kotTicket = await restaurantStorage.markKotPrinted(kotId);
-      res.json(kotTicket);
-    } catch (error) {
-      console.error("Error marking KOT as printed:", error);
-      res.status(500).json({ message: "Failed to mark KOT as printed" });
-    }
-  });
+        if (!existingOrder) {
+          return res.status(404).json({ message: "Order not found" });
+        }
 
-  app.post("/api/restaurant/orders/:id/bot", isAuthenticated, async (req: any, res) => {
-    try {
-      const user = await storage.getUser(req.session.user.id);
-      if (!user) return res.status(401).json({ message: "User not found" });
+        if (
+          !checkBranchPermissions(
+            user.role,
+            user.branchId,
+            existingOrder.branchId,
+          )
+        ) {
+          return res
+            .status(403)
+            .json({ message: "Insufficient permissions for this order" });
+        }
 
-      const orderId = req.params.id;
-      const existingOrder = await restaurantStorage.getRestaurantOrder(orderId);
-
-      if (!existingOrder) {
-        return res.status(404).json({ message: "Order not found" });
+        const botData = await restaurantStorage.generateBOT(orderId);
+        res.json(botData);
+      } catch (error) {
+        console.error("Error generating BOT:", error);
+        res.status(500).json({ message: "Failed to generate BOT" });
       }
-
-      if (!checkBranchPermissions(user.role, user.branchId, existingOrder.branchId)) {
-        return res.status(403).json({ message: "Insufficient permissions for this order" });
-      }
-
-      const botData = await restaurantStorage.generateBOT(orderId);
-      res.json(botData);
-    } catch (error) {
-      console.error("Error generating BOT:", error);
-      res.status(500).json({ message: "Failed to generate BOT" });
-    }
-  });
+    },
+  );
 
   // Dish Ingredients Management
-  app.get("/api/restaurant/dishes/:dishId/ingredients", isAuthenticated, async (req: any, res) => {
-    try {
-      const dishId = parseInt(req.params.dishId);
-      const ingredients = await dishIngredientsStorage.getDishIngredients(dishId);
-      res.json(ingredients);
-    } catch (error) {
-      console.error("Error fetching dish ingredients:", error);
-      res.status(500).json({ message: "Failed to fetch dish ingredients" });
-    }
-  });
+  app.get(
+    "/api/restaurant/dishes/:dishId/ingredients",
+    isAuthenticated,
+    async (req: any, res) => {
+      try {
+        const dishId = parseInt(req.params.dishId);
+        const ingredients =
+          await dishIngredientsStorage.getDishIngredients(dishId);
+        res.json(ingredients);
+      } catch (error) {
+        console.error("Error fetching dish ingredients:", error);
+        res.status(500).json({ message: "Failed to fetch dish ingredients" });
+      }
+    },
+  );
 
-  app.put("/api/restaurant/dishes/:dishId/ingredients", isAuthenticated, async (req: any, res) => {
-    try {
-      const dishId = parseInt(req.params.dishId);
-      const ingredients = req.body.ingredients || [];
-      
-      // Validate each ingredient
-      const validatedIngredients = ingredients.map((ingredient: any) => 
-        insertDishIngredientSchema.parse({ ...ingredient, dishId })
-      );
+  app.put(
+    "/api/restaurant/dishes/:dishId/ingredients",
+    isAuthenticated,
+    async (req: any, res) => {
+      try {
+        const dishId = parseInt(req.params.dishId);
+        const ingredients = req.body.ingredients || [];
 
-      const result = await dishIngredientsStorage.updateDishIngredientsBulk(dishId, validatedIngredients);
-      res.json(result);
-    } catch (error) {
-      console.error("Error updating dish ingredients:", error);
-      res.status(500).json({ message: "Failed to update dish ingredients" });
-    }
-  });
+        // Validate each ingredient
+        const validatedIngredients = ingredients.map((ingredient: any) =>
+          insertDishIngredientSchema.parse({ ...ingredient, dishId }),
+        );
 
-  app.get("/api/restaurant/dishes/:dishId/cost-calculation", isAuthenticated, async (req: any, res) => {
-    try {
-      const dishId = parseInt(req.params.dishId);
-      const costCalculation = await dishIngredientsStorage.getDishCostCalculation(dishId);
-      res.json(costCalculation);
-    } catch (error) {
-      console.error("Error calculating dish cost:", error);
-      res.status(500).json({ message: "Failed to calculate dish cost" });
-    }
-  });
+        const result = await dishIngredientsStorage.updateDishIngredientsBulk(
+          dishId,
+          validatedIngredients,
+        );
+        res.json(result);
+      } catch (error) {
+        console.error("Error updating dish ingredients:", error);
+        res.status(500).json({ message: "Failed to update dish ingredients" });
+      }
+    },
+  );
+
+  app.get(
+    "/api/restaurant/dishes/:dishId/cost-calculation",
+    isAuthenticated,
+    async (req: any, res) => {
+      try {
+        const dishId = parseInt(req.params.dishId);
+        const costCalculation =
+          await dishIngredientsStorage.getDishCostCalculation(dishId);
+        res.json(costCalculation);
+      } catch (error) {
+        console.error("Error calculating dish cost:", error);
+        res.status(500).json({ message: "Failed to calculate dish cost" });
+      }
+    },
+  );
 
   // Restaurant Bills
   app.get("/api/restaurant/bills", isAuthenticated, async (req: any, res) => {
@@ -2587,34 +3368,58 @@ export async function registerRoutes(app: Express): Promise<Server> {
         createdById: user.id,
       });
 
-      if (!checkBranchPermissions(user.role, user.branchId, billData.branchId)) {
-        return res.status(403).json({ message: "Insufficient permissions for this branch" });
+      if (
+        !checkBranchPermissions(user.role, user.branchId, billData.branchId)
+      ) {
+        return res
+          .status(403)
+          .json({ message: "Insufficient permissions for this branch" });
       }
 
       // Check if bill already exists for this order
-      const existingBills = await restaurantStorage.getRestaurantBills(billData.branchId);
-      const duplicateBill = existingBills.find((bill: any) => bill.orderId === billData.orderId);
+      const existingBills = await restaurantStorage.getRestaurantBills(
+        billData.branchId,
+      );
+      const duplicateBill = existingBills.find(
+        (bill: any) => bill.orderId === billData.orderId,
+      );
 
       if (duplicateBill) {
-        return res.status(400).json({ message: "Bill already exists for this order" });
+        return res
+          .status(400)
+          .json({ message: "Bill already exists for this order" });
       }
 
       // Verify order exists and is in correct status
-      const order = await restaurantStorage.getRestaurantOrder(billData.orderId);
+      const order = await restaurantStorage.getRestaurantOrder(
+        billData.orderId,
+      );
       if (!order) {
         return res.status(404).json({ message: "Order not found" });
       }
 
-      if (!['pending', 'confirmed', 'preparing', 'ready', 'served'].includes(order.status)) {
-        return res.status(400).json({ message: "Order must be active to create bill" });
+      if (
+        !["pending", "confirmed", "preparing", "ready", "served"].includes(
+          order.status,
+        )
+      ) {
+        return res
+          .status(400)
+          .json({ message: "Order must be active to create bill" });
       }
 
       const bill = await restaurantStorage.createRestaurantBill(billData);
-      
+
       // Broadcast new bill creation
-      wsManager.broadcastDataUpdate('restaurant-bills', billData.branchId?.toString());
-      wsManager.broadcastDataUpdate('restaurant-dashboard', billData.branchId?.toString());
-      
+      wsManager.broadcastDataUpdate(
+        "restaurant-bills",
+        billData.branchId?.toString(),
+      );
+      wsManager.broadcastDataUpdate(
+        "restaurant-dashboard",
+        billData.branchId?.toString(),
+      );
+
       res.status(201).json(bill);
     } catch (error) {
       console.error("Error creating restaurant bill:", error);
@@ -2622,83 +3427,128 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.put("/api/restaurant/bills/:id", isAuthenticated, async (req: any, res) => {
-    try {
-      const user = await storage.getUser(req.session.user.id);
-      if (!user) return res.status(401).json({ message: "User not found" });
+  app.put(
+    "/api/restaurant/bills/:id",
+    isAuthenticated,
+    async (req: any, res) => {
+      try {
+        const user = await storage.getUser(req.session.user.id);
+        if (!user) return res.status(401).json({ message: "User not found" });
 
-      const billId = req.params.id;
-      const billData = insertRestaurantBillSchema.partial().parse(req.body);
+        const billId = req.params.id;
+        const billData = insertRestaurantBillSchema.partial().parse(req.body);
 
-      const existingBill = await restaurantStorage.getRestaurantBill(billId);
-      if (!existingBill) {
-        return res.status(404).json({ message: "Bill not found" });
+        const existingBill = await restaurantStorage.getRestaurantBill(billId);
+        if (!existingBill) {
+          return res.status(404).json({ message: "Bill not found" });
+        }
+
+        if (
+          !checkBranchPermissions(
+            user.role,
+            user.branchId,
+            existingBill.branchId,
+          )
+        ) {
+          return res
+            .status(403)
+            .json({ message: "Insufficient permissions for this bill" });
+        }
+
+        const bill = await restaurantStorage.updateRestaurantBill(
+          billId,
+          billData,
+        );
+
+        // Broadcast bill update
+        wsManager.broadcastDataUpdate(
+          "restaurant-bills",
+          existingBill.branchId?.toString(),
+        );
+        wsManager.broadcastDataUpdate(
+          "restaurant-dashboard",
+          existingBill.branchId?.toString(),
+        );
+
+        res.json(bill);
+      } catch (error) {
+        console.error("Error updating restaurant bill:", error);
+        res.status(500).json({ message: "Failed to update restaurant bill" });
       }
-
-      if (!checkBranchPermissions(user.role, user.branchId, existingBill.branchId)) {
-        return res.status(403).json({ message: "Insufficient permissions for this bill" });
-      }
-
-      const bill = await restaurantStorage.updateRestaurantBill(billId, billData);
-      
-      // Broadcast bill update
-      wsManager.broadcastDataUpdate('restaurant-bills', existingBill.branchId?.toString());
-      wsManager.broadcastDataUpdate('restaurant-dashboard', existingBill.branchId?.toString());
-      
-      res.json(bill);
-    } catch (error) {
-      console.error("Error updating restaurant bill:", error);
-      res.status(500).json({ message: "Failed to update restaurant bill" });
-    }
-  });
+    },
+  );
 
   // Delete restaurant bill
-  app.delete("/api/restaurant/bills/:id", isAuthenticated, async (req: any, res) => {
-    try {
-      const user = await storage.getUser(req.session.user.id);
-      if (!user) return res.status(401).json({ message: "User not found" });
+  app.delete(
+    "/api/restaurant/bills/:id",
+    isAuthenticated,
+    async (req: any, res) => {
+      try {
+        const user = await storage.getUser(req.session.user.id);
+        if (!user) return res.status(401).json({ message: "User not found" });
 
-      // Check delete permission for restaurant-billing module
-      const hasDeletePermission = await checkUserPermission(req.session.user.id, 'restaurant-billing', 'delete');
-      if (!hasDeletePermission) {
-        return res.status(403).json({ message: "Insufficient permissions to delete restaurant bills" });
+        // Check delete permission for restaurant-billing module
+        const hasDeletePermission = await checkUserPermission(
+          req.session.user.id,
+          "restaurant-billing",
+          "delete",
+        );
+        if (!hasDeletePermission) {
+          return res.status(403).json({
+            message: "Insufficient permissions to delete restaurant bills",
+          });
+        }
+
+        const billId = req.params.id;
+        const existingBill = await restaurantStorage.getRestaurantBill(billId);
+
+        if (!existingBill) {
+          return res.status(404).json({ message: "Bill not found" });
+        }
+
+        if (
+          !checkBranchPermissions(
+            user.role,
+            user.branchId,
+            existingBill.branchId,
+          )
+        ) {
+          return res
+            .status(403)
+            .json({ message: "Insufficient permissions for this branch" });
+        }
+
+        await restaurantStorage.deleteBill(billId);
+        res.status(204).send();
+      } catch (error) {
+        console.error("Error deleting restaurant bill:", error);
+        res.status(500).json({ message: "Failed to delete restaurant bill" });
       }
-
-      const billId = req.params.id;
-      const existingBill = await restaurantStorage.getRestaurantBill(billId);
-      
-      if (!existingBill) {
-        return res.status(404).json({ message: "Bill not found" });
-      }
-
-      if (!checkBranchPermissions(user.role, user.branchId, existingBill.branchId)) {
-        return res.status(403).json({ message: "Insufficient permissions for this branch" });
-      }
-
-      await restaurantStorage.deleteBill(billId);
-      res.status(204).send();
-    } catch (error) {
-      console.error("Error deleting restaurant bill:", error);
-      res.status(500).json({ message: "Failed to delete restaurant bill" });
-    }
-  });
+    },
+  );
 
   // Clean up duplicate bills (admin only)
-  app.post("/api/restaurant/bills/cleanup-duplicates", isAuthenticated, async (req: any, res) => {
-    try {
-      const user = await storage.getUser(req.session.user.id);
-      if (!user || user.role !== "superadmin") {
-        return res.status(403).json({ message: "Only superadmin can clean up duplicate bills" });
-      }
+  app.post(
+    "/api/restaurant/bills/cleanup-duplicates",
+    isAuthenticated,
+    async (req: any, res) => {
+      try {
+        const user = await storage.getUser(req.session.user.id);
+        if (!user || user.role !== "superadmin") {
+          return res
+            .status(403)
+            .json({ message: "Only superadmin can clean up duplicate bills" });
+        }
 
-      // This is a one-time cleanup for existing duplicate bills
-      // In production, you'd want more sophisticated logic here
-      res.json({ message: "Cleanup endpoint available for superadmin use" });
-    } catch (error) {
-      console.error("Error cleaning up duplicate bills:", error);
-      res.status(500).json({ message: "Failed to clean up duplicate bills" });
-    }
-  });
+        // This is a one-time cleanup for existing duplicate bills
+        // In production, you'd want more sophisticated logic here
+        res.json({ message: "Cleanup endpoint available for superadmin use" });
+      } catch (error) {
+        console.error("Error cleaning up duplicate bills:", error);
+        res.status(500).json({ message: "Failed to clean up duplicate bills" });
+      }
+    },
+  );
 
   // Tax/Charges Management API Routes
   app.get("/api/taxes", isAuthenticated, async (req: any, res) => {
@@ -2764,7 +3614,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
       res.status(201).json(tax);
     } catch (error) {
       console.error("Error creating tax:", error);
-      if (error.code === "23505") { // Unique constraint violation
+      if (error.code === "23505") {
+        // Unique constraint violation
         res.status(400).json({ message: "Tax name already exists" });
       } else {
         res.status(500).json({ message: "Failed to create tax" });
@@ -2794,7 +3645,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
       res.json(tax);
     } catch (error) {
       console.error("Error updating tax:", error);
-      if (error.code === "23505") { // Unique constraint violation
+      if (error.code === "23505") {
+        // Unique constraint violation
         res.status(400).json({ message: "Tax name already exists" });
       } else {
         res.status(500).json({ message: "Failed to update tax" });
@@ -2808,9 +3660,15 @@ export async function registerRoutes(app: Express): Promise<Server> {
       if (!user) return res.status(401).json({ message: "User not found" });
 
       // Check delete permission for tax-management module
-      const hasDeletePermission = await checkUserPermission(req.session.user.id, 'tax-management', 'delete');
+      const hasDeletePermission = await checkUserPermission(
+        req.session.user.id,
+        "tax-management",
+        "delete",
+      );
       if (!hasDeletePermission) {
-        return res.status(403).json({ message: "Insufficient permissions to delete taxes" });
+        return res
+          .status(403)
+          .json({ message: "Insufficient permissions to delete taxes" });
       }
 
       // Only allow superadmin and branch-admin to delete taxes
@@ -2828,334 +3686,493 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Restaurant Dashboard Metrics
-  app.get("/api/restaurant/dashboard/metrics", isAuthenticated, async (req: any, res) => {
-    try {
-      const user = await storage.getUser(req.session.user.id);
-      if (!user) return res.status(401).json({ message: "User not found" });
+  app.get(
+    "/api/restaurant/dashboard/metrics",
+    isAuthenticated,
+    async (req: any, res) => {
+      try {
+        const user = await storage.getUser(req.session.user.id);
+        if (!user) return res.status(401).json({ message: "User not found" });
 
-      const branchId = user.role === "superadmin" ? undefined : user.branchId!;
-      const metrics = await restaurantStorage.getRestaurantDashboardMetrics(branchId);
-      res.json(metrics);
-    } catch (error) {
-      console.error("Error fetching restaurant dashboard metrics:", error);
-      res.status(500).json({ message: "Failed to fetch restaurant dashboard metrics" });
-    }
-  });
+        const branchId =
+          user.role === "superadmin" ? undefined : user.branchId!;
+        const metrics =
+          await restaurantStorage.getRestaurantDashboardMetrics(branchId);
+        res.json(metrics);
+      } catch (error) {
+        console.error("Error fetching restaurant dashboard metrics:", error);
+        res
+          .status(500)
+          .json({ message: "Failed to fetch restaurant dashboard metrics" });
+      }
+    },
+  );
 
   // Inventory Management Routes
 
   // Measuring Units
-  app.get("/api/inventory/measuring-units", isAuthenticated, async (req: any, res) => {
-    try {
-      // Measuring units are global and not branch-specific
-      const units = await inventoryStorage.getMeasuringUnits();
-      res.json(units);
-    } catch (error) {
-      console.error("Error fetching measuring units:", error);
-      res.status(500).json({ message: "Failed to fetch measuring units" });
-    }
-  });
-
-  app.post("/api/inventory/measuring-units", isAuthenticated, async (req: any, res) => {
-    try {
-      const validatedData = insertMeasuringUnitSchema.parse(req.body);
-      const unit = await inventoryStorage.createMeasuringUnit(validatedData);
-      res.status(201).json(unit);
-    } catch (error) {
-      console.error("Error creating measuring unit:", error);
-      res.status(500).json({ message: "Failed to create measuring unit" });
-    }
-  });
-
-  app.put("/api/inventory/measuring-units/:id", isAuthenticated, async (req: any, res) => {
-    try {
-      const unitId = parseInt(req.params.id);
-      const validatedData = insertMeasuringUnitSchema.partial().parse(req.body);
-      const unit = await inventoryStorage.updateMeasuringUnit(unitId, validatedData);
-      res.json(unit);
-    } catch (error) {
-      console.error("Error updating measuring unit:", error);
-      res.status(500).json({ message: "Failed to update measuring unit" });
-    }
-  });
-
-  app.delete("/api/inventory/measuring-units/:id", isAuthenticated, async (req: any, res) => {
-    try {
-      // Check delete permission for inventory-measuring-units module
-      const hasDeletePermission = await checkUserPermission(req.session.user.id, 'inventory-measuring-units', 'delete');
-      if (!hasDeletePermission) {
-        return res.status(403).json({ message: "Insufficient permissions to delete measuring units" });
+  app.get(
+    "/api/inventory/measuring-units",
+    isAuthenticated,
+    async (req: any, res) => {
+      try {
+        // Measuring units are global and not branch-specific
+        const units = await inventoryStorage.getMeasuringUnits();
+        res.json(units);
+      } catch (error) {
+        console.error("Error fetching measuring units:", error);
+        res.status(500).json({ message: "Failed to fetch measuring units" });
       }
+    },
+  );
 
-      const unitId = parseInt(req.params.id);
-      await inventoryStorage.deleteMeasuringUnit(unitId);
-      res.json({ message: "Measuring unit deleted successfully" });
-    } catch (error) {
-      console.error("Error deleting measuring unit:", error);
-      res.status(500).json({ message: "Failed to delete measuring unit" });
-    }
-  });
+  app.post(
+    "/api/inventory/measuring-units",
+    isAuthenticated,
+    async (req: any, res) => {
+      try {
+        const validatedData = insertMeasuringUnitSchema.parse(req.body);
+        const unit = await inventoryStorage.createMeasuringUnit(validatedData);
+        res.status(201).json(unit);
+      } catch (error) {
+        console.error("Error creating measuring unit:", error);
+        res.status(500).json({ message: "Failed to create measuring unit" });
+      }
+    },
+  );
+
+  app.put(
+    "/api/inventory/measuring-units/:id",
+    isAuthenticated,
+    async (req: any, res) => {
+      try {
+        const unitId = parseInt(req.params.id);
+        const validatedData = insertMeasuringUnitSchema
+          .partial()
+          .parse(req.body);
+        const unit = await inventoryStorage.updateMeasuringUnit(
+          unitId,
+          validatedData,
+        );
+        res.json(unit);
+      } catch (error) {
+        console.error("Error updating measuring unit:", error);
+        res.status(500).json({ message: "Failed to update measuring unit" });
+      }
+    },
+  );
+
+  app.delete(
+    "/api/inventory/measuring-units/:id",
+    isAuthenticated,
+    async (req: any, res) => {
+      try {
+        // Check delete permission for inventory-measuring-units module
+        const hasDeletePermission = await checkUserPermission(
+          req.session.user.id,
+          "inventory-measuring-units",
+          "delete",
+        );
+        if (!hasDeletePermission) {
+          return res.status(403).json({
+            message: "Insufficient permissions to delete measuring units",
+          });
+        }
+
+        const unitId = parseInt(req.params.id);
+        await inventoryStorage.deleteMeasuringUnit(unitId);
+        res.json({ message: "Measuring unit deleted successfully" });
+      } catch (error) {
+        console.error("Error deleting measuring unit:", error);
+        res.status(500).json({ message: "Failed to delete measuring unit" });
+      }
+    },
+  );
 
   // Stock Categories
-  app.get("/api/inventory/stock-categories", isAuthenticated, async (req: any, res) => {
-    try {
-      const user = await storage.getUser(req.session.user.id);
-      if (!user) return res.status(401).json({ message: "User not found" });
+  app.get(
+    "/api/inventory/stock-categories",
+    isAuthenticated,
+    async (req: any, res) => {
+      try {
+        const user = await storage.getUser(req.session.user.id);
+        if (!user) return res.status(401).json({ message: "User not found" });
 
-      // For superadmin, show all categories. For branch admin/staff, show their branch categories
-      const branchId = user.role === "superadmin" ? undefined : user.branchId;
-      const categories = await inventoryStorage.getStockCategories(branchId);
-      res.json(categories);
-    } catch (error) {
-      console.error("Error fetching stock categories:", error);
-      res.status(500).json({ message: "Failed to fetch stock categories" });
-    }
-  });
+        // For superadmin, show all categories. For branch admin/staff, show their branch categories
+        const branchId = user.role === "superadmin" ? undefined : user.branchId;
+        const categories = await inventoryStorage.getStockCategories(branchId);
+        res.json(categories);
+      } catch (error) {
+        console.error("Error fetching stock categories:", error);
+        res.status(500).json({ message: "Failed to fetch stock categories" });
+      }
+    },
+  );
 
-  app.get("/api/inventory/stock-categories/menu", isAuthenticated, async (req: any, res) => {
-    try {
-      const user = await storage.getUser(req.session.user.id);
-      if (!user) return res.status(401).json({ message: "User not found" });
+  app.get(
+    "/api/inventory/stock-categories/menu",
+    isAuthenticated,
+    async (req: any, res) => {
+      try {
+        const user = await storage.getUser(req.session.user.id);
+        if (!user) return res.status(401).json({ message: "User not found" });
 
-      const branchId = user.role === "superadmin" ? undefined : user.branchId!;
-      const categories = await inventoryStorage.getMenuStockCategories(branchId);
-      res.json(categories);
-    } catch (error) {
-      console.error("Error fetching menu stock categories:", error);
-      res.status(500).json({ message: "Failed to fetch menu stock categories" });
-    }
-  });
+        const branchId =
+          user.role === "superadmin" ? undefined : user.branchId!;
+        const categories =
+          await inventoryStorage.getMenuStockCategories(branchId);
+        res.json(categories);
+      } catch (error) {
+        console.error("Error fetching menu stock categories:", error);
+        res
+          .status(500)
+          .json({ message: "Failed to fetch menu stock categories" });
+      }
+    },
+  );
 
-  app.post("/api/inventory/stock-categories", isAuthenticated, async (req: any, res) => {
-    try {
-      const user = await storage.getUser(req.session.user.id);
-      if (!user) return res.status(401).json({ message: "User not found" });
+  app.post(
+    "/api/inventory/stock-categories",
+    isAuthenticated,
+    async (req: any, res) => {
+      try {
+        const user = await storage.getUser(req.session.user.id);
+        if (!user) return res.status(401).json({ message: "User not found" });
 
-      console.log("Creating stock category - User:", user.role, "Request body:", req.body);
+        console.log(
+          "Creating stock category - User:",
+          user.role,
+          "Request body:",
+          req.body,
+        );
 
-      const validatedData = insertStockCategorySchema.parse({
-        ...req.body,
-        branchId: user.role === "superadmin" ? req.body.branchId || null : user.branchId,
-      });
-
-      console.log("Validated data:", validatedData);
-
-      const category = await inventoryStorage.createStockCategory(validatedData);
-      console.log("Category created:", category);
-      res.status(201).json(category);
-    } catch (error) {
-      console.error("Error creating stock category:", error);
-      if (error instanceof Error) {
-        res.status(400).json({ 
-          message: "Failed to create stock category", 
-          error: error.message 
+        const validatedData = insertStockCategorySchema.parse({
+          ...req.body,
+          branchId:
+            user.role === "superadmin"
+              ? req.body.branchId || null
+              : user.branchId,
         });
-      } else {
-        res.status(500).json({ message: "Failed to create stock category" });
+
+        console.log("Validated data:", validatedData);
+
+        const category =
+          await inventoryStorage.createStockCategory(validatedData);
+        console.log("Category created:", category);
+        res.status(201).json(category);
+      } catch (error) {
+        console.error("Error creating stock category:", error);
+        if (error instanceof Error) {
+          res.status(400).json({
+            message: "Failed to create stock category",
+            error: error.message,
+          });
+        } else {
+          res.status(500).json({ message: "Failed to create stock category" });
+        }
       }
-    }
-  });
+    },
+  );
 
-  app.put("/api/inventory/stock-categories/:id", isAuthenticated, async (req: any, res) => {
-    try {
-      const categoryId = parseInt(req.params.id);
-      const validatedData = insertStockCategorySchema.partial().parse(req.body);
-      const category = await inventoryStorage.updateStockCategory(categoryId, validatedData);
-      res.json(category);
-    } catch (error) {
-      console.error("Error updating stock category:", error);
-      res.status(500).json({ message: "Failed to update stock category" });
-    }
-  });
-
-  app.delete("/api/inventory/stock-categories/:id", isAuthenticated, async (req: any, res) => {
-    try {
-      // Check delete permission for inventory-stock-categories module
-      const hasDeletePermission = await checkUserPermission(req.session.user.id, 'inventory-stock-categories', 'delete');
-      if (!hasDeletePermission) {
-        return res.status(403).json({ message: "Insufficient permissions to delete stock categories" });
+  app.put(
+    "/api/inventory/stock-categories/:id",
+    isAuthenticated,
+    async (req: any, res) => {
+      try {
+        const categoryId = parseInt(req.params.id);
+        const validatedData = insertStockCategorySchema
+          .partial()
+          .parse(req.body);
+        const category = await inventoryStorage.updateStockCategory(
+          categoryId,
+          validatedData,
+        );
+        res.json(category);
+      } catch (error) {
+        console.error("Error updating stock category:", error);
+        res.status(500).json({ message: "Failed to update stock category" });
       }
+    },
+  );
 
-      const categoryId = parseInt(req.params.id);
-      await inventoryStorage.deleteStockCategory(categoryId);
-      res.json({ message: "Stock category deleted successfully" });
-    } catch (error) {
-      console.error("Error deleting stock category:", error);
-      res.status(500).json({ message: "Failed to delete stock category" });
-    }
-  });
+  app.delete(
+    "/api/inventory/stock-categories/:id",
+    isAuthenticated,
+    async (req: any, res) => {
+      try {
+        // Check delete permission for inventory-stock-categories module
+        const hasDeletePermission = await checkUserPermission(
+          req.session.user.id,
+          "inventory-stock-categories",
+          "delete",
+        );
+        if (!hasDeletePermission) {
+          return res.status(403).json({
+            message: "Insufficient permissions to delete stock categories",
+          });
+        }
 
-
+        const categoryId = parseInt(req.params.id);
+        await inventoryStorage.deleteStockCategory(categoryId);
+        res.json({ message: "Stock category deleted successfully" });
+      } catch (error) {
+        console.error("Error deleting stock category:", error);
+        res.status(500).json({ message: "Failed to delete stock category" });
+      }
+    },
+  );
 
   // Suppliers
-  app.get("/api/inventory/suppliers", isAuthenticated, async (req: any, res) => {
-    try {
-      const user = await storage.getUser(req.session.user.id);
-      if (!user) return res.status(401).json({ message: "User not found" });
+  app.get(
+    "/api/inventory/suppliers",
+    isAuthenticated,
+    async (req: any, res) => {
+      try {
+        const user = await storage.getUser(req.session.user.id);
+        if (!user) return res.status(401).json({ message: "User not found" });
 
-      const branchId = user.role === "superadmin" ? undefined : user.branchId!;
-      const suppliers = await inventoryStorage.getSuppliers(branchId);
-      res.json(suppliers);
-    } catch (error) {
-      console.error("Error fetching suppliers:", error);
-      res.status(500).json({ message: "Failed to fetch suppliers" });
-    }
-  });
-
-  app.post("/api/inventory/suppliers", isAuthenticated, async (req: any, res) => {
-    try {
-      const user = await storage.getUser(req.session.user.id);
-      if (!user) return res.status(401).json({ message: "User not found" });
-
-      const validatedData = insertSupplierSchema.parse({
-        ...req.body,
-        branchId: user.role === "superadmin" ? req.body.branchId : user.branchId!,
-      });
-
-      const supplier = await inventoryStorage.createSupplier(validatedData);
-      res.status(201).json(supplier);
-    } catch (error) {
-      console.error("Error creating supplier:", error);
-      res.status(500).json({ message: "Failed to create supplier" });
-    }
-  });
-
-  app.put("/api/inventory/suppliers/:id", isAuthenticated, async (req: any, res) => {
-    try {
-      const supplierId = parseInt(req.params.id);
-      const validatedData = insertSupplierSchema.partial().parse(req.body);
-      const supplier = await inventoryStorage.updateSupplier(supplierId, validatedData);
-      res.json(supplier);
-    } catch (error) {
-      console.error("Error updating supplier:", error);
-      res.status(500).json({ message: "Failed to update supplier" });
-    }
-  });
-
-  app.delete("/api/inventory/suppliers/:id", isAuthenticated, async (req: any, res) => {
-    try {
-      // Check delete permission for inventory-suppliers module
-      const hasDeletePermission = await checkUserPermission(req.session.user.id, 'inventory-suppliers', 'delete');
-      if (!hasDeletePermission) {
-        return res.status(403).json({ message: "Insufficient permissions to delete suppliers" });
+        const branchId =
+          user.role === "superadmin" ? undefined : user.branchId!;
+        const suppliers = await inventoryStorage.getSuppliers(branchId);
+        res.json(suppliers);
+      } catch (error) {
+        console.error("Error fetching suppliers:", error);
+        res.status(500).json({ message: "Failed to fetch suppliers" });
       }
+    },
+  );
 
-      const supplierId = parseInt(req.params.id);
-      await inventoryStorage.deleteSupplier(supplierId);
-      res.json({ message: "Supplier deleted successfully" });
-    } catch (error) {
-      console.error("Error deleting supplier:", error);
-      res.status(500).json({ message: "Failed to delete supplier" });
-    }
-  });
+  app.post(
+    "/api/inventory/suppliers",
+    isAuthenticated,
+    async (req: any, res) => {
+      try {
+        const user = await storage.getUser(req.session.user.id);
+        if (!user) return res.status(401).json({ message: "User not found" });
+
+        const validatedData = insertSupplierSchema.parse({
+          ...req.body,
+          branchId:
+            user.role === "superadmin" ? req.body.branchId : user.branchId!,
+        });
+
+        const supplier = await inventoryStorage.createSupplier(validatedData);
+        res.status(201).json(supplier);
+      } catch (error) {
+        console.error("Error creating supplier:", error);
+        res.status(500).json({ message: "Failed to create supplier" });
+      }
+    },
+  );
+
+  app.put(
+    "/api/inventory/suppliers/:id",
+    isAuthenticated,
+    async (req: any, res) => {
+      try {
+        const supplierId = parseInt(req.params.id);
+        const validatedData = insertSupplierSchema.partial().parse(req.body);
+        const supplier = await inventoryStorage.updateSupplier(
+          supplierId,
+          validatedData,
+        );
+        res.json(supplier);
+      } catch (error) {
+        console.error("Error updating supplier:", error);
+        res.status(500).json({ message: "Failed to update supplier" });
+      }
+    },
+  );
+
+  app.delete(
+    "/api/inventory/suppliers/:id",
+    isAuthenticated,
+    async (req: any, res) => {
+      try {
+        // Check delete permission for inventory-suppliers module
+        const hasDeletePermission = await checkUserPermission(
+          req.session.user.id,
+          "inventory-suppliers",
+          "delete",
+        );
+        if (!hasDeletePermission) {
+          return res
+            .status(403)
+            .json({ message: "Insufficient permissions to delete suppliers" });
+        }
+
+        const supplierId = parseInt(req.params.id);
+        await inventoryStorage.deleteSupplier(supplierId);
+        res.json({ message: "Supplier deleted successfully" });
+      } catch (error) {
+        console.error("Error deleting supplier:", error);
+        res.status(500).json({ message: "Failed to delete supplier" });
+      }
+    },
+  );
 
   // Stock items
-  app.post("/api/inventory/stock-items", isAuthenticated, async (req: any, res) => {
-    try {
-      const user = await storage.getUser(req.session.user.id);
-      if (!user) return res.status(401).json({ message: "User not found" });
+  app.post(
+    "/api/inventory/stock-items",
+    isAuthenticated,
+    async (req: any, res) => {
+      try {
+        const user = await storage.getUser(req.session.user.id);
+        if (!user) return res.status(401).json({ message: "User not found" });
 
-      const stockItemData = insertStockItemSchema.parse(req.body);
+        const stockItemData = insertStockItemSchema.parse(req.body);
 
-      if (!checkBranchPermissions(user.role, user.branchId, stockItemData.branchId)) {
-        return res.status(403).json({ message: "Insufficient permissions" });
+        if (
+          !checkBranchPermissions(
+            user.role,
+            user.branchId,
+            stockItemData.branchId,
+          )
+        ) {
+          return res.status(403).json({ message: "Insufficient permissions" });
+        }
+
+        const stockItem = await inventoryStorage.createStockItem(stockItemData);
+        res.status(201).json(stockItem);
+      } catch (error) {
+        console.error("Error creating stock item:", error);
+        res.status(500).json({ message: "Failed to create stock item" });
       }
+    },
+  );
 
-      const stockItem = await inventoryStorage.createStockItem(stockItemData);
-      res.status(201).json(stockItem);
-    } catch (error) {
-      console.error("Error creating stock item:", error);
-      res.status(500).json({ message: "Failed to create stock item" });
-    }
-  });
+  app.get(
+    "/api/inventory/stock-items",
+    isAuthenticated,
+    async (req: any, res) => {
+      try {
+        const user = await storage.getUser(req.session.user.id);
+        if (!user) return res.status(401).json({ message: "User not found" });
 
-  app.get("/api/inventory/stock-items", isAuthenticated, async (req: any, res) => {
-    try {
-      const user = await storage.getUser(req.session.user.id);
-      if (!user) return res.status(401).json({ message: "User not found" });
-
-      const branchId = user.role === "superadmin" ? undefined : user.branchId!;
-      const categoryId = req.query.categoryId ? parseInt(req.query.categoryId as string) : undefined;
-      const items = await inventoryStorage.getStockItems(branchId, categoryId);
-      res.json(items);
-    } catch (error) {
-      console.error("Error fetching stock items:", error);
-      res.status(500).json({ message: "Failed to fetch stock items" });
-    }
-  });
-
-  app.get("/api/inventory/stock-items/menu", isAuthenticated, async (req: any, res) => {
-    try {
-      const user = await storage.getUser(req.session.user.id);
-      if (!user) return res.status(401).json({ message: "User not found" });
-
-      const branchId = user.role === "superadmin" ? undefined : user.branchId!;
-      const items = await inventoryStorage.getMenuStockItems(branchId);
-      res.json(items);
-    } catch (error) {
-      console.error("Error fetching menu stock items:", error);
-      res.status(500).json({ message: "Failed to fetch menu stock items" });
-    }
-  });
-
-  app.put("/api/inventory/stock-items/:id", isAuthenticated, async (req: any, res) => {
-    try {
-      const itemId = parseInt(req.params.id);
-      const validatedData = insertStockItemSchema.partial().parse(req.body);
-      const item = await inventoryStorage.updateStockItem(itemId, validatedData);
-      res.json(item);
-    } catch (error) {
-      console.error("Error updating stock item:", error);
-      res.status(500).json({ message: "Failed to update stock item" });
-    }
-  });
-
-  app.delete("/api/inventory/stock-items/:id", isAuthenticated, async (req: any, res) => {
-    try {
-      // Check delete permission for inventory-stock-items module
-      const hasDeletePermission = await checkUserPermission(req.session.user.id, 'inventory-stock-items', 'delete');
-      if (!hasDeletePermission) {
-        return res.status(403).json({ message: "Insufficient permissions to delete stock items" });
+        const branchId =
+          user.role === "superadmin" ? undefined : user.branchId!;
+        const categoryId = req.query.categoryId
+          ? parseInt(req.query.categoryId as string)
+          : undefined;
+        const items = await inventoryStorage.getStockItems(
+          branchId,
+          categoryId,
+        );
+        res.json(items);
+      } catch (error) {
+        console.error("Error fetching stock items:", error);
+        res.status(500).json({ message: "Failed to fetch stock items" });
       }
+    },
+  );
 
-      const itemId = parseInt(req.params.id);
-      await inventoryStorage.deleteStockItem(itemId);
-      res.json({ message: "Stock item deleted successfully" });
-    } catch (error) {
-      console.error("Error deleting stock item:", error);
-      res.status(500).json({ message: "Failed to delete stock item" });
-    }
-  });
+  app.get(
+    "/api/inventory/stock-items/menu",
+    isAuthenticated,
+    async (req: any, res) => {
+      try {
+        const user = await storage.getUser(req.session.user.id);
+        if (!user) return res.status(401).json({ message: "User not found" });
+
+        const branchId =
+          user.role === "superadmin" ? undefined : user.branchId!;
+        const items = await inventoryStorage.getMenuStockItems(branchId);
+        res.json(items);
+      } catch (error) {
+        console.error("Error fetching menu stock items:", error);
+        res.status(500).json({ message: "Failed to fetch menu stock items" });
+      }
+    },
+  );
+
+  app.put(
+    "/api/inventory/stock-items/:id",
+    isAuthenticated,
+    async (req: any, res) => {
+      try {
+        const itemId = parseInt(req.params.id);
+        const validatedData = insertStockItemSchema.partial().parse(req.body);
+        const item = await inventoryStorage.updateStockItem(
+          itemId,
+          validatedData,
+        );
+        res.json(item);
+      } catch (error) {
+        console.error("Error updating stock item:", error);
+        res.status(500).json({ message: "Failed to update stock item" });
+      }
+    },
+  );
+
+  app.delete(
+    "/api/inventory/stock-items/:id",
+    isAuthenticated,
+    async (req: any, res) => {
+      try {
+        // Check delete permission for inventory-stock-items module
+        const hasDeletePermission = await checkUserPermission(
+          req.session.user.id,
+          "inventory-stock-items",
+          "delete",
+        );
+        if (!hasDeletePermission) {
+          return res.status(403).json({
+            message: "Insufficient permissions to delete stock items",
+          });
+        }
+
+        const itemId = parseInt(req.params.id);
+        await inventoryStorage.deleteStockItem(itemId);
+        res.json({ message: "Stock item deleted successfully" });
+      } catch (error) {
+        console.error("Error deleting stock item:", error);
+        res.status(500).json({ message: "Failed to delete stock item" });
+      }
+    },
+  );
 
   // Stock Consumption
-  app.get("/api/inventory/consumption", isAuthenticated, async (req: any, res) => {
-    try {
-      const user = await storage.getUser(req.session.user.id);
-      if (!user) return res.status(401).json({ message: "User not found" });
+  app.get(
+    "/api/inventory/consumption",
+    isAuthenticated,
+    async (req: any, res) => {
+      try {
+        const user = await storage.getUser(req.session.user.id);
+        if (!user) return res.status(401).json({ message: "User not found" });
 
-      const branchId = user.role === "superadmin" ? undefined : user.branchId!;
-      const orderId = req.query.orderId as string;
-      const consumptions = await inventoryStorage.getStockConsumptions(branchId, orderId);
-      res.json(consumptions);
-    } catch (error) {
-      console.error("Error fetching stock consumptions:", error);
-      res.status(500).json({ message: "Failed to fetch stock consumptions" });
-    }
-  });
+        const branchId =
+          user.role === "superadmin" ? undefined : user.branchId!;
+        const orderId = req.query.orderId as string;
+        const consumptions = await inventoryStorage.getStockConsumptions(
+          branchId,
+          orderId,
+        );
+        res.json(consumptions);
+      } catch (error) {
+        console.error("Error fetching stock consumptions:", error);
+        res.status(500).json({ message: "Failed to fetch stock consumptions" });
+      }
+    },
+  );
 
-  app.get("/api/inventory/low-stock", isAuthenticated, async (req: any, res) => {
-    try {
-      const user = await storage.getUser(req.session.user.id);
-      if (!user) return res.status(401).json({ message: "User not found" });
+  app.get(
+    "/api/inventory/low-stock",
+    isAuthenticated,
+    async (req: any, res) => {
+      try {
+        const user = await storage.getUser(req.session.user.id);
+        if (!user) return res.status(401).json({ message: "User not found" });
 
-      const branchId = user.role === "superadmin" ? undefined : user.branchId!;
-      const items = await inventoryStorage.getLowStockItems(branchId);
-      res.json(items);
-    } catch (error) {
-      console.error("Error fetching low stock items:", error);
-      res.status(500).json({ message: "Failed to fetch low stock items" });
-    }
-  });
+        const branchId =
+          user.role === "superadmin" ? undefined : user.branchId!;
+        const items = await inventoryStorage.getLowStockItems(branchId);
+        res.json(items);
+      } catch (error) {
+        console.error("Error fetching low stock items:", error);
+        res.status(500).json({ message: "Failed to fetch low stock items" });
+      }
+    },
+  );
 
   const requireAuth = (req: any, res: any, next: any) => {
     if (req.session && req.session.user) {
@@ -3195,7 +4212,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const tableId = parseInt(req.params.id);
       const qrCode = await QRService.generateTableQR(tableId);
       const table = await restaurantStorage.getRestaurantTable(tableId);
-      res.json({ qrCode, url: `${QRService.getBaseUrl()}/order/${table?.qrToken}` });
+      res.json({
+        qrCode,
+        url: `${QRService.getBaseUrl()}/order/${table?.qrToken}`,
+      });
     } catch (error) {
       console.error("Error generating table QR code:", error);
       res.status(500).json({ message: "Failed to generate QR code" });
@@ -3207,55 +4227,70 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const roomId = parseInt(req.params.id);
       const qrCode = await QRService.generateRoomQR(roomId);
       const room = await storage.getRoom(roomId);
-      res.json({ qrCode, url: `${QRService.getBaseUrl()}/order/${room?.qrToken}` });
+      res.json({
+        qrCode,
+        url: `${QRService.getBaseUrl()}/order/${room?.qrToken}`,
+      });
     } catch (error) {
       console.error("Error generating room QR code:", error);
       res.status(500).json({ message: "Failed to generate QR code" });
     }
   });
 
-  app.post("/api/qr/table/:id/regenerate", isAuthenticated, async (req: any, res) => {
-    try {
-      const tableId = parseInt(req.params.id);
-      const result = await QRService.regenerateTableQR(tableId);
-      res.json(result);
-    } catch (error) {
-      console.error("Error regenerating table QR code:", error);
-      res.status(500).json({ message: "Failed to regenerate QR code" });
-    }
-  });
+  app.post(
+    "/api/qr/table/:id/regenerate",
+    isAuthenticated,
+    async (req: any, res) => {
+      try {
+        const tableId = parseInt(req.params.id);
+        const result = await QRService.regenerateTableQR(tableId);
+        res.json(result);
+      } catch (error) {
+        console.error("Error regenerating table QR code:", error);
+        res.status(500).json({ message: "Failed to regenerate QR code" });
+      }
+    },
+  );
 
-  app.post("/api/qr/room/:id/regenerate", isAuthenticated, async (req: any, res) => {
-    try {
-      const roomId = parseInt(req.params.id);
-      const result = await QRService.regenerateRoomQR(roomId);
-      res.json(result);
-    } catch (error) {
-      console.error("Error regenerating room QR code:", error);
-      res.status(500).json({ message: "Failed to regenerate QR code" });
-    }
-  });
+  app.post(
+    "/api/qr/room/:id/regenerate",
+    isAuthenticated,
+    async (req: any, res) => {
+      try {
+        const roomId = parseInt(req.params.id);
+        const result = await QRService.regenerateRoomQR(roomId);
+        res.json(result);
+      } catch (error) {
+        console.error("Error regenerating room QR code:", error);
+        res.status(500).json({ message: "Failed to regenerate QR code" });
+      }
+    },
+  );
 
   // Public order page route (no authentication required)
   app.get("/api/order/info/:token", async (req: any, res) => {
     try {
       const token = req.params.token;
       const orderInfo = await QRService.validateQRToken(token);
-      
+
       if (!orderInfo) {
         return res.status(404).json({ message: "Invalid QR code" });
       }
 
       // Get menu items for the branch
-      const menuCategories = await restaurantStorage.getMenuCategories(orderInfo.branchId);
-      const menuDishes = await restaurantStorage.getMenuDishes(orderInfo.branchId);
-      
+      const menuCategories = await restaurantStorage.getMenuCategories(
+        orderInfo.branchId,
+      );
+      const menuDishes = await restaurantStorage.getMenuDishes(
+        orderInfo.branchId,
+      );
+
       res.json({
         location: orderInfo,
         menu: {
           categories: menuCategories,
-          dishes: menuDishes
-        }
+          dishes: menuDishes,
+        },
       });
     } catch (error) {
       console.error("Error validating QR token:", error);
@@ -3267,9 +4302,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.post("/api/order/guest", async (req: any, res) => {
     try {
       const { token, customerName, customerPhone, notes, items } = req.body;
-      
+
       if (!token || !items || items.length === 0) {
-        return res.status(400).json({ message: "Token and items are required" });
+        return res
+          .status(400)
+          .json({ message: "Token and items are required" });
       }
 
       const orderInfo = await QRService.validateQRToken(token);
@@ -3278,11 +4315,19 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
 
       // Check for existing active order
-      const existingOrders = await restaurantStorage.getRestaurantOrders(orderInfo.branchId);
-      let existingOrder = existingOrders.find((order: any) => 
-        orderInfo.type === 'table' 
-          ? order.tableId === orderInfo.id && ["pending", "confirmed", "preparing", "ready"].includes(order.status)
-          : order.roomId === orderInfo.id && ["pending", "confirmed", "preparing", "ready"].includes(order.status)
+      const existingOrders = await restaurantStorage.getRestaurantOrders(
+        orderInfo.branchId,
+      );
+      let existingOrder = existingOrders.find((order: any) =>
+        orderInfo.type === "table"
+          ? order.tableId === orderInfo.id &&
+            ["pending", "confirmed", "preparing", "ready"].includes(
+              order.status,
+            )
+          : order.roomId === orderInfo.id &&
+            ["pending", "confirmed", "preparing", "ready"].includes(
+              order.status,
+            ),
       );
 
       if (existingOrder) {
@@ -3292,7 +4337,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
           dishId: item.dishId,
           quantity: item.quantity,
           unitPrice: item.unitPrice || "0",
-          totalPrice: (parseFloat(item.unitPrice || "0") * item.quantity).toString(),
+          totalPrice: (
+            parseFloat(item.unitPrice || "0") * item.quantity
+          ).toString(),
           specialInstructions: item.specialInstructions || null,
         }));
 
@@ -3302,9 +4349,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
         }
 
         // Update order totals
-        const allItems = await restaurantStorage.getRestaurantOrderItems(existingOrder.id);
-        const newSubtotal = allItems.reduce((sum, item) => sum + parseFloat(item.totalPrice), 0);
-        
+        const allItems = await restaurantStorage.getRestaurantOrderItems(
+          existingOrder.id,
+        );
+        const newSubtotal = allItems.reduce(
+          (sum, item) => sum + parseFloat(item.totalPrice),
+          0,
+        );
+
         await restaurantStorage.updateRestaurantOrder(existingOrder.id, {
           subtotal: newSubtotal.toString(),
           totalAmount: newSubtotal.toString(),
@@ -3314,25 +4366,34 @@ export async function registerRoutes(app: Express): Promise<Server> {
         });
 
         // Broadcast order update
-        wsManager.broadcastDataUpdate('restaurant-orders', orderInfo.branchId?.toString());
-        wsManager.broadcastDataUpdate('restaurant-dashboard', orderInfo.branchId?.toString());
+        wsManager.broadcastDataUpdate(
+          "restaurant-orders",
+          orderInfo.branchId?.toString(),
+        );
+        wsManager.broadcastDataUpdate(
+          "restaurant-dashboard",
+          orderInfo.branchId?.toString(),
+        );
 
-        res.json({ 
-          success: true, 
+        res.json({
+          success: true,
           orderId: existingOrder.id,
           message: "Items added to existing order",
-          itemsAdded: items.length
+          itemsAdded: items.length,
         });
       } else {
         // Create new order
         const orderNumber = `ORD-${Date.now()}`;
-        const subtotal = items.reduce((sum: number, item: any) => 
-          sum + (parseFloat(item.unitPrice || "0") * item.quantity), 0);
+        const subtotal = items.reduce(
+          (sum: number, item: any) =>
+            sum + parseFloat(item.unitPrice || "0") * item.quantity,
+          0,
+        );
 
         const orderData = {
           orderNumber,
-          tableId: orderInfo.type === 'table' ? orderInfo.id : null,
-          roomId: orderInfo.type === 'room' ? orderInfo.id : null,
+          tableId: orderInfo.type === "table" ? orderInfo.id : null,
+          roomId: orderInfo.type === "room" ? orderInfo.id : null,
           branchId: orderInfo.branchId,
           status: "pending" as const,
           orderType: orderInfo.type as any,
@@ -3343,7 +4404,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
           notes: notes || null,
         };
 
-        const newOrder = await restaurantStorage.createRestaurantOrder(orderData);
+        const newOrder =
+          await restaurantStorage.createRestaurantOrder(orderData);
 
         // Add items to order
         const orderItems = items.map((item: any) => ({
@@ -3351,7 +4413,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
           dishId: item.dishId,
           quantity: item.quantity,
           unitPrice: item.unitPrice || "0",
-          totalPrice: (parseFloat(item.unitPrice || "0") * item.quantity).toString(),
+          totalPrice: (
+            parseFloat(item.unitPrice || "0") * item.quantity
+          ).toString(),
           specialInstructions: item.specialInstructions || null,
         }));
 
@@ -3360,14 +4424,20 @@ export async function registerRoutes(app: Express): Promise<Server> {
         }
 
         // Broadcast new order creation
-        wsManager.broadcastDataUpdate('restaurant-orders', orderInfo.branchId?.toString());
-        wsManager.broadcastDataUpdate('restaurant-dashboard', orderInfo.branchId?.toString());
+        wsManager.broadcastDataUpdate(
+          "restaurant-orders",
+          orderInfo.branchId?.toString(),
+        );
+        wsManager.broadcastDataUpdate(
+          "restaurant-dashboard",
+          orderInfo.branchId?.toString(),
+        );
 
-        res.json({ 
-          success: true, 
+        res.json({
+          success: true,
           orderId: newOrder.id,
           orderNumber: newOrder.orderNumber,
-          message: "New order created successfully"
+          message: "New order created successfully",
         });
       }
     } catch (error) {
@@ -3381,26 +4451,40 @@ export async function registerRoutes(app: Express): Promise<Server> {
     try {
       const token = req.params.token;
       const orderInfo = await QRService.validateQRToken(token);
-      
+
       if (!orderInfo) {
         return res.status(404).json({ message: "Invalid QR code" });
       }
 
       // Find existing active order for this table/room
-      const whereCondition = orderInfo.type === 'table' 
-        ? { tableId: orderInfo.id, status: ["pending", "confirmed", "preparing", "ready"] }
-        : { roomId: orderInfo.id, status: ["pending", "confirmed", "preparing", "ready"] };
+      const whereCondition =
+        orderInfo.type === "table"
+          ? {
+              tableId: orderInfo.id,
+              status: ["pending", "confirmed", "preparing", "ready"],
+            }
+          : {
+              roomId: orderInfo.id,
+              status: ["pending", "confirmed", "preparing", "ready"],
+            };
 
-      const existingOrder = await restaurantStorage.getRestaurantOrders(orderInfo.branchId, whereCondition.status[0]);
-      const activeOrder = existingOrder.find((order: any) => 
-        orderInfo.type === 'table' ? order.tableId === orderInfo.id : order.roomId === orderInfo.id
+      const existingOrder = await restaurantStorage.getRestaurantOrders(
+        orderInfo.branchId,
+        whereCondition.status[0],
+      );
+      const activeOrder = existingOrder.find((order: any) =>
+        orderInfo.type === "table"
+          ? order.tableId === orderInfo.id
+          : order.roomId === orderInfo.id,
       );
 
       if (activeOrder) {
-        const orderItems = await restaurantStorage.getRestaurantOrderItems(activeOrder.id);
+        const orderItems = await restaurantStorage.getRestaurantOrderItems(
+          activeOrder.id,
+        );
         res.json({
           ...activeOrder,
-          items: orderItems
+          items: orderItems,
         });
       } else {
         res.status(404).json({ message: "No active order found" });
@@ -3426,9 +4510,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const orderTime = new Date(existingOrder.createdAt);
       const now = new Date();
       const diffInMinutes = (now.getTime() - orderTime.getTime()) / (1000 * 60);
-      
-      if (diffInMinutes > 2 && existingOrder.status !== 'pending') {
-        return res.status(400).json({ message: "Order can no longer be modified" });
+
+      if (diffInMinutes > 2 && existingOrder.status !== "pending") {
+        return res
+          .status(400)
+          .json({ message: "Order can no longer be modified" });
       }
 
       // Calculate new totals
@@ -3438,7 +4524,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
       for (const item of items) {
         const dish = await restaurantStorage.getMenuDish(item.dishId);
         if (!dish) {
-          return res.status(400).json({ message: `Dish with ID ${item.dishId} not found` });
+          return res
+            .status(400)
+            .json({ message: `Dish with ID ${item.dishId} not found` });
         }
 
         const itemTotal = parseFloat(dish.price) * item.quantity;
@@ -3450,27 +4538,32 @@ export async function registerRoutes(app: Express): Promise<Server> {
           quantity: item.quantity,
           unitPrice: dish.price,
           totalPrice: itemTotal.toString(),
-          specialInstructions: item.specialInstructions || null
+          specialInstructions: item.specialInstructions || null,
         });
       }
 
       // Update order
-      const updatedOrder = await restaurantStorage.updateRestaurantOrder(orderId, {
-        customerName,
-        customerPhone,
-        subtotal: subtotal.toString(),
-        totalAmount: subtotal.toString(),
-        notes
-      });
+      const updatedOrder = await restaurantStorage.updateRestaurantOrder(
+        orderId,
+        {
+          customerName,
+          customerPhone,
+          subtotal: subtotal.toString(),
+          totalAmount: subtotal.toString(),
+          notes,
+        },
+      );
 
       // Delete existing items and add new ones
-      await db.delete(restaurantOrderItems).where(eq(restaurantOrderItems.orderId, orderId));
+      await db
+        .delete(restaurantOrderItems)
+        .where(eq(restaurantOrderItems.orderId, orderId));
       await db.insert(restaurantOrderItems).values(orderItems);
 
       res.json({
         message: "Order updated successfully",
         orderNumber: updatedOrder.orderNumber,
-        orderId: updatedOrder.id
+        orderId: updatedOrder.id,
       });
     } catch (error) {
       console.error("Error updating order:", error);
@@ -3483,25 +4576,35 @@ export async function registerRoutes(app: Express): Promise<Server> {
     try {
       const token = req.params.token;
       const orderInfo = await QRService.validateQRToken(token);
-      
+
       if (!orderInfo) {
         return res.status(404).json({ message: "Invalid QR code" });
       }
 
       // Mark any active orders as completed
-      const existingOrders = await restaurantStorage.getRestaurantOrders(orderInfo.branchId);
-      const activeOrders = existingOrders.filter((order: any) => 
-        (orderInfo.type === 'table' ? order.tableId === orderInfo.id : order.roomId === orderInfo.id) &&
-        !['completed', 'cancelled'].includes(order.status)
+      const existingOrders = await restaurantStorage.getRestaurantOrders(
+        orderInfo.branchId,
+      );
+      const activeOrders = existingOrders.filter(
+        (order: any) =>
+          (orderInfo.type === "table"
+            ? order.tableId === orderInfo.id
+            : order.roomId === orderInfo.id) &&
+          !["completed", "cancelled"].includes(order.status),
       );
 
       for (const order of activeOrders) {
-        await restaurantStorage.updateRestaurantOrderStatus(order.id, 'completed');
+        await restaurantStorage.updateRestaurantOrderStatus(
+          order.id,
+          "completed",
+        );
       }
 
       // Update table status if it's a table order
-      if (orderInfo.type === 'table') {
-        await restaurantStorage.updateRestaurantTable(orderInfo.id, { status: 'open' });
+      if (orderInfo.type === "table") {
+        await restaurantStorage.updateRestaurantTable(orderInfo.id, {
+          status: "open",
+        });
       }
 
       res.json({ message: "Table/room cleared successfully" });
@@ -3516,7 +4619,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     try {
       const token = req.params.token;
       const orderInfo = await QRService.validateQRToken(token);
-      
+
       if (!orderInfo) {
         return res.status(404).json({ message: "Invalid QR code" });
       }
@@ -3528,7 +4631,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
 
       if (!customerName || !customerPhone) {
-        return res.status(400).json({ message: "Customer name and phone are required" });
+        return res
+          .status(400)
+          .json({ message: "Customer name and phone are required" });
       }
 
       // Calculate totals
@@ -3538,19 +4643,21 @@ export async function registerRoutes(app: Express): Promise<Server> {
       for (const item of items) {
         const dish = await restaurantStorage.getMenuDish(item.dishId);
         if (!dish) {
-          return res.status(400).json({ message: `Dish with ID ${item.dishId} not found` });
+          return res
+            .status(400)
+            .json({ message: `Dish with ID ${item.dishId} not found` });
         }
 
         const itemTotal = parseFloat(dish.price) * item.quantity;
         subtotal += itemTotal;
 
         orderItems.push({
-          orderId: '', // Will be set after order creation
+          orderId: "", // Will be set after order creation
           dishId: item.dishId,
           quantity: item.quantity,
           unitPrice: dish.price,
           totalPrice: itemTotal.toString(),
-          specialInstructions: item.specialInstructions || null
+          specialInstructions: item.specialInstructions || null,
         });
       }
 
@@ -3559,8 +4666,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const orderData = {
         orderNumber,
         branchId: orderInfo.branchId,
-        tableId: orderInfo.type === 'table' ? orderInfo.id : null,
-        roomId: orderInfo.type === 'room' ? orderInfo.id : null,
+        tableId: orderInfo.type === "table" ? orderInfo.id : null,
+        roomId: orderInfo.type === "room" ? orderInfo.id : null,
         orderType: orderInfo.type,
         customerName,
         customerPhone,
@@ -3568,19 +4675,28 @@ export async function registerRoutes(app: Express): Promise<Server> {
         taxAmount: "0",
         totalAmount: subtotal.toString(),
         notes,
-        createdById: null // No staff member created this order
+        createdById: null, // No staff member created this order
       };
 
-      const order = await restaurantStorage.createRestaurantOrder(orderData, orderItems);
+      const order = await restaurantStorage.createRestaurantOrder(
+        orderData,
+        orderItems,
+      );
 
       // Broadcast new guest order creation for immediate sync
-      wsManager.broadcastDataUpdate('restaurant-orders', orderInfo.branchId?.toString());
-      wsManager.broadcastDataUpdate('restaurant-dashboard', orderInfo.branchId?.toString());
+      wsManager.broadcastDataUpdate(
+        "restaurant-orders",
+        orderInfo.branchId?.toString(),
+      );
+      wsManager.broadcastDataUpdate(
+        "restaurant-dashboard",
+        orderInfo.branchId?.toString(),
+      );
 
       res.status(201).json({
         message: "Order placed successfully",
         orderNumber: order.orderNumber,
-        orderId: order.id
+        orderId: order.id,
       });
     } catch (error) {
       console.error("Error submitting order:", error);

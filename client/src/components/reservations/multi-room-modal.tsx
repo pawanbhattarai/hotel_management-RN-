@@ -49,9 +49,6 @@ export default function MultiRoomModal({
     phone: "",
     idType: "passport",
     idNumber: "",
-    nationality: "",
-    address: "",
-    dateOfBirth: "",
   });
 
   const [existingGuest, setExistingGuest] = useState(null);
@@ -93,6 +90,10 @@ export default function MultiRoomModal({
     queryFn: async () => {
       const branchId =
         user?.role === "superadmin" ? selectedBranchId : user?.branchId;
+      if (!branchId) {
+        console.log("No branchId available for fetching rooms");
+        return [];
+      }
 
       console.log("Fetching available rooms for branch:", branchId);
       console.log("User role:", user?.role);
@@ -100,70 +101,24 @@ export default function MultiRoomModal({
       console.log("User branch ID:", user?.branchId);
 
       try {
-        // Build query parameters properly
-        const params = new URLSearchParams();
-        if (branchId) {
-          params.append('branchId', branchId.toString());
-        }
-        params.append('status', 'available');
-
-        const url = `/api/rooms?${params.toString()}`;
-        console.log("Fetching from URL:", url);
-
-        const response = await apiRequest("GET", url);
-
+        const response = await apiRequest(
+          "GET",
+          `/api/rooms?branchId=${branchId}&status=available`,
+        );
         if (!response.ok) {
           console.error("Room fetch failed with status:", response.status);
-          const contentType = response.headers.get('content-type');
-          console.error("Response content type:", contentType);
-
-          let errorText;
-          if (contentType && contentType.includes('application/json')) {
-            try {
-              const errorJson = await response.json();
-              errorText = JSON.stringify(errorJson);
-            } catch {
-              errorText = await response.text();
-            }
-          } else {
-            errorText = await response.text();
-          }
-
-          console.error("Error response:", errorText);
-
-          // If we got HTML instead of JSON, it's likely a server error
-          if (errorText.includes('<!DOCTYPE')) {
-            throw new Error(`Server returned HTML instead of JSON. Status: ${response.status}`);
-          }
-
-          throw new Error(`Failed to fetch rooms: ${response.status} - ${errorText}`);
+          throw new Error(`Failed to fetch rooms: ${response.status}`);
         }
-
-        const contentType = response.headers.get('content-type');
-        if (!contentType || !contentType.includes('application/json')) {
-          console.error("Unexpected content type:", contentType);
-          const text = await response.text();
-          console.error("Response text:", text);
-          throw new Error("Server returned non-JSON response");
-        }
-
         const rooms = await response.json();
         console.log("Available rooms fetched:", rooms);
         console.log("Number of rooms:", rooms?.length || 0);
-        return rooms || [];
+        return rooms;
       } catch (error) {
         console.error("Error fetching rooms:", error);
         throw error;
       }
     },
-    enabled: isOpen && !!user && (user?.role === "superadmin" ? !!selectedBranchId : !!user?.branchId),
-    retry: (failureCount, error) => {
-      // Don't retry if we're getting HTML responses (server errors)
-      if (error instanceof Error && error.message.includes('HTML instead of JSON')) {
-        return false;
-      }
-      return failureCount < 3;
-    },
+    enabled: isOpen && !!user && !!(selectedBranchId || user?.branchId),
   });
 
   const createReservationMutation = useMutation({
@@ -226,9 +181,6 @@ export default function MultiRoomModal({
             phone: guest.phone || "",
             idType: guest.idType || "passport",
             idNumber: guest.idNumber || "",
-            nationality: guest.nationality || "",
-            address: guest.address || "",
-            dateOfBirth: guest.dateOfBirth || "",
           });
           toast({
             title: "Guest Found",
@@ -254,10 +206,9 @@ export default function MultiRoomModal({
       phone: "",
       idType: "passport",
       idNumber: "",
-      nationality: "",
-      address: "",
-      dateOfBirth: "",
     });
+    setExistingGuest(null);
+    setSelectedBranchId("");
     setRooms([
       {
         roomTypeId: "",
@@ -265,12 +216,11 @@ export default function MultiRoomModal({
         checkOutDate: "",
         adults: 1,
         children: 0,
+        specialRequests: "",
         ratePerNight: 0,
         totalAmount: 0,
-        specialRequests: "",
       },
     ]);
-    setExistingGuest(null);
   };
 
   const addRoom = () => {
@@ -344,9 +294,11 @@ export default function MultiRoomModal({
     }, 0);
     const subtotal = rooms.reduce((sum, room) => sum + room.totalAmount, 0);
     // Calculate taxes dynamically from active taxes
-    const taxes = activeTaxes ? activeTaxes.reduce((sum: number, tax: any) => {
-      return sum + (subtotal * parseFloat(tax.rate)) / 100;
-    }, 0) : 0;
+    const taxes = activeTaxes
+      ? activeTaxes.reduce((sum: number, tax: any) => {
+          return sum + (subtotal * parseFloat(tax.rate)) / 100;
+        }, 0)
+      : 0;
     const total = subtotal + taxes;
 
     return { totalRooms, totalNights, subtotal, taxes, total };
@@ -456,9 +408,6 @@ export default function MultiRoomModal({
         phone: "",
         idType: "passport",
         idNumber: "",
-        nationality: "",
-        address: "",
-        dateOfBirth: "",
       });
       setRooms([
         {
@@ -827,12 +776,7 @@ export default function MultiRoomModal({
                 </span>
               </div>
               <div className="flex justify-between">
-                <span className="text-gray-600">
-                  {activeTaxes && activeTaxes.length > 0 
-                    ? `Taxes & Fees (${activeTaxes.map((tax: any) => `${tax.taxName} ${tax.rate}%`).join(', ')}):`
-                    : 'Taxes & Fees:'
-                  }
-                </span>
+                <span className="text-gray-600">Taxes & Fees (15%):</span>
                 <span className="font-medium">
                   Rs.{summary.taxes.toFixed(2)}
                 </span>
