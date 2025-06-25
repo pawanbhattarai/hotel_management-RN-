@@ -76,6 +76,24 @@ async function checkUserPermission(
       return true;
     }
 
+    // Built-in roles permissions
+    if (user.role === "branch-admin") {
+      // Branch admin has most permissions except user management and some settings
+      const restrictedModules = ['users', 'branches', 'settings'];
+      if (restrictedModules.includes(module)) return false;
+      return true;
+    }
+
+    if (user.role === "front-desk") {
+      // Front desk has limited permissions
+      const allowedModules = ['dashboard', 'reservations', 'rooms', 'guests', 'billing'];
+      if (!allowedModules.includes(module)) return false;
+      
+      // Front desk can't delete most things
+      if (action === 'delete' && !['reservations'].includes(module)) return false;
+      return true;
+    }
+
     // For custom roles, check specific permissions
     if (user.role === "custom") {
       const userPermissions = await roleStorage.getUserPermissions(userId);
@@ -221,8 +239,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.post("/api/branches", isAuthenticated, async (req: any, res) => {
     try {
       const user = await storage.getUser(req.session.user.id);
-      if (!user || user.role !== "superadmin") {
-        return res.status(403).json({ message: "Insufficient permissions" });
+      if (!user) return res.status(401).json({ message: "User not found" });
+
+      // Check write permission for branches module
+      const hasWritePermission = await checkUserPermission(req.session.user.id, 'branches', 'write');
+      if (!hasWritePermission) {
+        return res.status(403).json({ message: "You do not have permission to create branches" });
       }
 
       // Sanitize input data
@@ -249,8 +271,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.put("/api/branches/:id", isAuthenticated, async (req: any, res) => {
     try {
       const user = await storage.getUser(req.session.user.id);
-      if (!user || user.role !== "superadmin") {
-        return res.status(403).json({ message: "Insufficient permissions" });
+      if (!user) return res.status(401).json({ message: "User not found" });
+
+      // Check write permission for branches module
+      const hasWritePermission = await checkUserPermission(req.session.user.id, 'branches', 'write');
+      if (!hasWritePermission) {
+        return res.status(403).json({ message: "You do not have permission to update branches" });
       }
 
       const branchId = parseInt(req.params.id);
@@ -300,8 +326,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.post("/api/users", isAuthenticated, async (req: any, res) => {
     try {
       const user = await storage.getUser(req.session.user.id);
-      if (!user || user.role !== "superadmin") {
-        return res.status(403).json({ message: "Insufficient permissions" });
+      if (!user) return res.status(401).json({ message: "User not found" });
+
+      // Check write permission for users module
+      const hasWritePermission = await checkUserPermission(req.session.user.id, 'users', 'write');
+      if (!hasWritePermission) {
+        return res.status(403).json({ message: "You do not have permission to create users" });
       }
 
       const { customRoleIds, ...userData } = req.body;
@@ -327,8 +357,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.put("/api/users/:id", isAuthenticated, async (req: any, res) => {
     try {
       const user = await storage.getUser(req.session.user.id);
-      if (!user || user.role !== "superadmin") {
-        return res.status(403).json({ message: "Insufficient permissions" });
+      if (!user) return res.status(401).json({ message: "User not found" });
+
+      // Check write permission for users module
+      const hasWritePermission = await checkUserPermission(req.session.user.id, 'users', 'write');
+      if (!hasWritePermission) {
+        return res.status(403).json({ message: "You do not have permission to update users" });
       }
 
       const userId = req.params.id;
@@ -425,8 +459,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.post("/api/rooms", isAuthenticated, async (req: any, res) => {
     try {
       const user = await storage.getUser(req.session.user.id);
-      if (!user || !["superadmin", "branch-admin"].includes(user.role)) {
-        return res.status(403).json({ message: "Insufficient permissions" });
+      if (!user) return res.status(401).json({ message: "User not found" });
+
+      // Check write permission for rooms module
+      const hasWritePermission = await checkUserPermission(req.session.user.id, 'rooms', 'write');
+      if (!hasWritePermission) {
+        return res.status(403).json({ message: "You do not have permission to create rooms" });
       }
 
       const roomData = insertRoomSchema.parse(req.body);
@@ -451,8 +489,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.put("/api/rooms/:id", isAuthenticated, async (req: any, res) => {
     try {
       const user = await storage.getUser(req.session.user.id);
-      if (!user || !["superadmin", "branch-admin"].includes(user.role)) {
-        return res.status(403).json({ message: "Insufficient permissions" });
+      if (!user) return res.status(401).json({ message: "User not found" });
+
+      // Check write permission for rooms module
+      const hasWritePermission = await checkUserPermission(req.session.user.id, 'rooms', 'write');
+      if (!hasWritePermission) {
+        return res.status(403).json({ message: "You do not have permission to update rooms" });
       }
 
       const roomId = parseInt(req.params.id);
@@ -687,6 +729,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const user = await storage.getUser(req.session.user.id);
       if (!user) return res.status(401).json({ message: "User not found" });
 
+      // Check write permission for guests module
+      const hasWritePermission = await checkUserPermission(req.session.user.id, 'guests', 'write');
+      if (!hasWritePermission) {
+        return res.status(403).json({ message: "You do not have permission to create guests" });
+      }
+
       // Apply sanitization fix for remaining XSS vulnerability
       const sanitizedBody = sanitizeInput(req.body);
       const guestData = insertGuestSchema.parse(sanitizedBody);
@@ -724,6 +772,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const user = await storage.getUser(req.session.user.id);
       if (!user) return res.status(401).json({ message: "User not found" });
 
+      // Check write permission for guests module
+      const hasWritePermission = await checkUserPermission(req.session.user.id, 'guests', 'write');
+      if (!hasWritePermission) {
+        return res.status(403).json({ message: "You do not have permission to update guests" });
+      }
+
       const guestId = parseInt(req.params.id);
       const guestData = insertGuestSchema.partial().parse(req.body);
 
@@ -750,7 +804,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // Check delete permission for guests module
       const hasDeletePermission = await checkUserPermission(req.session.user.id, 'guests', 'delete');
       if (!hasDeletePermission) {
-        return res.status(403).json({ message: "Insufficient permissions to delete guests" });
+        return res.status(403).json({ message: "You do not have permission to delete guests" });
       }
 
       const guestId = parseInt(req.params.id);
@@ -828,6 +882,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
     try {
       const user = await storage.getUser(req.session.user.id);
       if (!user) return res.status(401).json({ message: "User not found" });
+
+      // Check write permission for reservations module
+      const hasWritePermission = await checkUserPermission(req.session.user.id, 'reservations', 'write');
+      if (!hasWritePermission) {
+        return res.status(403).json({ message: "You do not have permission to create reservations" });
+      }
 
       // Parse the request body first without validation that requires generated fields
       const requestData = req.body;
@@ -945,6 +1005,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const user = await storage.getUser(req.session.user.id);
       if (!user) return res.status(401).json({ message: "User not found" });
 
+      // Check write permission for reservations module
+      const hasWritePermission = await checkUserPermission(req.session.user.id, 'reservations', 'write');
+      if (!hasWritePermission) {
+        return res.status(403).json({ message: "You do not have permission to update reservations" });
+      }
+
       const reservationId = req.params.id;
       const existingReservation = await storage.getReservation(reservationId);
 
@@ -1057,7 +1123,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // Check delete permission for reservations module
       const hasDeletePermission = await checkUserPermission(req.session.user.id, 'reservations', 'delete');
       if (!hasDeletePermission) {
-        return res.status(403).json({ message: "Insufficient permissions to delete reservations" });
+        return res.status(403).json({ message: "You do not have permission to delete reservations" });
       }
 
       const reservationId = req.params.id;

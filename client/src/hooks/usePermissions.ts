@@ -77,12 +77,44 @@ export function usePermissions() {
     };
   };
 
+  const getPermissionErrorMessage = (module: string, action: 'read' | 'write' | 'delete'): string => {
+    const moduleNames: Record<string, string> = {
+      'dashboard': 'Dashboard',
+      'reservations': 'Reservations',
+      'rooms': 'Rooms',
+      'guests': 'Guests',
+      'billing': 'Billing',
+      'users': 'Users',
+      'branches': 'Branches',
+      'restaurant-tables': 'Restaurant Tables',
+      'restaurant-categories': 'Menu Categories',
+      'restaurant-dishes': 'Menu Dishes',
+      'restaurant-orders': 'Restaurant Orders',
+      'restaurant-billing': 'Restaurant Billing',
+    };
+
+    const moduleName = moduleNames[module] || module;
+    const actionText = action === 'read' ? 'access' : action === 'write' ? 'modify' : 'delete';
+    
+    return `You do not have permission to ${actionText} ${moduleName}`;
+  };
+
+  const checkPermissionWithMessage = (module: string, action: 'read' | 'write' | 'delete'): { allowed: boolean; message?: string } => {
+    const allowed = hasPermission(module, action);
+    return {
+      allowed,
+      message: allowed ? undefined : getPermissionErrorMessage(module, action)
+    };
+  };
+
   return {
     hasPermission,
     canAccess,
     canWrite,
     canDelete,
     getModulePermissions,
+    getPermissionErrorMessage,
+    checkPermissionWithMessage,
     userPermissions: user?.customPermissions || {},
   };
 }
