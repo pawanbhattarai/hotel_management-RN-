@@ -54,7 +54,7 @@ function checkBranchPermissions(
 
   if (!targetBranchId) return true; // For operations that don't specify a branch
 
-  if (userRole === "branch-admin") {
+  if (userRole === "branch-admin" || userRole === "custom") {
     return userBranchId === targetBranchId;
   }
 
@@ -901,7 +901,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const reservationData = requestData.reservation;
       const roomsData = requestData.rooms;
 
-      if (
+      // For custom role users, check if they have write permission and are accessing their assigned branch
+      if (user.role === "custom") {
+        if (user.branchId !== reservationData.branchId) {
+          return res
+            .status(403)
+            .json({ message: "You can only create reservations for your assigned branch" });
+        }
+      } else if (
         !checkBranchPermissions(
           user.role,
           user.branchId,
