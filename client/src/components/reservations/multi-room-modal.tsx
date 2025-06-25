@@ -90,11 +90,7 @@ export default function MultiRoomModal({
     queryFn: async () => {
       const branchId =
         user?.role === "superadmin" ? selectedBranchId : user?.branchId;
-      if (!branchId) {
-        console.log("No branchId available for fetching rooms");
-        return [];
-      }
-
+      
       console.log("Fetching available rooms for branch:", branchId);
       console.log("User role:", user?.role);
       console.log("Selected branch ID:", selectedBranchId);
@@ -103,7 +99,9 @@ export default function MultiRoomModal({
       try {
         // Build query parameters properly
         const params = new URLSearchParams();
-        params.append('branchId', branchId.toString());
+        if (branchId) {
+          params.append('branchId', branchId.toString());
+        }
         params.append('status', 'available');
         
         const url = `/api/rooms?${params.toString()}`;
@@ -127,7 +125,7 @@ export default function MultiRoomModal({
         throw error;
       }
     },
-    enabled: isOpen && !!user && !!(selectedBranchId || user?.branchId),
+    enabled: isOpen && !!user && (user?.role === "superadmin" ? !!selectedBranchId : !!user?.branchId),
   });
 
   const createReservationMutation = useMutation({
