@@ -898,16 +898,24 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // Parse the request body first without validation that requires generated fields
       const requestData = req.body;
       const guestData = requestData.guest;
-      const reservationData = requestData.reservation;
+      let reservationData = requestData.reservation;
       const roomsData = requestData.rooms;
 
-      // For custom role users, check if they have write permission and are accessing their assigned branch
+      // For custom role users, automatically set their assigned branchId
       if (user.role === "custom") {
-        if (user.branchId !== reservationData.branchId) {
+        if (!user.branchId) {
           return res
             .status(403)
-            .json({ message: "You can only create reservations for your assigned branch" });
+            .json({ message: "Custom role user must have a branch assignment" });
         }
+        
+        // Override branchId with user's assigned branch for custom role users
+        reservationData = {
+          ...reservationData,
+          branchId: user.branchId
+        };
+        
+        console.log("🏨 Custom role user - setting branchId to:", user.branchId, "for user:", user.id);
       } else if (
         !checkBranchPermissions(
           user.role,
@@ -933,7 +941,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       if (!guest) {
         guest = await storage.createGuest({
           ...guestData,
-          branchId: reservationData.branchId,
+          branchId: reservationData.branchId, // This will now have the correct branchId for custom users
         });
       }
 
