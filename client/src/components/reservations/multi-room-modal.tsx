@@ -677,6 +677,7 @@ export default function MultiRoomModal({
                       <Input
                         type="date"
                         value={room.checkInDate}
+                        min={new Date().toISOString().split('T')[0]}
                         onChange={(e) =>
                           updateRoom(index, "checkInDate", e.target.value)
                         }
@@ -694,6 +695,16 @@ export default function MultiRoomModal({
                         }
                         required
                       />
+                      {room.checkInDate && room.checkOutDate && room.checkInDate === room.checkOutDate && (
+                        <div className="text-sm text-blue-600 mt-1">
+                          Same-day booking (counted as 1 night)
+                        </div>
+                      )}
+                      {room.checkInDate && room.checkOutDate && room.checkOutDate < room.checkInDate && (
+                        <div className="text-sm text-red-600 mt-1">
+                          Check-out date cannot be before check-in date
+                        </div>
+                      )}
                     </div>
                   </div>
 

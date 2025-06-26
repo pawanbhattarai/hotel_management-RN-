@@ -1123,6 +1123,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
       let reservationData = requestData.reservation;
       const roomsData = requestData.rooms;
 
+      console.log("📝 Received reservation data:", JSON.stringify(reservationData, null, 2));
+
       // For custom role users, automatically set their assigned branchId
       if (user.role === "custom") {
         if (!user.branchId) {
@@ -1217,6 +1219,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
         user.id,
         "role:",
         user.role,
+        "totalAmount:",
+        reservationWithConfirmation.totalAmount,
+        "finalTotalAmount:",
+        finalTotalAmount,
+        "subtotal:",
+        subtotal
       );
 
       const reservation = await storage.createReservation(
