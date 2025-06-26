@@ -209,8 +209,10 @@ export default function MultiRoomModal({
         setExistingGuest(editData.guest);
       }
 
-      // Set branch ID
-      setSelectedBranchId(editData.branchId?.toString() || "");
+      // Set branch ID for superadmin users
+      if (user?.role === "superadmin") {
+        setSelectedBranchId(editData.branchId?.toString() || "");
+      }
 
       // Populate room data
       if (editData.reservationRooms && editData.reservationRooms.length > 0) {
@@ -486,59 +488,6 @@ export default function MultiRoomModal({
   };
 
   const summary = calculateSummary();
-
-  // Initialize form with edit data
-  useEffect(() => {
-    if (isEdit && editData && isOpen) {
-      setGuestData({
-        firstName: editData.guest.firstName || "",
-        lastName: editData.guest.lastName || "",
-        email: editData.guest.email || "",
-        phone: editData.guest.phone || "",
-        idType: editData.guest.idType || "passport",
-        idNumber: editData.guest.idNumber || "",
-      });
-
-      setRooms(
-        editData.reservationRooms.map((rr: any) => ({
-          id: rr.id,
-          roomId: rr.roomId?.toString() || "",
-          roomTypeId: rr.room?.roomTypeId?.toString() || "",
-          checkInDate: rr.checkInDate,
-          checkOutDate: rr.checkOutDate,
-          adults: rr.adults,
-          children: rr.children,
-          ratePerNight: parseFloat(rr.ratePerNight),
-          totalAmount: parseFloat(rr.totalAmount),
-          specialRequests: rr.specialRequests || "",
-        })),
-      );
-    } else if (!isEdit) {
-      // Reset form for new reservation
-      setGuestData({
-        firstName: "",
-        lastName: "",
-        email: "",
-        phone: "",
-        idType: "passport",
-        idNumber: "",
-      });
-      setRooms([
-        {
-          id: null,
-          roomId: "",
-          roomTypeId: "",
-          checkInDate: "",
-          checkOutDate: "",
-          adults: 1,
-          children: 0,
-          ratePerNight: 0,
-          totalAmount: 0,
-          specialRequests: "",
-        },
-      ]);
-    }
-  }, [isEdit, editData, isOpen]);
 
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
