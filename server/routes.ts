@@ -1299,6 +1299,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
           .json({ message: "Insufficient permissions for this branch" });
       }
 
+      // Prevent editing reservations after checkout
+      if (existingReservation.status === "checked-out" || existingReservation.status === "cancelled") {
+        return res.status(403).json({ 
+          message: "Cannot edit reservation after checkout or cancellation" 
+        });
+      }
+
       const bodyData = req.body;
       // Convert numeric fields to strings if they're numbers
       if (bodyData.paidAmount && typeof bodyData.paidAmount === "number") {

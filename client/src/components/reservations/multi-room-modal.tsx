@@ -268,9 +268,13 @@ export default function MultiRoomModal({
       ) {
         const checkIn = new Date(updatedRooms[index].checkInDate);
         const checkOut = new Date(updatedRooms[index].checkOutDate);
-        const nights = Math.ceil(
+        let nights = Math.ceil(
           (checkOut.getTime() - checkIn.getTime()) / (1000 * 60 * 60 * 24),
         );
+        // If same date selected, count as 1 day minimum
+        if (nights <= 0) {
+          nights = 1;
+        }
         const ratePerNight = parseFloat(selectedRoom.roomType.basePrice);
         updatedRooms[index].ratePerNight = ratePerNight;
         updatedRooms[index].totalAmount = ratePerNight * nights;
@@ -286,12 +290,14 @@ export default function MultiRoomModal({
       if (room.checkInDate && room.checkOutDate) {
         const checkIn = new Date(room.checkInDate);
         const checkOut = new Date(room.checkOutDate);
-        return (
-          sum +
-          Math.ceil(
-            (checkOut.getTime() - checkIn.getTime()) / (1000 * 60 * 60 * 24),
-          )
+        let nights = Math.ceil(
+          (checkOut.getTime() - checkIn.getTime()) / (1000 * 60 * 60 * 24),
         );
+        // If same date selected, count as 1 day minimum
+        if (nights <= 0) {
+          nights = 1;
+        }
+        return sum + nights;
       }
       return sum;
     }, 0);
@@ -682,6 +688,7 @@ export default function MultiRoomModal({
                       <Input
                         type="date"
                         value={room.checkOutDate}
+                        min={room.checkInDate || undefined}
                         onChange={(e) =>
                           updateRoom(index, "checkOutDate", e.target.value)
                         }

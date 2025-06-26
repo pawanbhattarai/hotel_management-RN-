@@ -277,6 +277,11 @@ export default function Reservations() {
     );
   };
 
+  // Check if reservation can be edited (until checkout)
+  const canEditReservation = (reservation: any) => {
+    return reservation.status !== "checked-out" && reservation.status !== "cancelled";
+  };
+
   if (isLoading) {
     return (
       <div className="min-h-screen flex items-center justify-center">
@@ -499,16 +504,18 @@ export default function Reservations() {
                                   <LogIn className="h-4 w-4" />
                                 </Button>
                               )}
-                              <Button
-                                variant="ghost"
-                                size="sm"
-                                onClick={() =>
-                                  handleEditReservation(reservation)
-                                }
-                                title="Edit Reservation"
-                              >
-                                <Edit className="h-4 w-4" />
-                              </Button>
+                              {canEditReservation(reservation) && (
+                                <Button
+                                  variant="ghost"
+                                  size="sm"
+                                  onClick={() =>
+                                    handleEditReservation(reservation)
+                                  }
+                                  title="Edit Reservation"
+                                >
+                                  <Edit className="h-4 w-4" />
+                                </Button>
+                              )}
                               <Button
                                 variant="ghost"
                                 size="sm"
