@@ -867,7 +867,8 @@ export default function MultiRoomModal({
                   )}
                 </CardContent>
               </Card>
-            ))}
+            );
+          })}
           </div>
 
           {/* Reservation Summary */}
