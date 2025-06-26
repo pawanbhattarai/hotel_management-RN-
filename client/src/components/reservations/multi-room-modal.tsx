@@ -210,6 +210,8 @@ export default function MultiRoomModal({
   // Populate form when editing existing reservation
   useEffect(() => {
     if (isEdit && editData && isOpen) {
+      console.log("Editing reservation - populating form data");
+      
       // Populate guest data
       if (editData.guest) {
         setGuestData({
@@ -223,13 +225,24 @@ export default function MultiRoomModal({
         setExistingGuest(editData.guest);
       }
 
-      // Set branch ID for superadmin users
-      if (user?.role === "superadmin") {
+      // Set branch ID for superadmin users FIRST, before setting room data
+      if (user?.role === "superadmin" && editData.branchId) {
+        console.log("Setting branch ID for edit:", editData.branchId);
         setSelectedBranchId(editData.branchId?.toString() || "");
       }
+    } else if (!isEdit && isOpen) {
+      // Reset form for new reservation
+      resetForm();
+    }
+  }, [isEdit, editData, isOpen, user?.role]);
 
-      // Populate room data only after rooms are loaded
-      if (editData.reservationRooms && editData.reservationRooms.length > 0 && availableRooms) {
+  // Separate useEffect to populate room data after branch and rooms are loaded
+  useEffect(() => {
+    if (isEdit && editData && isOpen && availableRooms && selectedBranchId) {
+      console.log("Populating room data for edit mode");
+      
+      // Populate room data only after rooms are loaded and branch is set
+      if (editData.reservationRooms && editData.reservationRooms.length > 0) {
         const roomsData = editData.reservationRooms.map((room: any) => ({
           id: room.id,
           roomId: room.roomId?.toString() || "",
@@ -245,13 +258,11 @@ export default function MultiRoomModal({
           roomNumber: room.room?.number || "",
           roomTypeName: room.room?.roomType?.name || "",
         }));
+        console.log("Setting rooms data:", roomsData);
         setRooms(roomsData);
       }
-    } else if (!isEdit && isOpen) {
-      // Reset form for new reservation
-      resetForm();
     }
-  }, [isEdit, editData, isOpen, availableRooms]);
+  }, [isEdit, editData, isOpen, availableRooms, selectedBranchId]);
 
   const searchGuestByPhone = async (phone: string) => {
     if (!phone || phone.length < 5) {
@@ -525,28 +536,35 @@ export default function MultiRoomModal({
 
   // Handle branch selection for superadmin
   const handleBranchChange = (branchId: string) => {
+    console.log("Branch change requested:", branchId, "Edit mode:", isEdit);
+    
+    // Prevent branch changes during edit mode
+    if (isEdit) {
+      console.log("Preventing branch change during edit mode");
+      return;
+    }
+    
     setSelectedBranchId(branchId);
 
-    // Only reset room data if not editing existing reservation
-    if (!isEdit) {
-      setRooms([{
-        id: null,
-        roomId: "",
-        roomTypeId: "",
-        checkInDate: "",
-        checkOutDate: "",
-        adults: 1,
-        children: 0,
-        specialRequests: "",
-        ratePerNight: 0,
-        totalAmount: 0,
-      }]);
-    }
+    // Reset room data for new reservations
+    setRooms([{
+      id: null,
+      roomId: "",
+      roomTypeId: "",
+      checkInDate: "",
+      checkOutDate: "",
+      adults: 1,
+      children: 0,
+      specialRequests: "",
+      ratePerNight: 0,
+      totalAmount: 0,
+    }]);
   };
 
-  // Fetch available rooms when branch changes (but not during edit mode initialization)
+  // Fetch available rooms when branch changes (only for new reservations)
   useEffect(() => {
     if (selectedBranchId && !isEdit) {
+      console.log("Invalidating room queries for branch change");
       queryClient.invalidateQueries({ queryKey: ["/api/rooms"] });
     }
   }, [selectedBranchId, queryClient, isEdit]);
@@ -569,10 +587,10 @@ export default function MultiRoomModal({
                 <Label htmlFor="branchId">Select Branch *</Label>
                 <Select
                   value={selectedBranchId}
-                  onValueChange={handleBranchChange}
+                  onValueChange={isEdit ? undefined : handleBranchChange}
                   disabled={isEdit}
                 >
-                  <SelectTrigger>
+                  <SelectTrigger className={isEdit ? "cursor-not-allowed opacity-60" : ""}>
                     <SelectValue placeholder={isEdit ? "Branch set for existing reservation" : "Select a branch"} />
                   </SelectTrigger>
                   <SelectContent>
