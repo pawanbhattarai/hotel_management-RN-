@@ -83,12 +83,13 @@ export default function MultiRoomModal({
     queryKey: ["/api/taxes/reservation"],
   });
 
+  // Fetch all rooms (not just available) when editing to show current room selections
   const {
     data: availableRooms,
     error: roomsError,
     isLoading: roomsLoading,
   } = useQuery({
-    queryKey: ["/api/rooms", selectedBranchId || user?.branchId, "available"],
+    queryKey: ["/api/rooms", selectedBranchId || user?.branchId, isEdit ? "all" : "available"],
     queryFn: async () => {
       const branchId =
         user?.role === "superadmin" ? selectedBranchId : user?.branchId;
@@ -97,22 +98,25 @@ export default function MultiRoomModal({
         return [];
       }
 
-      console.log("Fetching available rooms for branch:", branchId);
+      console.log("Fetching rooms for branch:", branchId);
       console.log("User role:", user?.role);
       console.log("Selected branch ID:", selectedBranchId);
       console.log("User branch ID:", user?.branchId);
 
       try {
+        // When editing, fetch all rooms to include currently booked rooms
+        // When creating new, fetch only available rooms
+        const statusParam = isEdit ? "" : "&status=available";
         const response = await apiRequest(
           "GET",
-          `/api/rooms?branchId=${branchId}&status=available`,
+          `/api/rooms?branchId=${branchId}${statusParam}`,
         );
         if (!response.ok) {
           console.error("Room fetch failed with status:", response.status);
           throw new Error(`Failed to fetch rooms: ${response.status}`);
         }
         const rooms = await response.json();
-        console.log("Available rooms fetched:", rooms);
+        console.log("Rooms fetched:", rooms);
         console.log("Number of rooms:", rooms?.length || 0);
         return rooms;
       } catch (error) {
@@ -227,6 +231,9 @@ export default function MultiRoomModal({
           specialRequests: room.specialRequests || "",
           ratePerNight: parseFloat(room.ratePerNight || "0"),
           totalAmount: parseFloat(room.totalAmount || "0"),
+          // Store room details for display
+          roomNumber: room.room?.number || "",
+          roomTypeName: room.room?.roomType?.name || "",
         }));
         setRooms(roomsData);
       }
@@ -252,7 +259,7 @@ export default function MultiRoomModal({
         const result = await response.json();
         // Handle both array response and single guest response
         const guests = Array.isArray(result) ? result : result ? [result] : [];
-        
+
         if (guests && guests.length > 0) {
           const guest = guests[0];
           setExistingGuest(guest);
@@ -398,6 +405,23 @@ export default function MultiRoomModal({
     return { totalRooms, totalNights, subtotal, taxes, total };
   };
 
+  // Helper function to get available rooms for selection
+  const getAvailableRoomsForSelection = (currentRoomId?: string) => {
+    if (!availableRooms) return [];
+
+    if (isEdit) {
+      // When editing, show all rooms but mark unavailable ones
+      return availableRooms.map((room: any) => ({
+        ...room,
+        isCurrentlySelected: room.id.toString() === currentRoomId,
+        isAvailable: room.status === 'available' || room.id.toString() === currentRoomId
+      }));
+    } else {
+      // When creating new, only show available rooms
+      return availableRooms.filter((room: any) => room.status === 'available');
+    }
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
 
@@ -493,7 +517,7 @@ export default function MultiRoomModal({
     <Dialog open={isOpen} onOpenChange={onClose}>
       <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
         <DialogHeader>
-          <DialogTitle>Room Reservation</DialogTitle>
+          <DialogTitle>{isEdit ? "Edit" : "Create"} Room Reservation</DialogTitle>
         </DialogHeader>
 
         <form onSubmit={handleSubmit} className="space-y-6">
@@ -645,176 +669,190 @@ export default function MultiRoomModal({
               </Button>
             </div>
 
-            {rooms.map((room, index) => (
-              <Card key={index} className="mb-4">
-                <CardHeader className="pb-4">
-                  <div className="flex items-center justify-between">
-                    <CardTitle className="text-base">
-                      Room {index + 1}
-                    </CardTitle>
-                    {rooms.length > 1 && (
-                      <Button
-                        type="button"
-                        variant="ghost"
-                        size="sm"
-                        onClick={() => removeRoom(index)}
-                        className="text-red-600 hover:text-red-700"
-                      >
-                        <Trash2 className="h-4 w-4" />
-                      </Button>
-                    )}
-                  </div>
-                </CardHeader>
-                <CardContent className="space-y-4">
-                  <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                    <div>
-                      <Label>Available Room *</Label>
-                      {roomsError && (
-                        <div className="text-red-500 text-sm mb-2">
-                          Error loading rooms: {roomsError.message}
-                        </div>
+            {rooms.map((room, index) => {
+              const availableRoomsForSelection = getAvailableRoomsForSelection(room.roomId);
+
+              return (
+                <Card key={index} className="mb-4">
+                  <CardHeader className="pb-4">
+                    <div className="flex items-center justify-between">
+                      <CardTitle className="text-base">
+                        Room {index + 1}
+                        {isEdit && room.roomNumber && (
+                          <span className="text-sm font-normal text-gray-600 ml-2">
+                            (Currently: Room {room.roomNumber} - {room.roomTypeName})
+                          </span>
+                        )}
+                      </CardTitle>
+                      {rooms.length > 1 && (
+                        <Button
+                          type="button"
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => removeRoom(index)}
+                          className="text-red-600 hover:text-red-700"
+                        >
+                          <Trash2 className="h-4 w-4" />
+                        </Button>
                       )}
-                      <Select
-                        value={room.roomId}
-                        onValueChange={(value) =>
-                          updateRoom(index, "roomId", value)
-                        }
-                        disabled={roomsLoading}
-                      >
-                        <SelectTrigger>
-                          <SelectValue
-                            placeholder={
-                              roomsLoading
-                                ? "Loading rooms..."
-                                : roomsError
-                                  ? "Error loading rooms"
-                                  : "Select available room"
-                            }
-                          />
-                        </SelectTrigger>
-                        <SelectContent>
-                          {roomsLoading ? (
-                            <SelectItem value="loading" disabled>
-                              Loading available rooms...
-                            </SelectItem>
-                          ) : roomsError ? (
-                            <SelectItem value="error" disabled>
-                              Error loading rooms
-                            </SelectItem>
-                          ) : availableRooms && availableRooms.length > 0 ? (
-                            availableRooms.map((availableRoom: any) => (
-                              <SelectItem
-                                key={availableRoom.id}
-                                value={availableRoom.id.toString()}
-                              >
-                                Room {availableRoom.number} -{" "}
-                                {availableRoom.roomType.name} - Rs.
-                                {parseFloat(
-                                  availableRoom.roomType.basePrice,
-                                ).toFixed(2)}
-                                /night
+                    </div>
+                  </CardHeader>
+                  <CardContent className="space-y-4">
+                    <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                      <div>
+                        <Label>Available Room *</Label>
+                        {roomsError && (
+                          <div className="text-red-500 text-sm mb-2">
+                            Error loading rooms: {roomsError.message}
+                          </div>
+                        )}
+                        <Select
+                          value={room.roomId}
+                          onValueChange={(value) =>
+                            updateRoom(index, "roomId", value)
+                          }
+                          disabled={roomsLoading}
+                        >
+                          <SelectTrigger>
+                            <SelectValue
+                              placeholder={
+                                roomsLoading
+                                  ? "Loading rooms..."
+                                  : roomsError
+                                    ? "Error loading rooms"
+                                    : "Select room"
+                              }
+                            />
+                          </SelectTrigger>
+                          <SelectContent>
+                            {roomsLoading ? (
+                              <SelectItem value="loading" disabled>
+                                Loading rooms...
                               </SelectItem>
-                            ))
-                          ) : (
-                            <SelectItem value="no-rooms" disabled>
-                              No available rooms found
-                            </SelectItem>
-                          )}
-                        </SelectContent>
-                      </Select>
-                      {availableRooms && (
-                        <div className="text-xs text-gray-500 mt-1">
-                          {availableRooms.length} room(s) available
-                        </div>
-                      )}
+                            ) : roomsError ? (
+                              <SelectItem value="error" disabled>
+                                Error loading rooms
+                              </SelectItem>
+                            ) : availableRoomsForSelection && availableRoomsForSelection.length > 0 ? (
+                              availableRoomsForSelection.map((availableRoom: any) => (
+                                <SelectItem
+                                  key={availableRoom.id}
+                                  value={availableRoom.id.toString()}
+                                  disabled={isEdit && !availableRoom.isAvailable && !availableRoom.isCurrentlySelected}
+                                >
+                                  Room {availableRoom.number} - {availableRoom.roomType.name} - Rs.
+                                  {parseFloat(availableRoom.roomType.basePrice).toFixed(2)}/night
+                                  {isEdit && availableRoom.isCurrentlySelected && (
+                                    <span className="text-blue-600"> (Current)</span>
+                                  )}
+                                  {isEdit && !availableRoom.isAvailable && !availableRoom.isCurrentlySelected && (
+                                    <span className="text-red-600"> (Occupied)</span>
+                                  )}
+                                </SelectItem>
+                              ))
+                            ) : (
+                              <SelectItem value="no-rooms" disabled>
+                                No rooms found
+                              </SelectItem>
+                            )}
+                          </SelectContent>
+                        </Select>
+                        {availableRooms && (
+                          <div className="text-xs text-gray-500 mt-1">
+                            {isEdit 
+                              ? `${availableRoomsForSelection.filter((r: any) => r.isAvailable).length} room(s) available`
+                              : `${availableRooms.length} room(s) available`
+                            }
+                          </div>
+                        )}
+                      </div>
+                      <div>
+                        <Label>Check-In Date *</Label>
+                        <Input
+                          type="date"
+                          value={room.checkInDate}
+                          min={new Date().toISOString().split('T')[0]}
+                          onChange={(e) =>
+                            updateRoom(index, "checkInDate", e.target.value)
+                          }
+                          required
+                        />
+                      </div>
+                      <div>
+                        <Label>Check-Out Date *</Label>
+                        <Input
+                          type="date"
+                          value={room.checkOutDate}
+                          min={room.checkInDate || undefined}
+                          onChange={(e) =>
+                            updateRoom(index, "checkOutDate", e.target.value)
+                          }
+                          required
+                        />
+                        {room.checkInDate && room.checkOutDate && room.checkInDate === room.checkOutDate && (
+                          <div className="text-sm text-blue-600 mt-1">
+                            Same-day booking (counted as 1 night)
+                          </div>
+                        )}
+                        {room.checkInDate && room.checkOutDate && room.checkOutDate < room.checkInDate && (
+                          <div className="text-sm text-red-600 mt-1">
+                            Check-out date cannot be before check-in date
+                          </div>
+                        )}
+                      </div>
                     </div>
-                    <div>
-                      <Label>Check-In Date *</Label>
-                      <Input
-                        type="date"
-                        value={room.checkInDate}
-                        min={new Date().toISOString().split('T')[0]}
-                        onChange={(e) =>
-                          updateRoom(index, "checkInDate", e.target.value)
-                        }
-                        required
-                      />
-                    </div>
-                    <div>
-                      <Label>Check-Out Date *</Label>
-                      <Input
-                        type="date"
-                        value={room.checkOutDate}
-                        min={room.checkInDate || undefined}
-                        onChange={(e) =>
-                          updateRoom(index, "checkOutDate", e.target.value)
-                        }
-                        required
-                      />
-                      {room.checkInDate && room.checkOutDate && room.checkInDate === room.checkOutDate && (
-                        <div className="text-sm text-blue-600 mt-1">
-                          Same-day booking (counted as 1 night)
-                        </div>
-                      )}
-                      {room.checkInDate && room.checkOutDate && room.checkOutDate < room.checkInDate && (
-                        <div className="text-sm text-red-600 mt-1">
-                          Check-out date cannot be before check-in date
-                        </div>
-                      )}
-                    </div>
-                  </div>
 
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    <div>
-                      <Label>Adults</Label>
-                      <Select
-                        value={room.adults.toString()}
-                        onValueChange={(value) =>
-                          updateRoom(index, "adults", parseInt(value))
-                        }
-                      >
-                        <SelectTrigger>
-                          <SelectValue />
-                        </SelectTrigger>
-                        <SelectContent>
-                          <SelectItem value="1">1 Adult</SelectItem>
-                          <SelectItem value="2">2 Adults</SelectItem>
-                          <SelectItem value="3">3 Adults</SelectItem>
-                          <SelectItem value="4">4 Adults</SelectItem>
-                        </SelectContent>
-                      </Select>
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                      <div>
+                        <Label>Adults</Label>
+                        <Select
+                          value={room.adults.toString()}
+                          onValueChange={(value) =>
+                            updateRoom(index, "adults", parseInt(value))
+                          }
+                        >
+                          <SelectTrigger>
+                            <SelectValue />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="1">1 Adult</SelectItem>
+                            <SelectItem value="2">2 Adults</SelectItem>
+                            <SelectItem value="3">3 Adults</SelectItem>
+                            <SelectItem value="4">4 Adults</SelectItem>
+                          </SelectContent>
+                        </Select>
+                      </div>
+                      <div>
+                        <Label>Children</Label>
+                        <Select
+                          value={room.children.toString()}
+                          onValueChange={(value) =>
+                            updateRoom(index, "children", parseInt(value))
+                          }
+                        >
+                          <SelectTrigger>
+                            <SelectValue />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="0">0 Children</SelectItem>
+                            <SelectItem value="1">1 Child</SelectItem>
+                            <SelectItem value="2">2 Children</SelectItem>
+                            <SelectItem value="3">3 Children</SelectItem>
+                          </SelectContent>
+                        </Select>
+                      </div>
                     </div>
-                    <div>
-                      <Label>Children</Label>
-                      <Select
-                        value={room.children.toString()}
-                        onValueChange={(value) =>
-                          updateRoom(index, "children", parseInt(value))
-                        }
-                      >
-                        <SelectTrigger>
-                          <SelectValue />
-                        </SelectTrigger>
-                        <SelectContent>
-                          <SelectItem value="0">0 Children</SelectItem>
-                          <SelectItem value="1">1 Child</SelectItem>
-                          <SelectItem value="2">2 Children</SelectItem>
-                          <SelectItem value="3">3 Children</SelectItem>
-                        </SelectContent>
-                      </Select>
-                    </div>
-                  </div>
 
-                  <div>
-                    <Label>Special Requests</Label>
-                    <Textarea
-                      value={room.specialRequests}
-                      onChange={(e) =>
-                        updateRoom(index, "specialRequests", e.target.value)
-                      }
-                      placeholder="Any special requirements for this room..."
-                      rows={3}
-                    />
+                    <div>
+                      <Label>Special Requests</Label>
+                      <Textarea
+                        value={room.specialRequests}
+                        onChange={(e) =>
+                          updateRoom(index, "specialRequests", e.target.value)
+                        }
+                        placeholder="Any special requirements for this room..."
+                        rows={3}
+                      />
                   </div>
 
                   {room.totalAmount > 0 && (
