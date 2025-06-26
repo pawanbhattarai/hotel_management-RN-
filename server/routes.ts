@@ -1045,6 +1045,21 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  app.get("/api/reservations", isAuthenticated, async (req: any, res) => {
+    try {
+      const user = await storage.getUser(req.session.user.id);
+      if (!user) return res.status(401).json({ message: "User not found" });
+
+      // For superadmin, return all reservations. For branch users, return reservations for their branch
+      const branchId = user.role === "superadmin" ? undefined : user.branchId!;
+      const reservations = await storage.getReservations(branchId);
+      res.json(reservations);
+    } catch (error) {
+      console.error("Error fetching reservations:", error);
+      res.status(500).json({ message: "Failed to fetch reservations" });
+    }
+  });
+
   app.get("/api/reservations/:id", isAuthenticated, async (req: any, res) => {
     try {
       const user = await storage.getUser(req.session.user.id);
