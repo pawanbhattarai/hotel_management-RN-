@@ -540,17 +540,16 @@ export default function MultiRoomModal({
         specialRequests: "",
         ratePerNight: 0,
         totalAmount: 0,
-      },
-    ]);
+      }]);
     }
   };
 
-  // Fetch available rooms when branch or dates change
+  // Fetch available rooms when branch changes (but not during edit mode initialization)
   useEffect(() => {
-    if (selectedBranchId) {
-        queryClient.invalidateQueries({ queryKey: ["/api/rooms"] });
+    if (selectedBranchId && !isEdit) {
+      queryClient.invalidateQueries({ queryKey: ["/api/rooms"] });
     }
-  }, [selectedBranchId, queryClient]);
+  }, [selectedBranchId, queryClient, isEdit]);
 
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
@@ -570,10 +569,11 @@ export default function MultiRoomModal({
                 <Label htmlFor="branchId">Select Branch *</Label>
                 <Select
                   value={selectedBranchId}
-                  onValueChange={(value) => setSelectedBranchId(value)}
+                  onValueChange={handleBranchChange}
+                  disabled={isEdit}
                 >
                   <SelectTrigger>
-                    <SelectValue placeholder="Select a branch" />
+                    <SelectValue placeholder={isEdit ? "Branch set for existing reservation" : "Select a branch"} />
                   </SelectTrigger>
                   <SelectContent>
                     {branches?.map((branch: any) => (
@@ -583,6 +583,11 @@ export default function MultiRoomModal({
                     ))}
                   </SelectContent>
                 </Select>
+                {isEdit && (
+                  <p className="text-sm text-gray-500 mt-1">
+                    Branch cannot be changed when editing existing reservations
+                  </p>
+                )}
               </div>
             </div>
           )}
