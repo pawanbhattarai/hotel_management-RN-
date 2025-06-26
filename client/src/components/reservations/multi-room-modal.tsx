@@ -99,9 +99,8 @@ export default function MultiRoomModal({
       }
 
       console.log("Fetching rooms for branch:", branchId);
-      console.log("User role:", user?.role);
-      console.log("Selected branch ID:", selectedBranchId);
-      console.log("User branch ID:", user?.branchId);
+      console.log("Is edit mode:", isEdit);
+      console.log("Edit data:", editData);
 
       try {
         // When editing, fetch all rooms to include currently booked rooms
@@ -118,6 +117,17 @@ export default function MultiRoomModal({
         const rooms = await response.json();
         console.log("Rooms fetched:", rooms);
         console.log("Number of rooms:", rooms?.length || 0);
+        
+        // Log room IDs to debug selection
+        if (isEdit && editData?.reservationRooms) {
+          console.log("Current reservation rooms:", editData.reservationRooms.map((r: any) => ({
+            roomId: r.roomId,
+            roomNumber: r.room?.number,
+            roomTypeId: r.room?.roomTypeId
+          })));
+          console.log("Available room IDs:", rooms.map((r: any) => r.id));
+        }
+        
         return rooms;
       } catch (error) {
         console.error("Error fetching rooms:", error);
@@ -218,14 +228,14 @@ export default function MultiRoomModal({
         setSelectedBranchId(editData.branchId?.toString() || "");
       }
 
-      // Populate room data
-      if (editData.reservationRooms && editData.reservationRooms.length > 0) {
+      // Populate room data only after rooms are loaded
+      if (editData.reservationRooms && editData.reservationRooms.length > 0 && availableRooms) {
         const roomsData = editData.reservationRooms.map((room: any) => ({
           id: room.id,
           roomId: room.roomId?.toString() || "",
           roomTypeId: room.room?.roomTypeId?.toString() || "",
-          checkInDate: room.checkInDate || "",
-          checkOutDate: room.checkOutDate || "",
+          checkInDate: room.checkInDate?.split('T')[0] || "",
+          checkOutDate: room.checkOutDate?.split('T')[0] || "",
           adults: room.adults || 1,
           children: room.children || 0,
           specialRequests: room.specialRequests || "",
@@ -241,7 +251,7 @@ export default function MultiRoomModal({
       // Reset form for new reservation
       resetForm();
     }
-  }, [isEdit, editData, isOpen]);
+  }, [isEdit, editData, isOpen, availableRooms]);
 
   const searchGuestByPhone = async (phone: string) => {
     if (!phone || phone.length < 5) {
@@ -720,7 +730,14 @@ export default function MultiRoomModal({
                                   ? "Loading rooms..."
                                   : roomsError
                                     ? "Error loading rooms"
-                                    : "Select room"
+                                    : room.roomId && availableRooms
+                                      ? (() => {
+                                          const selectedRoom = availableRooms.find((r: any) => r.id.toString() === room.roomId);
+                                          return selectedRoom 
+                                            ? `Room ${selectedRoom.number} - ${selectedRoom.roomType.name}`
+                                            : "Select room";
+                                        })()
+                                      : "Select room"
                               }
                             />
                           </SelectTrigger>
