@@ -117,7 +117,7 @@ export default function MultiRoomModal({
         const rooms = await response.json();
         console.log("Rooms fetched:", rooms);
         console.log("Number of rooms:", rooms?.length || 0);
-        
+
         // Log room IDs to debug selection
         if (isEdit && editData?.reservationRooms) {
           console.log("Current reservation rooms:", editData.reservationRooms.map((r: any) => ({
@@ -127,7 +127,7 @@ export default function MultiRoomModal({
           })));
           console.log("Available room IDs:", rooms.map((r: any) => r.id));
         }
-        
+
         return rooms;
       } catch (error) {
         console.error("Error fetching rooms:", error);
@@ -522,6 +522,35 @@ export default function MultiRoomModal({
   };
 
   const summary = calculateSummary();
+
+  // Handle branch selection for superadmin
+  const handleBranchChange = (branchId: string) => {
+    setSelectedBranchId(branchId);
+
+    // Only reset room data if not editing existing reservation
+    if (!isEdit) {
+      setRooms([{
+        id: null,
+        roomId: "",
+        roomTypeId: "",
+        checkInDate: "",
+        checkOutDate: "",
+        adults: 1,
+        children: 0,
+        specialRequests: "",
+        ratePerNight: 0,
+        totalAmount: 0,
+      },
+    ]);
+    }
+  };
+
+  // Fetch available rooms when branch or dates change
+  useEffect(() => {
+    if (selectedBranchId) {
+        queryClient.invalidateQueries({ queryKey: ["/api/rooms"] });
+    }
+  }, [selectedBranchId, queryClient]);
 
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
