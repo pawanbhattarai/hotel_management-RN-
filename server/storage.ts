@@ -510,6 +510,25 @@ export class DatabaseStorage implements IStorage {
     return result;
   }
 
+  // Reservation Room operations for comprehensive editing
+  async createReservationRoom(roomData: InsertReservationRoom): Promise<ReservationRoom> {
+    const [result] = await db.insert(reservationRooms).values(roomData).returning();
+    return result;
+  }
+
+  async updateReservationRoom(id: number, roomData: Partial<InsertReservationRoom>): Promise<ReservationRoom> {
+    const [result] = await db
+      .update(reservationRooms)
+      .set(roomData)
+      .where(eq(reservationRooms.id, id))
+      .returning();
+    return result;
+  }
+
+  async deleteReservationRoom(id: number): Promise<void> {
+    await db.delete(reservationRooms).where(eq(reservationRooms.id, id));
+  }
+
   async deleteGuest(id: number): Promise<void> {
     await db.delete(guests).where(eq(guests.id, id));
   }

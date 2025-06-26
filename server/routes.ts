@@ -1314,105 +1314,186 @@ export async function registerRoutes(app: Express): Promise<Server> {
         });
       }
 
-      const bodyData = req.body;
-      // Convert numeric fields to strings if they're numbers
-      if (bodyData.paidAmount && typeof bodyData.paidAmount === "number") {
-        bodyData.paidAmount = bodyData.paidAmount.toString();
-      }
-      if (bodyData.totalAmount && typeof bodyData.totalAmount === "number") {
-        bodyData.totalAmount = bodyData.totalAmount.toString();
-      }
-      if (bodyData.taxAmount && typeof bodyData.taxAmount === "number") {
-        bodyData.taxAmount = bodyData.taxAmount.toString();
-      }
-      const validatedData = insertReservationSchema.partial().parse(bodyData);
-      const reservation = await storage.updateReservation(
-        reservationId,
-        validatedData,
-      );
-      broadcastChange("reservations", "updated", reservation); // Broadcast change
+      const { guest, reservation, rooms } = req.body;
 
-      // Update room status based on reservation status
-      if (validatedData.status) {
-        for (const roomReservation of existingReservation.reservationRooms) {
-          let newRoomStatus;
-          switch (validatedData.status) {
-            case "checked-in":
-              newRoomStatus = "occupied";
-              break;
-            case "checked-out":
-              newRoomStatus = "available";
-              break;
-            case "cancelled":
-              newRoomStatus = "available";
-              break;
-            case "confirmed":
-            case "pending":
-              newRoomStatus = "reserved";
-              break;
-            default:
-              newRoomStatus = "reserved";
-          }
-          await storage.updateRoom(roomReservation.roomId, {
-            status: newRoomStatus,
-          });
-          broadcastChange("rooms", "updated", {
-            id: roomReservation.roomId,
-            status: newRoomStatus,
-          });
+      // Handle comprehensive reservation update
+      if (guest || reservation || rooms) {
+        // Update guest information if provided
+        if (guest && existingReservation.guestId) {
+          const guestUpdateData = { ...guest };
+          delete guestUpdateData.id; // Remove ID from update data
+          await storage.updateGuest(existingReservation.guestId, guestUpdateData);
         }
 
-        // Send notifications for status changes
-        try {
-          console.log(
-            `Reservation ${reservationId} status changed to ${validatedData.status}, sending notification...`,
+        // Update reservation information if provided
+        if (reservation && Object.keys(reservation).length > 0) {
+          const reservationUpdateData = { ...reservation };
+          // Convert numeric fields to strings if they're numbers
+          if (reservationUpdateData.paidAmount && typeof reservationUpdateData.paidAmount === "number") {
+            reservationUpdateData.paidAmount = reservationUpdateData.paidAmount.toString();
+          }
+          if (reservationUpdateData.totalAmount && typeof reservationUpdateData.totalAmount === "number") {
+            reservationUpdateData.totalAmount = reservationUpdateData.totalAmount.toString();
+          }
+          if (reservationUpdateData.taxAmount && typeof reservationUpdateData.taxAmount === "number") {
+            reservationUpdateData.taxAmount = reservationUpdateData.taxAmount.toString();
+          }
+          
+          const validatedReservationData = insertReservationSchema.partial().parse(reservationUpdateData);
+          if (Object.keys(validatedReservationData).length > 0) {
+            await storage.updateReservation(reservationId, validatedReservationData);
+          }
+        }
+
+        // Handle room updates - comprehensive room management
+        if (rooms && Array.isArray(rooms)) {
+          // Get current room reservations
+          const currentRoomReservations = existingReservation.reservationRooms;
+          const currentRoomIds = currentRoomReservations.map(rr => rr.id);
+          const incomingRoomIds = rooms.filter(room => room.id).map(room => room.id);
+          
+          // Remove rooms that are no longer in the list
+          const roomsToRemove = currentRoomReservations.filter(
+            rr => !incomingRoomIds.includes(rr.id)
           );
+          for (const roomToRemove of roomsToRemove) {
+            await storage.deleteReservationRoom(roomToRemove.id);
+            // Update room status back to available
+            await storage.updateRoom(roomToRemove.roomId, { status: "available" });
+          }
 
-          const branch = await storage.getBranch(existingReservation.branchId);
-          const firstRoom = existingReservation.reservationRooms[0];
+          // Process each room in the incoming data
+          for (const roomData of rooms) {
+            const roomPayload = {
+              reservationId,
+              roomId: roomData.roomId,
+              checkInDate: roomData.checkInDate,
+              checkOutDate: roomData.checkOutDate,
+              adults: roomData.adults,
+              children: roomData.children,
+              ratePerNight: roomData.ratePerNight,
+              totalAmount: roomData.totalAmount,
+              specialRequests: roomData.specialRequests || "",
+            };
 
-          if (branch && firstRoom) {
-            if (validatedData.status === "checked-in") {
-              console.log(
-                `Sending check-in notification for reservation ${reservationId}`,
-              );
-              await NotificationService.sendCheckInNotification(
-                existingReservation.guest,
-                firstRoom.room,
-                branch,
-                reservationId,
-              );
-              console.log(
-                `Check-in notification sent for reservation ${reservationId}`,
-              );
-            } else if (validatedData.status === "checked-out") {
-              console.log(
-                `Sending check-out notification for reservation ${reservationId}`,
-              );
-              await NotificationService.sendCheckOutNotification(
-                existingReservation.guest,
-                firstRoom.room,
-                branch,
-                reservationId,
-              );
-              console.log(
-                `Check-out notification sent for reservation ${reservationId}`,
+            if (roomData.id) {
+              // Update existing room reservation
+              await storage.updateReservationRoom(roomData.id, roomPayload);
+            } else {
+              // Add new room reservation
+              await storage.createReservationRoom(roomPayload);
+              // Update room status to reserved
+              await storage.updateRoom(roomData.roomId, { status: "reserved" });
+            }
+          }
+        }
+
+        // Get updated reservation data
+        const updatedReservation = await storage.getReservation(reservationId);
+        broadcastChange("reservations", "updated", updatedReservation);
+        return res.json(updatedReservation);
+      } else {
+        // Handle simple status updates (legacy behavior)
+        const bodyData = req.body;
+        // Convert numeric fields to strings if they're numbers
+        if (bodyData.paidAmount && typeof bodyData.paidAmount === "number") {
+          bodyData.paidAmount = bodyData.paidAmount.toString();
+        }
+        if (bodyData.totalAmount && typeof bodyData.totalAmount === "number") {
+          bodyData.totalAmount = bodyData.totalAmount.toString();
+        }
+        if (bodyData.taxAmount && typeof bodyData.taxAmount === "number") {
+          bodyData.taxAmount = bodyData.taxAmount.toString();
+        }
+        const validatedData = insertReservationSchema.partial().parse(bodyData);
+        const reservation = await storage.updateReservation(
+          reservationId,
+          validatedData,
+        );
+        broadcastChange("reservations", "updated", reservation); // Broadcast change
+
+        // Handle status change notifications for legacy updates
+        if (validatedData.status) {
+          for (const roomReservation of existingReservation.reservationRooms) {
+            let newRoomStatus;
+            switch (validatedData.status) {
+              case "checked-in":
+                newRoomStatus = "occupied";
+                break;
+              case "checked-out":
+                newRoomStatus = "available";
+                break;
+              case "cancelled":
+                newRoomStatus = "available";
+                break;
+              case "confirmed":
+              case "pending":
+                newRoomStatus = "reserved";
+                break;
+              default:
+                newRoomStatus = "reserved";
+            }
+            await storage.updateRoom(roomReservation.roomId, {
+              status: newRoomStatus,
+            });
+            broadcastChange("rooms", "updated", {
+              id: roomReservation.roomId,
+              status: newRoomStatus,
+            });
+          }
+
+          // Send notifications for status changes
+          try {
+            console.log(
+              `Reservation ${reservationId} status changed to ${validatedData.status}, sending notification...`,
+            );
+
+            const branch = await storage.getBranch(existingReservation.branchId);
+            const firstRoom = existingReservation.reservationRooms[0];
+
+            if (branch && firstRoom) {
+              if (validatedData.status === "checked-in") {
+                console.log(
+                  `Sending check-in notification for reservation ${reservationId}`,
+                );
+                await NotificationService.sendCheckInNotification(
+                  existingReservation.guest,
+                  firstRoom.room,
+                  branch,
+                  reservationId,
+                );
+                console.log(
+                  `Check-in notification sent for reservation ${reservationId}`,
+                );
+              } else if (validatedData.status === "checked-out") {
+                console.log(
+                  `Sending check-out notification for reservation ${reservationId}`,
+                );
+                await NotificationService.sendCheckOutNotification(
+                  existingReservation.guest,
+                  firstRoom.room,
+                  branch,
+                  reservationId,
+                );
+                console.log(
+                  `Check-out notification sent for reservation ${reservationId}`,
+                );
+              }
+            } else {
+              console.warn(
+                `Missing branch or room data for status change notification`,
               );
             }
-          } else {
-            console.warn(
-              `Missing branch or room data for status change notification`,
+          } catch (notificationError) {
+            console.error(
+              "Failed to send status change notification:",
+              notificationError,
             );
           }
-        } catch (notificationError) {
-          console.error(
-            "Failed to send status change notification:",
-            notificationError,
-          );
         }
-      }
 
-      res.json(reservation);
+        res.json(reservation);
+      }
     } catch (error) {
       console.error("Error updating reservation:", error);
       res.status(500).json({ message: "Failed to update reservation" });

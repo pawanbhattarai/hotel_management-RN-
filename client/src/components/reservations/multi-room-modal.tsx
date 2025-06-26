@@ -57,6 +57,8 @@ export default function MultiRoomModal({
   const [selectedBranchId, setSelectedBranchId] = useState("");
   const [rooms, setRooms] = useState([
     {
+      id: null, // For existing rooms
+      roomId: "", // For room selection
       roomTypeId: "",
       checkInDate: "",
       checkOutDate: "",
@@ -156,6 +158,82 @@ export default function MultiRoomModal({
     },
   });
 
+  const updateReservationMutation = useMutation({
+    mutationFn: async (data: any) => {
+      return await apiRequest("PATCH", `/api/reservations/${editData.id}`, data);
+    },
+    onSuccess: () => {
+      toast({
+        title: "Success",
+        description: "Reservation updated successfully!",
+      });
+      queryClient.invalidateQueries({ queryKey: ["/api/reservations"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/rooms"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/dashboard/metrics"] });
+      onClose();
+      resetForm();
+    },
+    onError: (error) => {
+      if (isUnauthorizedError(error)) {
+        toast({
+          title: "Unauthorized",
+          description: "You are logged out. Logging in again...",
+          variant: "destructive",
+        });
+        setTimeout(() => {
+          window.location.href = "/api/login";
+        }, 500);
+        return;
+      }
+      toast({
+        title: "Error",
+        description: "Failed to update reservation. Please try again.",
+        variant: "destructive",
+      });
+    },
+  });
+
+  // Populate form when editing existing reservation
+  useEffect(() => {
+    if (isEdit && editData && isOpen) {
+      // Populate guest data
+      if (editData.guest) {
+        setGuestData({
+          firstName: editData.guest.firstName || "",
+          lastName: editData.guest.lastName || "",
+          email: editData.guest.email || "",
+          phone: editData.guest.phone || "",
+          idType: editData.guest.idType || "passport",
+          idNumber: editData.guest.idNumber || "",
+        });
+        setExistingGuest(editData.guest);
+      }
+
+      // Set branch ID
+      setSelectedBranchId(editData.branchId?.toString() || "");
+
+      // Populate room data
+      if (editData.reservationRooms && editData.reservationRooms.length > 0) {
+        const roomsData = editData.reservationRooms.map((room: any) => ({
+          id: room.id,
+          roomId: room.roomId?.toString() || "",
+          roomTypeId: room.room?.roomTypeId?.toString() || "",
+          checkInDate: room.checkInDate || "",
+          checkOutDate: room.checkOutDate || "",
+          adults: room.adults || 1,
+          children: room.children || 0,
+          specialRequests: room.specialRequests || "",
+          ratePerNight: parseFloat(room.ratePerNight || "0"),
+          totalAmount: parseFloat(room.totalAmount || "0"),
+        }));
+        setRooms(roomsData);
+      }
+    } else if (!isEdit && isOpen) {
+      // Reset form for new reservation
+      resetForm();
+    }
+  }, [isEdit, editData, isOpen]);
+
   const searchGuestByPhone = async (phone: string) => {
     if (!phone || phone.length < 5) {
       setExistingGuest(null);
@@ -214,6 +292,8 @@ export default function MultiRoomModal({
     setSelectedBranchId("");
     setRooms([
       {
+        id: null,
+        roomId: "",
         roomTypeId: "",
         checkInDate: "",
         checkOutDate: "",
@@ -230,6 +310,8 @@ export default function MultiRoomModal({
     setRooms([
       ...rooms,
       {
+        id: null,
+        roomId: "",
         roomTypeId: "",
         checkInDate: "",
         checkOutDate: "",
@@ -248,18 +330,18 @@ export default function MultiRoomModal({
     }
   };
 
-  const updateRoom = (index: number, field: keyof RoomData, value: any) => {
+  const updateRoom = (index: number, field: string, value: any) => {
     const updatedRooms = [...rooms];
     updatedRooms[index] = { ...updatedRooms[index], [field]: value };
 
     // Calculate total amount when relevant fields change
     if (
-      field === "roomTypeId" ||
+      field === "roomId" ||
       field === "checkInDate" ||
       field === "checkOutDate"
     ) {
       const selectedRoom = availableRooms?.find(
-        (room: any) => room.id === parseInt(updatedRooms[index].roomTypeId),
+        (room: any) => room.id === parseInt(updatedRooms[index].roomId),
       );
       if (
         selectedRoom &&
@@ -278,6 +360,7 @@ export default function MultiRoomModal({
         const ratePerNight = parseFloat(selectedRoom.roomType.basePrice);
         updatedRooms[index].ratePerNight = ratePerNight;
         updatedRooms[index].totalAmount = ratePerNight * nights;
+        updatedRooms[index].roomTypeId = selectedRoom.roomTypeId.toString();
       }
     }
 
@@ -342,12 +425,25 @@ export default function MultiRoomModal({
     }
 
     const invalidRoom = rooms.find(
-      (room) => !room.roomTypeId || !room.checkInDate || !room.checkOutDate,
+      (room) => !room.roomId || !room.checkInDate || !room.checkOutDate,
     );
     if (invalidRoom) {
       toast({
         title: "Validation Error",
         description: "Please fill in all required room information.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    // Validate that checkout is not before checkin
+    const invalidDates = rooms.find(
+      (room) => room.checkOutDate < room.checkInDate,
+    );
+    if (invalidDates) {
+      toast({
+        title: "Validation Error",
+        description: "Check-out date cannot be before check-in date.",
         variant: "destructive",
       });
       return;
@@ -368,7 +464,7 @@ export default function MultiRoomModal({
         notes: "",
       },
       rooms: rooms.map((room) => ({
-        roomId: parseInt(room.roomTypeId),
+        roomId: parseInt(room.roomId),
         checkInDate: room.checkInDate,
         checkOutDate: room.checkOutDate,
         adults: room.adults,
@@ -376,10 +472,17 @@ export default function MultiRoomModal({
         ratePerNight: room.ratePerNight.toString(),
         totalAmount: room.totalAmount.toString(),
         specialRequests: room.specialRequests,
+        // Include room reservation ID for existing rooms when editing
+        ...(room.id && { id: room.id }),
       })),
     };
 
-    createReservationMutation.mutate(reservationData);
+    // Use appropriate mutation based on mode
+    if (isEdit) {
+      updateReservationMutation.mutate(reservationData);
+    } else {
+      createReservationMutation.mutate(reservationData);
+    }
   };
 
   const summary = calculateSummary();
@@ -619,9 +722,9 @@ export default function MultiRoomModal({
                         </div>
                       )}
                       <Select
-                        value={room.roomTypeId}
+                        value={room.roomId}
                         onValueChange={(value) =>
-                          updateRoom(index, "roomTypeId", value)
+                          updateRoom(index, "roomId", value)
                         }
                         disabled={roomsLoading}
                       >
