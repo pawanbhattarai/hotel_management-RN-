@@ -60,6 +60,7 @@ export default function Billing() {
     discountPercentage: 0,
     paymentMethod: "cash",
     notes: "",
+    roomDates: [],
   });
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
   const [reservationToDelete, setReservationToDelete] = useState<any>(null);
@@ -103,6 +104,7 @@ export default function Billing() {
         discountPercentage: 0,
         paymentMethod: "cash",
         notes: "",
+        roomDates: [],
       });
     },
     onError: (error) => {
@@ -257,6 +259,7 @@ export default function Billing() {
       discountPercentage: 0,
       paymentMethod: "cash",
       notes: "",
+      roomDates: [],
     });
   };
 
@@ -997,8 +1000,7 @@ export default function Billing() {
               <div>
                 <h3 className="font-semibold mb-2">Room Details</h3>
                 <Table>
-                  <TableHeader>
-                    <TableRow>
+                  <TableHeader>                    <TableRow>
                       <TableHead>Room</TableHead>
                       <TableHead>Dates</TableHead>
                       <TableHead>Nights</TableHead>
@@ -1040,6 +1042,110 @@ export default function Billing() {
 
               {/* Billing Options */}
               <div className="grid grid-cols-2 gap-4">
+                 {/* Check-in and Check-out Date Fields */}
+                  {selectedReservation?.reservationRooms?.length > 0 && (
+                    <div className="mb-4">
+                      <h4 className="font-medium mb-3">Room Date Adjustments</h4>
+                      {selectedReservation.reservationRooms.map((roomReservation: any, index: number) => (
+                        <div key={index} className="border rounded p-3 mb-3">
+                          <div className="text-sm font-medium mb-2">
+                            Room {roomReservation.room.number} - {roomReservation.room.roomType.name}
+                          </div>
+                          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                            <div>
+                              <Label htmlFor={`checkIn-${index}`}>Check-in Date</Label>
+                              <Input
+                                id={`checkIn-${index}`}
+                                type="date"
+                                value={billData.roomDates?.[index]?.checkInDate || roomReservation.checkInDate?.split('T')[0]}
+                                onChange={(e) => {
+                                  const newRoomDates = [...(billData.roomDates || [])];
+                                  newRoomDates[index] = {
+                                    ...newRoomDates[index],
+                                    roomId: roomReservation.id,
+                                    checkInDate: e.target.value
+                                  };
+                                  setBillData({
+                                    ...billData,
+                                    roomDates: newRoomDates
+                                  });
+                                }}
+                              />
+                            </div>
+                            <div>
+                              <Label htmlFor={`checkOut-${index}`}>Check-out Date</Label>
+                              <Input
+                                id={`checkOut-${index}`}
+                                type="date"
+                                value={billData.roomDates?.[index]?.checkOutDate || roomReservation.checkOutDate?.split('T')[0]}
+                                min={billData.roomDates?.[index]?.checkInDate || roomReservation.checkInDate?.split('T')[0]}
+                                onChange={(e) => {
+                                  const newRoomDates = [...(billData.roomDates || [])];
+                                  newRoomDates[index] = {
+                                    ...newRoomDates[index],
+                                    roomId: roomReservation.id,
+                                    checkOutDate: e.target.value
+                                  };
+                                  setBillData({
+                                    ...billData,
+                                    roomDates: newRoomDates
+                                  });
+                                }}
+                              />
+                            </div>
+                          </div>
+                          {billData.roomDates?.[index]?.checkInDate && billData.roomDates?.[index]?.checkOutDate && (
+                            <div className="text-sm text-gray-600 mt-2">
+                              Nights: {calculateNights(
+                                billData.roomDates[index].checkInDate,
+                                billData.roomDates[index].checkOutDate
+                              )}
+                            </div>
+                          )}
+                        </div>
+                      ))}
+                    </div>
+                  )}
+
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div>
+                      <Label htmlFor="discount">Discount Amount</Label>
+                      <Input
+                        id="discount"
+                        type="number"
+                        min="0"
+                        step="0.01"
+                        value={billData.discount}
+                        onChange={(e) =>
+                          setBillData({
+                            ...billData,
+                            discount: parseFloat(e.target.value) || 0,
+                          })
+                        }
+                        placeholder="0.00"
+                      />
+                    </div>
+                    <div>
+                      <Label htmlFor="discountPercentage">
+                        Discount Percentage
+                      </Label>
+                      <Input
+                        id="discountPercentage"
+                        type="number"
+                        min="0"
+                        max="100"
+                        step="0.1"
+                        value={billData.discountPercentage}
+                        onChange={(e) =>
+                          setBillData({
+                            ...billData,
+                            discountPercentage: parseFloat(e.target.value) || 0,
+                          })
+                        }
+                        placeholder="0"
+                      />
+                    </div>
+                  </div>
                 <div>
                   <Label htmlFor="paymentMethod">Payment Method</Label>
                   <select
@@ -1058,39 +1164,6 @@ export default function Billing() {
                     <option value="khalti">Khalti</option>
                     <option value="bank-transfer">Bank Transfer</option>
                   </select>
-                </div>
-                <div>
-                  <Label htmlFor="discountPercentage">Discount (%)</Label>
-                  <Input
-                    id="discountPercentage"
-                    type="number"
-                    step="0.1"
-                    min="0"
-                    max="100"
-                    value={billData.discountPercentage}
-                    onChange={(e) =>
-                      setBillData({
-                        ...billData,
-                        discountPercentage: parseFloat(e.target.value) || 0,
-                      })
-                    }
-                  />
-                </div>
-                <div>
-                  <Label htmlFor="discount">Discount Amount</Label>
-                  <Input
-                    id="discount"
-                    type="number"
-                    step="0.01"
-                    min="0"
-                    value={billData.discount}
-                    onChange={(e) =>
-                      setBillData({
-                        ...billData,
-                        discount: parseFloat(e.target.value) || 0,
-                      })
-                    }
-                  />
                 </div>
                 <div>
                   <Label htmlFor="notes">Notes</Label>
