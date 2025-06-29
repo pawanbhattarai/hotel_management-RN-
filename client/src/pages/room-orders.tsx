@@ -126,29 +126,34 @@ export default function RoomOrders() {
       
       const response = await fetch("/api/restaurant/orders/room", {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: { 
+          "Content-Type": "application/json",
+          "Accept": "application/json"
+        },
         body: JSON.stringify({ order, items }),
+        credentials: "include"
       });
       
       console.log("Response status:", response.status);
       console.log("Response ok:", response.ok);
       
-      const responseText = await response.text();
-      console.log("Response text:", responseText);
-      
       if (!response.ok) {
+        const responseText = await response.text();
+        console.log("Error response text:", responseText);
+        
         let errorMessage = "Failed to create order";
         try {
           const errorData = JSON.parse(responseText);
-          errorMessage = errorData.message || errorMessage;
+          errorMessage = errorData.message || errorData.error || errorMessage;
           console.log("Error data:", errorData);
         } catch (e) {
           console.log("Could not parse error response as JSON");
+          errorMessage = responseText || errorMessage;
         }
         throw new Error(errorMessage);
       }
       
-      const result = JSON.parse(responseText);
+      const result = await response.json();
       console.log("=== MUTATION SUCCESS ===");
       console.log("Result:", result);
       return result;
@@ -158,12 +163,15 @@ export default function RoomOrders() {
       console.log("Success data:", data);
       queryClient.invalidateQueries({ queryKey: ["/api/restaurant/orders/room"] });
       queryClient.invalidateQueries({ queryKey: ["/api/restaurant/orders"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/reservations"] });
+      
       setSelectedReservation(null);
       setSelectedItems([]);
       setOriginalItems([]);
+      
       toast({
         title: "Success",
-        description: "Room order created successfully",
+        description: `Room order created successfully! Order #${data.orderNumber || data.id}`,
       });
     },
     onError: (error: any) => {
@@ -260,31 +268,33 @@ export default function RoomOrders() {
 
     // Calculate taxes
     let taxAmount = 0;
-    if (orderTaxes) {
-      const subtotal = getSubtotal();
+    const subtotal = getSubtotal();
+    if (orderTaxes && orderTaxes.length > 0) {
       taxAmount = orderTaxes.reduce((total: number, tax: any) => {
         return total + (subtotal * parseFloat(tax.rate)) / 100;
       }, 0);
     }
 
+    const totalAmount = subtotal + taxAmount;
+
     const orderData = {
       reservationId: selectedReservation.id,
-      roomId: selectedReservation.reservationRooms?.[0]?.room?.id || null,
-      branchId: selectedReservation.branchId || user?.branchId || 1,
-      orderType: "room",
+      roomId: selectedReservation.reservationRooms?.[0]?.roomId || null,
+      branchId: user?.branchId || 1,
+      orderType: "room" as const,
       customerName: `${selectedReservation.guest.firstName} ${selectedReservation.guest.lastName}`,
       customerPhone: selectedReservation.guest.phone,
       notes: data.notes || null,
-      subtotal: getSubtotal().toString(),
+      subtotal: subtotal.toString(),
       taxAmount: taxAmount.toString(),
-      totalAmount: getTotal().toString(),
-      status: "pending",
+      totalAmount: totalAmount.toString(),
+      status: "pending" as const,
     };
 
     const itemsData = selectedItems.map((item) => ({
       dishId: item.dishId,
       quantity: item.quantity,
-      unitPrice: item.unitPrice.toString(),
+      unitPrice: parseFloat(item.unitPrice).toString(),
       totalPrice: (parseFloat(item.unitPrice) * item.quantity).toString(),
       specialInstructions: item.notes || null,
     }));
@@ -293,7 +303,11 @@ export default function RoomOrders() {
     console.log("Final items data:", JSON.stringify(itemsData, null, 2));
     console.log("=== CALLING MUTATION ===");
     
-    createOrderMutation.mutate({ order: orderData, items: itemsData });
+    try {
+      await createOrderMutation.mutateAsync({ order: orderData, items: itemsData });
+    } catch (error) {
+      console.error("Mutation failed:", error);
+    }
   };
 
   const onSubmit = handleSubmitOrder;
@@ -735,12 +749,7 @@ export default function RoomOrders() {
 
                         <Form {...form}>
                           <form
-                            onSubmit={(e) => {
-                              console.log("=== FORM ONSUBMIT EVENT ===");
-                              e.preventDefault();
-                              console.log("Form event prevented");
-                              form.handleSubmit(handleSubmitOrder)(e);
-                            }}
+                            onSubmit={form.handleSubmit(handleSubmitOrder)}
                             className="mt-4 space-y-4"
                           >
                             <FormField
@@ -769,14 +778,6 @@ export default function RoomOrders() {
                                 (getReservationOrder(selectedReservation?.id) &&
                                   !hasOrderChanged())
                               }
-                              onClick={(e) => {
-                                console.log("=== BUTTON CLICKED ===");
-                                console.log("Button click event:", e);
-                                console.log("Form values:", form.getValues());
-                                console.log("Selected items:", selectedItems);
-                                console.log("Is form valid:", form.formState.isValid);
-                                console.log("Form errors:", form.formState.errors);
-                              }}
                             >
                               {createOrderMutation.isPending ? (
                                 <div className="flex items-center">

@@ -3109,13 +3109,18 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
       
       console.log("User found:", { id: user.id, email: user.email, branchId: user.branchId });
-      console.log("Request headers:", req.headers);
       console.log("Request body:", JSON.stringify(req.body, null, 2));
 
       const { order: orderData, items: itemsData } = req.body;
 
       if (!orderData) {
+        console.log("ERROR: No order data provided");
         return res.status(400).json({ message: "Order data is required" });
+      }
+
+      if (!itemsData || !Array.isArray(itemsData) || itemsData.length === 0) {
+        console.log("ERROR: Invalid items data");
+        return res.status(400).json({ message: "Order items are required and must be an array" });
       }
 
       // Set branchId from user if not provided
@@ -3124,64 +3129,47 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
 
       if (!checkBranchPermissions(user.role, user.branchId, orderData.branchId)) {
+        console.log("ERROR: Branch permission check failed");
         return res.status(403).json({ message: "Insufficient permissions for this branch" });
       }
 
-      // Validate required fields - more flexible validation
-      console.log("Validating orderData:", {
-        reservationId: orderData.reservationId,
-        roomId: orderData.roomId,
-        branchId: orderData.branchId
-      });
-      
-      if (!orderData.reservationId && !orderData.roomId) {
-        console.log("ERROR: Missing reservation ID and room ID");
-        return res.status(400).json({ message: "Either Reservation ID or Room ID is required for room orders" });
+      // Validate required fields
+      if (!orderData.reservationId) {
+        console.log("ERROR: Missing reservation ID");
+        return res.status(400).json({ message: "Reservation ID is required for room orders" });
       }
 
-      console.log("Validating itemsData:", {
-        isArray: Array.isArray(itemsData),
-        length: itemsData?.length,
-        itemsData: itemsData
-      });
-
-      if (!itemsData || !Array.isArray(itemsData) || itemsData.length === 0) {
-        console.log("ERROR: Invalid items data");
-        return res.status(400).json({ message: "Order items are required and must be an array" });
-      }
-
-      // Validate each item has required fields
+      // Validate each item
       for (let i = 0; i < itemsData.length; i++) {
         const item = itemsData[i];
-        console.log(`Validating item ${i}:`, item);
-        if (!item.dishId || !item.quantity) {
-          console.log(`ERROR: Item ${i} missing dishId or quantity`);
-          return res.status(400).json({ message: `Item ${i + 1} must have dishId and quantity` });
+        if (!item.dishId || !item.quantity || !item.unitPrice) {
+          console.log(`ERROR: Item ${i} missing required fields:`, item);
+          return res.status(400).json({ 
+            message: `Item ${i + 1} must have dishId, quantity, and unitPrice` 
+          });
         }
       }
 
       // Generate order number
       const orderNumber = `RM${Date.now().toString().slice(-8)}`;
       
-      // Calculate totals with better error handling
-      const subtotal = itemsData.reduce((sum: number, item: any) => {
-        const itemPrice = parseFloat(item.unitPrice || item.totalPrice || "0");
-        const itemQuantity = parseInt(item.quantity) || 0;
-        return sum + (itemPrice * itemQuantity);
-      }, 0);
+      // Calculate totals
+      const subtotal = parseFloat(orderData.subtotal) || 0;
+      const taxAmount = parseFloat(orderData.taxAmount) || 0;
+      const totalAmount = parseFloat(orderData.totalAmount) || subtotal + taxAmount;
 
       const orderWithNumber = {
         orderNumber,
         branchId: orderData.branchId,
-        reservationId: orderData.reservationId || null,
+        reservationId: orderData.reservationId,
         roomId: orderData.roomId || null,
         orderType: 'room' as any,
         tableId: null,
         customerName: orderData.customerName || null,
         customerPhone: orderData.customerPhone || null,
         subtotal: subtotal.toString(),
-        taxAmount: orderData.taxAmount || "0",
-        totalAmount: orderData.totalAmount || subtotal.toString(),
+        taxAmount: taxAmount.toString(),
+        totalAmount: totalAmount.toString(),
         status: orderData.status || "pending",
         notes: orderData.notes || null,
         createdById: user.id,
@@ -3205,14 +3193,17 @@ export async function registerRoutes(app: Express): Promise<Server> {
         orderData.branchId?.toString(),
       );
 
-      res.status(201).json(order);
+      res.status(201).json({
+        id: order.id,
+        orderNumber: order.orderNumber,
+        message: "Room order created successfully"
+      });
     } catch (error) {
       console.error("Error creating room order:", error);
       console.error("Error stack:", error instanceof Error ? error.stack : "No stack trace");
       res.status(500).json({ 
         message: "Failed to create room order", 
-        error: error instanceof Error ? error.message : "Unknown error",
-        details: error instanceof Error ? error.stack : undefined
+        error: error instanceof Error ? error.message : "Unknown error"
       });
     }
   });
