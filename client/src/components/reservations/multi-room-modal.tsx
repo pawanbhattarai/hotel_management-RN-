@@ -70,6 +70,15 @@ export default function MultiRoomModal({
     },
   ]);
 
+  const [summary, setSummary] = useState({
+    totalRooms: 0,
+    totalNights: 0,
+    subtotal: 0,
+    taxes: 0,
+    total: 0,
+    appliedTaxes: [] as Array<{ taxName: string; rate: number; amount: number }>,
+  });
+
   const { data: roomTypes } = useQuery({
     queryKey: ["/api/room-types"],
     enabled: isOpen && !!user,
@@ -211,7 +220,7 @@ export default function MultiRoomModal({
   useEffect(() => {
     if (isEdit && editData && isOpen) {
       console.log("Editing reservation - populating form data");
-      
+
       // Populate guest data
       if (editData.guest) {
         setGuestData({
@@ -240,7 +249,7 @@ export default function MultiRoomModal({
   useEffect(() => {
     if (isEdit && editData && isOpen && availableRooms && selectedBranchId) {
       console.log("Populating room data for edit mode");
-      
+
       // Populate room data only after rooms are loaded and branch is set
       if (editData.reservationRooms && editData.reservationRooms.length > 0) {
         const roomsData = editData.reservationRooms.map((room: any) => ({
@@ -397,34 +406,53 @@ export default function MultiRoomModal({
     setRooms(updatedRooms);
   };
 
-  const calculateSummary = () => {
+  const { data: reservationTaxes } = useQuery({
+    queryKey: ["/api/taxes/reservation"],
+  });
+
+  useEffect(() => {
     const totalRooms = rooms.length;
     const totalNights = rooms.reduce((sum, room) => {
       if (room.checkInDate && room.checkOutDate) {
         const checkIn = new Date(room.checkInDate);
         const checkOut = new Date(room.checkOutDate);
-        let nights = Math.ceil(
-          (checkOut.getTime() - checkIn.getTime()) / (1000 * 60 * 60 * 24),
-        );
-        // If same date selected, count as 1 day minimum
-        if (nights <= 0) {
-          nights = 1;
-        }
-        return sum + nights;
+        const nights = Math.ceil((checkOut.getTime() - checkIn.getTime()) / (1000 * 60 * 60 * 24));
+        return sum + (nights > 0 ? nights : 0);
       }
       return sum;
     }, 0);
-    const subtotal = rooms.reduce((sum, room) => sum + room.totalAmount, 0);
-    // Calculate taxes dynamically from active taxes
-    const taxes = activeTaxes
-      ? activeTaxes.reduce((sum: number, tax: any) => {
-          return sum + (subtotal * parseFloat(tax.rate)) / 100;
-        }, 0)
-      : 0;
-    const total = subtotal + taxes;
 
-    return { totalRooms, totalNights, subtotal, taxes, total };
-  };
+    const subtotal = rooms.reduce((sum, room) => {
+      return sum + (room.totalAmount || 0);
+    }, 0);
+
+    // Calculate taxes dynamically based on configured reservation taxes
+    let totalTaxAmount = 0;
+    const appliedTaxes = [];
+
+    if (reservationTaxes && reservationTaxes.length > 0) {
+      reservationTaxes.forEach((tax: any) => {
+        const taxAmount = (subtotal * parseFloat(tax.rate)) / 100;
+        totalTaxAmount += taxAmount;
+        appliedTaxes.push({
+          taxName: tax.taxName,
+          rate: parseFloat(tax.rate),
+          amount: taxAmount,
+        });
+      });
+    }
+
+    const total = subtotal + totalTaxAmount;
+
+    setSummary({
+      totalRooms,
+      totalNights,
+      subtotal,
+      taxes: totalTaxAmount,
+      total,
+      appliedTaxes,
+    });
+  }, [rooms, reservationTaxes]);
 
   // Helper function to get available rooms for selection
   const getAvailableRoomsForSelection = (currentRoomId?: string) => {
@@ -496,8 +524,6 @@ export default function MultiRoomModal({
       return;
     }
 
-    const summary = calculateSummary();
-
     const reservationData = {
       guest: {
         ...guestData,
@@ -532,18 +558,16 @@ export default function MultiRoomModal({
     }
   };
 
-  const summary = calculateSummary();
-
   // Handle branch selection for superadmin
   const handleBranchChange = (branchId: string) => {
     console.log("Branch change requested:", branchId, "Edit mode:", isEdit);
-    
+
     // Prevent branch changes during edit mode
     if (isEdit) {
       console.log("Preventing branch change during edit mode");
       return;
     }
-    
+
     setSelectedBranchId(branchId);
 
     // Reset room data for new reservations
@@ -951,7 +975,8 @@ export default function MultiRoomModal({
                 <span className="font-medium">{summary.totalRooms}</span>
               </div>
               <div className="flex justify-between">
-                <span className="text-gray-600">Total Nights:</span>
+                <```text
+<span className="text-gray-600">Total Nights:</span>
                 <span className="font-medium">{summary.totalNights}</span>
               </div>
               <div className="flex justify-between">
@@ -960,12 +985,21 @@ export default function MultiRoomModal({
                   Rs.{summary.subtotal.toFixed(2)}
                 </span>
               </div>
-              <div className="flex justify-between">
-                <span className="text-gray-600">Taxes & Fees (15%):</span>
-                <span className="font-medium">
-                  Rs.{summary.taxes.toFixed(2)}
-                </span>
-              </div>
+              {summary.appliedTaxes && summary.appliedTaxes.length > 0 ? (
+                summary.appliedTaxes.map((tax, index) => (
+                  <div className="flex justify-between" key={index}>
+                    <span className="text-gray-600">
+                      {tax.taxName} ({tax.rate.toFixed(2)}%):
+                    </span>
+                    <span className="font-medium">Rs.{tax.amount.toFixed(2)}</span>
+                  </div>
+                ))
+              ) : (
+                <div className="flex justify-between">
+                  <span className="text-gray-600">Taxes & Fees:</span>
+                  <span className="font-medium">Rs.0.00</span>
+                </div>
+              )}
               <div className="flex justify-between border-t border-gray-300 pt-2">
                 <span className="font-semibold text-gray-900">
                   Total Amount:

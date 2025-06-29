@@ -1191,8 +1191,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
           appliedTaxes.push({
             taxId: tax.id,
             taxName: tax.taxName,
-            rate: tax.rate,
-            amount: taxAmount.toFixed(2),
+            rate: parseFloat(tax.rate),
+            amount: parseFloat(taxAmount.toFixed(2)),
           });
         });
       }
