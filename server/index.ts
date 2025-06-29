@@ -67,7 +67,7 @@ app.use((req, res, next) => {
   // It is the only port that is not firewalled.
   const port = 5000;
   // Import low stock checker
-  import { lowStockChecker } from './low-stock-checker';
+  const { lowStockChecker } = await import('./low-stock-checker');
 
   server.listen({
     port,
