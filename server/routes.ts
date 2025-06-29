@@ -3099,10 +3099,18 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   app.post("/api/restaurant/orders/room", isAuthenticated, async (req: any, res) => {
     try {
+      console.log("=== ROOM ORDER API CALLED ===");
+      console.log("Session user:", req.session?.user);
+      
       const user = await storage.getUser(req.session.user.id);
-      if (!user) return res.status(401).json({ message: "User not found" });
-
-      console.log("Creating room order - Request body:", JSON.stringify(req.body, null, 2));
+      if (!user) {
+        console.log("ERROR: User not found in database");
+        return res.status(401).json({ message: "User not found" });
+      }
+      
+      console.log("User found:", { id: user.id, email: user.email, branchId: user.branchId });
+      console.log("Request headers:", req.headers);
+      console.log("Request body:", JSON.stringify(req.body, null, 2));
 
       const { order: orderData, items: itemsData } = req.body;
 
@@ -3120,18 +3128,35 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
 
       // Validate required fields - more flexible validation
+      console.log("Validating orderData:", {
+        reservationId: orderData.reservationId,
+        roomId: orderData.roomId,
+        branchId: orderData.branchId
+      });
+      
       if (!orderData.reservationId && !orderData.roomId) {
+        console.log("ERROR: Missing reservation ID and room ID");
         return res.status(400).json({ message: "Either Reservation ID or Room ID is required for room orders" });
       }
 
+      console.log("Validating itemsData:", {
+        isArray: Array.isArray(itemsData),
+        length: itemsData?.length,
+        itemsData: itemsData
+      });
+
       if (!itemsData || !Array.isArray(itemsData) || itemsData.length === 0) {
+        console.log("ERROR: Invalid items data");
         return res.status(400).json({ message: "Order items are required and must be an array" });
       }
 
       // Validate each item has required fields
-      for (const item of itemsData) {
+      for (let i = 0; i < itemsData.length; i++) {
+        const item = itemsData[i];
+        console.log(`Validating item ${i}:`, item);
         if (!item.dishId || !item.quantity) {
-          return res.status(400).json({ message: "Each item must have dishId and quantity" });
+          console.log(`ERROR: Item ${i} missing dishId or quantity`);
+          return res.status(400).json({ message: `Item ${i + 1} must have dishId and quantity` });
         }
       }
 

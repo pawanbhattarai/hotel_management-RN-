@@ -119,16 +119,43 @@ export default function RoomOrders() {
 
   const createOrderMutation = useMutation({
     mutationFn: async (data: any) => {
+      console.log("=== MUTATION START ===");
       const { order, items } = data;
+      console.log("Sending request to /api/restaurant/orders/room");
+      console.log("Request payload:", JSON.stringify({ order, items }, null, 2));
+      
       const response = await fetch("/api/restaurant/orders/room", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ order, items }),
       });
-      if (!response.ok) throw new Error("Failed to create order");
-      return response.json();
+      
+      console.log("Response status:", response.status);
+      console.log("Response ok:", response.ok);
+      
+      const responseText = await response.text();
+      console.log("Response text:", responseText);
+      
+      if (!response.ok) {
+        let errorMessage = "Failed to create order";
+        try {
+          const errorData = JSON.parse(responseText);
+          errorMessage = errorData.message || errorMessage;
+          console.log("Error data:", errorData);
+        } catch (e) {
+          console.log("Could not parse error response as JSON");
+        }
+        throw new Error(errorMessage);
+      }
+      
+      const result = JSON.parse(responseText);
+      console.log("=== MUTATION SUCCESS ===");
+      console.log("Result:", result);
+      return result;
     },
-    onSuccess: () => {
+    onSuccess: (data) => {
+      console.log("=== MUTATION ONSUCCESS ===");
+      console.log("Success data:", data);
       queryClient.invalidateQueries({ queryKey: ["/api/restaurant/orders/room"] });
       queryClient.invalidateQueries({ queryKey: ["/api/restaurant/orders"] });
       setSelectedReservation(null);
@@ -140,6 +167,10 @@ export default function RoomOrders() {
       });
     },
     onError: (error: any) => {
+      console.log("=== MUTATION ERROR ===");
+      console.error("Mutation error:", error);
+      console.error("Error message:", error.message);
+      console.error("Error stack:", error.stack);
       toast({
         title: "Error",
         description: error.message || "Failed to create order",
@@ -201,11 +232,14 @@ export default function RoomOrders() {
   });
 
   const handleSubmitOrder = async (data: OrderFormData) => {
+    console.log("=== FORM SUBMISSION START ===");
     console.log("handleSubmitOrder called with data:", data);
     console.log("selectedItems:", selectedItems);
     console.log("selectedReservation:", selectedReservation);
+    console.log("user:", user);
 
     if (selectedItems.length === 0) {
+      console.log("ERROR: No items selected");
       toast({
         title: "Error",
         description: "Please add at least one item to the order",
@@ -215,6 +249,7 @@ export default function RoomOrders() {
     }
 
     if (!selectedReservation) {
+      console.log("ERROR: No reservation selected");
       toast({
         title: "Error",
         description: "No reservation selected",
@@ -223,15 +258,25 @@ export default function RoomOrders() {
       return;
     }
 
+    // Calculate taxes
+    let taxAmount = 0;
+    if (orderTaxes) {
+      const subtotal = getSubtotal();
+      taxAmount = orderTaxes.reduce((total: number, tax: any) => {
+        return total + (subtotal * parseFloat(tax.rate)) / 100;
+      }, 0);
+    }
+
     const orderData = {
       reservationId: selectedReservation.id,
-      roomId: selectedReservation.reservationRooms?.[0]?.roomId || null, // Use first room as primary
+      roomId: selectedReservation.reservationRooms?.[0]?.room?.id || null,
       branchId: selectedReservation.branchId || user?.branchId || 1,
       orderType: "room",
       customerName: `${selectedReservation.guest.firstName} ${selectedReservation.guest.lastName}`,
       customerPhone: selectedReservation.guest.phone,
-      notes: data.notes,
+      notes: data.notes || null,
       subtotal: getSubtotal().toString(),
+      taxAmount: taxAmount.toString(),
       totalAmount: getTotal().toString(),
       status: "pending",
     };
@@ -239,12 +284,15 @@ export default function RoomOrders() {
     const itemsData = selectedItems.map((item) => ({
       dishId: item.dishId,
       quantity: item.quantity,
-      unitPrice: item.unitPrice,
+      unitPrice: item.unitPrice.toString(),
       totalPrice: (parseFloat(item.unitPrice) * item.quantity).toString(),
       specialInstructions: item.notes || null,
     }));
 
-    console.log("Creating order with:", { order: orderData, items: itemsData });
+    console.log("Final order data:", JSON.stringify(orderData, null, 2));
+    console.log("Final items data:", JSON.stringify(itemsData, null, 2));
+    console.log("=== CALLING MUTATION ===");
+    
     createOrderMutation.mutate({ order: orderData, items: itemsData });
   };
 
@@ -687,7 +735,12 @@ export default function RoomOrders() {
 
                         <Form {...form}>
                           <form
-                            onSubmit={form.handleSubmit(handleSubmitOrder)}
+                            onSubmit={(e) => {
+                              console.log("=== FORM ONSUBMIT EVENT ===");
+                              e.preventDefault();
+                              console.log("Form event prevented");
+                              form.handleSubmit(handleSubmitOrder)(e);
+                            }}
                             className="mt-4 space-y-4"
                           >
                             <FormField
@@ -716,6 +769,14 @@ export default function RoomOrders() {
                                 (getReservationOrder(selectedReservation?.id) &&
                                   !hasOrderChanged())
                               }
+                              onClick={(e) => {
+                                console.log("=== BUTTON CLICKED ===");
+                                console.log("Button click event:", e);
+                                console.log("Form values:", form.getValues());
+                                console.log("Selected items:", selectedItems);
+                                console.log("Is form valid:", form.formState.isValid);
+                                console.log("Form errors:", form.formState.errors);
+                              }}
                             >
                               {createOrderMutation.isPending ? (
                                 <div className="flex items-center">
