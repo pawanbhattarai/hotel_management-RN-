@@ -132,18 +132,34 @@ export default function Reservations() {
   });
 
   const deleteReservationMutation = useMutation({
-    mutationFn: async (id: string) => {
-      const response = await apiRequest("DELETE", `/api/reservations/${id}`);
-      if (!response.ok) {
-        const errorData = await response.json().catch(() => ({}));
-        throw new Error(errorData.message || "Failed to cancel reservation");
+    mutationFn: async ({ reservationId, status }: { reservationId: string; status: string }) => {
+      if (status === "confirmed" || status === "pending" || status === "checked-in") {
+        // First click: cancel the reservation (set status to cancelled)
+        const response = await apiRequest("PATCH", `/api/reservations/${reservationId}`, {
+          status: "cancelled",
+        });
+        if (!response.ok) {
+          const errorData = await response.json().catch(() => ({}));
+          throw new Error(errorData.message || "Failed to cancel reservation");
+        }
+        return { action: "cancelled" };
+      } else {
+        // Second click: permanently delete the reservation
+        const response = await apiRequest("DELETE", `/api/reservations/${reservationId}`);
+        if (!response.ok) {
+          const errorData = await response.json().catch(() => ({}));
+          throw new Error(errorData.message || "Failed to delete reservation");
+        }
+        return { action: "deleted" };
       }
-      return response;
     },
-    onSuccess: () => {
+    onSuccess: (data) => {
+      const message = data.action === "cancelled" 
+        ? "Reservation cancelled successfully!" 
+        : "Reservation deleted permanently!";
       toast({
         title: "Success",
-        description: "Reservation cancelled successfully!",
+        description: message,
       });
       queryClient.invalidateQueries({ queryKey: ["/api/reservations"] });
       queryClient.invalidateQueries({ queryKey: ["/api/rooms"] });
@@ -152,8 +168,8 @@ export default function Reservations() {
       setSelectedReservation(null);
     },
     onError: (error: any) => {
-      console.error("Error cancelling reservation:", error);
-      const errorMessage = error.message || "Failed to cancel reservation. Please try again.";
+      console.error("Error updating reservation:", error);
+      const errorMessage = error.message || "Failed to update reservation. Please try again.";
 
       toast({
         title: "Permission Denied",
@@ -266,7 +282,10 @@ export default function Reservations() {
 
   const confirmDeleteReservation = () => {
     if (selectedReservation) {
-      deleteReservationMutation.mutate(selectedReservation.id);
+      deleteReservationMutation.mutate({ 
+        reservationId: selectedReservation.id,
+        status: selectedReservation.status 
+      });
     }
   };
 
@@ -739,11 +758,14 @@ export default function Reservations() {
       >
         <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle>Cancel Reservation</AlertDialogTitle>
+            <AlertDialogTitle>
+              {selectedReservation?.status === "cancelled" ? "Delete Reservation" : "Cancel Reservation"}
+            </AlertDialogTitle>
             <AlertDialogDescription>
-              Are you sure you want to cancel reservation "
-              {selectedReservation?.confirmationNumber}"? This will mark the
-              reservation as cancelled and free up the associated rooms.
+              {selectedReservation?.status === "cancelled" 
+                ? `Are you sure you want to permanently delete reservation "${selectedReservation?.confirmationNumber}"? This action cannot be undone.`
+                : `Are you sure you want to cancel reservation "${selectedReservation?.confirmationNumber}"? This will mark the reservation as cancelled and free up the associated rooms.`
+              }
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
@@ -751,10 +773,11 @@ export default function Reservations() {
             <AlertDialogAction
               onClick={confirmDeleteReservation}
               disabled={deleteReservationMutation.isPending}
+              className={selectedReservation?.status === "cancelled" ? "bg-red-600 hover:bg-red-700" : ""}
             >
               {deleteReservationMutation.isPending
-                ? "Cancelling..."
-                : "Cancel Reservation"}
+                ? (selectedReservation?.status === "cancelled" ? "Deleting..." : "Cancelling...")
+                : (selectedReservation?.status === "cancelled" ? "Delete Permanently" : "Cancel Reservation")}
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>

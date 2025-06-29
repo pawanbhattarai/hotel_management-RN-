@@ -20,7 +20,7 @@ A comprehensive hotel and restaurant management system with real-time order sync
 - **Real-time Updates**: Polling-based system (2-3 second intervals)
 - **Authentication**: Session-based with role permissions
 
-## Recent Changes (June 26, 2025)
+## Recent Changes (June 26-29, 2025)
 - ✅ Successfully migrated project to Replit environment
 - ✅ Fixed dependency issues (tsx, drizzle-kit)
 - ✅ Resolved WebSocket conflicts with Vite HMR
@@ -64,6 +64,11 @@ A comprehensive hotel and restaurant management system with real-time order sync
 - ⚠️ Inventory module testing incomplete due to RMS dependencies
 - ✅ Database handles high-volume operations efficiently (1-2 records/second)
 - ✅ Authentication and session management rock-solid during stress testing
+- ✅ **MIGRATION COMPLETED (June 29, 2025):** Successfully migrated from Replit Agent to standard Replit environment
+- ✅ **ENHANCED DELETE FUNCTIONALITY:** Implemented toggle delete system for branches and reservations
+  - First click: Deactivates/cancels the item (branches become inactive, reservations cancelled)
+  - Second click: Permanently deletes the item with appropriate confirmation dialogs
+  - Clear user feedback and confirmation messages for each action
 
 ## Database Status
 - PostgreSQL database provisioned and connected
