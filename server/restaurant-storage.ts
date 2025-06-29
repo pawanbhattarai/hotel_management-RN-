@@ -325,44 +325,53 @@ export class RestaurantStorage {
       .where(eq(restaurantOrderItems.orderId, orderId));
   }
 
-  async createRestaurantOrder(order: InsertRestaurantOrder, items: InsertRestaurantOrderItem[]): Promise<RestaurantOrder> {
+  async createRestaurantOrderItem(item: InsertRestaurantOrderItem): Promise<RestaurantOrderItem> {
+    const [result] = await db.insert(restaurantOrderItems).values(item).returning();
+    return result;
+  }
+
+  async createRestaurantOrder(order: InsertRestaurantOrder, items?: InsertRestaurantOrderItem[]): Promise<RestaurantOrder> {
     return await db.transaction(async (tx) => {
       // Create order
       const [newOrder] = await tx.insert(restaurantOrders).values(order).returning();
 
-      // Create order items with the new order ID
-      const orderItemsWithOrderId = items.map(item => ({
-        ...item,
-        orderId: newOrder.id,
-      }));
+      // Create order items with the new order ID if items are provided
+      if (items && items.length > 0) {
+        const orderItemsWithOrderId = items.map(item => ({
+          ...item,
+          orderId: newOrder.id,
+        }));
 
-      const createdItems = await tx.insert(restaurantOrderItems).values(orderItemsWithOrderId).returning();
+        const createdItems = await tx.insert(restaurantOrderItems).values(orderItemsWithOrderId).returning();
 
-      // Process stock consumption for each item
-      for (const item of createdItems) {
-        if (item.dishId && item.quantity) {
-          try {
-            const { dishIngredientsStorage } = await import('./dish-ingredients-storage');
-            await dishIngredientsStorage.processDishConsumption(
-              item.dishId,
-              item.quantity,
-              item.orderId,
-              item.id,
-              order.branchId,
-              order.createdById || 'system'
-            );
-          } catch (error) {
-            console.error('Error processing dish consumption:', error);
-            // Don't fail the order creation, just log the error
+        // Process stock consumption for each item
+        for (const item of createdItems) {
+          if (item.dishId && item.quantity) {
+            try {
+              const { dishIngredientsStorage } = await import('./dish-ingredients-storage');
+              await dishIngredientsStorage.processDishConsumption(
+                item.dishId,
+                item.quantity,
+                item.orderId,
+                item.id,
+                order.branchId,
+                order.createdById || 'system'
+              );
+            } catch (error) {
+              console.error('Error processing dish consumption:', error);
+              // Don't fail the order creation, just log the error
+            }
           }
         }
       }
 
-      // Update table status to occupied
-      await tx
-        .update(restaurantTables)
-        .set({ status: 'occupied', updatedAt: sql`NOW()` })
-        .where(eq(restaurantTables.id, order.tableId));
+      // Update table status to occupied only if it's a table order
+      if (order.tableId) {
+        await tx
+          .update(restaurantTables)
+          .set({ status: 'occupied', updatedAt: sql`NOW()` })
+          .where(eq(restaurantTables.id, order.tableId));
+      }
 
       return newOrder;
     });

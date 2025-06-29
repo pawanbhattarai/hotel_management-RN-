@@ -3109,8 +3109,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
 
       // Validate required fields
-      if (!orderData.reservationId) {
-        return res.status(400).json({ message: "Reservation ID is required for room orders" });
+      if (!orderData.reservationId && !orderData.roomId) {
+        return res.status(400).json({ message: "Either Reservation ID or Room ID is required for room orders" });
       }
 
       if (!itemsData || itemsData.length === 0) {
@@ -3122,14 +3122,15 @@ export async function registerRoutes(app: Express): Promise<Server> {
       
       // Calculate totals
       const subtotal = itemsData.reduce((sum: number, item: any) => {
-        return sum + (parseFloat(item.unitPrice) * item.quantity);
+        return sum + (parseFloat(item.unitPrice || item.totalPrice || "0") * item.quantity);
       }, 0);
 
       const orderWithNumber = {
         orderNumber,
         branchId: orderData.branchId,
-        reservationId: orderData.reservationId,
-        orderType: 'room',
+        reservationId: orderData.reservationId || null,
+        roomId: orderData.roomId || null,
+        orderType: 'room' as any,
         tableId: null,
         customerName: orderData.customerName,
         customerPhone: orderData.customerPhone,
@@ -3157,7 +3158,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       res.status(201).json(order);
     } catch (error) {
       console.error("Error creating room order:", error);
-      res.status(500).json({ message: "Failed to create room order", error: error.message });
+      res.status(500).json({ message: "Failed to create room order", error: error instanceof Error ? error.message : "Unknown error" });
     }
   });
 
