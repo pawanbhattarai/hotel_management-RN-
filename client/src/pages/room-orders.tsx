@@ -755,7 +755,7 @@ export default function RoomOrders() {
                       <div className="flex justify-between">
                         <span className="text-gray-600">Rooms:</span>
                         <span className="font-medium">
-                          {reservation.rooms?.length || 0} room(s)
+                          {reservation.reservationRooms?.length || 0} room(s)
                         </span>
                       </div>
                       <div className="flex justify-between">
@@ -801,7 +801,8 @@ export default function RoomOrders() {
                       <div className="flex items-center space-x-1">
                         <Users className="h-4 w-4 text-gray-400" />
                         <span className="text-xs text-gray-500">
-                          {reservation.totalGuests || 0}
+                          {reservation.reservationRooms?.reduce((total: number, room: any) => 
+                            total + (room.adults || 0) + (room.children || 0), 0) || 0}
                         </span>
                       </div>
                     </div>
