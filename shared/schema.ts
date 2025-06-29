@@ -508,6 +508,7 @@ export const restaurantOrders = pgTable("restaurant_orders", {
     enum: ["dine-in", "takeaway", "delivery", "table", "room"] 
   }).notNull().default("dine-in"),
   roomId: integer("room_id"), // For room service orders
+  reservationId: uuid("reservation_id"), // Link orders to reservations
   customerName: varchar("customer_name", { length: 100 }),
   customerPhone: varchar("customer_phone", { length: 20 }),
   subtotal: decimal("subtotal", { precision: 10, scale: 2 }).notNull(),
@@ -660,6 +661,14 @@ export const restaurantOrdersRelations = relations(restaurantOrders, ({ one, man
   table: one(restaurantTables, {
     fields: [restaurantOrders.tableId],
     references: [restaurantTables.id],
+  }),
+  room: one(rooms, {
+    fields: [restaurantOrders.roomId],
+    references: [rooms.id],
+  }),
+  reservation: one(reservations, {
+    fields: [restaurantOrders.reservationId],
+    references: [reservations.id],
   }),
   branch: one(branches, {
     fields: [restaurantOrders.branchId],

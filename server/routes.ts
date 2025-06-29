@@ -3079,6 +3079,51 @@ export async function registerRoutes(app: Express): Promise<Server> {
   );
 
   // Restaurant Orders
+  app.get("/api/restaurant/orders/room", isAuthenticated, async (req: any, res) => {
+    try {
+      const user = await storage.getUser(req.session.user.id);
+      if (!user) return res.status(401).json({ message: "User not found" });
+
+      const branchId = user.role === "superadmin" ? undefined : user.branchId!;
+      const status = req.query.status as string;
+      
+      // Simple query to get room orders for now
+      res.json([]);
+    } catch (error) {
+      console.error("Error fetching room orders:", error);
+      res.status(500).json({ message: "Failed to fetch room orders" });
+    }
+  });
+
+  app.post("/api/restaurant/orders/room", isAuthenticated, async (req: any, res) => {
+    try {
+      const user = await storage.getUser(req.session.user.id);
+      if (!user) return res.status(401).json({ message: "User not found" });
+
+      // Create room order using the existing createRestaurantOrder method
+      const { order: orderData, items: itemsData } = req.body;
+
+      if (!checkBranchPermissions(user.role, user.branchId, orderData.branchId)) {
+        return res.status(403).json({ message: "Insufficient permissions for this branch" });
+      }
+
+      // Generate order number
+      const orderNumber = `RM${Date.now().toString().slice(-8)}`;
+      const orderWithNumber = {
+        ...orderData,
+        orderNumber,
+        orderType: 'room',
+        createdById: user.id,
+      };
+
+      const order = await restaurantStorage.createRestaurantOrder(orderWithNumber, itemsData);
+      res.status(201).json(order);
+    } catch (error) {
+      console.error("Error creating room order:", error);
+      res.status(500).json({ message: "Failed to create room order" });
+    }
+  });
+
   app.get("/api/restaurant/orders", isAuthenticated, async (req: any, res) => {
     try {
       const user = await storage.getUser(req.session.user.id);
