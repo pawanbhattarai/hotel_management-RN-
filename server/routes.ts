@@ -252,10 +252,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       // Filter branches based on user role
       if (user.role === "superadmin") {
+        // Superadmin sees all branches including inactive ones
         res.json(branches);
       } else {
-        const userBranch = branches.filter((b) => b.id === user.branchId);
-        res.json(userBranch);
+        // Regular users only see active branches and their own branch if active
+        const activeBranches = branches.filter((b) => b.isActive && b.id === user.branchId);
+        res.json(activeBranches);
       }
     } catch (error) {
       console.error("Error fetching branches:", error);
@@ -337,12 +339,26 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
 
       const branchId = parseInt(req.params.id);
-      await storage.updateBranch(branchId, { isActive: false });
-      broadcastChange("branches", "deleted", { id: branchId }); // Broadcast change
-      res.status(204).send();
+      const branch = await storage.getBranch(branchId);
+      
+      if (!branch) {
+        return res.status(404).json({ message: "Branch not found" });
+      }
+
+      if (branch.isActive) {
+        // First click: deactivate the branch
+        await storage.updateBranch(branchId, { isActive: false });
+        broadcastChange("branches", "updated", { id: branchId, isActive: false });
+        res.json({ action: "deactivated", message: "Branch deactivated successfully" });
+      } else {
+        // Second click: permanently delete the branch
+        await storage.deleteBranch(branchId);
+        broadcastChange("branches", "deleted", { id: branchId });
+        res.json({ action: "deleted", message: "Branch deleted permanently" });
+      }
     } catch (error) {
-      console.error("Error deleting branch:", error);
-      res.status(500).json({ message: "Failed to delete branch" });
+      console.error("Error updating branch:", error);
+      res.status(500).json({ message: "Failed to update branch" });
     }
   });
 

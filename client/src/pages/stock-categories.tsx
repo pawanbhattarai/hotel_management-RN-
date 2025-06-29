@@ -326,7 +326,7 @@ export default function StockCategories() {
                                 </SelectTrigger>
                                 <SelectContent>
                                   <SelectItem value="null">All Branches (Global)</SelectItem>
-                                  {Array.isArray(branches) && branches.map((branch: any) => (
+                                  {Array.isArray(branches) && branches.filter((branch: any) => branch.isActive).map((branch: any) => (
                                     <SelectItem key={branch.id} value={branch.id.toString()}>
                                       {branch.name}
                                     </SelectItem>

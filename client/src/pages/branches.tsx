@@ -97,31 +97,16 @@ export default function Branches() {
   });
 
   const deleteBranchMutation = useMutation({
-    mutationFn: async ({ branchId, isActive }: { branchId: number; isActive: boolean }) => {
-      if (isActive) {
-        // First click: deactivate the branch
-        const response = await fetch(`/api/branches/${branchId}`, {
-          method: "PUT",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ isActive: false }),
-        });
-        if (!response.ok) throw new Error("Failed to deactivate branch");
-        return { action: "deactivated" };
-      } else {
-        // Second click: permanently delete the branch
-        const response = await fetch(`/api/branches/${branchId}`, {
-          method: "DELETE",
-        });
-        if (!response.ok) throw new Error("Failed to delete branch");
-        return { action: "deleted" };
-      }
+    mutationFn: async (branchId: number) => {
+      const response = await fetch(`/api/branches/${branchId}`, {
+        method: "DELETE",
+      });
+      if (!response.ok) throw new Error("Failed to update branch");
+      return response.json();
     },
     onSuccess: (data) => {
       queryClient.invalidateQueries({ queryKey: ["/api/branches"] });
-      const message = data.action === "deactivated" 
-        ? "Branch deactivated successfully" 
-        : "Branch deleted permanently";
-      toast({ title: "Success", description: message });
+      toast({ title: "Success", description: data.message });
     },
     onError: () => {
       toast({
@@ -169,7 +154,7 @@ export default function Branches() {
       : "Are you sure you want to permanently delete this branch? This action cannot be undone.";
     
     if (confirm(message)) {
-      deleteBranchMutation.mutate({ branchId: branch.id, isActive: branch.isActive });
+      deleteBranchMutation.mutate(branch.id);
     }
   };
 
