@@ -264,7 +264,6 @@ export class RestaurantStorage {
 
     return ordersWithDetails;
   }
-  }
 
   async getRestaurantOrders(branchId?: number, status?: string): Promise<RestaurantOrder[]> {
     let conditions = [];
