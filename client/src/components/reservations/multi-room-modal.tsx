@@ -975,8 +975,7 @@ export default function MultiRoomModal({
                 <span className="font-medium">{summary.totalRooms}</span>
               </div>
               <div className="flex justify-between">
-                <```text
-<span className="text-gray-600">Total Nights:</span>
+                <span className="text-gray-600">Total Nights:</span>
                 <span className="font-medium">{summary.totalNights}</span>
               </div>
               <div className="flex justify-between">
