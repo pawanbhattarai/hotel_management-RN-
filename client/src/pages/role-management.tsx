@@ -256,7 +256,7 @@ export default function RoleManagement() {
 
   if (user && user.role !== "superadmin") {
     return (
-      <div className="min-h-screen bg-gray-50">
+      <div className="flex h-screen bg-gray-50">
         <Sidebar />
         <div className="main-content">
           <Header title="Role Management" subtitle="Access Denied" />
