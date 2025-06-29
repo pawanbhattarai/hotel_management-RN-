@@ -3139,10 +3139,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(400).json({ message: "Reservation ID is required for room orders" });
       }
 
-      // Validate each item
+      // Validate each item has required fields
       for (let i = 0; i < itemsData.length; i++) {
         const item = itemsData[i];
-        if (!item.dishId || !item.quantity || !item.unitPrice) {
+        if (!item.dishId || !item.quantity || (!item.unitPrice && item.unitPrice !== 0)) {
           console.log(`ERROR: Item ${i} missing required fields:`, item);
           return res.status(400).json({ 
             message: `Item ${i + 1} must have dishId, quantity, and unitPrice` 
@@ -3153,8 +3153,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // Generate order number
       const orderNumber = `RM${Date.now().toString().slice(-8)}`;
       
-      // Calculate totals
-      const subtotal = parseFloat(orderData.subtotal) || 0;
+      // Calculate totals from items if not provided
+      let subtotal = parseFloat(orderData.subtotal) || 0;
+      if (subtotal === 0) {
+        subtotal = itemsData.reduce((sum, item) => {
+          return sum + (parseFloat(item.unitPrice) * item.quantity);
+        }, 0);
+      }
+      
       const taxAmount = parseFloat(orderData.taxAmount) || 0;
       const totalAmount = parseFloat(orderData.totalAmount) || subtotal + taxAmount;
 

@@ -118,70 +118,44 @@ export default function RoomOrders() {
   });
 
   const createOrderMutation = useMutation({
-    mutationFn: async (data: any) => {
-      console.log("=== MUTATION START ===");
-      const { order, items } = data;
-      console.log("Sending request to /api/restaurant/orders/room");
-      console.log("Request payload:", JSON.stringify({ order, items }, null, 2));
-      
+    mutationFn: async ({ order, items }: { order: any; items: any[] }) => {
+      console.log("Sending API request with:", { order, items });
+
       const response = await fetch("/api/restaurant/orders/room", {
         method: "POST",
-        headers: { 
+        headers: {
           "Content-Type": "application/json",
-          "Accept": "application/json"
         },
         body: JSON.stringify({ order, items }),
-        credentials: "include"
       });
-      
-      console.log("Response status:", response.status);
-      console.log("Response ok:", response.ok);
-      
+
       if (!response.ok) {
-        const responseText = await response.text();
-        console.log("Error response text:", responseText);
-        
-        let errorMessage = "Failed to create order";
-        try {
-          const errorData = JSON.parse(responseText);
-          errorMessage = errorData.message || errorData.error || errorMessage;
-          console.log("Error data:", errorData);
-        } catch (e) {
-          console.log("Could not parse error response as JSON");
-          errorMessage = responseText || errorMessage;
-        }
-        throw new Error(errorMessage);
+        const errorData = await response.text();
+        console.error("API Error:", response.status, errorData);
+        throw new Error(`Failed to create order: ${response.status} ${errorData}`);
       }
-      
+
       const result = await response.json();
-      console.log("=== MUTATION SUCCESS ===");
-      console.log("Result:", result);
+      console.log("API Response:", result);
       return result;
     },
     onSuccess: (data) => {
-      console.log("=== MUTATION ONSUCCESS ===");
-      console.log("Success data:", data);
-      queryClient.invalidateQueries({ queryKey: ["/api/restaurant/orders/room"] });
-      queryClient.invalidateQueries({ queryKey: ["/api/restaurant/orders"] });
-      queryClient.invalidateQueries({ queryKey: ["/api/reservations"] });
-      
-      setSelectedReservation(null);
-      setSelectedItems([]);
-      setOriginalItems([]);
-      
+      console.log("Order created successfully:", data);
       toast({
         title: "Success",
-        description: `Room order created successfully! Order #${data.orderNumber || data.id}`,
+        description: `Room order ${data.orderNumber || ''} created successfully`,
       });
+      setSelectedItems([]);
+      setOriginalItems([]);
+      form.reset();
+      queryClient.invalidateQueries({ queryKey: ["/api/restaurant/orders/room"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/restaurant/orders"] });
     },
-    onError: (error: any) => {
-      console.log("=== MUTATION ERROR ===");
-      console.error("Mutation error:", error);
-      console.error("Error message:", error.message);
-      console.error("Error stack:", error.stack);
+    onError: (error) => {
+      console.error("Error creating order:", error);
       toast({
         title: "Error",
-        description: error.message || "Failed to create order",
+        description: error.message || "Failed to create room order",
         variant: "destructive",
       });
     },
@@ -240,7 +214,6 @@ export default function RoomOrders() {
   });
 
   const handleSubmitOrder = async (data: OrderFormData) => {
-    console.log("=== FORM SUBMISSION START ===");
     console.log("handleSubmitOrder called with data:", data);
     console.log("selectedItems:", selectedItems);
     console.log("selectedReservation:", selectedReservation);
@@ -302,7 +275,7 @@ export default function RoomOrders() {
     console.log("Final order data:", JSON.stringify(orderData, null, 2));
     console.log("Final items data:", JSON.stringify(itemsData, null, 2));
     console.log("=== CALLING MUTATION ===");
-    
+
     try {
       await createOrderMutation.mutateAsync({ order: orderData, items: itemsData });
     } catch (error) {
@@ -516,7 +489,7 @@ export default function RoomOrders() {
                       {selectedReservation.reservationRooms?.length || 0} Room(s)
                     </Badge>
                   </div>
-                  
+
                   {/* Room Details */}
                   <div className="space-y-2">
                     <h4 className="text-sm font-medium text-gray-700">Rooms in this reservation:</h4>
@@ -953,8 +926,7 @@ export default function RoomOrders() {
       {/* Order View Dialog */}
       {viewingOrder && (
         <Dialog open={!!viewingOrder} onOpenChange={() => setViewingOrder(null)}>
-          <DialogContent className="max-w-2xl">
-            <DialogHeader>
+          <DialogContent className="max-w-2xl">            <DialogHeader>
               <DialogTitle>Order #{viewingOrder.orderNumber}</DialogTitle>
             </DialogHeader>
             <div className="space-y-4">

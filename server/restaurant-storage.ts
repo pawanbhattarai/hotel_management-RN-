@@ -206,11 +206,11 @@ export class RestaurantStorage {
   // Restaurant Orders
   async getRoomOrders(branchId?: number, status?: string): Promise<any[]> {
     let conditions = [eq(restaurantOrders.orderType, 'room')];
-    
+
     if (branchId) {
       conditions.push(eq(restaurantOrders.branchId, branchId));
     }
-    
+
     if (status) {
       conditions.push(eq(restaurantOrders.status, status as any));
     }
@@ -330,47 +330,31 @@ export class RestaurantStorage {
     return result;
   }
 
-  async createRestaurantOrder(order: InsertRestaurantOrder, items?: InsertRestaurantOrderItem[]): Promise<RestaurantOrder> {
+  async createRestaurantOrder(
+    order: InsertRestaurantOrder,
+    items?: InsertRestaurantOrderItem[]
+  ): Promise<RestaurantOrder> {
     return await db.transaction(async (tx) => {
-      // Create order
-      const [newOrder] = await tx.insert(restaurantOrders).values(order).returning();
+      console.log("Creating restaurant order:", order);
 
-      // Create order items with the new order ID if items are provided
+      // Create the order
+      const [newOrder] = await tx
+        .insert(restaurantOrders)
+        .values(order)
+        .returning();
+
+      console.log("Order created with ID:", newOrder.id);
+
+      // Add items if provided
       if (items && items.length > 0) {
-        const orderItemsWithOrderId = items.map(item => ({
+        const itemsWithOrderId = items.map((item) => ({
           ...item,
           orderId: newOrder.id,
         }));
 
-        const createdItems = await tx.insert(restaurantOrderItems).values(orderItemsWithOrderId).returning();
-
-        // Process stock consumption for each item
-        for (const item of createdItems) {
-          if (item.dishId && item.quantity) {
-            try {
-              const { dishIngredientsStorage } = await import('./dish-ingredients-storage');
-              await dishIngredientsStorage.processDishConsumption(
-                item.dishId,
-                item.quantity,
-                item.orderId,
-                item.id,
-                order.branchId,
-                order.createdById || 'system'
-              );
-            } catch (error) {
-              console.error('Error processing dish consumption:', error);
-              // Don't fail the order creation, just log the error
-            }
-          }
-        }
-      }
-
-      // Update table status to occupied only if it's a table order
-      if (order.tableId) {
-        await tx
-          .update(restaurantTables)
-          .set({ status: 'occupied', updatedAt: sql`NOW()` })
-          .where(eq(restaurantTables.id, order.tableId));
+        console.log("Creating order items:", itemsWithOrderId);
+        await tx.insert(restaurantOrderItems).values(itemsWithOrderId);
+        console.log("Order items created successfully");
       }
 
       return newOrder;
@@ -840,7 +824,7 @@ export class RestaurantStorage {
       // Update corresponding order status based on KOT status
       if (result) {
         let orderStatus: string | null = null;
-        
+
         switch (status) {
           case 'preparing':
             orderStatus = 'preparing';
@@ -996,6 +980,7 @@ export class RestaurantStorage {
   }
 
   async getActiveTaxes(): Promise<Tax[]> {
+    ```tool_code
     return await db
       .select()
       .from(taxes)
