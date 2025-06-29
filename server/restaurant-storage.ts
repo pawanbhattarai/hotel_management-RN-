@@ -7,6 +7,11 @@ import {
   restaurantBills,
   taxes,
   kotTickets,
+  rooms,
+  roomTypes,
+  reservations,
+  reservationRooms,
+  guests,
   type RestaurantTable,
   type InsertRestaurantTable,
   type MenuCategory,
@@ -25,7 +30,7 @@ import {
   type InsertKotTicket,
 } from "@shared/schema";
 import { db } from "./db";
-import { eq, and, or, desc, sql, ilike, count, sum, gte, lt } from "drizzle-orm";
+import { eq, and, or, desc, sql, ilike, count, sum, gte, lt, isNotNull } from "drizzle-orm";
 
 export class RestaurantStorage {
   // Restaurant Tables
@@ -215,6 +220,128 @@ export class RestaurantStorage {
       .from(restaurantOrders)
       .where(conditions.length > 0 ? and(...conditions) : undefined)
       .orderBy(desc(restaurantOrders.createdAt));
+  }
+
+  // Get room orders with detailed information
+  async getRoomOrders(branchId?: number, status?: string): Promise<any[]> {
+    let conditions = [isNotNull(restaurantOrders.roomId)];
+
+    if (branchId) {
+      conditions.push(eq(restaurantOrders.branchId, branchId));
+    }
+
+    if (status) {
+      conditions.push(eq(restaurantOrders.status, status as any));
+    }
+
+    const orders = await db
+      .select({
+        id: restaurantOrders.id,
+        orderNumber: restaurantOrders.orderNumber,
+        roomId: restaurantOrders.roomId,
+        branchId: restaurantOrders.branchId,
+        status: restaurantOrders.status,
+        orderType: restaurantOrders.orderType,
+        customerName: restaurantOrders.customerName,
+        customerPhone: restaurantOrders.customerPhone,
+        subtotal: restaurantOrders.subtotal,
+        taxAmount: restaurantOrders.taxAmount,
+        totalAmount: restaurantOrders.totalAmount,
+        paidAmount: restaurantOrders.paidAmount,
+        paymentStatus: restaurantOrders.paymentStatus,
+        notes: restaurantOrders.notes,
+        createdAt: restaurantOrders.createdAt,
+        updatedAt: restaurantOrders.updatedAt,
+      })
+      .from(restaurantOrders)
+      .where(and(...conditions))
+      .orderBy(desc(restaurantOrders.createdAt));
+
+    // Manually fetch related data for each order
+    const ordersWithDetails = [];
+
+    for (const order of orders) {
+      let room = null;
+      let reservation = null;
+      let items: any[] = [];
+
+      try {
+        // Get room details
+        const roomResults = await db
+          .select({
+            id: rooms.id,
+            number: rooms.number,
+            floor: rooms.floor,
+            roomType: {
+              id: roomTypes.id,
+              name: roomTypes.name,
+            }
+          })
+          .from(rooms)
+          .innerJoin(roomTypes, eq(rooms.roomTypeId, roomTypes.id))
+          .where(eq(rooms.id, order.roomId!))
+          .limit(1);
+
+        if (roomResults.length > 0) {
+          room = roomResults[0];
+        }
+      } catch (error) {
+        console.error(`Error fetching room for order ${order.id}:`, error);
+      }
+
+      try {
+        // Get reservation details if linked
+        const reservationResults = await db
+          .select({
+            id: reservations.id,
+            guestId: reservations.guestId,
+            checkInDate: reservations.checkInDate,
+            checkOutDate: reservations.checkOutDate,
+            status: reservations.status,
+            guest: {
+              firstName: guests.firstName,
+              lastName: guests.lastName,
+              phone: guests.phone,
+              email: guests.email,
+            }
+          })
+          .from(reservations)
+          .innerJoin(guests, eq(reservations.guestId, guests.id))
+          .innerJoin(reservationRooms, eq(reservations.id, reservationRooms.reservationId))
+          .where(
+            and(
+              eq(reservationRooms.roomId, order.roomId!),
+              or(
+                eq(reservations.status, 'confirmed'),
+                eq(reservations.status, 'checked-in')
+              )
+            )
+          )
+          .limit(1);
+
+        if (reservationResults.length > 0) {
+          reservation = reservationResults[0];
+        }
+      } catch (error) {
+        console.error(`Error fetching reservation for order ${order.id}:`, error);
+      }
+
+      try {
+        // Get order items
+        items = await this.getRestaurantOrderItems(order.id);
+      } catch (error) {
+        console.error(`Error fetching items for order ${order.id}:`, error);
+      }
+
+      ordersWithDetails.push({
+        ...order,
+        room,
+        reservation,
+        items,
+      });
+    }
+
+    return ordersWithDetails;
   }
 
   async getRestaurantOrder(id: string): Promise<RestaurantOrder | undefined> {

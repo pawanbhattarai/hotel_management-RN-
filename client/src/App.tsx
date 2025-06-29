@@ -35,6 +35,7 @@ import StockConsumption from "@/pages/stock-consumption";
 import DishIngredients from "@/pages/dish-ingredients";
 import { lazy, Suspense } from "react";
 import QROrderPage from "@/pages/qr-order";
+import RoomOrders from "@/pages/room-orders";
 
 const RestaurantAnalytics = lazy(() => import("./pages/restaurant-analytics"));
 
@@ -85,6 +86,7 @@ function Router() {
           <Route path="/restaurant/categories" component={RestaurantCategories} />
           <Route path="/restaurant/dishes" component={RestaurantDishes} />
           <Route path="/restaurant/orders" component={RestaurantOrders} />
+          <Route path="/room-orders" component={RoomOrders} />
           <Route path="/restaurant/kot" component={RestaurantKOT} />
           <Route path="/restaurant/billing" component={RestaurantBilling} />
           <Route path="/tax-management" component={TaxManagement} />

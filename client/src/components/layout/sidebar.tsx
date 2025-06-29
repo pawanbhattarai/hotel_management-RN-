@@ -298,6 +298,24 @@ export default function Sidebar({
                   </button>
                 )}
 
+                {/* Room Orders */}
+                {canAccess("room-orders") && (
+                  <button
+                    onClick={() => {
+                      navigate("/room-orders");
+                      setMenuOpen(false);
+                    }}
+                    className={`w-full flex items-center px-3 py-2 lg:py-2.5 text-left rounded-lg mx-6 transition-colors ${
+                      isActiveRoute("/room-orders")
+                        ? "bg-primary text-white"
+                        : "text-gray-700 hover:bg-gray-100"
+                    }`}
+                  >
+                    <Utensils className="mr-3 h-4 w-4 flex-shrink-0" />
+                    <span className="text-sm font-medium">Room Orders</span>
+                  </button>
+                )}
+
                 {/* Billing */}
                 {canAccess("billing") && (
                   <button

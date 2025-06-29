@@ -3197,6 +3197,77 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Get room orders specifically
+  app.get("/api/restaurant/orders/room", isAuthenticated, async (req: any, res) => {
+    try {
+      const user = await storage.getUser(req.session.user.id);
+      if (!user) return res.status(401).json({ message: "User not found" });
+
+      const branchId = user.role === "superadmin" ? undefined : user.branchId!;
+      const status = req.query.status as string;
+      const orders = await restaurantStorage.getRoomOrders(branchId, status);
+
+      res.json(orders);
+    } catch (error) {
+      console.error("Error fetching room orders:", error);
+      res.status(500).json({ message: "Failed to fetch room orders" });
+    }
+  });
+
+  // Create room order
+  app.post("/api/restaurant/orders/room", isAuthenticated, async (req: any, res) => {
+    try {
+      const user = await storage.getUser(req.session.user.id);
+      if (!user) return res.status(401).json({ message: "User not found" });
+
+      const { roomId, reservationId, customerName, customerPhone, notes, orderType } = req.body;
+
+      if (!roomId || !customerName) {
+        return res.status(400).json({ message: "Room ID and customer name are required" });
+      }
+
+      // Get room details to validate branch access
+      const room = await storage.getRoom(roomId);
+      if (!room) {
+        return res.status(404).json({ message: "Room not found" });
+      }
+
+      if (!checkBranchPermissions(user.role, user.branchId, room.branchId)) {
+        return res.status(403).json({ message: "Insufficient permissions for this branch" });
+      }
+
+      // Generate order number
+      const orderNumber = `RO${Date.now().toString().slice(-8)}`;
+      
+      const orderData = {
+        orderNumber,
+        roomId,
+        reservationId: reservationId || null,
+        branchId: room.branchId,
+        customerName,
+        customerPhone: customerPhone || null,
+        notes: notes || null,
+        orderType: orderType || "room",
+        status: "pending" as const,
+        subtotal: "0.00",
+        totalAmount: "0.00",
+        createdById: user.id,
+      };
+
+      const order = await restaurantStorage.createRestaurantOrder(orderData, []);
+
+      // Broadcast new room order creation
+      wsManager.broadcastDataUpdate("restaurant-orders", room.branchId.toString());
+      wsManager.broadcastDataUpdate("room-orders", room.branchId.toString());
+      wsManager.broadcastDataUpdate("restaurant-dashboard", room.branchId.toString());
+
+      res.status(201).json(order);
+    } catch (error) {
+      console.error("Error creating room order:", error);
+      res.status(500).json({ message: "Failed to create room order" });
+    }
+  });
+
   app.patch(
     "/api/restaurant/orders/:id/status",
     isAuthenticated,
