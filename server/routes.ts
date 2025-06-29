@@ -42,7 +42,7 @@ import {
 } from "@shared/schema";
 import { QRService } from "./qr-service";
 import { eq, sql } from "drizzle-orm";
-import { restaurantOrderItems, restaurantOrders } from "@shared/schema";
+import { restaurantOrderItems, restaurantOrders, reservations, guests } from "@shared/schema";
 import { db } from "./db";
 import { z } from "zod";
 import { broadcastChange } from "./middleware/websocket";
@@ -3087,36 +3087,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const branchId = user.role === "superadmin" ? undefined : user.branchId!;
       const status = req.query.status as string;
       
-      // Get restaurant orders where orderType is 'room' and reservation_id is not null
-      let conditions = [`"order_type" = 'room'`, `"reservation_id" IS NOT NULL`];
+      // Use restaurant storage to get room orders with proper data structure
+      const orders = await restaurantStorage.getRoomOrders(branchId, status);
       
-      if (branchId) {
-        conditions.push(`"branch_id" = ${branchId}`);
-      }
-      
-      if (status) {
-        conditions.push(`"status" = '${status}'`);
-      }
-      
-      const whereClause = conditions.length > 0 ? `WHERE ${conditions.join(' AND ')}` : '';
-      
-      const query = `
-        SELECT 
-          ro.*,
-          r.id as reservation_id,
-          g.first_name,
-          g.last_name,
-          g.phone,
-          g.email
-        FROM restaurant_orders ro
-        LEFT JOIN reservations r ON ro."reservation_id" = r.id
-        LEFT JOIN guests g ON r.guest_id = g.id
-        ${whereClause}
-        ORDER BY ro.created_at DESC
-      `;
-      
-      const result = await db.execute(sql.raw(query));
-      res.json(result.rows || []);
+      res.json(orders);
     } catch (error) {
       console.error("Error fetching room orders:", error);
       res.status(500).json({ message: "Failed to fetch room orders" });
@@ -3128,41 +3102,47 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const user = await storage.getUser(req.session.user.id);
       if (!user) return res.status(401).json({ message: "User not found" });
 
-      // Create room order using a custom implementation for reservation-based orders
       const { order: orderData, items: itemsData } = req.body;
 
       if (!checkBranchPermissions(user.role, user.branchId, orderData.branchId)) {
         return res.status(403).json({ message: "Insufficient permissions for this branch" });
       }
 
+      // Validate required fields
+      if (!orderData.reservationId) {
+        return res.status(400).json({ message: "Reservation ID is required for room orders" });
+      }
+
+      if (!itemsData || itemsData.length === 0) {
+        return res.status(400).json({ message: "Order items are required" });
+      }
+
       // Generate order number
       const orderNumber = `RM${Date.now().toString().slice(-8)}`;
+      
+      // Calculate totals
+      const subtotal = itemsData.reduce((sum: number, item: any) => {
+        return sum + (parseFloat(item.unitPrice) * item.quantity);
+      }, 0);
+
       const orderWithNumber = {
-        ...orderData,
         orderNumber,
+        branchId: orderData.branchId,
+        reservationId: orderData.reservationId,
         orderType: 'room',
-        tableId: null, // Room orders don't have tables
+        tableId: null,
+        customerName: orderData.customerName,
+        customerPhone: orderData.customerPhone,
+        subtotal: subtotal.toString(),
+        taxAmount: "0",
+        totalAmount: orderData.totalAmount || subtotal.toString(),
+        status: orderData.status || "pending",
+        notes: orderData.notes || null,
         createdById: user.id,
       };
 
-      // Create room order using transaction to handle reservation-based orders
-      const order = await db.transaction(async (tx) => {
-        // Create order
-        const [newOrder] = await tx.insert(restaurantOrders).values(orderWithNumber).returning();
-
-        // Create order items with the new order ID
-        const orderItemsWithOrderId = itemsData.map((item: any) => ({
-          ...item,
-          orderId: newOrder.id,
-        }));
-
-        await tx.insert(restaurantOrderItems).values(orderItemsWithOrderId);
-
-        // Don't update table status for room orders since they're linked to reservations
-        // Room status is managed through the reservation system
-
-        return newOrder;
-      });
+      // Create room order using restaurant storage
+      const order = await restaurantStorage.createRestaurantOrder(orderWithNumber, itemsData);
 
       // Broadcast order creation
       wsManager.broadcastDataUpdate(
@@ -3177,7 +3157,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       res.status(201).json(order);
     } catch (error) {
       console.error("Error creating room order:", error);
-      res.status(500).json({ message: "Failed to create room order" });
+      res.status(500).json({ message: "Failed to create room order", error: error.message });
     }
   });
 

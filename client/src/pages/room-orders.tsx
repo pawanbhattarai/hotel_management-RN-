@@ -293,12 +293,12 @@ export default function RoomOrders() {
 
   const getFilteredDishes = () => {
     const menuDishes = dishes || [];
-    
+
     // Filter by category if selected
     if (!selectedCategory || selectedCategory === "all") {
       return menuDishes;
     }
-    
+
     return menuDishes.filter((item: any) => {
       return item.categoryId === parseInt(selectedCategory);
     });
@@ -856,7 +856,7 @@ export default function RoomOrders() {
                   <p className="font-bold">Rs. {viewingOrder.totalAmount}</p>
                 </div>
               </div>
-              
+
               {viewingOrder.notes && (
                 <div>
                   <label className="text-sm font-medium text-gray-500">Notes</label>

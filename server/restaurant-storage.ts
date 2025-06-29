@@ -224,9 +224,45 @@ export class RestaurantStorage {
     const ordersWithDetails = [];
 
     for (const order of orders) {
-      let room = null;
       let reservation = null;
       let items = [];
+      let guest = null;
+
+      // Get reservation details if reservationId exists
+      if (order.reservationId) {
+        try {
+          const reservationQuery = await db
+            .select()
+            .from(reservations)
+            .leftJoin(guests, eq(reservations.guestId, guests.id))
+            .where(eq(reservations.id, order.reservationId))
+            .limit(1);
+
+          if (reservationQuery.length > 0) {
+            reservation = reservationQuery[0].reservations;
+            guest = reservationQuery[0].guests;
+          }
+        } catch (error) {
+          console.error(`Error fetching reservation for order ${order.id}:`, error);
+        }
+      }
+
+      // Get order items
+      try {
+        items = await this.getRestaurantOrderItems(order.id);
+      } catch (error) {
+        console.error(`Error fetching items for order ${order.id}:`, error);
+      }
+
+      ordersWithDetails.push({
+        ...order,
+        reservation,
+        guest,
+        items,
+      });
+    }
+
+    return ordersWithDetails;
 
       try {
         // Get room details if roomId exists
