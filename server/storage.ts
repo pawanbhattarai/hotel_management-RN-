@@ -151,6 +151,7 @@ export interface IStorage {
   ): Promise<PushSubscription | undefined>;
   deletePushSubscription(userId: string, endpoint: string): Promise<void>;
   getAllAdminSubscriptions(): Promise<(PushSubscription & { user?: User })[]>;
+  getBranchAdminSubscriptions(branchId?: number): Promise<PushSubscription[]>;
 
   // Notification History operations
   saveNotificationHistory(
@@ -868,6 +869,37 @@ export class DatabaseStorage implements IStorage {
       auth: result.push_subscriptions.authKey,
       user: result.users || undefined,
     }));
+  }
+
+  async getBranchAdminSubscriptions(branchId?: number): Promise<PushSubscription[]> {
+    const conditions = [eq(users.isActive, true)];
+
+    if (branchId) {
+      // Get superadmins (all branches) and admins for specific branch
+      conditions.push(
+        or(
+          eq(users.role, 'superadmin'),
+          and(
+            eq(users.role, 'admin'),
+            eq(users.branchId, branchId)
+          )
+        )
+      );
+    } else {
+      // If no branchId, get all superadmins
+      conditions.push(eq(users.role, 'superadmin'));
+    }
+
+    return await db.select().from(pushSubscriptions)
+      .leftJoin(users, eq(pushSubscriptions.userId, users.id))
+      .where(and(...conditions))
+      .then(rows => rows.map(row => ({
+        userId: row.push_subscriptions.userId,
+        endpoint: row.push_subscriptions.endpoint,
+        p256dh: row.push_subscriptions.p256dhKey,
+        auth: row.push_subscriptions.authKey,
+        createdAt: row.push_subscriptions.createdAt
+      })));
   }
 
   // Notification History operations

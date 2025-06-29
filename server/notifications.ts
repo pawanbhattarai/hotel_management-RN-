@@ -311,6 +311,151 @@ export class NotificationService {
     });
   }
 
+  static async sendLowStockNotification(
+    stockItem: any,
+    branch?: { id: number; name: string }
+  ) {
+    const notification: NotificationData = {
+      title: '📦 Low Stock Alert',
+      body: `${stockItem.name} is running low (${stockItem.currentStock} ${stockItem.measuringUnitSymbol || 'units'} remaining)${branch ? ` at ${branch.name}` : ''}. Reorder level: ${stockItem.reorderLevel}`,
+      tag: 'low-stock',
+      data: {
+        type: 'low_stock',
+        stockItemId: stockItem.id,
+        branchId: branch?.id,
+        currentStock: stockItem.currentStock,
+        reorderLevel: stockItem.reorderLevel,
+        reorderQuantity: stockItem.reorderQuantity
+      }
+    };
+
+    // Send to all superadmins and branch admins for the specific branch
+    if (branch?.id) {
+      // For branch-specific items, send to superadmins and that branch's admins
+      await this.sendToBranchAdmins(notification, 'low-stock', {
+        stockItemId: stockItem.id,
+        branchId: branch.id
+      }, branch.id);
+    } else {
+      // For global items, send to all superadmins
+      await this.sendToAllAdmins(notification, 'low-stock', {
+        stockItemId: stockItem.id
+      });
+    }
+  }
+
+  static async sendToBranchAdmins(notification: NotificationData, notificationType?: string, additionalData?: any, branchId?: number) {
+    try {
+      console.log('🔔 Starting branch-specific notification send process...');
+      console.log('📋 Notification details:', {
+        title: notification.title,
+        body: notification.body,
+        type: notificationType,
+        branchId
+      });
+
+      // Get subscriptions for superadmins and branch admins for the specific branch
+      const subscriptions = await storage.getBranchAdminSubscriptions(branchId);
+      console.log(`👥 Found ${subscriptions.length} admin subscriptions for branch ${branchId}`);
+
+      if (subscriptions.length === 0) {
+        console.warn(`⚠️ No admin subscriptions found for branch ${branchId} - no notifications will be sent`);
+        return;
+      }
+
+      // Save notification to history for each admin user
+      const savePromises = subscriptions.map(async (sub) => {
+        try {
+          const historyData: InsertNotificationHistory = {
+            userId: sub.userId,
+            type: notificationType as any || 'low-stock',
+            title: notification.title,
+            body: notification.body,
+            data: notification.data,
+            ...additionalData
+          };
+          await storage.createNotificationHistory(historyData);
+          console.log(`💾 Saved notification history for user ${sub.userId}`);
+        } catch (error) {
+          console.error(`❌ Failed to save notification history for user ${sub.userId}:`, error);
+        }
+      });
+      
+      await Promise.allSettled(savePromises);
+      console.log('💾 Notification history saved for all branch users');
+      
+      const payload = JSON.stringify({
+        title: notification.title,
+        body: notification.body,
+        icon: notification.icon || '/favicon.ico',
+        badge: notification.badge || '/favicon.ico',
+        tag: notification.tag || 'hotel-notification',
+        data: notification.data || {},
+        requireInteraction: true,
+        actions: [
+          {
+            action: 'view',
+            title: 'View Stock'
+          }
+        ],
+        timestamp: Date.now()
+      });
+
+      console.log(`📤 Attempting to send push notifications to ${subscriptions.length} branch subscribers...`);
+
+      const sendPromises = subscriptions.map(async (sub) => {
+        try {
+          console.log(`📨 Sending notification to user ${sub.userId}...`);
+          
+          const pushConfig = {
+            endpoint: sub.endpoint,
+            keys: {
+              auth: sub.auth,
+              p256dh: sub.p256dh,
+            },
+          };
+
+          const result = await webpush.sendNotification(pushConfig, payload);
+          console.log(`✅ Notification sent successfully to user ${sub.userId}`, result.statusCode);
+          return { success: true, userId: sub.userId, statusCode: result.statusCode };
+        } catch (error: any) {
+          console.error(`❌ Failed to send notification to user ${sub.userId}:`, {
+            message: error.message,
+            statusCode: error.statusCode,
+            body: error.body
+          });
+          
+          // If subscription is invalid, remove it
+          if (error.statusCode === 410 || error.statusCode === 404 || error.statusCode === 403) {
+            console.log(`🗑️ Removing invalid subscription for user ${sub.userId}`);
+            try {
+              await storage.deletePushSubscription(sub.userId, sub.endpoint);
+              console.log(`✅ Removed invalid subscription for user ${sub.userId}`);
+            } catch (deleteError) {
+              console.error(`❌ Failed to remove invalid subscription for user ${sub.userId}:`, deleteError);
+            }
+          }
+          
+          return { success: false, userId: sub.userId, error: error.message, statusCode: error.statusCode };
+        }
+      });
+
+      const results = await Promise.allSettled(sendPromises);
+      const successful = results.filter(r => r.status === 'fulfilled' && (r.value as any).success).length;
+      const failed = results.length - successful;
+      
+      console.log(`📊 Branch notification send results: ${successful}/${results.length} successful, ${failed} failed`);
+
+      if (successful === 0) {
+        console.error('❌ All branch notification sends failed!');
+      } else {
+        console.log(`✅ Branch notification send process completed: ${successful} successful sends`);
+      }
+    } catch (error) {
+      console.error('❌ Critical error in branch notification send process:', error);
+    }
+  }
+
   static getVapidPublicKey(): string {
     return VAPID_PUBLIC_KEY;
   }

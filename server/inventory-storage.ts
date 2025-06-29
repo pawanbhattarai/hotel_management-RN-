@@ -229,7 +229,14 @@ export class InventoryStorage {
       throw new Error('Insufficient stock');
     }
 
-    return await this.updateStockItem(id, { currentStock: newStock.toString() });
+    const updatedItem = await this.updateStockItem(id, { currentStock: newStock.toString() });
+    
+    // Import here to avoid circular dependency
+    const { lowStockChecker } = await import('./low-stock-checker');
+    // Check for low stock after update
+    lowStockChecker.onInventoryUpdate(id);
+    
+    return updatedItem;
   }
 
   async deleteStockItem(id: number): Promise<void> {
@@ -316,6 +323,33 @@ export class InventoryStorage {
         reorderQuantity: stockItems.reorderQuantity,
         categoryName: stockCategories.name,
         measuringUnitSymbol: measuringUnits.symbol,
+        branchId: stockItems.branchId,
+      })
+      .from(stockItems)
+      .leftJoin(stockCategories, eq(stockItems.categoryId, stockCategories.id))
+      .leftJoin(measuringUnits, eq(stockItems.measuringUnitId, measuringUnits.id))
+      .where(and(...conditions))
+      .orderBy(stockItems.name);
+  }
+
+  async getLowStockItemsWithBranches(): Promise<any[]> {
+    const conditions = [
+      eq(stockItems.isActive, true),
+      sql`CAST(${stockItems.currentStock} AS DECIMAL) <= CAST(${stockItems.reorderLevel} AS DECIMAL)`
+    ];
+
+    return await db
+      .select({
+        id: stockItems.id,
+        name: stockItems.name,
+        sku: stockItems.sku,
+        currentStock: stockItems.currentStock,
+        reorderLevel: stockItems.reorderLevel,
+        reorderQuantity: stockItems.reorderQuantity,
+        categoryName: stockCategories.name,
+        measuringUnitSymbol: measuringUnits.symbol,
+        branchId: stockItems.branchId,
+        branchName: sql`(SELECT name FROM branches WHERE id = ${stockItems.branchId})`,
       })
       .from(stockItems)
       .leftJoin(stockCategories, eq(stockItems.categoryId, stockCategories.id))

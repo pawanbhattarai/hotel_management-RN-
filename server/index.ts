@@ -66,12 +66,20 @@ app.use((req, res, next) => {
   // this serves both the API and the client.
   // It is the only port that is not firewalled.
   const port = 5000;
+  // Import low stock checker
+  import { lowStockChecker } from './low-stock-checker';
+
   server.listen({
     port,
     host: "0.0.0.0",
     reusePort: true,
   }, () => {
     log(`serving on port ${port}`);
+
+    // Start low stock monitoring (check every 30 minutes)
+    setTimeout(() => {
+      lowStockChecker.startMonitoring(30);
+    }, 5000); // Start after 5 seconds to allow server to fully initialize
   });
 
   // Initialize WebSocket server only in production to avoid Vite conflicts
@@ -80,7 +88,7 @@ app.use((req, res, next) => {
   } else {
     console.log('WebSocket server disabled in development mode to avoid Vite conflicts');
   }
-  
+
   // Graceful shutdown
   process.on('SIGTERM', () => {
     console.log('Received SIGTERM, shutting down gracefully...');
