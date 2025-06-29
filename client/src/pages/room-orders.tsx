@@ -200,7 +200,11 @@ export default function RoomOrders() {
     },
   });
 
-  const onSubmit = async (data: OrderFormData) => {
+  const handleSubmitOrder = async (data: OrderFormData) => {
+    console.log("handleSubmitOrder called with data:", data);
+    console.log("selectedItems:", selectedItems);
+    console.log("selectedReservation:", selectedReservation);
+
     if (selectedItems.length === 0) {
       toast({
         title: "Error",
@@ -210,9 +214,18 @@ export default function RoomOrders() {
       return;
     }
 
-    const existingOrder = getReservationOrder(selectedReservation?.id);
+    if (!selectedReservation) {
+      toast({
+        title: "Error",
+        description: "No reservation selected",
+        variant: "destructive",
+      });
+      return;
+    }
+
     const orderData = {
       reservationId: selectedReservation.id,
+      roomId: selectedReservation.reservationRooms?.[0]?.roomId || null,
       branchId: user?.branchId || 1,
       orderType: "room",
       customerName: `${selectedReservation.guest.firstName} ${selectedReservation.guest.lastName}`,
@@ -231,8 +244,11 @@ export default function RoomOrders() {
       specialInstructions: item.notes || null,
     }));
 
+    console.log("Creating order with:", { order: orderData, items: itemsData });
     createOrderMutation.mutate({ order: orderData, items: itemsData });
   };
+
+  const onSubmit = handleSubmitOrder;
 
   const addItem = (dish: any) => {
     const existingItem = selectedItems.find((item) => item.dishId === dish.id);
@@ -636,7 +652,7 @@ export default function RoomOrders() {
 
                         <Form {...form}>
                           <form
-                            onSubmit={form.handleSubmit(onSubmit)}
+                            onSubmit={form.handleSubmit(handleSubmitOrder)}
                             className="mt-4 space-y-4"
                           >
                             <FormField
@@ -665,13 +681,6 @@ export default function RoomOrders() {
                                 (getReservationOrder(selectedReservation?.id) &&
                                   !hasOrderChanged())
                               }
-                              onClick={(e) => {
-                                e.preventDefault();
-                                console.log(
-                                  "Button clicked, submitting form...",
-                                );
-                                form.handleSubmit(onSubmit)(e);
-                              }}
                             >
                               {createOrderMutation.isPending ? (
                                 <div className="flex items-center">
