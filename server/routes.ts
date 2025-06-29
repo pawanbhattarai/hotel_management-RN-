@@ -3102,27 +3102,47 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const user = await storage.getUser(req.session.user.id);
       if (!user) return res.status(401).json({ message: "User not found" });
 
+      console.log("Creating room order - Request body:", JSON.stringify(req.body, null, 2));
+
       const { order: orderData, items: itemsData } = req.body;
+
+      if (!orderData) {
+        return res.status(400).json({ message: "Order data is required" });
+      }
+
+      // Set branchId from user if not provided
+      if (!orderData.branchId) {
+        orderData.branchId = user.branchId;
+      }
 
       if (!checkBranchPermissions(user.role, user.branchId, orderData.branchId)) {
         return res.status(403).json({ message: "Insufficient permissions for this branch" });
       }
 
-      // Validate required fields
+      // Validate required fields - more flexible validation
       if (!orderData.reservationId && !orderData.roomId) {
         return res.status(400).json({ message: "Either Reservation ID or Room ID is required for room orders" });
       }
 
-      if (!itemsData || itemsData.length === 0) {
-        return res.status(400).json({ message: "Order items are required" });
+      if (!itemsData || !Array.isArray(itemsData) || itemsData.length === 0) {
+        return res.status(400).json({ message: "Order items are required and must be an array" });
+      }
+
+      // Validate each item has required fields
+      for (const item of itemsData) {
+        if (!item.dishId || !item.quantity) {
+          return res.status(400).json({ message: "Each item must have dishId and quantity" });
+        }
       }
 
       // Generate order number
       const orderNumber = `RM${Date.now().toString().slice(-8)}`;
       
-      // Calculate totals
+      // Calculate totals with better error handling
       const subtotal = itemsData.reduce((sum: number, item: any) => {
-        return sum + (parseFloat(item.unitPrice || item.totalPrice || "0") * item.quantity);
+        const itemPrice = parseFloat(item.unitPrice || item.totalPrice || "0");
+        const itemQuantity = parseInt(item.quantity) || 0;
+        return sum + (itemPrice * itemQuantity);
       }, 0);
 
       const orderWithNumber = {
@@ -3132,18 +3152,23 @@ export async function registerRoutes(app: Express): Promise<Server> {
         roomId: orderData.roomId || null,
         orderType: 'room' as any,
         tableId: null,
-        customerName: orderData.customerName,
-        customerPhone: orderData.customerPhone,
+        customerName: orderData.customerName || null,
+        customerPhone: orderData.customerPhone || null,
         subtotal: subtotal.toString(),
-        taxAmount: "0",
+        taxAmount: orderData.taxAmount || "0",
         totalAmount: orderData.totalAmount || subtotal.toString(),
         status: orderData.status || "pending",
         notes: orderData.notes || null,
         createdById: user.id,
       };
 
+      console.log("Creating order with data:", JSON.stringify(orderWithNumber, null, 2));
+      console.log("Creating items:", JSON.stringify(itemsData, null, 2));
+
       // Create room order using restaurant storage
       const order = await restaurantStorage.createRestaurantOrder(orderWithNumber, itemsData);
+
+      console.log("Order created successfully:", order.id);
 
       // Broadcast order creation
       wsManager.broadcastDataUpdate(
@@ -3158,7 +3183,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
       res.status(201).json(order);
     } catch (error) {
       console.error("Error creating room order:", error);
-      res.status(500).json({ message: "Failed to create room order", error: error instanceof Error ? error.message : "Unknown error" });
+      console.error("Error stack:", error instanceof Error ? error.stack : "No stack trace");
+      res.status(500).json({ 
+        message: "Failed to create room order", 
+        error: error instanceof Error ? error.message : "Unknown error",
+        details: error instanceof Error ? error.stack : undefined
+      });
     }
   });
 
