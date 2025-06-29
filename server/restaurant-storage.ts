@@ -263,77 +263,7 @@ export class RestaurantStorage {
     }
 
     return ordersWithDetails;
-
-      try {
-        // Get room details if roomId exists
-        if (order.roomId) {
-          const roomResults = await db
-            .select({
-              id: rooms.id,
-              number: rooms.number,
-              floor: rooms.floor,
-              roomType: {
-                id: roomTypes.id,
-                name: roomTypes.name,
-              }
-            })
-            .from(rooms)
-            .innerJoin(roomTypes, eq(rooms.roomTypeId, roomTypes.id))
-            .where(eq(rooms.id, order.roomId))
-            .limit(1);
-
-          if (roomResults.length > 0) {
-            room = roomResults[0];
-          }
-        }
-      } catch (error) {
-        console.error(`Error fetching room for order ${order.id}:`, error);
-      }
-
-      try {
-        // Get reservation details if reservationId exists
-        if (order.reservationId) {
-          const reservationResults = await db
-            .select({
-              id: reservations.id,
-              guestId: reservations.guestId,
-              status: reservations.status,
-              guest: {
-                firstName: guests.firstName,
-                lastName: guests.lastName,
-                phone: guests.phone,
-                email: guests.email,
-              }
-            })
-            .from(reservations)
-            .innerJoin(guests, eq(reservations.guestId, guests.id))
-            .where(eq(reservations.id, order.reservationId))
-            .limit(1);
-
-          if (reservationResults.length > 0) {
-            reservation = reservationResults[0];
-          }
-        }
-      } catch (error) {
-        console.error(`Error fetching reservation for order ${order.id}:`, error);
-      }
-
-      try {
-        // Get order items
-        items = await this.getRestaurantOrderItems(order.id);
-      } catch (error) {
-        console.error(`Error fetching items for order ${order.id}:`, error);
-      }
-
-      ordersWithDetails.push({
-        ...order,
-        room,
-        reservation,
-        items,
-      });
-    }
-
-    return ordersWithDetails;
+  }
   }
 
   async getRestaurantOrders(branchId?: number, status?: string): Promise<RestaurantOrder[]> {
