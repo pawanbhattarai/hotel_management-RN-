@@ -42,7 +42,7 @@ import {
 } from "@shared/schema";
 import { QRService } from "./qr-service";
 import { eq, sql } from "drizzle-orm";
-import { restaurantOrderItems } from "@shared/schema";
+import { restaurantOrderItems, restaurantOrders } from "@shared/schema";
 import { db } from "./db";
 import { z } from "zod";
 import { broadcastChange } from "./middleware/websocket";
@@ -3128,7 +3128,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const user = await storage.getUser(req.session.user.id);
       if (!user) return res.status(401).json({ message: "User not found" });
 
-      // Create room order using the existing createRestaurantOrder method
+      // Create room order using a custom implementation for reservation-based orders
       const { order: orderData, items: itemsData } = req.body;
 
       if (!checkBranchPermissions(user.role, user.branchId, orderData.branchId)) {
@@ -3141,10 +3141,39 @@ export async function registerRoutes(app: Express): Promise<Server> {
         ...orderData,
         orderNumber,
         orderType: 'room',
+        tableId: null, // Room orders don't have tables
         createdById: user.id,
       };
 
-      const order = await restaurantStorage.createRestaurantOrder(orderWithNumber, itemsData);
+      // Create room order using transaction to handle reservation-based orders
+      const order = await db.transaction(async (tx) => {
+        // Create order
+        const [newOrder] = await tx.insert(restaurantOrders).values(orderWithNumber).returning();
+
+        // Create order items with the new order ID
+        const orderItemsWithOrderId = itemsData.map((item: any) => ({
+          ...item,
+          orderId: newOrder.id,
+        }));
+
+        await tx.insert(restaurantOrderItems).values(orderItemsWithOrderId);
+
+        // Don't update table status for room orders since they're linked to reservations
+        // Room status is managed through the reservation system
+
+        return newOrder;
+      });
+
+      // Broadcast order creation
+      wsManager.broadcastDataUpdate(
+        "restaurant-orders",
+        orderData.branchId?.toString(),
+      );
+      wsManager.broadcastDataUpdate(
+        "room-orders",
+        orderData.branchId?.toString(),
+      );
+
       res.status(201).json(order);
     } catch (error) {
       console.error("Error creating room order:", error);
