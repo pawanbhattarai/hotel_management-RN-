@@ -3087,11 +3087,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const branchId = user.role === "superadmin" ? undefined : user.branchId!;
       const status = req.query.status as string;
       
-      // Get restaurant orders where orderType is 'room' and reservationId is not null
-      let conditions = [`"orderType" = 'room'`, `"reservationId" IS NOT NULL`];
+      // Get restaurant orders where orderType is 'room' and reservation_id is not null
+      let conditions = [`"order_type" = 'room'`, `"reservation_id" IS NOT NULL`];
       
       if (branchId) {
-        conditions.push(`"branchId" = ${branchId}`);
+        conditions.push(`"branch_id" = ${branchId}`);
       }
       
       if (status) {
@@ -3109,7 +3109,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
           g.phone,
           g.email
         FROM restaurant_orders ro
-        LEFT JOIN reservations r ON ro."reservationId" = r.id
+        LEFT JOIN reservations r ON ro."reservation_id" = r.id
         LEFT JOIN guests g ON r.guest_id = g.id
         ${whereClause}
         ORDER BY ro.created_at DESC

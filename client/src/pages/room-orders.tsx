@@ -286,8 +286,8 @@ export default function RoomOrders() {
       order.customerName.toLowerCase().includes(searchTerm.toLowerCase()) ||
       order.room.number.toLowerCase().includes(searchTerm.toLowerCase());
     
-    const matchesStatus = !statusFilter || order.status === statusFilter;
-    const matchesRoom = !roomFilter || order.roomId.toString() === roomFilter;
+    const matchesStatus = !statusFilter || statusFilter === "all" || order.status === statusFilter;
+    const matchesRoom = !roomFilter || roomFilter === "all" || order.roomId.toString() === roomFilter;
     
     return matchesSearch && matchesStatus && matchesRoom;
   });
@@ -385,7 +385,7 @@ export default function RoomOrders() {
                         <SelectValue placeholder="All statuses" />
                       </SelectTrigger>
                       <SelectContent>
-                        <SelectItem value="">All statuses</SelectItem>
+                        <SelectItem value="all">All statuses</SelectItem>
                         <SelectItem value="pending">Pending</SelectItem>
                         <SelectItem value="confirmed">Confirmed</SelectItem>
                         <SelectItem value="preparing">Preparing</SelectItem>
@@ -404,7 +404,7 @@ export default function RoomOrders() {
                         <SelectValue placeholder="All rooms" />
                       </SelectTrigger>
                       <SelectContent>
-                        <SelectItem value="">All rooms</SelectItem>
+                        <SelectItem value="all">All rooms</SelectItem>
                         {rooms?.map((room: Room) => (
                           <SelectItem key={room.id} value={room.id.toString()}>
                             Room {room.number} ({room.roomType.name})
