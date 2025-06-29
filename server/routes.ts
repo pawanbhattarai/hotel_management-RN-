@@ -41,7 +41,7 @@ import {
   insertDishIngredientSchema,
 } from "@shared/schema";
 import { QRService } from "./qr-service";
-import { eq } from "drizzle-orm";
+import { eq, sql } from "drizzle-orm";
 import { restaurantOrderItems } from "@shared/schema";
 import { db } from "./db";
 import { z } from "zod";
@@ -3087,8 +3087,36 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const branchId = user.role === "superadmin" ? undefined : user.branchId!;
       const status = req.query.status as string;
       
-      // Simple query to get room orders for now
-      res.json([]);
+      // Get restaurant orders where orderType is 'room' and reservationId is not null
+      let conditions = [`"orderType" = 'room'`, `"reservationId" IS NOT NULL`];
+      
+      if (branchId) {
+        conditions.push(`"branchId" = ${branchId}`);
+      }
+      
+      if (status) {
+        conditions.push(`"status" = '${status}'`);
+      }
+      
+      const whereClause = conditions.length > 0 ? `WHERE ${conditions.join(' AND ')}` : '';
+      
+      const query = `
+        SELECT 
+          ro.*,
+          r.id as reservation_id,
+          g.first_name,
+          g.last_name,
+          g.phone,
+          g.email
+        FROM restaurant_orders ro
+        LEFT JOIN reservations r ON ro."reservationId" = r.id
+        LEFT JOIN guests g ON r.guest_id = g.id
+        ${whereClause}
+        ORDER BY ro.created_at DESC
+      `;
+      
+      const result = await db.execute(sql.raw(query));
+      res.json(result.rows || []);
     } catch (error) {
       console.error("Error fetching room orders:", error);
       res.status(500).json({ message: "Failed to fetch room orders" });
