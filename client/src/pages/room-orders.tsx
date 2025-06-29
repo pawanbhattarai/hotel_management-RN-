@@ -225,8 +225,8 @@ export default function RoomOrders() {
 
     const orderData = {
       reservationId: selectedReservation.id,
-      roomId: selectedReservation.reservationRooms?.[0]?.roomId || null,
-      branchId: user?.branchId || 1,
+      roomId: selectedReservation.reservationRooms?.[0]?.roomId || null, // Use first room as primary
+      branchId: selectedReservation.branchId || user?.branchId || 1,
       orderType: "room",
       customerName: `${selectedReservation.guest.firstName} ${selectedReservation.guest.lastName}`,
       customerPhone: selectedReservation.guest.phone,
@@ -416,11 +416,11 @@ export default function RoomOrders() {
         />
         <div className="main-content">
           <Header
-            title={`${selectedReservation.guest.firstName} ${selectedReservation.guest.lastName} - Room Order`}
+            title={`${selectedReservation.guest.firstName} ${selectedReservation.guest.lastName} - Reservation Order`}
             subtitle={
               existingOrder
-                ? "Add more items to existing order"
-                : "Create new order"
+                ? `Managing order for ${selectedReservation.reservationRooms?.length || 0} room(s) - Add more items`
+                : `Create order for ${selectedReservation.reservationRooms?.length || 0} room(s) in this reservation`
             }
             onMobileMenuToggle={() =>
               setIsMobileSidebarOpen(!isMobileSidebarOpen)
@@ -438,8 +438,43 @@ export default function RoomOrders() {
                 Back to Reservations
               </Button>
 
+              {/* Reservation Details */}
+              <Card className="mb-6 border-l-4 border-l-blue-500">
+                <CardContent className="p-4">
+                  <div className="flex items-center justify-between mb-4">
+                    <div>
+                      <h3 className="font-semibold">
+                        Reservation Details
+                      </h3>
+                      <p className="text-sm text-gray-600">
+                        ID: {selectedReservation.id.split('-')[0]}... | Status: {selectedReservation.status}
+                      </p>
+                    </div>
+                    <Badge className="bg-blue-100 text-blue-800">
+                      {selectedReservation.reservationRooms?.length || 0} Room(s)
+                    </Badge>
+                  </div>
+                  
+                  {/* Room Details */}
+                  <div className="space-y-2">
+                    <h4 className="text-sm font-medium text-gray-700">Rooms in this reservation:</h4>
+                    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2">
+                      {selectedReservation.reservationRooms?.map((roomRes: any, idx: number) => (
+                        <div key={idx} className="bg-gray-50 p-2 rounded text-sm">
+                          <span className="font-medium">Room {roomRes.room?.number}</span>
+                          <span className="text-gray-600 ml-1">({roomRes.room?.roomType?.name})</span>
+                          <div className="text-xs text-gray-500">
+                            {roomRes.adults || 0} adults, {roomRes.children || 0} children
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
+
               {existingOrder && (
-                <Card className="mb-6 border-l-4 border-l-blue-500">
+                <Card className="mb-6 border-l-4 border-l-orange-500">
                   <CardContent className="p-4">
                     <div className="flex items-center justify-between">
                       <div>
@@ -718,8 +753,8 @@ export default function RoomOrders() {
       />
       <div className="main-content">
         <Header
-          title="Room Reservations"
-          subtitle="Click on a reservation to manage room orders"
+          title="Reservation Orders"
+          subtitle="Click on a reservation to manage food orders for all rooms"
           onMobileMenuToggle={() =>
             setIsMobileSidebarOpen(!isMobileSidebarOpen)
           }
@@ -762,10 +797,26 @@ export default function RoomOrders() {
 
                     <div className="space-y-2 text-sm">
                       <div className="flex justify-between">
-                        <span className="text-gray-600">Rooms:</span>
-                        <span className="font-medium">
-                          {reservation.reservationRooms?.length || 0} room(s)
+                        <span className="text-gray-600">Reservation ID:</span>
+                        <span className="font-medium text-xs">
+                          {reservation.id.split('-')[0]}...
                         </span>
+                      </div>
+                      <div className="flex justify-between">
+                        <span className="text-gray-600">Rooms:</span>
+                        <div className="text-right">
+                          <span className="font-medium">
+                            {reservation.reservationRooms?.length || 0} room(s)
+                          </span>
+                          <div className="text-xs text-gray-500">
+                            {reservation.reservationRooms?.map((rr: any, idx: number) => (
+                              <span key={idx}>
+                                {rr.room?.number}
+                                {idx < (reservation.reservationRooms?.length - 1) ? ', ' : ''}
+                              </span>
+                            ))}
+                          </div>
+                        </div>
                       </div>
                       <div className="flex justify-between">
                         <span className="text-gray-600">Status:</span>
@@ -811,7 +862,7 @@ export default function RoomOrders() {
                         <Users className="h-4 w-4 text-gray-400" />
                         <span className="text-xs text-gray-500">
                           {reservation.reservationRooms?.reduce((total: number, room: any) => 
-                            total + (room.adults || 0) + (room.children || 0), 0) || 0}
+                            total + (room.adults || 0) + (room.children || 0), 0) || 0} guests
                         </span>
                       </div>
                     </div>
