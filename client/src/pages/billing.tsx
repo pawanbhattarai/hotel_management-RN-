@@ -65,6 +65,8 @@ export default function Billing() {
   const [billData, setBillData] = useState({
     paymentMethod: "cash",
     notes: "",
+    discount: 0,
+    discountPercentage: 0,
     roomDates: [] as Array<{
       roomId: number;
       checkInDate: string;
@@ -289,6 +291,8 @@ export default function Billing() {
     setBillData({
       paymentMethod: "cash",
       notes: "",
+      discount: 0,
+      discountPercentage: 0,
       roomDates: [],
     });
     setShowDateChanges(false);
@@ -711,36 +715,49 @@ export default function Billing() {
   const calculateBillPreview = () => {
     if (!selectedReservation) return null;
 
-    // Room charges
+    // Room charges - ensure we have valid numbers
     const roomSubtotal = selectedReservation.reservationRooms.reduce(
-      (sum: number, room: any) => sum + parseFloat(room.totalAmount),
+      (sum: number, room: any) => {
+        const amount = parseFloat(room.totalAmount) || 0;
+        return sum + amount;
+      },
       0,
     );
 
     // Room service charges
     const reservationRoomOrders = getReservationRoomOrders(selectedReservation.id);
     const roomServiceSubtotal = reservationRoomOrders.reduce(
-      (sum: number, order: any) => sum + parseFloat(order.totalAmount || 0),
+      (sum: number, order: any) => {
+        const amount = parseFloat(order.totalAmount) || 0;
+        return sum + amount;
+      },
       0,
     );
 
     const subtotal = roomSubtotal + roomServiceSubtotal;
-    const finalDiscountAmount =
-      billData.discountPercentage > 0
-        ? (subtotal * billData.discountPercentage) / 100
-        : billData.discount;
-    const afterDiscount = subtotal - finalDiscountAmount;
+    
+    // Discount calculation - ensure we don't have undefined values
+    const discountPercentage = parseFloat(billData.discountPercentage || "0");
+    const discountAmount = parseFloat(billData.discount || "0");
+    
+    const finalDiscountAmount = discountPercentage > 0
+      ? (subtotal * discountPercentage) / 100
+      : discountAmount;
+    
+    const afterDiscount = subtotal - (finalDiscountAmount || 0);
 
-    // Calculate taxes dynamically
+    // Calculate taxes dynamically - ensure valid numbers
     let totalTaxAmount = 0;
     let appliedTaxes: any[] = [];
+    
     if (activeTaxes && Array.isArray(activeTaxes) && activeTaxes.length > 0) {
       appliedTaxes = activeTaxes.map((tax: any) => {
-        const taxAmount = afterDiscount * (parseFloat(tax.rate) / 100);
+        const taxRate = parseFloat(tax.rate) || 0;
+        const taxAmount = (afterDiscount * taxRate) / 100;
         totalTaxAmount += taxAmount;
         return {
           name: tax.taxName,
-          rate: tax.rate,
+          rate: taxRate,
           amount: taxAmount,
         };
       });
@@ -748,14 +765,15 @@ export default function Billing() {
 
     const finalTotal = afterDiscount + totalTaxAmount;
 
+    // Ensure all returned values are valid numbers
     return {
-      roomSubtotal,
-      roomServiceSubtotal,
-      subtotal,
-      discountAmount: finalDiscountAmount,
-      taxAmount: totalTaxAmount,
+      roomSubtotal: isNaN(roomSubtotal) ? 0 : roomSubtotal,
+      roomServiceSubtotal: isNaN(roomServiceSubtotal) ? 0 : roomServiceSubtotal,
+      subtotal: isNaN(subtotal) ? 0 : subtotal,
+      discountAmount: isNaN(finalDiscountAmount) ? 0 : finalDiscountAmount,
+      taxAmount: isNaN(totalTaxAmount) ? 0 : totalTaxAmount,
       appliedTaxes,
-      totalAmount: finalTotal,
+      totalAmount: isNaN(finalTotal) ? 0 : finalTotal,
       roomOrders: reservationRoomOrders,
     };
   };
@@ -1404,70 +1422,54 @@ export default function Billing() {
 
               {/* Bill Preview */}
               {billPreview && (
-                <div className="border rounded-lg p-4 bg-gray-50">
-                  <h3 className="font-semibold mb-3">Bill Preview</h3>
-                  <div className="space-y-2 text-sm">
-                    <div className="flex justify-between">
-                      <span>Room Charges:</span>
-                      <span>
-                        {currencySymbol} {billPreview.roomSubtotal.toFixed(2)}
+                <div className="bg-white rounded-lg shadow-sm border p-6">
+                  <h3 className="text-xl font-semibold text-gray-900 mb-6 flex items-center">
+                    <div className="w-8 h-8 bg-green-100 rounded-full flex items-center justify-center mr-3">
+                      📄
+                    </div>
+                    Bill Preview
+                  </h3>
+                  <div className="space-y-3">
+                    <div className="flex justify-between items-center py-2 border-b border-gray-100">
+                      <span className="text-gray-600">Room Charges:</span>
+                      <span className="font-semibold text-gray-900">
+                        {currencySymbol}{billPreview.roomSubtotal.toFixed(2)}
                       </span>
                     </div>
                     {billPreview.roomServiceSubtotal > 0 && (
-                      <div className="flex justify-between">
-                        <span>Room Service:</span>
-                        <span>
-                          {currencySymbol} {billPreview.roomServiceSubtotal.toFixed(2)}
+                      <div className="flex justify-between items-center py-2 border-b border-gray-100">
+                        <span className="text-gray-600">Room Service:</span>
+                        <span className="font-semibold text-gray-900">
+                          {currencySymbol}{billPreview.roomServiceSubtotal.toFixed(2)}
                         </span>
                       </div>
                     )}
-                    <div className="flex justify-between font-medium border-t pt-2">
-                      <span>Subtotal:</span>
-                      <span>
-                        {currencySymbol} {billPreview.subtotal.toFixed(2)}
+                    <div className="flex justify-between items-center py-2 border-b border-gray-200">
+                      <span className="text-gray-700 font-medium">Subtotal:</span>
+                      <span className="font-semibold text-gray-900">
+                        {currencySymbol}{billPreview.subtotal.toFixed(2)}
                       </span>
                     </div>
                     {billPreview.discountAmount > 0 && (
-                      <div className="flex justify-between text-green-600">
-                        <span>
-                          Discount{" "}
-                          {billData.discountPercentage > 0
-                            ? `(${billData.discountPercentage}%)`
-                            : ""}
-                          :
+                      <div className="flex justify-between items-center py-2 border-b border-gray-100">
+                        <span className="text-green-600">
+                          Discount {billData.discountPercentage > 0 ? `(${billData.discountPercentage}%)` : ""}:
                         </span>
-                        <span>
-                          -{currencySymbol}{" "}
-                          {billPreview.discountAmount.toFixed(2)}
+                        <span className="font-semibold text-green-600">
+                          -{currencySymbol}{billPreview.discountAmount.toFixed(2)}
                         </span>
                       </div>
                     )}
-                    {billPreview.appliedTaxes &&
-                    billPreview.appliedTaxes.length > 0 ? (
-                      billPreview.appliedTaxes.map(
-                        (tax: any, index: number) => (
-                          <div key={index} className="flex justify-between">
-                            <span>
-                              {tax.name} ({tax.rate}%):
-                            </span>
-                            <span>
-                              {currencySymbol} {tax.amount.toFixed(2)}
-                            </span>
-                          </div>
-                        ),
-                      )
-                    ) : (
-                      <div className="flex justify-between">
-                        <span>Tax:</span>
-                        <span>
-                          {currencySymbol} {billPreview.taxAmount.toFixed(2)}
-                        </span>
-                      </div>
-                    )}
-                    <div className="flex justify-between text-lg font-bold border-t pt-2">
-                      <span>Total Amount:</span>
-                      <span>
-                        {currencySymbol} {billPreview.totalAmount.toFixed(2)}
+                    <div className="flex justify-between items-center py-2 border-b border-gray-100">
+                      <span className="text-gray-600">Tax:</span>
+                      <span className="font-semibold text-gray-900">
+                        {currencySymbol}{billPreview.taxAmount.toFixed(2)}
+                      </span>
+                    </div>
+                    <div className="flex justify-between items-center py-3 border-t-2 border-gray-300 bg-gray-50 rounded-lg px-4">
+                      <span className="text-lg font-bold text-gray-900">Total Amount:</span>
+                      <span className="text-xl font-bold text-blue-600">
+                        {currencySymbol}{billPreview.totalAmount.toFixed(2)}
                       </span>
                     </div>
                   </div>
