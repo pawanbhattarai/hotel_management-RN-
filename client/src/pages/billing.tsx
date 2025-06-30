@@ -735,21 +735,21 @@ export default function Billing() {
     );
 
     const subtotal = roomSubtotal + roomServiceSubtotal;
-    
+
     // Discount calculation - ensure we don't have undefined values
     const discountPercentage = parseFloat(billData.discountPercentage || "0");
     const discountAmount = parseFloat(billData.discount || "0");
-    
+
     const finalDiscountAmount = discountPercentage > 0
       ? (subtotal * discountPercentage) / 100
       : discountAmount;
-    
+
     const afterDiscount = subtotal - (finalDiscountAmount || 0);
 
     // Calculate taxes dynamically - ensure valid numbers
     let totalTaxAmount = 0;
     let appliedTaxes: any[] = [];
-    
+
     if (activeTaxes && Array.isArray(activeTaxes) && activeTaxes.length > 0) {
       appliedTaxes = activeTaxes.map((tax: any) => {
         const taxRate = parseFloat(tax.rate) || 0;
@@ -902,8 +902,14 @@ export default function Billing() {
                             )}
                           </TableCell>
                           <TableCell className="font-medium">
-                            {currencySymbol}
-                            {parseFloat(reservation.totalAmount).toFixed(2)}
+                            {(() => {
+                              const reservationAmount = parseFloat(reservation.totalAmount);
+                              const roomServiceAmount = getReservationRoomOrders(reservation.id).reduce(
+                                (sum: number, order: any) => sum + parseFloat(order.totalAmount || 0),
+                                0
+                              );
+                              return `${currencySymbol}${(reservationAmount + roomServiceAmount).toFixed(2)}`;
+                            })()}
                           </TableCell>
                           <TableCell>
                             <Button
@@ -975,7 +981,7 @@ export default function Billing() {
                             <div>
                               <div className="font-medium">
                                 {reservation.reservationRooms.length} Room
-                                {reservation.reservationRooms.length > 1
+                                {reservationreservationRooms.length > 1
                                   ? "s"
                                   : ""}
                               </div>
@@ -1010,8 +1016,14 @@ export default function Billing() {
                             {getStatusBadge(reservation.status)}
                           </TableCell>
                           <TableCell className="font-medium">
-                            {currencySymbol}
-                            {parseFloat(reservation.totalAmount).toFixed(2)}
+                            {(() => {
+                              const reservationAmount = parseFloat(reservation.totalAmount);
+                              const roomServiceAmount = getReservationRoomOrders(reservation.id).reduce(
+                                (sum: number, order: any) => sum + parseFloat(order.totalAmount || 0),
+                                0
+                              );
+                              return `${currencySymbol}${(reservationAmount + roomServiceAmount).toFixed(2)}`;
+                            })()}
                           </TableCell>
                           <TableCell>
                             <div className="flex space-x-2">
@@ -1073,7 +1085,7 @@ export default function Billing() {
               Checkout - {selectedReservation?.confirmationNumber}
             </DialogTitle>
           </DialogHeader>
-          
+
           {selectedReservation && (
             <div className="space-y-6">
               {/* Guest Info */}
@@ -1151,7 +1163,7 @@ export default function Billing() {
                           </SelectContent>
                         </Select>
                       </div>
-                      
+
                       <div>
                         <Label htmlFor="notes">Notes (Optional)</Label>
                         <Input
