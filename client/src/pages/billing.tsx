@@ -981,7 +981,7 @@ export default function Billing() {
                             <div>
                               <div className="font-medium">
                                 {reservation.reservationRooms.length} Room
-                                {reservationreservationRooms.length > 1
+                                {reservation.reservationRooms.length > 1
                                   ? "s"
                                   : ""}
                               </div>
