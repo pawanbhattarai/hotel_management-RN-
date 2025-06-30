@@ -90,6 +90,11 @@ export default function Billing() {
     enabled: isAuthenticated,
   });
 
+  const { data: roomOrders } = useQuery({
+    queryKey: ["/api/restaurant/orders/room"],
+    enabled: isAuthenticated,
+  });
+
   const checkoutMutation = useMutation({
     mutationFn: async (data: any) => {
       // Update reservation status to checked-out
@@ -97,6 +102,16 @@ export default function Billing() {
         status: "checked-out",
         paidAmount: data.totalAmount,
       });
+
+      // Mark associated room orders as completed and paid
+      if (data.roomOrderIds && data.roomOrderIds.length > 0) {
+        for (const orderId of data.roomOrderIds) {
+          await apiRequest("PATCH", `/api/restaurant/orders/${orderId}/status`, {
+            status: "completed"
+          });
+        }
+      }
+
       return data;
     },
     onSuccess: (data) => {
@@ -258,6 +273,14 @@ export default function Billing() {
     setIsBillModalOpen(true);
   };
 
+  const getReservationRoomOrders = (reservationId: string) => {
+    if (!roomOrders) return [];
+    return roomOrders.filter((order: any) => 
+      order.reservationId === reservationId && 
+      order.status !== 'cancelled'
+    );
+  };
+
   const handleViewBill = (reservation: any) => {
     setViewingBill(reservation);
   };
@@ -274,30 +297,13 @@ export default function Billing() {
   const handleCheckout = () => {
     if (!selectedReservation) return;
 
-    const roomSubtotal = selectedReservation.reservationRooms.reduce(
-      (sum: number, room: any) => sum + parseFloat(room.totalAmount),
-      0,
-    );
-    const finalDiscountAmount =
-      billData.discountPercentage > 0
-        ? (roomSubtotal * billData.discountPercentage) / 100
-        : billData.discount;
-    const afterDiscount = roomSubtotal - finalDiscountAmount;
-
-    // Calculate taxes dynamically
-    let totalTaxAmount = 0;
-    if (activeTaxes && Array.isArray(activeTaxes) && activeTaxes.length > 0) {
-      activeTaxes.forEach((tax: any) => {
-        const taxAmount = afterDiscount * (parseFloat(tax.rate) / 100);
-        totalTaxAmount += taxAmount;
-      });
-    }
-
-    const finalTotal = afterDiscount + totalTaxAmount;
+    const billPreview = calculateBillPreview();
+    if (!billPreview) return;
 
     checkoutMutation.mutate({
       reservationId: selectedReservation.id,
-      totalAmount: finalTotal,
+      totalAmount: billPreview.totalAmount,
+      roomOrderIds: billPreview.roomOrders.map((order: any) => order.id),
       ...billData,
     });
   };
@@ -326,10 +332,20 @@ export default function Billing() {
   const generateBillHTML = (reservation: any) => {
     if (!reservation || !hotelSettings) return "";
 
-    const subtotal = reservation.reservationRooms.reduce(
+    // Room charges
+    const roomSubtotal = reservation.reservationRooms.reduce(
       (sum: number, room: any) => sum + parseFloat(room.totalAmount),
       0,
     );
+
+    // Room service charges
+    const reservationRoomOrders = getReservationRoomOrders(reservation.id);
+    const roomServiceSubtotal = reservationRoomOrders.reduce(
+      (sum: number, order: any) => sum + parseFloat(order.totalAmount || 0),
+      0,
+    );
+
+    const subtotal = roomSubtotal + roomServiceSubtotal;
 
     const finalDiscountAmount =
       billData.discountPercentage > 0
@@ -536,9 +552,36 @@ export default function Billing() {
           `,
             )
             .join("")}
+          ${reservationRoomOrders.length > 0 ? `
+            <div class="item-row" style="border-top: 1px solid #ccc; margin-top: 5px; padding-top: 5px;">
+              <div class="item-name" colspan="4" style="font-weight: bold; text-align: center;">ROOM SERVICE</div>
+            </div>
+            ${reservationRoomOrders
+              .map(
+                (order: any) => `
+              <div class="item-row">
+                <div class="item-name">${order.orderNumber}</div>
+                <div class="item-nights">${order.items?.length || 0}</div>
+                <div class="item-rate">Items</div>
+                <div class="item-total">${parseFloat(order.totalAmount || 0).toFixed(2)}</div>
+              </div>
+            `,
+              )
+              .join("")}
+          ` : ""}
         </div>
 
         <div class="totals-section">
+          <div class="total-row">
+            <span>Room Charges:</span>
+            <span>${currencySymbol}${roomSubtotal.toFixed(2)}</span>
+          </div>
+          ${roomServiceSubtotal > 0 ? `
+            <div class="total-row">
+              <span>Room Service:</span>
+              <span>${currencySymbol}${roomServiceSubtotal.toFixed(2)}</span>
+            </div>
+          ` : ""}
           <div class="total-row">
             <span>Subtotal:</span>
             <span>${currencySymbol}${subtotal.toFixed(2)}</span>
@@ -668,10 +711,20 @@ export default function Billing() {
   const calculateBillPreview = () => {
     if (!selectedReservation) return null;
 
-    const subtotal = selectedReservation.reservationRooms.reduce(
+    // Room charges
+    const roomSubtotal = selectedReservation.reservationRooms.reduce(
       (sum: number, room: any) => sum + parseFloat(room.totalAmount),
       0,
     );
+
+    // Room service charges
+    const reservationRoomOrders = getReservationRoomOrders(selectedReservation.id);
+    const roomServiceSubtotal = reservationRoomOrders.reduce(
+      (sum: number, order: any) => sum + parseFloat(order.totalAmount || 0),
+      0,
+    );
+
+    const subtotal = roomSubtotal + roomServiceSubtotal;
     const finalDiscountAmount =
       billData.discountPercentage > 0
         ? (subtotal * billData.discountPercentage) / 100
@@ -696,11 +749,14 @@ export default function Billing() {
     const finalTotal = afterDiscount + totalTaxAmount;
 
     return {
+      roomSubtotal,
+      roomServiceSubtotal,
       subtotal,
       discountAmount: finalDiscountAmount,
       taxAmount: totalTaxAmount,
       appliedTaxes,
       totalAmount: finalTotal,
+      roomOrders: reservationRoomOrders,
     };
   };
 
@@ -1022,7 +1078,8 @@ export default function Billing() {
               <div>
                 <h3 className="font-semibold mb-2">Room Details</h3>
                 <Table>
-                  <TableHeader>                    <TableRow>
+                  <TableHeader>
+                    <TableRow>
                       <TableHead>Room</TableHead>
                       <TableHead>Dates</TableHead>
                       <TableHead>Nights</TableHead>
@@ -1061,6 +1118,61 @@ export default function Billing() {
                   </TableBody>
                 </Table>
               </div>
+
+              {/* Room Service Orders */}
+              {billPreview && billPreview.roomOrders && billPreview.roomOrders.length > 0 && (
+                <div>
+                  <h3 className="font-semibold mb-2">Room Service Orders</h3>
+                  <Table>
+                    <TableHeader>
+                      <TableRow>
+                        <TableHead>Order #</TableHead>
+                        <TableHead>Items</TableHead>
+                        <TableHead>Status</TableHead>
+                        <TableHead>Amount</TableHead>
+                      </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                      {billPreview.roomOrders.map((order: any) => (
+                        <TableRow key={order.id}>
+                          <TableCell className="font-mono text-sm">
+                            {order.orderNumber}
+                          </TableCell>
+                          <TableCell>
+                            <div className="text-sm">
+                              {order.items?.length || 0} items
+                              {order.items && order.items.length > 0 && (
+                                <div className="text-xs text-gray-500 mt-1">
+                                  {order.items.slice(0, 2).map((item: any, idx: number) => (
+                                    <span key={idx}>
+                                      {item.dish?.name || 'Unknown'} x{item.quantity}
+                                      {idx < Math.min(1, order.items.length - 1) ? ', ' : ''}
+                                    </span>
+                                  ))}
+                                  {order.items.length > 2 && ` +${order.items.length - 2} more`}
+                                </div>
+                              )}
+                            </div>
+                          </TableCell>
+                          <TableCell>
+                            <Badge variant="outline" className={
+                              order.status === 'completed' ? 'bg-green-50 text-green-700' :
+                              order.status === 'served' ? 'bg-blue-50 text-blue-700' :
+                              'bg-orange-50 text-orange-700'
+                            }>
+                              {order.status}
+                            </Badge>
+                          </TableCell>
+                          <TableCell>
+                            {currencySymbol}
+                            {parseFloat(order.totalAmount || 0).toFixed(2)}
+                          </TableCell>
+                        </TableRow>
+                      ))}
+                    </TableBody>
+                  </Table>
+                </div>
+              )}
 
               {/* Billing Options */}
               
@@ -1297,6 +1409,20 @@ export default function Billing() {
                   <div className="space-y-2 text-sm">
                     <div className="flex justify-between">
                       <span>Room Charges:</span>
+                      <span>
+                        {currencySymbol} {billPreview.roomSubtotal.toFixed(2)}
+                      </span>
+                    </div>
+                    {billPreview.roomServiceSubtotal > 0 && (
+                      <div className="flex justify-between">
+                        <span>Room Service:</span>
+                        <span>
+                          {currencySymbol} {billPreview.roomServiceSubtotal.toFixed(2)}
+                        </span>
+                      </div>
+                    )}
+                    <div className="flex justify-between font-medium border-t pt-2">
+                      <span>Subtotal:</span>
                       <span>
                         {currencySymbol} {billPreview.subtotal.toFixed(2)}
                       </span>
