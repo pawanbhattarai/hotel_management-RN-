@@ -1066,418 +1066,220 @@ export default function Billing() {
 
       {/* Checkout Modal */}
       <Dialog open={isBillModalOpen} onOpenChange={setIsBillModalOpen}>
-        <DialogContent className="max-w-5xl max-h-[95vh] overflow-y-auto bg-gray-50">
-        <DialogHeader className="bg-white rounded-t-lg p-6 -m-6 mb-6 border-b">
-          <DialogTitle className="text-2xl font-bold text-gray-900 flex items-center">
-            <div className="w-10 h-10 bg-green-100 rounded-full flex items-center justify-center mr-3">
-              📄
-            </div>
-            Checkout - {selectedReservation?.confirmationNumber}
-          </DialogTitle><p className="text-gray-600 mt-2">
-            Create a detailed bill for the selected reservation with payment options
-          </p>
-        </DialogHeader>
+        <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle className="text-xl font-bold flex items-center">
+              <CreditCard className="mr-2 h-5 w-5" />
+              Checkout - {selectedReservation?.confirmationNumber}
+            </DialogTitle>
+          </DialogHeader>
+          
           {selectedReservation && (
             <div className="space-y-6">
-              {/* Guest Information */}
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 text-sm">
-                <div>
-                  <span className="font-medium">Guest:</span>{" "}
-                  {selectedReservation.guest.firstName}{" "}
-                  {selectedReservation.guest.lastName}
-                </div>
-                <div>
-                  <span className="font-medium">Email:</span>{" "}
-                  {selectedReservation.guest.email || "N/A"}
-                </div>
-              </div>
-
-              {/* Room Details */}
-              <div>
-                <h3 className="font-semibold mb-2">Room Details</h3>
-                <Table>
-                  <TableHeader>
-                    <TableRow>
-                      <TableHead>Room</TableHead>
-                      <TableHead>Dates</TableHead>
-                      <TableHead>Nights</TableHead>
-                      <TableHead>Rate/Night</TableHead>
-                      <TableHead>Amount</TableHead>
-                    </TableRow>
-                  </TableHeader>
-                  <TableBody>
-                    {selectedReservation.reservationRooms.map(
-                      (room: any, index: number) => (
-                        <TableRow key={index}>
-                          <TableCell>
-                            {room.room.number} ({room.room.roomType.name})
-                          </TableCell>
-                          <TableCell>
-                            {formatDate(room.checkInDate)} -{" "}
-                            {formatDate(room.checkOutDate)}
-                          </TableCell>
-                          <TableCell>
-                            {calculateNights(
-                              room.checkInDate,
-                              room.checkOutDate,
-                            )}
-                          </TableCell>
-                          <TableCell>
-                            {currencySymbol}
-                            {parseFloat(room.ratePerNight).toFixed(2)}
-                          </TableCell>
-                          <TableCell>
-                            {currencySymbol}
-                            {parseFloat(room.totalAmount).toFixed(2)}
-                          </TableCell>
-                        </TableRow>
-                      ),
-                    )}
-                  </TableBody>
-                </Table>
-              </div>
-
-              {/* Room Service Orders */}
-              {billPreview && billPreview.roomOrders && billPreview.roomOrders.length > 0 && (
-                <div>
-                  <h3 className="font-semibold mb-2">Room Service Orders</h3>
-                  <Table>
-                    <TableHeader>
-                      <TableRow>
-                        <TableHead>Order #</TableHead>
-                        <TableHead>Items</TableHead>
-                        <TableHead>Status</TableHead>
-                        <TableHead>Amount</TableHead>
-                      </TableRow>
-                    </TableHeader>
-                    <TableBody>
-                      {billPreview.roomOrders.map((order: any) => (
-                        <TableRow key={order.id}>
-                          <TableCell className="font-mono text-sm">
-                            {order.orderNumber}
-                          </TableCell>
-                          <TableCell>
-                            <div className="text-sm">
-                              {order.items?.length || 0} items
-                              {order.items && order.items.length > 0 && (
-                                <div className="text-xs text-gray-500 mt-1">
-                                  {order.items.slice(0, 2).map((item: any, idx: number) => (
-                                    <span key={idx}>
-                                      {item.dish?.name || 'Unknown'} x{item.quantity}
-                                      {idx < Math.min(1, order.items.length - 1) ? ', ' : ''}
-                                    </span>
-                                  ))}
-                                  {order.items.length > 2 && ` +${order.items.length - 2} more`}
-                                </div>
-                              )}
-                            </div>
-                          </TableCell>
-                          <TableCell>
-                            <Badge variant="outline" className={
-                              order.status === 'completed' ? 'bg-green-50 text-green-700' :
-                              order.status === 'served' ? 'bg-blue-50 text-blue-700' :
-                              'bg-orange-50 text-orange-700'
-                            }>
-                              {order.status}
-                            </Badge>
-                          </TableCell>
-                          <TableCell>
-                            {currencySymbol}
-                            {parseFloat(order.totalAmount || 0).toFixed(2)}
-                          </TableCell>
-                        </TableRow>
-                      ))}
-                    </TableBody>
-                  </Table>
-                </div>
-              )}
-
-              {/* Billing Options */}
-              
-
-<form onSubmit={handleSubmit} className="space-y-8">
-          {/* Main Billing Information */}
-          <div className="bg-white rounded-lg shadow-sm border p-6">
-            <h3 className="text-xl font-semibold text-gray-900 mb-6 flex items-center">
-              <div className="w-8 h-8 bg-blue-100 rounded-full flex items-center justify-center mr-3">
-                💳
-              </div>
-              Payment Information
-            </h3>
-
-            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-              <div className="space-y-4">
-                <div>
-                  <Label htmlFor="paymentMethod" className="text-sm font-medium text-gray-700">
-                    Payment Method *
-                  </Label>
-                  <Select
-                    value={billData.paymentMethod}
-                    onValueChange={(value) =>
-                      setBillData({ ...billData, paymentMethod: value })
-                    }
-                  >
-                    <SelectTrigger className="mt-1">
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="cash">💵 Cash</SelectItem>
-                      <SelectItem value="credit-card">💳 Credit Card</SelectItem>
-                      <SelectItem value="debit-card">💳 Debit Card</SelectItem>
-                      <SelectItem value="mobile-payment">📱 Mobile Payment</SelectItem>
-                      <SelectItem value="bank-transfer">🏦 Bank Transfer</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
-              </div>
-
-              <div className="space-y-4">
-                <div>
-                  <Label htmlFor="notes" className="text-sm font-medium text-gray-700">
-                    Additional Notes
-                  </Label>
-                  <Textarea
-                    id="notes"
-                    value={billData.notes}
-                    onChange={(e) =>
-                      setBillData({ ...billData, notes: e.target.value })
-                    }
-                    placeholder="Any additional notes for this bill..."
-                    rows={3}
-                    className="mt-1 resize-none"
-                  />
-                </div>
-              </div>
-            </div>
-          </div>
-
-          {/* Date Changes Section */}
-          {selectedReservation?.reservationRooms?.length > 0 && (
-            <div className="bg-white rounded-lg shadow-sm border p-6">
-              <div className="flex items-center justify-between mb-6">
-                <h3 className="text-xl font-semibold text-gray-900 flex items-center">
-                  <div className="w-8 h-8 bg-orange-100 rounded-full flex items-center justify-center mr-3">
-                    📅
+              {/* Guest Info */}
+              <div className="bg-gray-50 p-4 rounded-lg">
+                <div className="grid grid-cols-2 gap-4 text-sm">
+                  <div>
+                    <span className="font-medium">Guest:</span> {selectedReservation.guest.firstName} {selectedReservation.guest.lastName}
                   </div>
-                  Room Date Management
-                </h3>
-
-                <div className="flex items-center space-x-3">
-                  <Label htmlFor="dateToggle" className="text-sm font-medium text-gray-700">
-                    Want to change dates?
-                  </Label>
-                  <div 
-                    className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors cursor-pointer ${
-                      showDateChanges ? 'bg-blue-600' : 'bg-gray-300'
-                    }`}
-                    onClick={() => setShowDateChanges(!showDateChanges)}
-                  >
-                    <span
-                      className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${
-                        showDateChanges ? 'translate-x-6' : 'translate-x-1'
-                      }`}
-                    />
+                  <div>
+                    <span className="font-medium">Email:</span> {selectedReservation.guest.email || "N/A"}
                   </div>
                 </div>
               </div>
-
-              {showDateChanges && (
-                <div className="space-y-4 animate-in slide-in-from-top-2 duration-200">
-                  <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 mb-4">
-                    <div className="flex items-center">
-                      <div className="text-blue-600 mr-2">ℹ️</div>
-                      <p className="text-sm text-blue-800">
-                        Adjust check-in and check-out dates if needed. Changes will affect the final billing amount.
-                      </p>
-                    </div>
-                  </div>
-
-                  <div className="grid gap-4">
-                    {selectedReservation.reservationRooms.map((roomReservation: any, index: number) => (
-                      <div key={index} className="border border-gray-200 rounded-lg p-4 bg-gray-50">
-                        <div className="flex items-center justify-between mb-4">
-                          <div className="flex items-center space-x-3">
-                            <div className="w-10 h-10 bg-indigo-100 rounded-lg flex items-center justify-center">
-                              🏨
-                            </div>
-                            <div>
-                              <h4 className="font-medium text-gray-900">
-                                Room {roomReservation.room.number}
-                              </h4>
-                              <p className="text-sm text-gray-600">
-                                {roomReservation.room.roomType.name}
-                              </p>
-                            </div>
-                          </div>
-                          <div className="text-right">
-                            <p className="text-sm text-gray-600">Current Rate</p>
-                            <p className="font-semibold text-gray-900">
-                              Rs.{parseFloat(roomReservation.ratePerNight).toFixed(2)}/night
-                            </p>
-                          </div>
-                        </div>
-
-                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                          <div>
-                            <Label htmlFor={`checkIn-${index}`} className="text-sm font-medium text-gray-700">
-                              Check-in Date
-                            </Label>
-                            <Input
-                              id={`checkIn-${index}`}
-                              type="date"
-                              value={billData.roomDates?.[index]?.checkInDate || roomReservation.checkInDate?.split('T')[0]}
-                              onChange={(e) => {
-                                const newRoomDates = [...(billData.roomDates || [])];
-                                newRoomDates[index] = {
-                                  ...newRoomDates[index],
-                                  roomId: roomReservation.id,
-                                  checkInDate: e.target.value
-                                };
-                                setBillData({
-                                  ...billData,
-                                  roomDates: newRoomDates
-                                });
-                              }}
-                              className="mt-1"
-                            />
-                          </div>
-
-                          <div>
-                            <Label htmlFor={`checkOut-${index}`} className="text-sm font-medium text-gray-700">
-                              Check-out Date
-                            </Label>
-                            <Input
-                              id={`checkOut-${index}`}
-                              type="date"
-                              value={billData.roomDates?.[index]?.checkOutDate || roomReservation.checkOutDate?.split('T')[0]}
-                              min={billData.roomDates?.[index]?.checkInDate || roomReservation.checkInDate?.split('T')[0]}
-                              onChange={(e) => {
-                                const newRoomDates = [...(billData.roomDates || [])];
-                                newRoomDates[index] = {
-                                  ...newRoomDates[index],
-                                  roomId: roomReservation.id,
-                                  checkOutDate: e.target.value
-                                };
-                                setBillData({
-                                  ...billData,
-                                  roomDates: newRoomDates
-                                });
-                              }}
-                              className="mt-1"
-                            />
-                          </div>
-                        </div>
-
-                        {/* Show original dates for reference */}
-                        <div className="mt-3 pt-3 border-t border-gray-200">
-                          <div className="flex items-center justify-between text-xs text-gray-500">
-                            <span>
-                              Original: {new Date(roomReservation.checkInDate).toLocaleDateString()} - {new Date(roomReservation.checkOutDate).toLocaleDateString()}
-                            </span>
-                            <span>
-                              {Math.ceil((new Date(roomReservation.checkOutDate).getTime() - new Date(roomReservation.checkInDate).getTime()) / (1000 * 60 * 60 * 24))} nights
-                            </span>
-                          </div>
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                </div>
-              )}
-            </div>
-          )}
-
-          
-{/* Action Buttons */}
-          <div className="bg-white rounded-lg shadow-sm border p-6">
-            <div className="flex flex-col sm:flex-row justify-end space-y-3 sm:space-y-0 sm:space-x-4">
-              <Button 
-                type="button" 
-                variant="outline" 
-                onClick={onClose}
-                className="w-full sm:w-auto px-6 py-2.5"
-              >
-                Cancel
-              </Button>
-              <Button
-                type="submit"
-                disabled={checkoutMutation.isPending}
-                className="w-full sm:w-auto bg-blue-600 hover:bg-blue-700 text-white px-8 py-2.5 font-medium"
-              >
-                {checkoutMutation.isPending ? (
-                  <div className="flex items-center space-x-2">
-                    <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
-                    <span>Processing...</span>
-                  </div>
-                ) : (
-                  <div className="flex items-center space-x-2">
-                    <span>💰</span>
-                    <span>Generate Bill</span>
-                  </div>
-                )}
-              </Button>
-            </div>
-          </div>
-</form>
 
               {/* Bill Preview */}
               {billPreview && (
-                <div className="bg-white rounded-lg shadow-sm border p-6">
-                  <h3 className="text-xl font-semibold text-gray-900 mb-6 flex items-center">
-                    <div className="w-8 h-8 bg-green-100 rounded-full flex items-center justify-center mr-3">
-                      📄
-                    </div>
-                    Bill Preview
-                  </h3>
-                  <div className="space-y-3">
-                    <div className="flex justify-between items-center py-2 border-b border-gray-100">
-                      <span className="text-gray-600">Room Charges:</span>
-                      <span className="font-semibold text-gray-900">
-                        {currencySymbol}{billPreview.roomSubtotal.toFixed(2)}
-                      </span>
-                    </div>
-                    {billPreview.roomServiceSubtotal > 0 && (
-                      <div className="flex justify-between items-center py-2 border-b border-gray-100">
-                        <span className="text-gray-600">Room Service:</span>
-                        <span className="font-semibold text-gray-900">
-                          {currencySymbol}{billPreview.roomServiceSubtotal.toFixed(2)}
-                        </span>
+                <Card>
+                  <CardHeader>
+                    <CardTitle className="text-lg">Bill Summary</CardTitle>
+                  </CardHeader>
+                  <CardContent>
+                    <div className="space-y-3">
+                      <div className="flex justify-between">
+                        <span>Room Charges:</span>
+                        <span className="font-medium">{currencySymbol}{billPreview.roomSubtotal.toFixed(2)}</span>
                       </div>
-                    )}
-                    <div className="flex justify-between items-center py-2 border-b border-gray-200">
-                      <span className="text-gray-700 font-medium">Subtotal:</span>
-                      <span className="font-semibold text-gray-900">
-                        {currencySymbol}{billPreview.subtotal.toFixed(2)}
-                      </span>
-                    </div>
-                    {billPreview.discountAmount > 0 && (
-                      <div className="flex justify-between items-center py-2 border-b border-gray-100">
-                        <span className="text-green-600">
-                          Discount {billData.discountPercentage > 0 ? `(${billData.discountPercentage}%)` : ""}:
-                        </span>
-                        <span className="font-semibold text-green-600">
-                          -{currencySymbol}{billPreview.discountAmount.toFixed(2)}
-                        </span>
+                      {billPreview.roomServiceSubtotal > 0 && (
+                        <div className="flex justify-between">
+                          <span>Room Service:</span>
+                          <span className="font-medium">{currencySymbol}{billPreview.roomServiceSubtotal.toFixed(2)}</span>
+                        </div>
+                      )}
+                      <div className="flex justify-between border-t pt-2">
+                        <span>Subtotal:</span>
+                        <span className="font-medium">{currencySymbol}{billPreview.subtotal.toFixed(2)}</span>
                       </div>
-                    )}
-                    <div className="flex justify-between items-center py-2 border-b border-gray-100">
-                      <span className="text-gray-600">Tax:</span>
-                      <span className="font-semibold text-gray-900">
-                        {currencySymbol}{billPreview.taxAmount.toFixed(2)}
-                      </span>
+                      <div className="flex justify-between">
+                        <span>Tax:</span>
+                        <span className="font-medium">{currencySymbol}{billPreview.taxAmount.toFixed(2)}</span>
+                      </div>
+                      <div className="flex justify-between text-lg font-bold border-t-2 pt-3">
+                        <span>Total Amount:</span>
+                        <span className="text-green-600">{currencySymbol}{billPreview.totalAmount.toFixed(2)}</span>
+                      </div>
                     </div>
-                    <div className="flex justify-between items-center py-3 border-t-2 border-gray-300 bg-gray-50 rounded-lg px-4">
-                      <span className="text-lg font-bold text-gray-900">Total Amount:</span>
-                      <span className="text-xl font-bold text-blue-600">
-                        {currencySymbol}{billPreview.totalAmount.toFixed(2)}
-                      </span>
-                    </div>
-                  </div>
-                </div>
+                  </CardContent>
+                </Card>
               )}
 
-              {/* Action Buttons */}
-              
+              {/* Payment Method */}
+              <Card>
+                <CardHeader>
+                  <CardTitle className="text-lg">Payment Details</CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <form onSubmit={handleSubmit} className="space-y-4">
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                      <div>
+                        <Label htmlFor="paymentMethod">Payment Method</Label>
+                        <Select
+                          value={billData.paymentMethod}
+                          onValueChange={(value) =>
+                            setBillData({ ...billData, paymentMethod: value })
+                          }
+                        >
+                          <SelectTrigger>
+                            <SelectValue />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="cash">💵 Cash</SelectItem>
+                            <SelectItem value="credit-card">💳 Credit Card</SelectItem>
+                            <SelectItem value="debit-card">💳 Debit Card</SelectItem>
+                            <SelectItem value="mobile-payment">📱 Mobile Payment</SelectItem>
+                            <SelectItem value="bank-transfer">🏦 Bank Transfer</SelectItem>
+                          </SelectContent>
+                        </Select>
+                      </div>
+                      
+                      <div>
+                        <Label htmlFor="notes">Notes (Optional)</Label>
+                        <Input
+                          id="notes"
+                          value={billData.notes}
+                          onChange={(e) =>
+                            setBillData({ ...billData, notes: e.target.value })
+                          }
+                          placeholder="Additional notes..."
+                        />
+                      </div>
+                    </div>
+
+                    {/* Date Changes Toggle */}
+                    <div className="flex items-center space-x-3 pt-4 border-t">
+                      <Label htmlFor="dateToggle">Need to adjust dates?</Label>
+                      <div 
+                        className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors cursor-pointer ${
+                          showDateChanges ? 'bg-blue-600' : 'bg-gray-300'
+                        }`}
+                        onClick={() => setShowDateChanges(!showDateChanges)}
+                      >
+                        <span
+                          className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${
+                            showDateChanges ? 'translate-x-6' : 'translate-x-1'
+                          }`}
+                        />
+                      </div>
+                    </div>
+
+                    {/* Date Changes Section */}
+                    {showDateChanges && (
+                      <div className="space-y-4 pt-4 border-t">
+                        <div className="bg-blue-50 border border-blue-200 rounded p-3">
+                          <p className="text-sm text-blue-800">
+                            ℹ️ Adjust check-in and check-out dates if needed. Changes will affect the final amount.
+                          </p>
+                        </div>
+
+                        <div className="grid gap-4">
+                          {selectedReservation.reservationRooms.map((roomReservation: any, index: number) => (
+                            <div key={index} className="border rounded p-4 bg-gray-50">
+                              <div className="flex justify-between items-center mb-3">
+                                <div>
+                                  <h4 className="font-medium">Room {roomReservation.room.number}</h4>
+                                  <p className="text-sm text-gray-600">{roomReservation.room.roomType.name}</p>
+                                </div>
+                                <div className="text-right text-sm">
+                                  <p className="text-gray-600">Rate</p>
+                                  <p className="font-semibold">{currencySymbol}{parseFloat(roomReservation.ratePerNight).toFixed(2)}/night</p>
+                                </div>
+                              </div>
+
+                              <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                                <div>
+                                  <Label htmlFor={`checkIn-${index}`} className="text-sm">Check-in Date</Label>
+                                  <Input
+                                    id={`checkIn-${index}`}
+                                    type="date"
+                                    value={billData.roomDates?.[index]?.checkInDate || roomReservation.checkInDate?.split('T')[0]}
+                                    onChange={(e) => {
+                                      const newRoomDates = [...(billData.roomDates || [])];
+                                      newRoomDates[index] = {
+                                        ...newRoomDates[index],
+                                        roomId: roomReservation.id,
+                                        checkInDate: e.target.value
+                                      };
+                                      setBillData({ ...billData, roomDates: newRoomDates });
+                                    }}
+                                  />
+                                </div>
+
+                                <div>
+                                  <Label htmlFor={`checkOut-${index}`} className="text-sm">Check-out Date</Label>
+                                  <Input
+                                    id={`checkOut-${index}`}
+                                    type="date"
+                                    value={billData.roomDates?.[index]?.checkOutDate || roomReservation.checkOutDate?.split('T')[0]}
+                                    min={billData.roomDates?.[index]?.checkInDate || roomReservation.checkInDate?.split('T')[0]}
+                                    onChange={(e) => {
+                                      const newRoomDates = [...(billData.roomDates || [])];
+                                      newRoomDates[index] = {
+                                        ...newRoomDates[index],
+                                        roomId: roomReservation.id,
+                                        checkOutDate: e.target.value
+                                      };
+                                      setBillData({ ...billData, roomDates: newRoomDates });
+                                    }}
+                                  />
+                                </div>
+                              </div>
+
+                              <div className="mt-2 pt-2 border-t text-xs text-gray-500">
+                                Original: {new Date(roomReservation.checkInDate).toLocaleDateString()} - {new Date(roomReservation.checkOutDate).toLocaleDateString()}
+                                ({Math.ceil((new Date(roomReservation.checkOutDate).getTime() - new Date(roomReservation.checkInDate).getTime()) / (1000 * 60 * 60 * 24))} nights)
+                              </div>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+
+                    {/* Action Buttons */}
+                    <div className="flex justify-end space-x-3 pt-6 border-t">
+                      <Button type="button" variant="outline" onClick={onClose}>
+                        Cancel
+                      </Button>
+                      <Button
+                        type="submit"
+                        disabled={checkoutMutation.isPending}
+                        className="bg-green-600 hover:bg-green-700"
+                      >
+                        {checkoutMutation.isPending ? (
+                          <div className="flex items-center space-x-2">
+                            <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
+                            <span>Processing...</span>
+                          </div>
+                        ) : (
+                          <div className="flex items-center space-x-2">
+                            <CreditCard className="h-4 w-4" />
+                            <span>Complete Checkout</span>
+                          </div>
+                        )}
+                      </Button>
+                    </div>
+                  </form>
+                </CardContent>
+              </Card>
             </div>
           )}
         </DialogContent>
