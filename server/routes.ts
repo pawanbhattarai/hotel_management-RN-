@@ -3271,6 +3271,55 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
 
 
+  // Room Orders API
+  app.post("/api/restaurant/orders/room", isAuthenticated, async (req: any, res) => {
+    try {
+      const user = await storage.getUser(req.session.user.id);
+      if (!user) return res.status(401).json({ message: "User not found" });
+
+      const { order: orderData, items: itemsData } = createOrderSchema.parse(
+        req.body,
+      );
+
+      if (
+        !checkBranchPermissions(user.role, user.branchId, orderData.branchId)
+      ) {
+        return res
+          .status(403)
+          .json({ message: "Insufficient permissions for this branch" });
+      }
+
+      // Generate order number
+      const orderNumber = `ROD${Date.now().toString().slice(-8)}`;
+      const orderWithNumber = {
+        ...orderData,
+        orderNumber,
+        createdById: user.id,
+        orderType: "room",
+      };
+
+      const order = await restaurantStorage.createRestaurantOrder(
+        orderWithNumber,
+        itemsData,
+      );
+
+      // Broadcast new room order creation
+      wsManager.broadcastDataUpdate(
+        "restaurant-orders",
+        orderData.branchId?.toString(),
+      );
+      wsManager.broadcastDataUpdate(
+        "restaurant-dashboard",
+        orderData.branchId?.toString(),
+      );
+
+      res.status(201).json(order);
+    } catch (error) {
+      console.error("Error creating room order:", error);
+      res.status(500).json({ message: "Failed to create room order" });
+    }
+  });
+
   app.patch(
     "/api/restaurant/orders/:id/status",
     isAuthenticated,
