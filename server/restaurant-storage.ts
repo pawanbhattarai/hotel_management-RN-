@@ -980,7 +980,6 @@ export class RestaurantStorage {
   }
 
   async getActiveTaxes(): Promise<Tax[]> {
-    ```tool_code
     return await db
       .select()
       .from(taxes)
