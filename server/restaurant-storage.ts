@@ -204,66 +204,7 @@ export class RestaurantStorage {
   }
 
   // Restaurant Orders
-  async getRoomOrders(branchId?: number, status?: string): Promise<any[]> {
-    let conditions = [eq(restaurantOrders.orderType, 'room')];
 
-    if (branchId) {
-      conditions.push(eq(restaurantOrders.branchId, branchId));
-    }
-
-    if (status) {
-      conditions.push(eq(restaurantOrders.status, status as any));
-    }
-
-    const orders = await db
-      .select()
-      .from(restaurantOrders)
-      .where(conditions.length > 0 ? and(...conditions) : undefined)
-      .orderBy(desc(restaurantOrders.createdAt));
-
-    const ordersWithDetails = [];
-
-    for (const order of orders) {
-      let reservation = null;
-      let items = [];
-      let guest = null;
-
-      // Get reservation details if reservationId exists
-      if (order.reservationId) {
-        try {
-          const reservationQuery = await db
-            .select()
-            .from(reservations)
-            .leftJoin(guests, eq(reservations.guestId, guests.id))
-            .where(eq(reservations.id, order.reservationId))
-            .limit(1);
-
-          if (reservationQuery.length > 0) {
-            reservation = reservationQuery[0].reservations;
-            guest = reservationQuery[0].guests;
-          }
-        } catch (error) {
-          console.error(`Error fetching reservation for order ${order.id}:`, error);
-        }
-      }
-
-      // Get order items
-      try {
-        items = await this.getRestaurantOrderItems(order.id);
-      } catch (error) {
-        console.error(`Error fetching items for order ${order.id}:`, error);
-      }
-
-      ordersWithDetails.push({
-        ...order,
-        reservation,
-        guest,
-        items,
-      });
-    }
-
-    return ordersWithDetails;
-  }
 
   async getRestaurantOrders(branchId?: number, status?: string): Promise<RestaurantOrder[]> {
     let conditions = [];

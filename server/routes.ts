@@ -3078,7 +3078,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     },
   );
 
-  // Restaurant Orders
+  // Room Orders - Simple implementation
   app.get("/api/restaurant/orders/room", isAuthenticated, async (req: any, res) => {
     try {
       const user = await storage.getUser(req.session.user.id);
@@ -3087,10 +3087,21 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const branchId = user.role === "superadmin" ? undefined : user.branchId!;
       const status = req.query.status as string;
       
-      // Use restaurant storage to get room orders with proper data structure
-      const orders = await restaurantStorage.getRoomOrders(branchId, status);
+      // Get all restaurant orders with room type
+      const orders = await restaurantStorage.getRestaurantOrders(branchId, status);
       
-      res.json(orders);
+      // Filter for room orders only
+      const roomOrders = orders.filter(order => order.orderType === 'room');
+      
+      // Get items for each order
+      const ordersWithItems = await Promise.all(
+        roomOrders.map(async (order) => {
+          const items = await restaurantStorage.getRestaurantOrderItems(order.id);
+          return { ...order, items };
+        })
+      );
+      
+      res.json(ordersWithItems);
     } catch (error) {
       console.error("Error fetching room orders:", error);
       res.status(500).json({ message: "Failed to fetch room orders" });
@@ -3099,105 +3110,30 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   app.post("/api/restaurant/orders/room", isAuthenticated, async (req: any, res) => {
     try {
-      console.log("=== ROOM ORDER API CALLED ===");
-      console.log("Session user:", req.session?.user);
-      
       const user = await storage.getUser(req.session.user.id);
-      if (!user) {
-        console.log("ERROR: User not found in database");
-        return res.status(401).json({ message: "User not found" });
-      }
-      
-      console.log("User found:", { id: user.id, email: user.email, branchId: user.branchId });
-      console.log("Request body:", JSON.stringify(req.body, null, 2));
+      if (!user) return res.status(401).json({ message: "User not found" });
 
       const { order: orderData, items: itemsData } = req.body;
 
-      if (!orderData) {
-        console.log("ERROR: No order data provided");
-        return res.status(400).json({ message: "Order data is required" });
+      if (!orderData || !itemsData || !Array.isArray(itemsData) || itemsData.length === 0) {
+        return res.status(400).json({ message: "Order data and items are required" });
       }
 
-      if (!itemsData || !Array.isArray(itemsData) || itemsData.length === 0) {
-        console.log("ERROR: Invalid items data");
-        return res.status(400).json({ message: "Order items are required and must be an array" });
-      }
-
-      // Set branchId from user if not provided
-      if (!orderData.branchId) {
-        orderData.branchId = user.branchId;
-      }
-
-      if (!checkBranchPermissions(user.role, user.branchId, orderData.branchId)) {
-        console.log("ERROR: Branch permission check failed");
-        return res.status(403).json({ message: "Insufficient permissions for this branch" });
-      }
-
-      // Validate required fields
-      if (!orderData.reservationId) {
-        console.log("ERROR: Missing reservation ID");
-        return res.status(400).json({ message: "Reservation ID is required for room orders" });
-      }
-
-      // Validate each item has required fields
-      for (let i = 0; i < itemsData.length; i++) {
-        const item = itemsData[i];
-        if (!item.dishId || !item.quantity || (!item.unitPrice && item.unitPrice !== 0)) {
-          console.log(`ERROR: Item ${i} missing required fields:`, item);
-          return res.status(400).json({ 
-            message: `Item ${i + 1} must have dishId, quantity, and unitPrice` 
-          });
-        }
-      }
-
-      // Generate order number
+      // Set defaults for room order
       const orderNumber = `RM${Date.now().toString().slice(-8)}`;
+      const branchId = orderData.branchId || user.branchId || 1;
       
-      // Calculate totals from items if not provided
-      let subtotal = parseFloat(orderData.subtotal) || 0;
-      if (subtotal === 0) {
-        subtotal = itemsData.reduce((sum, item) => {
-          return sum + (parseFloat(item.unitPrice) * item.quantity);
-        }, 0);
-      }
-      
-      const taxAmount = parseFloat(orderData.taxAmount) || 0;
-      const totalAmount = parseFloat(orderData.totalAmount) || subtotal + taxAmount;
-
-      const orderWithNumber = {
+      const orderWithDefaults = {
+        ...orderData,
         orderNumber,
-        branchId: orderData.branchId,
-        reservationId: orderData.reservationId,
-        roomId: orderData.roomId || null,
+        branchId,
         orderType: 'room' as any,
-        tableId: null,
-        customerName: orderData.customerName || null,
-        customerPhone: orderData.customerPhone || null,
-        subtotal: subtotal.toString(),
-        taxAmount: taxAmount.toString(),
-        totalAmount: totalAmount.toString(),
-        status: orderData.status || "pending",
-        notes: orderData.notes || null,
         createdById: user.id,
+        tableId: null, // Room orders don't have tables
       };
 
-      console.log("Creating order with data:", JSON.stringify(orderWithNumber, null, 2));
-      console.log("Creating items:", JSON.stringify(itemsData, null, 2));
-
-      // Create room order using restaurant storage
-      const order = await restaurantStorage.createRestaurantOrder(orderWithNumber, itemsData);
-
-      console.log("Order created successfully:", order.id);
-
-      // Broadcast order creation
-      wsManager.broadcastDataUpdate(
-        "restaurant-orders",
-        orderData.branchId?.toString(),
-      );
-      wsManager.broadcastDataUpdate(
-        "room-orders",
-        orderData.branchId?.toString(),
-      );
+      // Create the order
+      const order = await restaurantStorage.createRestaurantOrder(orderWithDefaults, itemsData);
 
       res.status(201).json({
         id: order.id,
@@ -3206,13 +3142,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
       });
     } catch (error) {
       console.error("Error creating room order:", error);
-      console.error("Error stack:", error instanceof Error ? error.stack : "No stack trace");
       res.status(500).json({ 
-        message: "Failed to create room order", 
+        message: "Failed to create room order",
         error: error instanceof Error ? error.message : "Unknown error"
       });
     }
   });
+
+  // Restaurant Orders
 
   app.get("/api/restaurant/orders", isAuthenticated, async (req: any, res) => {
     try {

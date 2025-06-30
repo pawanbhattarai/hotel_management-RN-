@@ -1,990 +1,252 @@
-import React, { useState } from "react";
-import { useQuery, useMutation } from "@tanstack/react-query";
-import {
-  Plus,
-  Eye,
-  FileText,
-  Printer,
-  Minus,
-  Trash2,
-  ShoppingCart,
-  Clock,
-  CheckCircle,
-  Users,
-  Utensils,
-  ArrowLeft,
-  BedDouble,
-} from "lucide-react";
-import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-} from "@/components/ui/dialog";
-import {
-  Form,
-  FormControl,
-  FormField,
-  FormItem,
-  FormLabel,
-  FormMessage,
-} from "@/components/ui/form";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
-import { Badge } from "@/components/ui/badge";
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from "@/components/ui/table";
-import { Input } from "@/components/ui/input";
-import { Textarea } from "@/components/ui/textarea";
-import { useForm } from "react-hook-form";
-import { zodResolver } from "@hookform/resolvers/zod";
-import { z } from "zod";
-import { queryClient } from "@/lib/queryClient";
+import { useState } from "react";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { apiRequest } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
-import Sidebar from "@/components/layout/sidebar";
-import Header from "@/components/layout/header";
-import { useAuth } from "@/hooks/useAuth";
-
-const orderSchema = z.object({
-  reservationId: z.string().min(1, "Reservation is required"),
-  branchId: z.number().min(1, "Branch is required"),
-  items: z
-    .array(
-      z.object({
-        dishId: z.number().min(1, "Dish is required"),
-        quantity: z.number().min(1, "Quantity must be at least 1"),
-        unitPrice: z.string().min(1, "Price is required"),
-        notes: z.string().optional(),
-      }),
-    )
-    .optional(),
-  notes: z.string().optional(),
-});
-
-type OrderFormData = z.infer<typeof orderSchema>;
+import { Button } from "@/components/ui/button";
+import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
+import { Badge } from "@/components/ui/badge";
+import { Utensils, Plus, Clock, User } from "lucide-react";
 
 export default function RoomOrders() {
-  const [selectedReservation, setSelectedReservation] = useState<any>(null);
-  const [selectedItems, setSelectedItems] = useState<any[]>([]);
-  const [originalItems, setOriginalItems] = useState<any[]>([]);
-  const [selectedCategory, setSelectedCategory] = useState<string>("all");
-  const [viewingOrder, setViewingOrder] = useState<any>(null);
-  const [isMobileSidebarOpen, setIsMobileSidebarOpen] = useState(false);
+  const [selectedOrder, setSelectedOrder] = useState<any>(null);
   const { toast } = useToast();
-  const { user } = useAuth();
+  const queryClient = useQueryClient();
 
-  const { data: orders, isLoading: ordersLoading } = useQuery({
+  const { data: orders = [], isLoading: ordersLoading } = useQuery({
     queryKey: ["/api/restaurant/orders/room"],
-    refetchInterval: 2000, // Real-time polling every 2 seconds for immediate updates
+    refetchInterval: 3000,
   });
 
-  const { data: reservations, isLoading: reservationsLoading } = useQuery({
+  const { data: reservations = [] } = useQuery({
     queryKey: ["/api/reservations"],
   });
 
-  const { data: dishes } = useQuery({
-    queryKey: ["/api/restaurant/dishes"],
-  });
-
-  const { data: categories } = useQuery({
-    queryKey: ["/api/restaurant/categories"],
-  });
-
-  const { data: orderTaxes } = useQuery({
-    queryKey: ["/api/taxes/order"],
-  });
-
-  const form = useForm<OrderFormData>({
-    resolver: zodResolver(orderSchema),
-    defaultValues: {
-      reservationId: "",
-      branchId: user?.branchId || 1,
-      items: [],
-      notes: "",
-    },
-  });
-
-  const createOrderMutation = useMutation({
-    mutationFn: async ({ order, items }: { order: any; items: any[] }) => {
-      console.log("Sending API request with:", { order, items });
-
-      const response = await fetch("/api/restaurant/orders/room", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({ order, items }),
-      });
-
-      if (!response.ok) {
-        const errorData = await response.text();
-        console.error("API Error:", response.status, errorData);
-        throw new Error(`Failed to create order: ${response.status} ${errorData}`);
-      }
-
-      const result = await response.json();
-      console.log("API Response:", result);
-      return result;
-    },
-    onSuccess: (data) => {
-      console.log("Order created successfully:", data);
-      toast({
-        title: "Success",
-        description: `Room order ${data.orderNumber || ''} created successfully`,
-      });
-      setSelectedItems([]);
-      setOriginalItems([]);
-      form.reset();
-      queryClient.invalidateQueries({ queryKey: ["/api/restaurant/orders/room"] });
-      queryClient.invalidateQueries({ queryKey: ["/api/restaurant/orders"] });
-    },
-    onError: (error) => {
-      console.error("Error creating order:", error);
-      toast({
-        title: "Error",
-        description: error.message || "Failed to create room order",
-        variant: "destructive",
-      });
-    },
-  });
-
-  const updateStatusMutation = useMutation({
-    mutationFn: async ({ id, status }: { id: string; status: string }) => {
-      const response = await fetch(`/api/restaurant/orders/${id}/status`, {
+  const updateOrderMutation = useMutation({
+    mutationFn: (data: { orderId: string; status: string }) =>
+      apiRequest(`/api/restaurant/orders/${data.orderId}`, {
         method: "PATCH",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ status }),
-      });
-      if (!response.ok) throw new Error("Failed to update status");
-      return response.json();
-    },
+        body: { status: data.status },
+      }),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/restaurant/orders/room"] });
-      queryClient.invalidateQueries({ queryKey: ["/api/restaurant/orders"] });
-      toast({
-        title: "Success",
-        description: "Order status updated successfully",
-      });
+      toast({ title: "Order status updated successfully" });
     },
-    onError: (error: any) => {
-      toast({
-        title: "Error",
-        description: error.message || "Failed to update status",
-        variant: "destructive",
-      });
+    onError: () => {
+      toast({ title: "Failed to update order status", variant: "destructive" });
     },
   });
-
-  const generateKOTMutation = useMutation({
-    mutationFn: async (orderId: string) => {
-      const response = await fetch(`/api/restaurant/orders/${orderId}/kot`, {
-        method: "POST",
-      });
-      if (!response.ok) throw new Error("Failed to generate KOT");
-      return response.json();
-    },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["/api/restaurant/orders/room"] });
-      queryClient.invalidateQueries({ queryKey: ["/api/restaurant/orders"] });
-      toast({
-        title: "Success",
-        description: "KOT generated successfully",
-      });
-    },
-    onError: (error: any) => {
-      toast({
-        title: "Error",
-        description: error.message || "Failed to generate KOT",
-        variant: "destructive",
-      });
-    },
-  });
-
-  const handleSubmitOrder = async (data: OrderFormData) => {
-    console.log("handleSubmitOrder called with data:", data);
-    console.log("selectedItems:", selectedItems);
-    console.log("selectedReservation:", selectedReservation);
-    console.log("user:", user);
-
-    if (selectedItems.length === 0) {
-      console.log("ERROR: No items selected");
-      toast({
-        title: "Error",
-        description: "Please add at least one item to the order",
-        variant: "destructive",
-      });
-      return;
-    }
-
-    if (!selectedReservation) {
-      console.log("ERROR: No reservation selected");
-      toast({
-        title: "Error",
-        description: "No reservation selected",
-        variant: "destructive",
-      });
-      return;
-    }
-
-    // Calculate taxes
-    let taxAmount = 0;
-    const subtotal = getSubtotal();
-    if (orderTaxes && orderTaxes.length > 0) {
-      taxAmount = orderTaxes.reduce((total: number, tax: any) => {
-        return total + (subtotal * parseFloat(tax.rate)) / 100;
-      }, 0);
-    }
-
-    const totalAmount = subtotal + taxAmount;
-
-    const orderData = {
-      reservationId: selectedReservation.id,
-      roomId: selectedReservation.reservationRooms?.[0]?.roomId || null,
-      branchId: user?.branchId || 1,
-      orderType: "room" as const,
-      customerName: `${selectedReservation.guest.firstName} ${selectedReservation.guest.lastName}`,
-      customerPhone: selectedReservation.guest.phone,
-      notes: data.notes || null,
-      subtotal: subtotal.toString(),
-      taxAmount: taxAmount.toString(),
-      totalAmount: totalAmount.toString(),
-      status: "pending" as const,
-    };
-
-    const itemsData = selectedItems.map((item) => ({
-      dishId: item.dishId,
-      quantity: item.quantity,
-      unitPrice: parseFloat(item.unitPrice).toString(),
-      totalPrice: (parseFloat(item.unitPrice) * item.quantity).toString(),
-      specialInstructions: item.notes || null,
-    }));
-
-    console.log("Final order data:", JSON.stringify(orderData, null, 2));
-    console.log("Final items data:", JSON.stringify(itemsData, null, 2));
-    console.log("=== CALLING MUTATION ===");
-
-    try {
-      await createOrderMutation.mutateAsync({ order: orderData, items: itemsData });
-    } catch (error) {
-      console.error("Mutation failed:", error);
-    }
-  };
-
-  const onSubmit = handleSubmitOrder;
-
-  const addItem = (dish: any) => {
-    const existingItem = selectedItems.find((item) => item.dishId === dish.id);
-    if (existingItem) {
-      setSelectedItems(
-        selectedItems.map((item) =>
-          item.dishId === dish.id
-            ? { ...item, quantity: item.quantity + 1 }
-            : item,
-        ),
-      );
-    } else {
-      setSelectedItems([
-        ...selectedItems,
-        {
-          dishId: dish.id,
-          dishName: dish.name,
-          quantity: 1,
-          unitPrice: dish.price,
-          notes: "",
-        },
-      ]);
-    }
-  };
-
-  const removeItem = (dishId: number) => {
-    const existingItem = selectedItems.find((item) => item.dishId === dishId);
-    if (existingItem && existingItem.quantity > 1) {
-      setSelectedItems(
-        selectedItems.map((item) =>
-          item.dishId === dishId
-            ? { ...item, quantity: item.quantity - 1 }
-            : item,
-        ),
-      );
-    } else {
-      setSelectedItems(selectedItems.filter((item) => item.dishId !== dishId));
-    }
-  };
-
-  const getSubtotal = () => {
-    return selectedItems.reduce(
-      (total, item) => total + parseFloat(item.unitPrice) * item.quantity,
-      0,
-    );
-  };
-
-  const getTotal = () => {
-    const subtotal = getSubtotal();
-    let totalTaxAmount = 0;
-    if (orderTaxes) {
-      for (const tax of orderTaxes) {
-        totalTaxAmount += (subtotal * parseFloat(tax.rate)) / 100;
-      }
-    }
-    return subtotal + totalTaxAmount;
-  };
-
-  const getFilteredDishes = () => {
-    const menuDishes = dishes || [];
-
-    // Filter by category if selected
-    if (!selectedCategory || selectedCategory === "all") {
-      return menuDishes;
-    }
-
-    return menuDishes.filter((item: any) => {
-      return item.categoryId === parseInt(selectedCategory);
-    });
-  };
-
-  const getReservationOrder = (reservationId: string) => {
-    return orders?.find(
-      (order: any) =>
-        order.reservation_id === reservationId &&
-        order.status !== "completed" &&
-        order.status !== "cancelled",
-    );
-  };
-
-  const handleReservationClick = (reservation: any) => {
-    setSelectedReservation(reservation);
-    setSelectedItems([]);
-    setOriginalItems([]);
-    setSelectedCategory("all");
-
-    // If reservation has an existing order, load its items
-    const existingOrder = getReservationOrder(reservation.id);
-    if (existingOrder && existingOrder.items) {
-      const orderItems = existingOrder.items.map((item: any) => ({
-        dishId: item.dishId,
-        dishName: item.dish?.name || "Unknown Dish",
-        quantity: item.quantity,
-        unitPrice: item.unitPrice,
-        notes: item.specialInstructions || "",
-      }));
-      setSelectedItems(orderItems);
-      setOriginalItems(JSON.parse(JSON.stringify(orderItems))); // Deep copy for comparison
-    }
-  };
-
-  // Check if order has been modified
-  const hasOrderChanged = () => {
-    if (originalItems.length === 0 && selectedItems.length === 0) return false;
-    if (originalItems.length !== selectedItems.length) return true;
-
-    return JSON.stringify(originalItems) !== JSON.stringify(selectedItems);
-  };
 
   const getStatusColor = (status: string) => {
     switch (status) {
-      case "pending":
-        return "bg-yellow-100 text-yellow-800";
-      case "confirmed":
-        return "bg-blue-100 text-blue-800";
-      case "preparing":
-        return "bg-orange-100 text-orange-800";
-      case "ready":
-        return "bg-green-100 text-green-800";
-      case "served":
-        return "bg-gray-100 text-gray-800";
-      case "completed":
-        return "bg-emerald-100 text-emerald-800";
-      case "cancelled":
-        return "bg-red-100 text-red-800";
-      default:
-        return "bg-gray-100 text-gray-800";
+      case "pending": return "bg-yellow-100 text-yellow-800";
+      case "confirmed": return "bg-blue-100 text-blue-800";
+      case "preparing": return "bg-orange-100 text-orange-800";
+      case "ready": return "bg-green-100 text-green-800";
+      case "served": return "bg-gray-100 text-gray-800";
+      case "completed": return "bg-green-200 text-green-900";
+      case "cancelled": return "bg-red-100 text-red-800";
+      default: return "bg-gray-100 text-gray-800";
     }
   };
 
-  if (reservationsLoading) {
+  const getCheckedInReservations = () => {
+    return reservations.filter((res: any) => res.status === "checked-in");
+  };
+
+  if (ordersLoading) {
     return (
-      <div className="min-h-screen bg-gray-50">
-        <Sidebar
-          isMobileMenuOpen={isMobileSidebarOpen}
-          setIsMobileMenuOpen={setIsMobileSidebarOpen}
-        />
-        <div className="main-content">
-          <Header
-            title="Room Orders"
-            subtitle="Manage reservation orders"
-            onMobileMenuToggle={() =>
-              setIsMobileSidebarOpen(!isMobileSidebarOpen)
-            }
-          />
-          <main className="p-6">
-            <div className="flex items-center justify-center py-12">
-              <div className="animate-spin rounded-full h-10 w-10 border-4 border-blue-500 border-t-transparent"></div>
-            </div>
-          </main>
+      <div className="p-6">
+        <div className="animate-pulse space-y-4">
+          <div className="h-8 bg-gray-200 rounded w-1/4"></div>
+          <div className="h-32 bg-gray-200 rounded"></div>
+          <div className="h-32 bg-gray-200 rounded"></div>
         </div>
       </div>
     );
   }
 
-  // Show order interface for selected reservation
-  if (selectedReservation) {
-    const existingOrder = getReservationOrder(selectedReservation.id);
+  return (
+    <div className="p-6 max-w-7xl mx-auto">
+      <div className="flex justify-between items-center mb-6">
+        <div className="flex items-center gap-2">
+          <Utensils className="h-6 w-6" />
+          <h1 className="text-2xl font-bold">Room Orders</h1>
+        </div>
+        <Button className="flex items-center gap-2">
+          <Plus className="h-4 w-4" />
+          New Room Order
+        </Button>
+      </div>
 
-    return (
-      <div className="min-h-screen bg-gray-50">
-        <Sidebar
-          isMobileMenuOpen={isMobileSidebarOpen}
-          setIsMobileMenuOpen={setIsMobileSidebarOpen}
-        />
-        <div className="main-content">
-          <Header
-            title={`${selectedReservation.guest.firstName} ${selectedReservation.guest.lastName} - Reservation Order`}
-            subtitle={
-              existingOrder
-                ? `Managing order for ${selectedReservation.reservationRooms?.length || 0} room(s) - Add more items`
-                : `Create order for ${selectedReservation.reservationRooms?.length || 0} room(s) in this reservation`
-            }
-            onMobileMenuToggle={() =>
-              setIsMobileSidebarOpen(!isMobileSidebarOpen)
-            }
-          />
-          <main className="p-6">
-            {/* Back Button */}
-            <div className="mb-6">
-              <Button
-                variant="outline"
-                onClick={() => setSelectedReservation(null)}
-                className="mb-4"
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        {/* Orders List */}
+        <div className="space-y-4">
+          <h2 className="text-lg font-semibold">Active Orders ({orders.length})</h2>
+          
+          {orders.length === 0 ? (
+            <Card>
+              <CardContent className="p-6 text-center text-gray-500">
+                <Utensils className="h-12 w-12 mx-auto mb-4 text-gray-300" />
+                <p>No room orders found</p>
+                <p className="text-sm">Orders will appear here when guests place them</p>
+              </CardContent>
+            </Card>
+          ) : (
+            orders.map((order: any) => (
+              <Card 
+                key={order.id} 
+                className={`cursor-pointer transition-colors ${
+                  selectedOrder?.id === order.id ? "border-primary" : ""
+                }`}
+                onClick={() => setSelectedOrder(order)}
               >
-                <ArrowLeft className="h-4 w-4 mr-2" />
-                Back to Reservations
-              </Button>
-
-              {/* Reservation Details */}
-              <Card className="mb-6 border-l-4 border-l-blue-500">
-                <CardContent className="p-4">
-                  <div className="flex items-center justify-between mb-4">
+                <CardHeader className="pb-3">
+                  <div className="flex justify-between items-start">
                     <div>
-                      <h3 className="font-semibold">
-                        Reservation Details
-                      </h3>
-                      <p className="text-sm text-gray-600">
-                        ID: {selectedReservation.id.split('-')[0]}... | Status: {selectedReservation.status}
-                      </p>
+                      <CardTitle className="text-lg">{order.orderNumber}</CardTitle>
+                      <div className="flex items-center gap-2 text-sm text-gray-600 mt-1">
+                        <User className="h-4 w-4" />
+                        {order.customerName || "Guest"}
+                        {order.roomId && <span>• Room {order.roomId}</span>}
+                      </div>
                     </div>
-                    <Badge className="bg-blue-100 text-blue-800">
-                      {selectedReservation.reservationRooms?.length || 0} Room(s)
+                    <Badge className={getStatusColor(order.status)}>
+                      {order.status.charAt(0).toUpperCase() + order.status.slice(1)}
                     </Badge>
                   </div>
-
-                  {/* Room Details */}
-                  <div className="space-y-2">
-                    <h4 className="text-sm font-medium text-gray-700">Rooms in this reservation:</h4>
-                    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2">
-                      {selectedReservation.reservationRooms?.map((roomRes: any, idx: number) => (
-                        <div key={idx} className="bg-gray-50 p-2 rounded text-sm">
-                          <span className="font-medium">Room {roomRes.room?.number}</span>
-                          <span className="text-gray-600 ml-1">({roomRes.room?.roomType?.name})</span>
-                          <div className="text-xs text-gray-500">
-                            {roomRes.adults || 0} adults, {roomRes.children || 0} children
-                          </div>
-                        </div>
-                      ))}
+                </CardHeader>
+                <CardContent className="pt-0">
+                  <div className="flex justify-between items-center text-sm">
+                    <div className="flex items-center gap-1 text-gray-600">
+                      <Clock className="h-4 w-4" />
+                      {new Date(order.createdAt).toLocaleTimeString()}
+                    </div>
+                    <div className="font-semibold">
+                      ${order.totalAmount}
                     </div>
                   </div>
+                  {order.items && (
+                    <div className="mt-2 text-sm text-gray-600">
+                      {order.items.length} item{order.items.length !== 1 ? 's' : ''}
+                    </div>
+                  )}
                 </CardContent>
               </Card>
-
-              {existingOrder && (
-                <Card className="mb-6 border-l-4 border-l-orange-500">
-                  <CardContent className="p-4">
-                    <div className="flex items-center justify-between">
-                      <div>
-                        <h3 className="font-semibold">
-                          Existing Order #{existingOrder.orderNumber}
-                        </h3>
-                        <p className="text-sm text-gray-600">
-                          Status:{" "}
-                          <Badge
-                            className={getStatusColor(existingOrder.status)}
-                          >
-                            {existingOrder.status}
-                          </Badge>
-                        </p>
-                        <p className="text-sm text-gray-600">
-                          Total: Rs. {existingOrder.totalAmount}
-                        </p>
-                      </div>
-                      <div className="flex flex-wrap gap-2">
-                        <Button
-                          variant="outline"
-                          size="sm"
-                          onClick={() => setViewingOrder(existingOrder)}
-                        >
-                          <Eye className="h-4 w-4 mr-1" />
-                          View
-                        </Button>
-                        <Button
-                          variant="outline"
-                          size="sm"
-                          onClick={() => generateKOTMutation.mutate(existingOrder.id)}
-                          disabled={generateKOTMutation.isPending}
-                          className="bg-orange-50 hover:bg-orange-100 text-orange-700 border-orange-200"
-                        >
-                          <FileText className="h-4 w-4 mr-1" />
-                          {generateKOTMutation.isPending ? "Generating..." : "Generate KOT"}
-                        </Button>
-                        <Select
-                          value={existingOrder.status}
-                          onValueChange={(status) =>
-                            updateStatusMutation.mutate({
-                              id: existingOrder.id,
-                              status,
-                            })
-                          }
-                        >
-                          <SelectTrigger className="w-32">
-                            <SelectValue />
-                          </SelectTrigger>
-                          <SelectContent>
-                            <SelectItem value="pending">Pending</SelectItem>
-                            <SelectItem value="confirmed">Confirmed</SelectItem>
-                            <SelectItem value="preparing">Preparing</SelectItem>
-                            <SelectItem value="ready">Ready</SelectItem>
-                            <SelectItem value="served">Served</SelectItem>
-                            <SelectItem value="completed">Completed</SelectItem>
-                            <SelectItem value="cancelled">Cancelled</SelectItem>
-                          </SelectContent>
-                        </Select>
-                      </div>
-                    </div>
-                  </CardContent>
-                </Card>
-              )}
-            </div>
-
-            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-              {/* Menu Items */}
-              <div className="space-y-6">
-                <Card>
-                  <CardHeader>
-                    <CardTitle className="flex items-center">
-                      <Utensils className="h-5 w-5 mr-2" />
-                      Menu Items
-                    </CardTitle>
-                  </CardHeader>
-                  <CardContent>
-                    {/* Category Filter */}
-                    <div className="mb-4">
-                      <Select
-                        value={selectedCategory}
-                        onValueChange={setSelectedCategory}
-                      >
-                        <SelectTrigger>
-                          <SelectValue placeholder="Select Category" />
-                        </SelectTrigger>
-                        <SelectContent>
-                          <SelectItem value="all">All Categories</SelectItem>
-                          {categories?.map((category: any) => (
-                            <SelectItem
-                              key={category.id}
-                              value={category.id.toString()}
-                            >
-                              {category.name}
-                            </SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
-                    </div>
-
-                    {/* Menu Grid */}
-                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 max-h-96 overflow-y-auto">
-                      {getFilteredDishes()?.map((dish: any) => (
-                        <Card
-                          key={dish.id}
-                          className="cursor-pointer hover:shadow-md transition-shadow"
-                          onClick={() => addItem(dish)}
-                        >
-                          <CardContent className="p-4">
-                            <h4 className="font-medium text-sm mb-1">
-                              {dish.name}
-                            </h4>
-                            <p className="text-xs text-gray-500 mb-2">
-                              {dish.description}
-                            </p>
-                            <p className="font-bold text-green-600">
-                              Rs. {parseFloat(dish.price).toFixed(2)}
-                            </p>
-                          </CardContent>
-                        </Card>
-                      ))}
-                    </div>
-                  </CardContent>
-                </Card>
-              </div>
-
-              {/* Order Summary */}
-              <div className="space-y-6">
-                <Card>
-                  <CardHeader>
-                    <CardTitle className="flex items-center">
-                      <ShoppingCart className="h-5 w-5 mr-2" />
-                      Order Summary
-                    </CardTitle>
-                  </CardHeader>
-                  <CardContent>
-                    {selectedItems.length === 0 ? (
-                      <p className="text-gray-500 text-center py-8">
-                        No items selected
-                      </p>
-                    ) : (
-                      <>
-                        <div className="space-y-3 mb-4 max-h-60 overflow-y-auto">
-                          {selectedItems.map((item, index) => (
-                            <div
-                              key={index}
-                              className="flex items-center justify-between p-3 bg-gray-50 rounded-lg"
-                            >
-                              <div className="flex-1">
-                                <h4 className="font-medium text-sm">
-                                  {item.dishName}
-                                </h4>
-                                <p className="text-xs text-gray-500">
-                                  Rs. {parseFloat(item.unitPrice).toFixed(2)} each
-                                </p>
-                              </div>
-                              <div className="flex items-center space-x-2">
-                                <Button
-                                  variant="outline"
-                                  size="sm"
-                                  onClick={() => removeItem(item.dishId)}
-                                  className="h-8 w-8 p-0"
-                                >
-                                  <Minus className="h-4 w-4" />
-                                </Button>
-                                <span className="font-medium min-w-[2rem] text-center">
-                                  {item.quantity}
-                                </span>
-                                <Button
-                                  variant="outline"
-                                  size="sm"
-                                  onClick={() => addItem({ id: item.dishId, name: item.dishName, price: item.unitPrice })}
-                                  className="h-8 w-8 p-0"
-                                >
-                                  <Plus className="h-4 w-4" />
-                                </Button>
-                              </div>
-                              <div className="text-right ml-4">
-                                <p className="font-bold">
-                                  Rs.{" "}
-                                  {(
-                                    parseFloat(item.unitPrice) * item.quantity
-                                  ).toFixed(2)}
-                                </p>
-                              </div>
-                            </div>
-                          ))}
-                        </div>
-
-                        {/* Order Total */}
-                        <div className="border-t pt-4 space-y-2">
-                          <div className="flex justify-between">
-                            <span>Subtotal:</span>
-                            <span>Rs. {getSubtotal().toFixed(2)}</span>
-                          </div>
-                          {orderTaxes?.map((tax: any) => (
-                            <div key={tax.id} className="flex justify-between text-sm">
-                              <span>{tax.name} ({tax.rate}%):</span>
-                              <span>
-                                Rs.{" "}
-                                {((getSubtotal() * parseFloat(tax.rate)) / 100).toFixed(2)}
-                              </span>
-                            </div>
-                          ))}
-                          <div className="flex justify-between font-bold text-lg border-t pt-2">
-                            <span>Total:</span>
-                            <span>Rs. {getTotal().toFixed(2)}</span>
-                          </div>
-                        </div>
-
-                        <Form {...form}>
-                          <form
-                            onSubmit={form.handleSubmit(handleSubmitOrder)}
-                            className="mt-4 space-y-4"
-                          >
-                            <FormField
-                              control={form.control}
-                              name="notes"
-                              render={({ field }) => (
-                                <FormItem>
-                                  <FormLabel>Order Notes</FormLabel>
-                                  <FormControl>
-                                    <Textarea
-                                      {...field}
-                                      placeholder="Special instructions..."
-                                      className="h-20"
-                                    />
-                                  </FormControl>
-                                  <FormMessage />
-                                </FormItem>
-                              )}
-                            />
-                            <Button
-                              type="submit"
-                              className="w-full"
-                              disabled={
-                                createOrderMutation.isPending ||
-                                selectedItems.length === 0 ||
-                                (getReservationOrder(selectedReservation?.id) &&
-                                  !hasOrderChanged())
-                              }
-                            >
-                              {createOrderMutation.isPending ? (
-                                <div className="flex items-center">
-                                  <div className="animate-spin rounded-full h-4 w-4 border-2 border-white border-t-transparent mr-2"></div>
-                                  {getReservationOrder(selectedReservation?.id)
-                                    ? "Updating..."
-                                    : "Creating..."}
-                                </div>
-                              ) : getReservationOrder(selectedReservation?.id) ? (
-                                "Add Items to Order"
-                              ) : (
-                                "Create Order"
-                              )}
-                            </Button>
-                          </form>
-                        </Form>
-                      </>
-                    )}
-                  </CardContent>
-                </Card>
-              </div>
-            </div>
-          </main>
-        </div>
-      </div>
-    );
-  }
-
-  // Show reservations grid (like tables grid but for reservations)
-  return (
-    <div className="min-h-screen bg-gray-50">
-      <Sidebar
-        isMobileMenuOpen={isMobileSidebarOpen}
-        setIsMobileMenuOpen={setIsMobileSidebarOpen}
-      />
-      <div className="main-content">
-        <Header
-          title="Reservation Orders"
-          subtitle="Click on a reservation to manage food orders for all rooms"
-          onMobileMenuToggle={() =>
-            setIsMobileSidebarOpen(!isMobileSidebarOpen)
-          }
-        />
-        <main className="p-6">
-          {/* Reservations Grid */}
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
-            {reservations?.filter((reservation: any) => 
-              reservation.status === 'checked-in' || reservation.status === 'confirmed'
-            )?.map((reservation: any) => {
-              const reservationOrder = getReservationOrder(reservation.id);
-              const hasOrder = !!reservationOrder;
-
-              return (
-                <Card
-                  key={reservation.id}
-                  className={`cursor-pointer transition-all hover:shadow-lg ${
-                    hasOrder
-                      ? "border-l-4 border-l-orange-500 bg-orange-50"
-                      : "border-l-4 border-l-green-500 bg-green-50"
-                  }`}
-                  onClick={() => handleReservationClick(reservation)}
-                >
-                  <CardContent className="p-6">
-                    <div className="flex items-center justify-between mb-4">
-                      <div className="flex items-center space-x-2">
-                        <BedDouble
-                          className={`h-5 w-5 ${hasOrder ? "text-orange-600" : "text-green-600"}`}
-                        />
-                        <span className="font-semibold">
-                          {reservation.guest.firstName} {reservation.guest.lastName}
-                        </span>
-                      </div>
-                      <Badge
-                        className={hasOrder ? "bg-orange-100 text-orange-800" : "bg-green-100 text-green-800"}
-                      >
-                        {hasOrder ? "Has Order" : "Available"}
-                      </Badge>
-                    </div>
-
-                    <div className="space-y-2 text-sm">
-                      <div className="flex justify-between">
-                        <span className="text-gray-600">Reservation ID:</span>
-                        <span className="font-medium text-xs">
-                          {reservation.id.split('-')[0]}...
-                        </span>
-                      </div>
-                      <div className="flex justify-between">
-                        <span className="text-gray-600">Rooms:</span>
-                        <div className="text-right">
-                          <span className="font-medium">
-                            {reservation.reservationRooms?.length || 0} room(s)
-                          </span>
-                          <div className="text-xs text-gray-500">
-                            {reservation.reservationRooms?.map((rr: any, idx: number) => (
-                              <span key={idx}>
-                                {rr.room?.number}
-                                {idx < (reservation.reservationRooms?.length - 1) ? ', ' : ''}
-                              </span>
-                            ))}
-                          </div>
-                        </div>
-                      </div>
-                      <div className="flex justify-between">
-                        <span className="text-gray-600">Status:</span>
-                        <span className="font-medium capitalize">
-                          {reservation.status}
-                        </span>
-                      </div>
-                      <div className="flex justify-between">
-                        <span className="text-gray-600">Phone:</span>
-                        <span className="font-medium">
-                          {reservation.guest.phone}
-                        </span>
-                      </div>
-                      {hasOrder && (
-                        <>
-                          <div className="flex justify-between">
-                            <span className="text-gray-600">Order #:</span>
-                            <span className="font-medium">
-                              {reservationOrder.orderNumber}
-                            </span>
-                          </div>
-                          <div className="flex justify-between">
-                            <span className="text-gray-600">Order Status:</span>
-                            <Badge className={getStatusColor(reservationOrder.status)}>
-                              {reservationOrder.status}
-                            </Badge>
-                          </div>
-                          <div className="flex justify-between">
-                            <span className="text-gray-600">Total:</span>
-                            <span className="font-bold text-green-600">
-                              Rs. {reservationOrder.totalAmount}
-                            </span>
-                          </div>
-                        </>
-                      )}
-                    </div>
-
-                    <div className="mt-4 pt-4 border-t flex justify-between items-center">
-                      <span className="text-xs text-gray-500">
-                        Click to {hasOrder ? "manage order" : "create order"}
-                      </span>
-                      <div className="flex items-center space-x-1">
-                        <Users className="h-4 w-4 text-gray-400" />
-                        <span className="text-xs text-gray-500">
-                          {reservation.reservationRooms?.reduce((total: number, room: any) => 
-                            total + (room.adults || 0) + (room.children || 0), 0) || 0} guests
-                        </span>
-                      </div>
-                    </div>
-                  </CardContent>
-                </Card>
-              );
-            })}
-          </div>
-
-          {(!reservations || reservations.filter((r: any) => 
-            r.status === 'checked-in' || r.status === 'confirmed'
-          ).length === 0) && (
-            <div className="text-center py-12">
-              <BedDouble className="h-12 w-12 text-gray-400 mx-auto mb-4" />
-              <h3 className="text-lg font-medium text-gray-900 mb-2">
-                No Active Reservations
-              </h3>
-              <p className="text-gray-500">
-                No confirmed or checked-in reservations available for room orders.
-              </p>
-            </div>
+            ))
           )}
-        </main>
-      </div>
+        </div>
 
-      {/* Order View Dialog */}
-      {viewingOrder && (
-        <Dialog open={!!viewingOrder} onOpenChange={() => setViewingOrder(null)}>
-          <DialogContent className="max-w-2xl">            <DialogHeader>
-              <DialogTitle>Order #{viewingOrder.orderNumber}</DialogTitle>
-            </DialogHeader>
-            <div className="space-y-4">
-              <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <label className="text-sm font-medium text-gray-500">Customer</label>
-                  <p>{viewingOrder.customerName}</p>
-                </div>
-                <div>
-                  <label className="text-sm font-medium text-gray-500">Phone</label>
-                  <p>{viewingOrder.customerPhone}</p>
-                </div>
-                <div>
-                  <label className="text-sm font-medium text-gray-500">Status</label>
-                  <Badge className={getStatusColor(viewingOrder.status)}>
-                    {viewingOrder.status}
+        {/* Order Details */}
+        <div>
+          <h2 className="text-lg font-semibold mb-4">Order Details</h2>
+          
+          {selectedOrder ? (
+            <Card>
+              <CardHeader>
+                <div className="flex justify-between items-start">
+                  <div>
+                    <CardTitle>{selectedOrder.orderNumber}</CardTitle>
+                    <p className="text-sm text-gray-600 mt-1">
+                      {selectedOrder.customerName || "Guest"} • {new Date(selectedOrder.createdAt).toLocaleString()}
+                    </p>
+                  </div>
+                  <Badge className={getStatusColor(selectedOrder.status)}>
+                    {selectedOrder.status.charAt(0).toUpperCase() + selectedOrder.status.slice(1)}
                   </Badge>
                 </div>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                {/* Order Items */}
                 <div>
-                  <label className="text-sm font-medium text-gray-500">Total</label>
-                  <p className="font-bold">Rs. {viewingOrder.totalAmount}</p>
+                  <h3 className="font-medium mb-2">Items</h3>
+                  <div className="space-y-2">
+                    {selectedOrder.items?.map((item: any) => (
+                      <div key={item.id} className="flex justify-between items-center p-2 bg-gray-50 rounded">
+                        <div>
+                          <div className="font-medium">{item.dish?.name || `Item ${item.dishId}`}</div>
+                          <div className="text-sm text-gray-600">Qty: {item.quantity}</div>
+                          {item.specialInstructions && (
+                            <div className="text-sm text-gray-600 italic">{item.specialInstructions}</div>
+                          )}
+                        </div>
+                        <div className="text-right">
+                          <div className="font-medium">${item.totalPrice}</div>
+                          <div className="text-sm text-gray-600">${item.unitPrice} each</div>
+                        </div>
+                      </div>
+                    )) || <p className="text-gray-500">No items found</p>}
+                  </div>
                 </div>
-              </div>
 
-              {viewingOrder.notes && (
-                <div>
-                  <label className="text-sm font-medium text-gray-500">Notes</label>
-                  <p>{viewingOrder.notes}</p>
+                {/* Order Total */}
+                <div className="border-t pt-4">
+                  <div className="flex justify-between items-center font-semibold">
+                    <span>Total</span>
+                    <span>${selectedOrder.totalAmount}</span>
+                  </div>
                 </div>
-              )}
 
-              <div>
-                <label className="text-sm font-medium text-gray-500">Items</label>
-                <Table>
-                  <TableHeader>
-                    <TableRow>
-                      <TableHead>Item</TableHead>
-                      <TableHead>Qty</TableHead>
-                      <TableHead>Price</TableHead>
-                      <TableHead>Total</TableHead>
-                    </TableRow>
-                  </TableHeader>
-                  <TableBody>
-                    {viewingOrder.items?.map((item: any, index: number) => (
-                      <TableRow key={index}>
-                        <TableCell>{item.dish?.name || 'Unknown Item'}</TableCell>
-                        <TableCell>{item.quantity}</TableCell>
-                        <TableCell>Rs. {parseFloat(item.unitPrice).toFixed(2)}</TableCell>
-                        <TableCell>Rs. {parseFloat(item.totalPrice).toFixed(2)}</TableCell>
-                      </TableRow>
+                {/* Status Actions */}
+                <div className="border-t pt-4">
+                  <h3 className="font-medium mb-2">Update Status</h3>
+                  <div className="flex flex-wrap gap-2">
+                    {["pending", "confirmed", "preparing", "ready", "served", "completed"].map((status) => (
+                      <Button
+                        key={status}
+                        variant={selectedOrder.status === status ? "default" : "outline"}
+                        size="sm"
+                        onClick={() => updateOrderMutation.mutate({ 
+                          orderId: selectedOrder.id, 
+                          status 
+                        })}
+                        disabled={updateOrderMutation.isPending}
+                      >
+                        {status.charAt(0).toUpperCase() + status.slice(1)}
+                      </Button>
                     ))}
-                  </TableBody>
-                </Table>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+          ) : (
+            <Card>
+              <CardContent className="p-6 text-center text-gray-500">
+                <p>Select an order to view details</p>
+              </CardContent>
+            </Card>
+          )}
+        </div>
+      </div>
+
+      {/* Available Reservations Info */}
+      <div className="mt-8">
+        <Card>
+          <CardHeader>
+            <CardTitle className="text-lg">Available Reservations for Room Orders</CardTitle>
+          </CardHeader>
+          <CardContent>
+            {getCheckedInReservations().length === 0 ? (
+              <p className="text-gray-500">No checked-in guests available for room orders</p>
+            ) : (
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                {getCheckedInReservations().map((reservation: any) => (
+                  <div key={reservation.id} className="p-3 border rounded-lg">
+                    <div className="font-medium">
+                      {reservation.guest?.firstName} {reservation.guest?.lastName}
+                    </div>
+                    <div className="text-sm text-gray-600">
+                      Room: {reservation.reservationRooms?.[0]?.room?.number}
+                    </div>
+                    <div className="text-sm text-gray-600">
+                      {reservation.confirmationNumber}
+                    </div>
+                  </div>
+                ))}
               </div>
-            </div>
-          </DialogContent>
-        </Dialog>
-      )}
+            )}
+          </CardContent>
+        </Card>
+      </div>
     </div>
   );
 }
