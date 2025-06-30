@@ -1,3 +1,4 @@
+
 import React, { useState } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import {
@@ -109,6 +110,12 @@ export default function RoomOrders() {
   const { data: branches } = useQuery({
     queryKey: ["/api/branches"],
   });
+
+  // Get currency from settings or default to Rs.
+  const { data: settings } = useQuery({
+    queryKey: ["/api/settings"],
+  });
+  const currencySymbol = settings?.currency || "Rs.";
 
   const createOrderMutation = useMutation({
     mutationFn: async (data: { order: any; items: any[] }) => {
@@ -417,6 +424,27 @@ export default function RoomOrders() {
     (reservation: any) => reservation.status === "checked-in"
   ) || [];
 
+  const handleReservationClick = (reservation: any) => {
+    setSelectedReservation(reservation);
+    setSelectedItems([]);
+    setOriginalItems([]);
+    setSelectedCategory("all");
+
+    // If reservation has an existing order, load its items
+    const existingOrder = getReservationOrder(reservation.id);
+    if (existingOrder && existingOrder.items) {
+      const orderItems = existingOrder.items.map((item: any) => ({
+        dishId: item.dishId,
+        dishName: item.dish?.name || "Unknown Dish",
+        quantity: item.quantity,
+        unitPrice: item.unitPrice,
+        notes: item.specialInstructions || "",
+      }));
+      setSelectedItems(orderItems);
+      setOriginalItems(JSON.parse(JSON.stringify(orderItems))); // Deep copy for comparison
+    }
+  };
+
   if (reservationsLoading) {
     return (
       <div className="min-h-screen bg-gray-50">
@@ -461,6 +489,7 @@ export default function RoomOrders() {
             }
           />
           <main className="p-6">
+            {/* Back Button */}
             <div className="mb-6">
               <Button
                 variant="outline"
@@ -469,32 +498,93 @@ export default function RoomOrders() {
                   setSelectedItems([]);
                   setOriginalItems([]);
                 }}
-                className="flex items-center gap-2"
+                className="mb-4"
               >
-                <ArrowLeft className="h-4 w-4" />
+                <ArrowLeft className="h-4 w-4 mr-2" />
                 Back to Reservations
               </Button>
+
+              {existingOrder && (
+                <Card className="mb-6 border-l-4 border-l-blue-500">
+                  <CardContent className="p-4">
+                    <div className="flex items-center justify-between">
+                      <div>
+                        <h3 className="font-semibold">
+                          Existing Order #{existingOrder.orderNumber}
+                        </h3>
+                        <p className="text-sm text-gray-600">
+                          Status:{" "}
+                          <Badge
+                            className={getStatusColor(existingOrder.status)}
+                          >
+                            {existingOrder.status}
+                          </Badge>
+                        </p>
+                        <p className="text-sm text-gray-600">
+                          Total: {currencySymbol} {existingOrder.totalAmount}
+                        </p>
+                      </div>
+                      <div className="flex flex-wrap gap-2">
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() => setViewingOrder(existingOrder)}
+                        >
+                          <Eye className="h-4 w-4 mr-1" />
+                          View
+                        </Button>
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() => generateKOTMutation.mutate(existingOrder.id)}
+                          disabled={generateKOTMutation.isPending}
+                          className="bg-orange-50 hover:bg-orange-100 text-orange-700 border-orange-200"
+                        >
+                          <FileText className="h-4 w-4 mr-1" />
+                          {generateKOTMutation.isPending ? "Generating..." : "Generate KOT"}
+                        </Button>
+                        <Select
+                          value={existingOrder.status}
+                          onValueChange={(status) =>
+                            updateStatusMutation.mutate({
+                              id: existingOrder.id,
+                              status,
+                            })
+                          }
+                        >
+                          <SelectTrigger className="w-32">
+                            <SelectValue />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="pending">Pending</SelectItem>
+                            <SelectItem value="confirmed">Confirmed</SelectItem>
+                            <SelectItem value="preparing">Preparing</SelectItem>
+                            <SelectItem value="ready">Ready</SelectItem>
+                            <SelectItem value="served">Served</SelectItem>
+                            <SelectItem value="completed">Completed</SelectItem>
+                            <SelectItem value="cancelled">Cancelled</SelectItem>
+                          </SelectContent>
+                        </Select>
+                      </div>
+                    </div>
+                  </CardContent>
+                </Card>
+              )}
             </div>
 
             <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-              {/* Menu Categories & Dishes */}
+              {/* Menu Selection */}
               <div className="lg:col-span-2">
                 <Card>
                   <CardHeader>
-                    <CardTitle className="flex items-center gap-2">
-                      <Utensils className="h-5 w-5" />
-                      Menu
-                    </CardTitle>
-                  </CardHeader>
-                  <CardContent>
-                    {/* Category Filter */}
-                    <div className="mb-4">
+                    <div className="flex items-center justify-between">
+                      <CardTitle>Menu Items</CardTitle>
                       <Select
                         value={selectedCategory}
                         onValueChange={setSelectedCategory}
                       >
-                        <SelectTrigger className="w-full">
-                          <SelectValue placeholder="Select category" />
+                        <SelectTrigger className="w-48">
+                          <SelectValue placeholder="All Categories" />
                         </SelectTrigger>
                         <SelectContent>
                           <SelectItem value="all">All Categories</SelectItem>
@@ -509,29 +599,32 @@ export default function RoomOrders() {
                         </SelectContent>
                       </Select>
                     </div>
-
-                    {/* Dishes Grid */}
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  </CardHeader>
+                  <CardContent>
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 max-h-96 overflow-y-auto">
                       {filteredDishes?.map((dish: any) => (
                         <Card
                           key={dish.id}
-                          className="cursor-pointer hover:shadow-md transition-shadow"
-                          onClick={() => addItemToOrder(dish)}
+                          className="hover:shadow-md transition-shadow cursor-pointer"
                         >
                           <CardContent className="p-4">
                             <div className="flex justify-between items-start">
                               <div className="flex-1">
-                                <h3 className="font-medium">{dish.name}</h3>
-                                <p className="text-sm text-gray-600 mt-1">
-                                  {dish.description || "No description"}
+                                <h4 className="font-medium">{dish.name}</h4>
+                                <p className="text-green-600 font-semibold">
+                                  {currencySymbol} {dish.price}
                                 </p>
-                                <div className="mt-2">
-                                  <span className="font-semibold text-green-600">
-                                    ${dish.price}
-                                  </span>
-                                </div>
+                                {dish.description && (
+                                  <p className="text-sm text-gray-500 mt-1">
+                                    {dish.description}
+                                  </p>
+                                )}
                               </div>
-                              <Button size="sm" className="ml-2">
+                              <Button
+                                size="sm"
+                                onClick={() => addItemToOrder(dish)}
+                                className="ml-2"
+                              >
                                 <Plus className="h-4 w-4" />
                               </Button>
                             </div>
@@ -539,164 +632,180 @@ export default function RoomOrders() {
                         </Card>
                       ))}
                     </div>
-
-                    {filteredDishes?.length === 0 && (
-                      <div className="text-center py-8 text-gray-500">
-                        No dishes available in this category
-                      </div>
-                    )}
                   </CardContent>
                 </Card>
               </div>
 
               {/* Order Summary */}
               <div>
-                <Card>
+                <Card className="sticky top-4">
                   <CardHeader>
-                    <CardTitle className="flex items-center gap-2">
-                      <ShoppingCart className="h-5 w-5" />
+                    <CardTitle className="flex items-center">
+                      <ShoppingCart className="h-5 w-5 mr-2" />
                       Order Summary
+                      {selectedItems.length > 0 && (
+                        <Badge className="ml-2">{selectedItems.length}</Badge>
+                      )}
                     </CardTitle>
                   </CardHeader>
                   <CardContent>
-                    <Form {...form}>
-                      <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
-                        {existingOrder && (
-                          <div className="mb-4 p-3 bg-blue-50 border border-blue-200 rounded-lg">
-                            <p className="text-sm text-blue-800">
-                              Existing order found: {existingOrder.orderNumber}
-                            </p>
-                            <p className="text-xs text-blue-600">
-                              Adding items will update the existing order
-                            </p>
-                          </div>
-                        )}
-
-                        {/* Selected Items */}
-                        <div className="space-y-3">
-                          {selectedItems.length === 0 ? (
-                            <p className="text-gray-500 text-center py-4">
-                              No items selected
-                            </p>
-                          ) : (
-                            selectedItems.map((item) => (
-                              <div
-                                key={item.dishId}
-                                className="flex items-center justify-between p-3 bg-gray-50 rounded-lg"
-                              >
-                                <div className="flex-1">
-                                  <p className="font-medium">{item.dishName}</p>
-                                  <p className="text-sm text-gray-600">
-                                    ${item.unitPrice} each
-                                  </p>
-                                </div>
-                                <div className="flex items-center gap-2">
-                                  <Button
-                                    type="button"
-                                    variant="outline"
-                                    size="sm"
-                                    onClick={() =>
-                                      updateItemQuantity(
-                                        item.dishId,
-                                        item.quantity - 1,
-                                      )
-                                    }
-                                  >
-                                    <Minus className="h-3 w-3" />
-                                  </Button>
-                                  <span className="w-8 text-center">
-                                    {item.quantity}
-                                  </span>
-                                  <Button
-                                    type="button"
-                                    variant="outline"
-                                    size="sm"
-                                    onClick={() =>
-                                      updateItemQuantity(
-                                        item.dishId,
-                                        item.quantity + 1,
-                                      )
-                                    }
-                                  >
-                                    <Plus className="h-3 w-3" />
-                                  </Button>
-                                  <Button
-                                    type="button"
-                                    variant="destructive"
-                                    size="sm"
-                                    onClick={() => removeItemFromOrder(item.dishId)}
-                                  >
-                                    <Trash2 className="h-3 w-3" />
-                                  </Button>
-                                </div>
+                    {selectedItems.length === 0 ? (
+                      <div className="text-center py-8">
+                        <ShoppingCart className="h-12 w-12 mx-auto text-gray-400 mb-2" />
+                        <p className="text-gray-500">No items selected</p>
+                      </div>
+                    ) : (
+                      <>
+                        <div className="space-y-3 mb-4 max-h-64 overflow-y-auto">
+                          {selectedItems.map((item, index) => (
+                            <div
+                              key={`dish-${item.dishId}`}
+                              className="flex items-center justify-between p-2 bg-gray-50 rounded"
+                            >
+                              <div className="flex-1">
+                                <h4 className="font-medium text-sm">
+                                  {item.dishName}
+                                </h4>
+                                <p className="text-xs text-gray-600">
+                                  {currencySymbol} {item.unitPrice} each
+                                </p>
                               </div>
-                            ))
-                          )}
+                              <div className="flex items-center space-x-2">
+                                <Button
+                                  size="sm"
+                                  variant="outline"
+                                  onClick={() =>
+                                    updateItemQuantity(
+                                      item.dishId,
+                                      item.quantity - 1
+                                    )
+                                  }
+                                  className="h-6 w-6 p-0"
+                                >
+                                  <Minus className="h-3 w-3" />
+                                </Button>
+                                <span className="w-6 text-center text-sm">
+                                  {item.quantity}
+                                </span>
+                                <Button
+                                  size="sm"
+                                  variant="outline"
+                                  onClick={() =>
+                                    updateItemQuantity(
+                                      item.dishId,
+                                      item.quantity + 1
+                                    )
+                                  }
+                                  className="h-6 w-6 p-0"
+                                >
+                                  <Plus className="h-3 w-3" />
+                                </Button>
+                                <Button
+                                  size="sm"
+                                  variant="ghost"
+                                  onClick={() => removeItemFromOrder(item.dishId)}
+                                  className="h-6 w-6 p-0 text-red-500"
+                                >
+                                  <Trash2 className="h-3 w-3" />
+                                </Button>
+                              </div>
+                            </div>
+                          ))}
                         </div>
 
-                        {/* Special Notes */}
-                        <FormField
-                          control={form.control}
-                          name="notes"
-                          render={({ field }) => (
-                            <FormItem>
-                              <FormLabel>Special Instructions</FormLabel>
-                              <FormControl>
-                                <Textarea
-                                  {...field}
-                                  placeholder="Any special requests or notes..."
-                                  rows={3}
-                                />
-                              </FormControl>
-                              <FormMessage />
-                            </FormItem>
-                          )}
-                        />
-
-                        {/* Order Total */}
-                        {selectedItems.length > 0 && (
-                          <div className="border-t pt-4 space-y-2">
-                            <div className="flex justify-between">
-                              <span>Subtotal:</span>
-                              <span>${calculateSubtotal().toFixed(2)}</span>
-                            </div>
-                            {orderTaxes?.map((tax: any) => {
-                              const taxAmount = (calculateSubtotal() * parseFloat(tax.rate)) / 100;
-                              return (
-                                <div key={tax.id} className="flex justify-between text-sm text-gray-600">
-                                  <span>{tax.taxName} ({tax.rate}%):</span>
-                                  <span>${taxAmount.toFixed(2)}</span>
-                                </div>
-                              );
-                            })}
-                            <div className="flex justify-between font-semibold text-lg border-t pt-2">
-                              <span>Total:</span>
-                              <span>
-                                ${(
-                                  calculateSubtotal() +
-                                  (orderTaxes?.reduce((total: number, tax: any) => {
-                                    return total + (calculateSubtotal() * parseFloat(tax.rate)) / 100;
-                                  }, 0) || 0)
-                                ).toFixed(2)}
-                              </span>
-                            </div>
+                        <div className="border-t pt-4 space-y-2">
+                          <div className="flex justify-between text-sm">
+                            <span>Subtotal:</span>
+                            <span>{currencySymbol} {calculateSubtotal().toFixed(2)}</span>
                           </div>
-                        )}
+                          {(() => {
+                            let totalTaxAmount = 0;
+                            const appliedTaxes = [];
 
-                        {/* Submit Button */}
-                        <Button
-                          type="submit"
-                          className="w-full"
-                          disabled={selectedItems.length === 0 || createOrderMutation.isPending}
-                        >
-                          {createOrderMutation.isPending
-                            ? "Creating Order..."
-                            : existingOrder
-                            ? "Update Order"
-                            : "Create Room Order"}
-                        </Button>
-                      </form>
-                    </Form>
+                            if (orderTaxes) {
+                              for (const tax of orderTaxes) {
+                                const taxAmount = (calculateSubtotal() * parseFloat(tax.rate)) / 100;
+                                totalTaxAmount += taxAmount;
+                                appliedTaxes.push({
+                                  taxName: tax.taxName,
+                                  rate: tax.rate,
+                                  amount: taxAmount
+                                });
+                              }
+                            }
+
+                            return (
+                              <>
+                                {appliedTaxes.map((tax, index) => (
+                                  <div key={index} className="flex justify-between mb-2">
+                                    <span>{tax.taxName} ({tax.rate}%):</span>
+                                    <span>{currencySymbol} {tax.amount.toFixed(2)}</span>
+                                  </div>
+                                ))}
+                                {appliedTaxes.length === 0 && (
+                                  <div className="flex justify-between mb-2">
+                                    <span>Tax:</span>
+                                    <span>{currencySymbol} 0.00</span>
+                                  </div>
+                                )}
+                                <div className="flex justify-between font-semibold text-lg border-t pt-2">
+                                  <span>Total:</span>
+                                  <span>{currencySymbol} {(calculateSubtotal() + totalTaxAmount).toFixed(2)}</span>
+                                </div>
+                              </>
+                            );
+                          })()}
+                        </div>
+
+                        <Form {...form}>
+                          <form
+                            onSubmit={form.handleSubmit(onSubmit)}
+                            className="mt-4 space-y-4"
+                          >
+                            <FormField
+                              control={form.control}
+                              name="notes"
+                              render={({ field }) => (
+                                <FormItem>
+                                  <FormLabel>Order Notes</FormLabel>
+                                  <FormControl>
+                                    <Textarea
+                                      {...field}
+                                      placeholder="Special instructions..."
+                                      className="h-20"
+                                    />
+                                  </FormControl>
+                                  <FormMessage />
+                                </FormItem>
+                              )}
+                            />
+                            <Button
+                              type="submit"
+                              className="w-full"
+                              disabled={
+                                createOrderMutation.isPending ||
+                                selectedItems.length === 0 ||
+                                (getReservationOrder(selectedReservation?.id) &&
+                                  !hasOrderChanged())
+                              }
+                            >
+                              {createOrderMutation.isPending ? (
+                                <div className="flex items-center">
+                                  <div className="animate-spin rounded-full h-4 w-4 border-2 border-white border-t-transparent mr-2"></div>
+                                  {getReservationOrder(selectedReservation?.id)
+                                    ? "Updating..."
+                                    : "Creating..."}
+                                </div>
+                              ) : getReservationOrder(selectedReservation?.id) ? (
+                                "Add Items to Order"
+                              ) : (
+                                "Create Order"
+                              )}
+                            </Button>
+                          </form>
+                        </Form>
+                      </>
+                    )}
                   </CardContent>
                 </Card>
               </div>
@@ -707,7 +816,7 @@ export default function RoomOrders() {
     );
   }
 
-  // Main reservations view
+  // Show reservations grid (similar to tables grid in restaurant orders)
   return (
     <div className="min-h-screen bg-gray-50">
       <Sidebar
@@ -716,282 +825,205 @@ export default function RoomOrders() {
       />
       <div className="main-content">
         <Header
-          title="Room Orders"
-          subtitle="Manage room service orders for hotel guests"
+          title="Room Service"
+          subtitle="Click on a reservation to manage room orders"
           onMobileMenuToggle={() =>
             setIsMobileSidebarOpen(!isMobileSidebarOpen)
           }
         />
         <main className="p-6">
-          {/* Current Orders */}
-          <div className="mb-8">
-            <h2 className="text-xl font-semibold mb-4 flex items-center gap-2">
-              <Clock className="h-5 w-5" />
-              Active Room Orders ({orders?.length || 0})
-            </h2>
-            
-            {ordersLoading ? (
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                {[...Array(3)].map((_, i) => (
-                  <Card key={i}>
-                    <CardContent className="p-6">
-                      <div className="animate-pulse space-y-4">
-                        <div className="h-4 bg-gray-200 rounded w-3/4"></div>
-                        <div className="h-4 bg-gray-200 rounded w-1/2"></div>
-                        <div className="h-8 bg-gray-200 rounded w-full"></div>
-                      </div>
-                    </CardContent>
-                  </Card>
-                ))}
-              </div>
-            ) : orders?.length > 0 ? (
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                {orders.map((order: any) => (
-                  <Card key={order.id} className="hover:shadow-md transition-shadow">
-                    <CardContent className="p-6">
-                      <div className="flex justify-between items-start mb-4">
-                        <div>
-                          <h3 className="font-semibold">{order.orderNumber}</h3>
-                          <p className="text-sm text-gray-600">
-                            {order.customerName || "Guest"}
-                          </p>
-                          <p className="text-sm text-gray-600">
-                            Room {order.roomId || "N/A"}
-                          </p>
-                        </div>
-                        <Badge className={getStatusColor(order.status)}>
-                          {order.status}
-                        </Badge>
-                      </div>
-                      
-                      <div className="space-y-2">
-                        <div className="flex justify-between text-sm">
-                          <span>Items:</span>
-                          <span>{order.items?.length || 0}</span>
-                        </div>
-                        <div className="flex justify-between text-sm">
-                          <span>Total:</span>
-                          <span className="font-semibold">${order.totalAmount}</span>
-                        </div>
-                        <div className="flex justify-between text-sm">
-                          <span>Time:</span>
-                          <span>{new Date(order.createdAt).toLocaleTimeString()}</span>
-                        </div>
-                      </div>
+          {/* Reservations Grid */}
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
+            {checkedInReservations.map((reservation: any) => {
+              const existingOrder = getReservationOrder(reservation.id);
+              const hasOrder = !!existingOrder;
 
-                      <div className="flex gap-2 mt-4">
-                        <Button
-                          variant="outline"
-                          size="sm"
-                          onClick={() => setViewingOrder(order)}
-                          className="flex-1"
-                        >
-                          <Eye className="h-4 w-4 mr-1" />
-                          View
-                        </Button>
-                        
-                        {order.status === "pending" && (
-                          <Button
-                            variant="outline"
-                            size="sm"
-                            onClick={() => generateKOTMutation.mutate(order.id)}
-                            disabled={generateKOTMutation.isPending}
-                          >
-                            <FileText className="h-4 w-4 mr-1" />
-                            KOT
-                          </Button>
+              return (
+                <Card
+                  key={reservation.id}
+                  className={`cursor-pointer transition-all hover:shadow-lg ${
+                    hasOrder
+                      ? "border-l-4 border-l-orange-500 bg-orange-50"
+                      : "border-l-4 border-l-green-500 bg-green-50"
+                  }`}
+                  onClick={() => handleReservationClick(reservation)}
+                >
+                  <CardContent className="p-6">
+                    <div className="flex items-center justify-between mb-4">
+                      <div className="flex items-center space-x-2">
+                        <Utensils
+                          className={`h-5 w-5 ${hasOrder ? "text-orange-600" : "text-green-600"}`}
+                        />
+                        <h3 className="font-semibold text-lg">
+                          {reservation.guest?.firstName} {reservation.guest?.lastName}
+                        </h3>
+                      </div>
+                      <div
+                        className={`w-3 h-3 rounded-full ${hasOrder ? "bg-orange-500" : "bg-green-500"}`}
+                      ></div>
+                    </div>
+
+                    <div className="space-y-3">
+                      <div className="flex items-center justify-between text-sm text-gray-600">
+                        <div className="flex items-center">
+                          <Users className="h-4 w-4 mr-2" />
+                          <span>Room: {reservation.reservationRooms?.[0]?.room?.number || "N/A"}</span>
+                        </div>
+                        {hasOrder && existingOrder && (
+                          <Badge className={getStatusColor(existingOrder.status)}>
+                            {existingOrder.status}
+                          </Badge>
                         )}
                       </div>
 
-                      {/* Status Update Buttons */}
-                      <div className="mt-3 flex flex-wrap gap-1">
-                        {["confirmed", "preparing", "ready", "served", "completed"].map((status) => (
-                          <Button
-                            key={status}
-                            variant={order.status === status ? "default" : "outline"}
-                            size="sm"
-                            onClick={() => updateStatusMutation.mutate({ id: order.id, status })}
-                            disabled={updateStatusMutation.isPending}
-                            className="text-xs px-2 py-1 h-auto"
-                          >
-                            {status}
-                          </Button>
-                        ))}
+                      <div className="space-y-1">
+                        <p className="text-sm text-gray-600">
+                          {reservation.confirmationNumber}
+                        </p>
+                        <p className="text-sm text-gray-600">
+                          Phone: {reservation.guest?.phone || "N/A"}
+                        </p>
                       </div>
-                    </CardContent>
-                  </Card>
-                ))}
-              </div>
-            ) : (
-              <Card>
-                <CardContent className="p-8 text-center">
-                  <Utensils className="h-12 w-12 mx-auto mb-4 text-gray-400" />
-                  <h3 className="text-lg font-medium mb-2">No Active Room Orders</h3>
-                  <p className="text-gray-600">Room service orders will appear here when guests place them.</p>
-                </CardContent>
-              </Card>
-            )}
-          </div>
 
-          {/* Available Reservations */}
-          <div>
-            <h2 className="text-xl font-semibold mb-4 flex items-center gap-2">
-              <Users className="h-5 w-5" />
-              Checked-in Guests ({checkedInReservations.length})
-            </h2>
-            
-            {checkedInReservations.length === 0 ? (
-              <Card>
-                <CardContent className="p-8 text-center">
-                  <Users className="h-12 w-12 mx-auto mb-4 text-gray-400" />
-                  <h3 className="text-lg font-medium mb-2">No Checked-in Guests</h3>
-                  <p className="text-gray-600">Guests need to be checked in before placing room service orders.</p>
-                </CardContent>
-              </Card>
-            ) : (
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                {checkedInReservations.map((reservation: any) => {
-                  const existingOrder = getReservationOrder(reservation.id);
-                  return (
-                    <Card
-                      key={reservation.id}
-                      className="cursor-pointer hover:shadow-md transition-shadow"
-                      onClick={() => {
-                        setSelectedReservation(reservation);
-                        if (existingOrder) {
-                          // Load existing order items for editing
-                          const orderItems = existingOrder.items?.map((item: any) => ({
-                            dishId: item.dishId,
-                            dishName: item.dish?.name || `Item ${item.dishId}`,
-                            unitPrice: item.unitPrice,
-                            quantity: item.quantity,
-                            notes: item.specialInstructions || "",
-                          })) || [];
-                          setSelectedItems(orderItems);
-                          setOriginalItems([...orderItems]);
-                        }
-                      }}
-                    >
-                      <CardContent className="p-6">
-                        <div className="flex justify-between items-start mb-4">
-                          <div>
-                            <h3 className="font-semibold">
-                              {reservation.guest?.firstName} {reservation.guest?.lastName}
-                            </h3>
-                            <p className="text-sm text-gray-600">
-                              {reservation.confirmationNumber}
+                      {hasOrder && existingOrder && (
+                        <div className="space-y-1">
+                          <p className="text-sm text-gray-600">
+                            Order #{existingOrder.orderNumber}
+                          </p>
+                          <div className="flex items-center justify-between">
+                            <p className="text-sm font-semibold text-green-600">
+                              {currencySymbol} {existingOrder.totalAmount}
+                            </p>
+                            <p className="text-xs text-gray-500">
+                              {existingOrder.items?.length || 0} items
                             </p>
                           </div>
-                          {existingOrder && (
-                            <Badge variant="secondary">
-                              Has Order
-                            </Badge>
-                          )}
                         </div>
-                        
-                        <div className="space-y-2">
-                          <div className="flex justify-between text-sm">
-                            <span>Room:</span>
-                            <span className="font-medium">
-                              {reservation.reservationRooms?.[0]?.room?.number || "N/A"}
-                            </span>
-                          </div>
-                          <div className="flex justify-between text-sm">
-                            <span>Phone:</span>
-                            <span>{reservation.guest?.phone || "N/A"}</span>
-                          </div>
-                          <div className="flex justify-between text-sm">
-                            <span>Check-in:</span>
-                            <span>
-                              {new Date(reservation.reservationRooms?.[0]?.checkInDate).toLocaleDateString()}
-                            </span>
-                          </div>
-                        </div>
-
-                        <Button className="w-full mt-4" variant="outline">
-                          <Plus className="h-4 w-4 mr-2" />
-                          {existingOrder ? "Update Order" : "Create Room Order"}
-                        </Button>
-                      </CardContent>
-                    </Card>
-                  );
-                })}
-              </div>
-            )}
+                      )}
+                    </div>
+                  </CardContent>
+                </Card>
+              );
+            })}
           </div>
-        </main>
-      </div>
 
-      {/* Order Details Dialog */}
-      <Dialog open={!!viewingOrder} onOpenChange={() => setViewingOrder(null)}>
-        <DialogContent className="max-w-2xl">
-          <DialogHeader>
-            <DialogTitle>Order Details - {viewingOrder?.orderNumber}</DialogTitle>
-          </DialogHeader>
+          {!checkedInReservations?.length && (
+            <div className="text-center py-12">
+              <Users className="h-12 w-12 mx-auto text-gray-400 mb-4" />
+              <p className="text-gray-500 font-medium">No checked-in guests</p>
+              <p className="text-sm text-gray-400">
+                Guests need to be checked in to place room service orders.
+              </p>
+            </div>
+          )}
+
+          {/* View Order Modal */}
           {viewingOrder && (
-            <div className="space-y-4">
-              <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <h4 className="font-medium">Customer</h4>
-                  <p className="text-sm text-gray-600">{viewingOrder.customerName}</p>
-                </div>
-                <div>
-                  <h4 className="font-medium">Room</h4>
-                  <p className="text-sm text-gray-600">Room {viewingOrder.roomId}</p>
-                </div>
-                <div>
-                  <h4 className="font-medium">Status</h4>
-                  <Badge className={getStatusColor(viewingOrder.status)}>
-                    {viewingOrder.status}
-                  </Badge>
-                </div>
-                <div>
-                  <h4 className="font-medium">Total</h4>
-                  <p className="text-sm font-semibold">${viewingOrder.totalAmount}</p>
-                </div>
-              </div>
+            <Dialog
+              open={!!viewingOrder}
+              onOpenChange={() => setViewingOrder(null)}
+            >
+              <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
+                <DialogHeader>
+                  <DialogTitle>
+                    Order Details - #{viewingOrder.orderNumber}
+                  </DialogTitle>
+                </DialogHeader>
+                <div className="space-y-4">
+                  <div className="grid grid-cols-2 gap-4">
+                    <div>
+                      <p className="text-sm font-medium text-gray-500">
+                        Customer:
+                      </p>
+                      <p className="font-semibold">
+                        {viewingOrder.customerName}
+                      </p>
+                    </div>
+                    <div>
+                      <p className="text-sm font-medium text-gray-500">
+                        Room:
+                      </p>
+                      <p className="font-semibold">
+                        Room {viewingOrder.roomId || "N/A"}
+                      </p>
+                    </div>
+                    <div>
+                      <p className="text-sm font-medium text-gray-500">
+                        Status:
+                      </p>
+                      <Badge className={getStatusColor(viewingOrder.status)}>
+                        {viewingOrder.status}
+                      </Badge>
+                    </div>
+                    <div>
+                      <p className="text-sm font-medium text-gray-500">
+                        Total:
+                      </p>
+                      <p className="font-bold text-green-600">
+                        {currencySymbol} {viewingOrder.totalAmount}
+                      </p>
+                    </div>
+                  </div>
 
-              <div>
-                <h4 className="font-medium mb-2">Order Items</h4>
-                <Table>
-                  <TableHeader>
-                    <TableRow>
-                      <TableHead>Item</TableHead>
-                      <TableHead>Qty</TableHead>
-                      <TableHead>Price</TableHead>
-                      <TableHead>Total</TableHead>
-                    </TableRow>
-                  </TableHeader>
-                  <TableBody>
-                    {viewingOrder.items?.map((item: any) => (
-                      <TableRow key={item.id}>
-                        <TableCell>
+                  <div>
+                    <h4 className="font-semibold mb-2">Order Items</h4>
+                    <div className="space-y-2">
+                      {viewingOrder.items?.map((item: any) => (
+                        <div
+                          key={item.id}
+                          className="flex justify-between items-center p-2 bg-gray-50 rounded"
+                        >
                           <div>
                             <p className="font-medium">{item.dish?.name || `Item ${item.dishId}`}</p>
+                            <p className="text-sm text-gray-600">
+                              Qty: {item.quantity} × {currencySymbol} {item.unitPrice}
+                            </p>
                             {item.specialInstructions && (
                               <p className="text-xs text-gray-600 italic">{item.specialInstructions}</p>
                             )}
                           </div>
-                        </TableCell>
-                        <TableCell>{item.quantity}</TableCell>
-                        <TableCell>${item.unitPrice}</TableCell>
-                        <TableCell>${item.totalPrice}</TableCell>
-                      </TableRow>
-                    ))}
-                  </TableBody>
-                </Table>
-              </div>
+                          <p className="font-semibold text-green-600">
+                            {currencySymbol} {(
+                              parseFloat(item.unitPrice) * item.quantity
+                            ).toFixed(2)}
+                          </p>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
 
-              {viewingOrder.notes && (
-                <div>
-                  <h4 className="font-medium">Notes</h4>
-                  <p className="text-sm text-gray-600">{viewingOrder.notes}</p>
+                  {viewingOrder.notes && (
+                    <div>
+                      <h4 className="font-semibold mb-2">Notes</h4>
+                      <p className="text-gray-700 bg-gray-50 p-2 rounded">
+                        {viewingOrder.notes}
+                      </p>
+                    </div>
+                  )}
+
+                  <div className="flex gap-2 pt-4">
+                    <Button
+                      onClick={() =>
+                        generateKOTMutation.mutate(viewingOrder.id)
+                      }
+                      variant="outline"
+                    >
+                      <FileText className="h-4 w-4 mr-2" />
+                      Generate KOT
+                    </Button>
+                    <Button
+                      onClick={() => setViewingOrder(null)}
+                      variant="outline"
+                    >
+                      Close
+                    </Button>
+                  </div>
                 </div>
-              )}
-            </div>
+              </DialogContent>
+            </Dialog>
           )}
-        </DialogContent>
-      </Dialog>
+        </main>
+      </div>
     </div>
   );
 }
