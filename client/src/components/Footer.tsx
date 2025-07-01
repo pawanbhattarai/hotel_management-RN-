@@ -1,13 +1,13 @@
 import React from "react";
 import { Card, CardContent } from "@/components/ui/card";
-import { Facebook, Instagram, Phone, Mail, Globe } from "lucide-react";
+import { Facebook, Instagram, Mail, Globe, MessageCircle } from "lucide-react";
 
 export default function Footer() {
   return (
     <footer className="mt-auto bg-gray-50 border-t border-gray-200 lg:ml-64">
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-3">
         <Card>
-          <CardContent className="p-4 sm:p-6">
+          <CardContent className="p-3 sm:p-4">
             {/* Powered by section with contact icons */}
             <div className="flex flex-col sm:flex-row items-center justify-between gap-2 sm:gap-4">
               {/* Left: Powered by */}
@@ -28,11 +28,11 @@ export default function Footer() {
                 </a>
               </div>
 
-              {/* Right: Icons only */}
-              <div className="flex items-center gap-2">
+              {/* Right: Colored social icons */}
+              <div className="flex items-center gap-1">
                 <a
                   href="mailto:support@maptechnepal.com"
-                  className="p-1 text-gray-400 hover:text-blue-600 transition-colors"
+                  className="p-1 text-red-500 hover:text-red-600 transition-colors"
                   title="Email"
                 >
                   <Mail className="w-4 h-4" />
@@ -41,16 +41,16 @@ export default function Footer() {
                   href="https://wa.me/9779745673009"
                   target="_blank"
                   rel="noopener noreferrer"
-                  className="p-1 text-gray-400 hover:text-green-600 transition-colors"
+                  className="p-1 text-green-500 hover:text-green-600 transition-colors"
                   title="WhatsApp"
                 >
-                  <Phone className="w-4 h-4" />
+                  <MessageCircle className="w-4 h-4" />
                 </a>
                 <a
                   href="https://www.facebook.com/maptech.np/"
                   target="_blank"
                   rel="noopener noreferrer"
-                  className="p-1 text-gray-400 hover:text-blue-600 transition-colors"
+                  className="p-1 text-blue-600 hover:text-blue-700 transition-colors"
                   title="Facebook"
                 >
                   <Facebook className="w-4 h-4" />
@@ -59,7 +59,7 @@ export default function Footer() {
                   href="https://www.instagram.com/maptech.np/"
                   target="_blank"
                   rel="noopener noreferrer"
-                  className="p-1 text-gray-400 hover:text-pink-600 transition-colors"
+                  className="p-1 text-pink-500 hover:text-pink-600 transition-colors"
                   title="Instagram"
                 >
                   <Instagram className="w-4 h-4" />
@@ -68,7 +68,7 @@ export default function Footer() {
                   href="https://maptechnepal.com"
                   target="_blank"
                   rel="noopener noreferrer"
-                  className="p-1 text-gray-400 hover:text-gray-600 transition-colors"
+                  className="p-1 text-gray-600 hover:text-gray-700 transition-colors"
                   title="Website"
                 >
                   <Globe className="w-4 h-4" />
