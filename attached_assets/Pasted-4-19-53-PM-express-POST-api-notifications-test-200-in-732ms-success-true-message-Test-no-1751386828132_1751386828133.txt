@@ -1,0 +1,33 @@
+4:19:53 PM [express] POST /api/notifications/test 200 in 732ms :: {"success":true,"message":"Test no…
+4:19:58 PM [express] GET /api/notifications/vapid-key 304 in 1ms :: {"publicKey":"BIlfpW_MNSuapkbupy…
+4:20:01 PM [express] GET /api/notifications/vapid-key 304 in 1ms :: {"publicKey":"BIlfpW_MNSuapkbupy…
+4:20:06 PM [express] GET /api/notifications/vapid-key 304 in 1ms :: {"publicKey":"BIlfpW_MNSuapkbupy…
+4:20:07 PM [express] GET /api/notifications/vapid-key 304 in 1ms :: {"publicKey":"BIlfpW_MNSuapkbupy…
+👤 User subscribing: admin-001 (admin@hotel.com) - Role: superadmin, Branch: null
+📝 Creating push subscription for user admin-001 (admin@hotel.com): {
+  endpoint: 'https://fcm.googleapis.com/fcm/send/cRdLb3Mqew0:AP...',
+  endpointLength: 188,
+  p256dhLength: 88,
+  authLength: 24,
+  userRole: 'superadmin',
+  branchId: null
+}
+ Error creating push subscription: PostgresError: there is no unique or exclusion constraint matching the ON CONFLICT specification
+    at ErrorResponse (file:///home/runner/workspace/node_modules/postgres/src/connection.js:794:26)
+    at handle (file:///home/runner/workspace/node_modules/postgres/src/connection.js:480:6)
+    at TLSSocket.data (file:///home/runner/workspace/node_modules/postgres/src/connection.js:315:9)
+    at TLSSocket.emit (node:events:518:28)
+    at addChunk (node:internal/streams/readable:561:12)
+    at readableAddChunkPushByteMode (node:internal/streams/readable:512:3)
+    at Readable.push (node:internal/streams/readable:392:5)
+    at TLSWrap.onStreamRead (node:internal/stream_base_commons:191:23) {
+  severity_local: 'ERROR',
+  severity: 'ERROR',
+  code: '42P10',
+  file: 'plancat.c',
+  line: '915',
+  routine: 'infer_arbiter_indexes'
+}
+4:20:12 PM [express] POST /api/notifications/subscribe 500 in 879ms :: {"message":"Failed to create …
+4:20:12 PM [express] GET /api/notifications/vapid-key 304 in 1ms :: {"publicKey":"BIlfpW_MNSuapkbupy…
+4:20:14 PM [express] GET /api/notifications/vapid-key 304 in 2ms :: {"publicKey":"BIlfpW_MNSuapkbupy…
