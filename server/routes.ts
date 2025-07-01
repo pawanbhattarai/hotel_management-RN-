@@ -2437,6 +2437,33 @@ export async function registerRoutes(app: Express): Promise<Server> {
     },
   );
 
+  // Test notifications endpoint (for debugging)
+  app.post("/api/notifications/test", async (req: any, res) => {
+    try {
+      console.log('🧪 Test notification endpoint called');
+      
+      // Import the test function
+      const { testNotifications } = await import('./test-notifications');
+      const result = await testNotifications();
+      
+      console.log('📋 Test result:', result);
+      
+      // Always return JSON
+      res.setHeader('Content-Type', 'application/json');
+      res.status(200).json(result);
+    } catch (error: any) {
+      console.error('❌ Test notification endpoint error:', error);
+      
+      // Ensure we return JSON even on error
+      res.setHeader('Content-Type', 'application/json');
+      res.status(500).json({
+        success: false,
+        error: error?.message || 'Unknown error occurred',
+        details: process.env.NODE_ENV === 'development' ? error?.stack : undefined
+      });
+    }
+  });
+
   // Notification history routes
   app.get(
     "/api/notifications/history",

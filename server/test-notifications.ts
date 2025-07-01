@@ -21,9 +21,13 @@ export async function testNotifications() {
     await NotificationService.sendToAllAdmins(testNotification, 'test');
     console.log('✅ Test notification sent successfully');
     
-    return { success: true, message: 'Test notification sent' };
-  } catch (error) {
+    return { success: true, message: 'Test notification sent successfully' };
+  } catch (error: any) {
     console.error('❌ Test notification failed:', error);
-    return { success: false, error: error.message };
+    return { 
+      success: false, 
+      error: error?.message || 'Unknown error occurred',
+      details: error?.stack || 'No stack trace available'
+    };
   }
 }
