@@ -22,10 +22,10 @@ export function NotificationManager() {
     if (!isAdmin) return;
 
     // Check if push notifications are supported
-    const supported = 'serviceWorker' in navigator && 'PushManager' in window;
-    setIsSupported(supported);
+    const supportCheck = NotificationManagerService.isSupported();
+    setIsSupported(supportCheck.supported);
 
-    if (supported) {
+    if (supportCheck.supported) {
       setPermission(Notification.permission);
       checkSubscriptionStatus();
     }
@@ -188,8 +188,32 @@ export function NotificationManager() {
 
 
 
-  if (!isAdmin || !isSupported) {
+  if (!isAdmin) {
     return null;
+  }
+
+  // Show warning for unsupported platforms
+  if (!isSupported) {
+    const supportCheck = NotificationManagerService.isSupported();
+    return (
+      <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-4">
+        <div className="flex items-start gap-3">
+          <BellOff className="h-5 w-5 text-yellow-600 mt-0.5" />
+          <div>
+            <h3 className="font-medium text-yellow-800">
+              Push Notifications Not Available
+            </h3>
+            <p className="text-sm text-yellow-700 mt-1">
+              {supportCheck.reason}
+            </p>
+            <div className="mt-2 text-xs text-yellow-600">
+              <p>• Desktop browsers: Chrome, Firefox, Safari (macOS 13+) ✓</p>
+              <p>• iOS devices (iPhone/iPad): Not supported ✗</p>
+            </div>
+          </div>
+        </div>
+      </div>
+    );
   }
 
   const handleToggle = async () => {

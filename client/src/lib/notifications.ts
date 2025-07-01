@@ -4,8 +4,46 @@ export class NotificationManager {
   private static vapidPublicKey: string | null = null;
   private static registration: ServiceWorkerRegistration | null = null;
 
+  static isSupported(): { supported: boolean; reason?: string } {
+    // Check for iOS devices (iPhone/iPad)
+    const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent);
+    const isMacOS = /Macintosh|MacIntel|MacPPC|Mac68K/.test(navigator.platform);
+    
+    if (isIOS && !isMacOS) {
+      return { 
+        supported: false, 
+        reason: 'Push notifications are not supported on iOS devices (iPhone/iPad). This is a limitation of iOS Safari and all iOS browsers.' 
+      };
+    }
+
+    // Check basic browser support
+    if (!('serviceWorker' in navigator)) {
+      return { supported: false, reason: 'Service Workers not supported' };
+    }
+
+    if (!('PushManager' in window)) {
+      return { supported: false, reason: 'Push messaging not supported' };
+    }
+
+    if (!('Notification' in window)) {
+      return { supported: false, reason: 'Notifications not supported' };
+    }
+
+    return { supported: true };
+  }
+
   static async initialize(): Promise<boolean> {
     console.log('🔄 Initializing NotificationManager...');
+
+    // Check for iOS devices
+    const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent);
+    const isSafariIOS = isIOS && /Safari/.test(navigator.userAgent) && !/CriOS|FxiOS/.test(navigator.userAgent);
+    const isMacOS = /Macintosh|MacIntel|MacPPC|Mac68K/.test(navigator.platform);
+    
+    if (isIOS && !isMacOS) {
+      console.warn('❌ Push notifications not supported on iOS devices (iPhone/iPad)');
+      return false;
+    }
 
     // Check for basic browser support
     if (!('serviceWorker' in navigator)) {
