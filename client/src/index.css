@@ -2,11 +2,39 @@
 @tailwind components;
 @tailwind utilities;
 
+/* iOS PWA Fixes */
+@supports (-webkit-touch-callout: none) {
+  /* iOS Safari specific styles */
+  body {
+    -webkit-touch-callout: none;
+    -webkit-user-select: none;
+    -webkit-tap-highlight-color: transparent;
+    touch-action: manipulation;
+  }
+  
+  /* Fix iOS Safari address bar hiding/showing */
+  .ios-pwa-viewport {
+    height: 100vh;
+    height: -webkit-fill-available;
+  }
+  
+  /* iOS PWA status bar padding */
+  .ios-status-bar-padding {
+    padding-top: env(safe-area-inset-top);
+    padding-bottom: env(safe-area-inset-bottom);
+    padding-left: env(safe-area-inset-left);
+    padding-right: env(safe-area-inset-right);
+  }
+}
+
 /* Global layout fixes */
 body {
   margin: 0;
   padding: 0;
   overflow-x: hidden;
+  /* iOS PWA viewport fix */
+  height: 100vh;
+  height: -webkit-fill-available;
 }
 
 /* Main content container */

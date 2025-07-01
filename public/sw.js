@@ -1,10 +1,16 @@
 console.log("🔧 Service Worker loaded");
 
+// iOS PWA detection
+const isIOSPWA = () => {
+  return ('standalone' in window.navigator) && (window.navigator.standalone) ||
+         window.matchMedia && window.matchMedia('(display-mode: standalone)').matches;
+};
+
 // Cache names
-const CACHE_NAME = "hotel-pwa-v3";
-const STATIC_CACHE = "hotel-static-v3";
-const DYNAMIC_CACHE = "hotel-dynamic-v3";
-const API_CACHE = "hotel-api-v3";
+const CACHE_NAME = "hotel-pwa-v4";
+const STATIC_CACHE = "hotel-static-v4";
+const DYNAMIC_CACHE = "hotel-dynamic-v4";
+const API_CACHE = "hotel-api-v4";
 
 // Resources to cache
 const STATIC_ASSETS = [
@@ -105,7 +111,7 @@ self.addEventListener('fetch', (event) => {
   // Handle API requests
   if (url.pathname.startsWith('/api/')) {
     event.respondWith(
-      // Network-first strategy for API calls
+      // networkFirst strategy for API calls
       fetch(event.request)
         .then(response => {
           // Cache successful responses for offline access
@@ -138,7 +144,7 @@ self.addEventListener('fetch', (event) => {
     return;
   }
 
-  // Handle static assets (cache-first strategy)
+  // Handle static assets (cacheFirst strategy)
   if (url.pathname.includes('.') || STATIC_ASSETS.some(asset => url.pathname === asset)) {
     event.respondWith(
       caches.match(event.request).then(response => {

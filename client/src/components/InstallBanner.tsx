@@ -12,12 +12,15 @@ export function InstallBanner({ onDismiss }: InstallBannerProps) {
   const [deviceType, setDeviceType] = useState<'ios' | 'android' | 'desktop' | 'unknown'>('unknown');
 
   useEffect(() => {
-    // Detect device type
-    const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent);
-    const isMacOS = /Macintosh|MacIntel|MacPPC|Mac68K/.test(navigator.platform);
+    // Enhanced iOS detection including all iOS versions
+    const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent) || 
+                  (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
+    const isMacOS = /Macintosh|MacIntel|MacPPC|Mac68K/.test(navigator.platform) && 
+                    navigator.maxTouchPoints === 0;
     const isAndroid = /Android/.test(navigator.userAgent);
-    const isStandalone = (window.navigator as any).standalone || 
-                        window.matchMedia('(display-mode: standalone)').matches;
+    const isStandalone = (window.navigator as any).standalone === true || 
+                        window.matchMedia('(display-mode: standalone)').matches ||
+                        window.matchMedia('(display-mode: fullscreen)').matches;
 
     if (isIOS && !isMacOS) {
       setDeviceType('ios');

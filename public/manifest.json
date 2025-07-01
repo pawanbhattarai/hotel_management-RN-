@@ -12,6 +12,8 @@
   "lang": "en",
   "dir": "ltr",
   "display_override": ["standalone", "fullscreen", "minimal-ui"],
+  "id": "/",
+  "protocol_handlers": [],
   "edge_side_panel": {
     "preferred_width": 480
   },
