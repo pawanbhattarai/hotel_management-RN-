@@ -856,7 +856,8 @@ export default function Sidebar({
             <Button
               variant="ghost"
               size="sm"
-              className="fixed top-3 left-3 z-50 lg:hidden bg-white shadow-md border"
+              className="fixed top-3 left-3 z-50 lg:hidden bg```python
+white shadow-md border"
             >
               <MenuIcon className="h-4 w-4" />
             </Button>

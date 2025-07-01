@@ -1030,7 +1030,7 @@ export class DatabaseStorage implements IStorage {
         ),
       )
       .groupBy(sql`DATE(${reservations.createdAt})`)
-      .orderBy(sql`DATE(${reservations.createdAt})`);
+      .orderBy(sqlnumber>`DATE(${reservations.createdAt})`);
 
     const dailyRevenue = await query;
 
@@ -1679,6 +1679,37 @@ export class DatabaseStorage implements IStorage {
     );
 
     return usersWithRoles;
+  }
+  async getTodaysReservations(): Promise<any[]> {
+    const today = new Date();
+    const startOfDay = new Date(today.getFullYear(), today.getMonth(), today.getDate());
+    const endOfDay = new Date(today.getFullYear(), today.getMonth(), today.getDate(), 23, 59, 59);
+
+    try {
+      const result = await db
+        .select({
+          id: reservations.id,
+          guestName: reservations.guestName,
+          roomNumber: rooms.roomNumber,
+          checkIn: reservations.checkIn,
+          checkOut: reservations.checkOut,
+          status: reservations.status,
+        })
+        .from(reservations)
+        .leftJoin(rooms, eq(reservations.roomId, rooms.id))
+        .where(
+          and(
+            gte(reservations.checkIn, startOfDay),
+            lte(reservations.checkIn, endOfDay)
+          )
+        )
+        .orderBy(desc(reservations.checkIn));
+
+      return result;
+    } catch (error) {
+      console.error('Error fetching today\'s reservations:', error);
+      throw error;
+    }
   }
 }
 
