@@ -29,6 +29,8 @@ import { Badge } from "@/components/ui/badge";
 import { Building, Globe, Clock, FileText, Save, Hotel } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest } from "@/lib/queryClient";
+import { NotificationManager } from '@/components/NotificationManager';
+import { NotificationDebugger } from '@/components/NotificationDebugger';
 
 const hotelSettingsSchema = z.object({
   branchId: z.number().optional(),
@@ -741,6 +743,17 @@ export default function Settings() {
             </form>
           </Tabs>
         </main>
+         {/* Notification Debugger - Development Only */}
+         {process.env.NODE_ENV === 'development' && (
+          <Card>
+            <CardHeader>
+              <CardTitle>Development Tools</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <NotificationDebugger />
+            </CardContent>
+          </Card>
+        )}
       </div>
     </div>
   );
