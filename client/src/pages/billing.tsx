@@ -562,14 +562,24 @@ export default function Billing() {
             </div>
             ${reservationRoomOrders
               .map(
-                (order: any) => `
-              <div class="item-row">
-                <div class="item-name">${order.orderNumber}</div>
-                <div class="item-nights">${order.items?.length || 0}</div>
-                <div class="item-rate">Items</div>
-                <div class="item-total">${parseFloat(order.totalAmount || 0).toFixed(2)}</div>
-              </div>
-            `,
+                (order: any) => 
+                  order.items && order.items.length > 0 
+                    ? order.items.map((item: any) => `
+                      <div class="item-row">
+                        <div class="item-name">${item.dish?.name || item.dishName || 'Unknown Dish'}</div>
+                        <div class="item-nights">${item.quantity}</div>
+                        <div class="item-rate">${parseFloat(item.unitPrice || 0).toFixed(0)}</div>
+                        <div class="item-total">${parseFloat(item.totalPrice || 0).toFixed(2)}</div>
+                      </div>
+                    `).join('')
+                    : `
+                      <div class="item-row">
+                        <div class="item-name">${order.orderNumber}</div>
+                        <div class="item-nights">${order.items?.length || 0}</div>
+                        <div class="item-rate">Items</div>
+                        <div class="item-total">${parseFloat(order.totalAmount || 0).toFixed(2)}</div>
+                      </div>
+                    `
               )
               .join("")}
           ` : ""}
