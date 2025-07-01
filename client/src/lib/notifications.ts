@@ -1,7 +1,5 @@
 import { apiRequest } from './queryClient';
 
-export import { apiRequest } from './queryClient';
-
 class NotificationManager {
   private static vapidPublicKey: string | null = null;
   private static registration: ServiceWorkerRegistration | null = null;
