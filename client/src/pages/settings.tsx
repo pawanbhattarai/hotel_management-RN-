@@ -31,7 +31,7 @@ import { useToast } from "@/hooks/use-toast";
 import { apiRequest } from "@/lib/queryClient";
 import { NotificationManager } from '@/components/NotificationManager';
 import { NotificationDebugger } from '@/components/NotificationDebugger';
-import { IOSInstallInstructions } from '@/components/InstallBanner';
+import { IOSInstallInstructions, AndroidInstallInstructions } from '@/components/InstallBanner';
 
 const hotelSettingsSchema = z.object({
   branchId: z.number().optional(),
@@ -759,6 +759,10 @@ export default function Settings() {
                   </CardHeader>
                   <CardContent className="space-y-6">
                     <NotificationManager />
+                    
+                    <Separator />
+                    
+                    <AndroidInstallInstructions />
                     
                     <Separator />
                     
