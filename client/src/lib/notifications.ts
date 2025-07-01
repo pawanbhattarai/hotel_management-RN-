@@ -11,16 +11,27 @@ export class NotificationManager {
     const isSafari = /Safari/.test(navigator.userAgent) && !/Chrome|Chromium|Edge/.test(navigator.userAgent);
     
     // Check if running as PWA (iOS 16.4+ requirement)
-    const isStandalone = window.navigator.standalone || 
+    const isStandalone = (window.navigator as any).standalone || 
                         window.matchMedia('(display-mode: standalone)').matches ||
-                        window.matchMedia('(display-mode: fullscreen)').matches;
+                        window.matchMedia('(display-mode: fullscreen)').matches ||
+                        window.matchMedia('(display-mode: minimal-ui)').matches;
 
-    // Check iOS version for 16.4+ support
-    const iOSVersionMatch = navigator.userAgent.match(/OS (\d+)_(\d+)/);
+    // More robust iOS version detection
+    const iOSVersionMatch = navigator.userAgent.match(/OS (\d+)_(\d+)_?(\d+)?/) || 
+                           navigator.userAgent.match(/Version\/(\d+)\.(\d+)/);
     const iOSVersion = iOSVersionMatch ? parseFloat(`${iOSVersionMatch[1]}.${iOSVersionMatch[2]}`) : 0;
     
+    console.log('🔍 Device detection:', {
+      isIOS,
+      isMacOS,
+      isSafari,
+      isStandalone,
+      iOSVersion,
+      userAgent: navigator.userAgent
+    });
+
     if (isIOS && !isMacOS) {
-      if (iOSVersion < 16.4) {
+      if (iOSVersion > 0 && iOSVersion < 16.4) {
         return { 
           supported: false, 
           reason: `iOS ${iOSVersion} detected. Push notifications require iOS 16.4 or later. Please update your device.` 
@@ -31,7 +42,7 @@ export class NotificationManager {
         return { 
           supported: true,
           requiresHomescreenInstall: true,
-          reason: 'To receive push notifications on iOS, you must first add this app to your home screen. Tap the Share button and select "Add to Home Screen".' 
+          reason: 'To receive push notifications on iOS Safari, you must add this app to your home screen first. Tap the Share button (□↗) and select "Add to Home Screen".' 
         };
       }
     }
@@ -55,17 +66,10 @@ export class NotificationManager {
   static async initialize(): Promise<boolean> {
     console.log('🔄 Initializing NotificationManager...');
 
-    // Check for iOS devices
-    const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent);
-    const isSafariIOS = isIOS && /Safari/.test(navigator.userAgent) && !/CriOS|FxiOS/.test(navigator.userAgent);
-    const isMacOS = /Macintosh|MacIntel|MacPPC|Mac68K/.test(navigator.platform);
-    
-    if (isIOS && !isMacOS) {
-      console.warn('❌ Push notifications not supported on iOS devices (iPhone/iPad)');
-      return false;
-    }
+    const supportCheck = this.isSupported();
+    console.log('📋 Support check result:', supportCheck);
 
-    // Check for basic browser support
+    // Check for basic browser support first
     if (!('serviceWorker' in navigator)) {
       console.warn('❌ Service Workers not supported by this browser');
       return false;
@@ -92,8 +96,29 @@ export class NotificationManager {
       this.vapidPublicKey = data.publicKey;
       console.log('✅ VAPID public key obtained:', this.vapidPublicKey?.substring(0, 20) + '...');
 
-      // Unregister any existing service workers to avoid conflicts
-      if ('serviceWorker' in navigator) {
+      // For iOS Safari, be more gentle with service worker registration
+      const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent);
+      const isMacOS = /Macintosh|MacIntel|MacPPC|Mac68K/.test(navigator.platform);
+      const isIOSDevice = isIOS && !isMacOS;
+
+      if (isIOSDevice) {
+        console.log('📱 iOS device detected, using iOS-optimized service worker registration...');
+        
+        // Check if already registered
+        const existingRegistration = await navigator.serviceWorker.getRegistration('/');
+        if (existingRegistration) {
+          console.log('♻️ Using existing service worker registration');
+          this.registration = existingRegistration;
+        } else {
+          // Register with iOS-specific options
+          this.registration = await navigator.serviceWorker.register('/sw.js', {
+            scope: '/',
+            updateViaCache: 'none'
+          });
+          console.log('✅ Service Worker registered for iOS');
+        }
+      } else {
+        // Unregister any existing service workers for non-iOS to avoid conflicts
         const registrations = await navigator.serviceWorker.getRegistrations();
         for (const registration of registrations) {
           if (registration.scope.includes('/sw.js') || registration.scope.includes('sw.js')) {
@@ -101,25 +126,42 @@ export class NotificationManager {
             await registration.unregister();
           }
         }
-      }
 
-      // Register service worker
-      console.log('📝 Registering service worker...');
-      this.registration = await navigator.serviceWorker.register('/sw.js', {
-        scope: '/',
-        updateViaCache: 'none'
-      });
+        // Register service worker for non-iOS devices
+        console.log('📝 Registering service worker...');
+        this.registration = await navigator.serviceWorker.register('/sw.js', {
+          scope: '/',
+          updateViaCache: 'none'
+        });
+      }
 
       console.log('✅ Service Worker registered with scope:', this.registration.scope);
 
-      // Wait for service worker to be ready
+      // Wait for service worker to be ready (with timeout for iOS)
       console.log('⏳ Waiting for service worker to be ready...');
-      await navigator.serviceWorker.ready;
+      if (isIOSDevice) {
+        // iOS Safari can be slow, add timeout
+        const readyPromise = navigator.serviceWorker.ready;
+        const timeoutPromise = new Promise((_, reject) => 
+          setTimeout(() => reject(new Error('Service worker ready timeout')), 10000)
+        );
+        
+        try {
+          await Promise.race([readyPromise, timeoutPromise]);
+        } catch (timeoutError) {
+          console.warn('⚠️ Service worker ready timeout, but continuing...');
+        }
+      } else {
+        await navigator.serviceWorker.ready;
+      }
+      
       console.log('✅ Service Worker is ready');
-
       return true;
     } catch (error) {
       console.error('❌ Failed to initialize notifications:', error);
+      if (error instanceof Error) {
+        console.error('Error details:', error.message, error.stack);
+      }
       return false;
     }
   }
@@ -277,18 +319,37 @@ export class NotificationManager {
 
   private static urlBase64ToUint8Array(base64String: string): Uint8Array {
     try {
-      const padding = '='.repeat((4 - (base64String.length % 4)) % 4);
-      const base64 = (base64String + padding).replace(/-/g, '+').replace(/_/g, '/');
-      const rawData = window.atob(base64);
+      console.log('🔧 Converting VAPID key, input length:', base64String.length);
+      
+      // Ensure the base64 string is properly formatted
+      let base64 = base64String.replace(/-/g, '+').replace(/_/g, '/');
+      
+      // Add padding if necessary
+      const padding = '='.repeat((4 - (base64.length % 4)) % 4);
+      base64 += padding;
+      
+      console.log('🔧 After padding, length:', base64.length);
+      
+      // For iOS Safari, ensure we handle the base64 conversion carefully
+      let rawData: string;
+      try {
+        rawData = window.atob(base64);
+      } catch (atobError) {
+        console.error('❌ Base64 decode error:', atobError);
+        // Try without padding as fallback
+        rawData = window.atob(base64String.replace(/-/g, '+').replace(/_/g, '/'));
+      }
+      
       const outputArray = new Uint8Array(rawData.length);
-
       for (let i = 0; i < rawData.length; ++i) {
         outputArray[i] = rawData.charCodeAt(i);
       }
 
+      console.log('✅ VAPID key converted successfully, output length:', outputArray.length);
       return outputArray;
     } catch (error) {
       console.error('❌ Failed to convert VAPID key:', error);
+      console.error('Input string:', base64String);
       throw error;
     }
   }

@@ -1,11 +1,12 @@
 console.log("🔧 Service Worker loaded");
 
 // Cache name
-const CACHE_NAME = "hotel-notifications-v1";
+const CACHE_NAME = "hotel-notifications-v2";
 
 // Install event
 self.addEventListener("install", (event) => {
   console.log("🔧 Service Worker installing...");
+  // For iOS Safari, skip waiting immediately
   self.skipWaiting();
 });
 
@@ -13,8 +14,15 @@ self.addEventListener("install", (event) => {
 self.addEventListener("activate", (event) => {
   console.log("🔧 Service Worker activating...");
   event.waitUntil(
-    caches
-      .keys()
+    Promise.resolve()
+      .then(() => {
+        console.log("🔧 Claiming clients...");
+        return self.clients.claim();
+      })
+      .then(() => {
+        console.log("🔧 Cleaning up old caches...");
+        return caches.keys();
+      })
       .then((cacheNames) => {
         return Promise.all(
           cacheNames.map((cacheName) => {
@@ -26,9 +34,11 @@ self.addEventListener("activate", (event) => {
         );
       })
       .then(() => {
-        console.log("✅ Service Worker activated");
-        return self.clients.claim();
-      }),
+        console.log("✅ Service Worker activated and ready");
+      })
+      .catch((error) => {
+        console.error("❌ Service Worker activation error:", error);
+      })
   );
 });
 
@@ -63,42 +73,50 @@ self.addEventListener("push", (event) => {
     };
   }
 
+  // iOS Safari-optimized notification options
   const notificationOptions = {
     body: notificationData.body,
     icon: notificationData.icon || "/favicon.ico",
     badge: notificationData.badge || "/favicon.ico",
     tag: notificationData.tag || "hotel-notification",
     data: notificationData.data || {},
-    requireInteraction: true,
+    requireInteraction: false, // iOS Safari works better with false
     actions: notificationData.actions || [
       {
         action: "view",
-        title: "View Details",
-      },
-      {
-        action: "dismiss",
-        title: "Dismiss",
-      },
+        title: "View",
+      }
     ],
-    vibrate: [200, 100, 200],
+    silent: false,
     timestamp: Date.now(),
   };
 
-  console.log(
-    "📤 Showing notification:",
-    notificationData.title,
-    notificationOptions,
-  );
+  // Add vibration only for non-iOS devices
+  const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent);
+  if (!isIOS) {
+    notificationOptions.vibrate = [200, 100, 200];
+  }
+
+  console.log("📤 Showing notification:", notificationData.title, notificationOptions);
 
   event.waitUntil(
-    self.registration
-      .showNotification(notificationData.title, notificationOptions)
+    Promise.resolve()
+      .then(() => {
+        console.log("📋 Attempting to show notification...");
+        return self.registration.showNotification(notificationData.title, notificationOptions);
+      })
       .then(() => {
         console.log("✅ Notification shown successfully");
       })
       .catch((error) => {
         console.error("❌ Error showing notification:", error);
-      }),
+        // Fallback: try with minimal options for iOS
+        return self.registration.showNotification(notificationData.title, {
+          body: notificationData.body,
+          icon: "/favicon.ico",
+          tag: "hotel-notification-fallback"
+        });
+      })
   );
 });
 

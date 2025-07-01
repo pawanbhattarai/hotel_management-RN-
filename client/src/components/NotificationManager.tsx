@@ -204,18 +204,22 @@ export function NotificationManager() {
             <Bell className="h-5 w-5 text-blue-600 mt-0.5" />
             <div>
               <h3 className="font-medium text-blue-800">
-                Install App for Push Notifications
+                📱 iOS Safari Detected - App Installation Required
               </h3>
               <p className="text-sm text-blue-700 mt-1">
                 {supportCheck.reason}
               </p>
-              <div className="mt-3 text-xs text-blue-600 space-y-1">
-                <p><strong>Installation Steps:</strong></p>
-                <p>1. Tap the Share button (□↗) in Safari</p>
-                <p>2. Select "Add to Home Screen"</p>
-                <p>3. Tap "Add" to confirm installation</p>
-                <p>4. Open the app from your home screen</p>
-                <p>5. Enable notifications when prompted</p>
+              <div className="mt-3 p-3 bg-blue-100 rounded text-xs text-blue-800 space-y-1">
+                <p><strong>🔧 Step-by-Step Installation:</strong></p>
+                <p>1. 📱 Make sure you're using Safari (not Chrome or other browsers)</p>
+                <p>2. 🔗 Tap the Share button (□↗) at the bottom of Safari</p>
+                <p>3. 📋 Scroll down and select "Add to Home Screen"</p>
+                <p>4. ✅ Tap "Add" to confirm installation</p>
+                <p>5. 🏠 Open the app from your home screen (not Safari)</p>
+                <p>6. 🔔 Enable notifications when prompted</p>
+              </div>
+              <div className="mt-2 p-2 bg-amber-100 border border-amber-300 rounded text-xs text-amber-800">
+                <strong>⚠️ Important:</strong> Push notifications on iOS only work after installing the app to your home screen. This is an Apple requirement.
               </div>
             </div>
           </div>
