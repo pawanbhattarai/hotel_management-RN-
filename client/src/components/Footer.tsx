@@ -24,7 +24,6 @@ export default function Footer() {
                     alt="MapTech Nepal"
                     className="h-3 sm:h-4 w-auto inline"
                   />
-                  MapTech Nepal
                 </a>
               </div>
 
