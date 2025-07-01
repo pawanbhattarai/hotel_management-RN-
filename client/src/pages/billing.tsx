@@ -1382,27 +1382,47 @@ export default function Billing() {
                 <div>
                   <h3 className="font-semibold mb-2">Bill Summary</h3>
                   <div className="space-y-1 text-sm">
-                    <div className="flex justify-between">
-                      <span>Room Charges:</span>
-                      <span>{currencySymbol}{(parseFloat(viewingBill.totalAmount) - parseFloat(viewingBill.taxAmount || "0")).toFixed(2)}</span>
-                    </div>
-                    {viewingBill.appliedTaxes ? (
-                      JSON.parse(viewingBill.appliedTaxes).map((tax: any, index: number) => (
-                        <div key={index} className="flex justify-between">
-                          <span>{tax.taxName} ({tax.rate}%):</span>
-                          <span>{currencySymbol}{tax.amount}</span>
-                        </div>
-                      ))
-                    ) : parseFloat(viewingBill.taxAmount || "0") > 0 ? (
-                      <div className="flex justify-between">
-                        <span>Tax:</span>
-                        <span>{currencySymbol}{parseFloat(viewingBill.taxAmount || "0").toFixed(2)}</span>
-                      </div>
-                    ) : null}
-                    <div className="flex justify-between font-semibold border-t pt-2">
-                      <span>Total Amount:</span>
-                      <span>{currencySymbol}{parseFloat(viewingBill.totalAmount).toFixed(2)}</span>
-                    </div>
+                    {(() => {
+                      const reservationAmount = parseFloat(viewingBill.totalAmount);
+                      const viewingBillRoomOrders = getReservationRoomOrders(viewingBill.id);
+                      const roomServiceAmount = viewingBillRoomOrders.reduce(
+                        (sum: number, order: any) => sum + parseFloat(order.totalAmount || 0),
+                        0
+                      );
+                      const totalAmount = reservationAmount + roomServiceAmount;
+                      
+                      return (
+                        <>
+                          <div className="flex justify-between">
+                            <span>Room Charges:</span>
+                            <span>{currencySymbol}{(reservationAmount - parseFloat(viewingBill.taxAmount || "0")).toFixed(2)}</span>
+                          </div>
+                          {roomServiceAmount > 0 && (
+                            <div className="flex justify-between">
+                              <span>Room Service:</span>
+                              <span>{currencySymbol}{roomServiceAmount.toFixed(2)}</span>
+                            </div>
+                          )}
+                          {viewingBill.appliedTaxes ? (
+                            JSON.parse(viewingBill.appliedTaxes).map((tax: any, index: number) => (
+                              <div key={index} className="flex justify-between">
+                                <span>{tax.taxName} ({tax.rate}%):</span>
+                                <span>{currencySymbol}{tax.amount}</span>
+                              </div>
+                            ))
+                          ) : parseFloat(viewingBill.taxAmount || "0") > 0 ? (
+                            <div className="flex justify-between">
+                              <span>Tax:</span>
+                              <span>{currencySymbol}{parseFloat(viewingBill.taxAmount || "0").toFixed(2)}</span>
+                            </div>
+                          ) : null}
+                          <div className="flex justify-between font-semibold border-t pt-2">
+                            <span>Total Amount:</span>
+                            <span>{currencySymbol}{totalAmount.toFixed(2)}</span>
+                          </div>
+                        </>
+                      );
+                    })()}
                   </div>
                 </div>
 
