@@ -13,8 +13,8 @@ export default function Footer() {
 
             {/* Powered by section with contact icons */}
             <div className="border-t border-gray-200 pt-4">
-              <div className="flex flex-col sm:flex-row items-center justify-center gap-2 sm:gap-4">
-                <p className="text-xs sm:text-sm text-gray-500">
+              <div className="flex flex-col sm:flex-row items-center justify-between gap-2">
+                <p className="text-xs sm:text-sm text-gray-500 text-center sm:text-left">
                   Powered by{" "}
                   <a
                     href="https://maptechnepal.com"
@@ -31,7 +31,7 @@ export default function Footer() {
                   </a>
                 </p>
                 
-                {/* Contact icons */}
+                {/* Contact icons - positioned on the far right */}
                 <div className="flex items-center gap-2">
                   <a
                     href="mailto:support@maptechnepal.com"
