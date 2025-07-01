@@ -777,9 +777,8 @@ export class DatabaseStorage implements IStorage {
       .onConflictDoUpdate({
         target: pushSubscriptions.endpoint,
         set: {
-          p256dhKey: subscription.p256dhKey,
-          authKey: subscription.authKey,
-          updatedAt: new Date(),
+          p256dh: subscription.p256dh,
+          auth: subscription.auth,
         },
       });
   }
@@ -810,15 +809,14 @@ export class DatabaseStorage implements IStorage {
       .values({
         userId: subscription.userId,
         endpoint: subscription.endpoint,
-        p256dhKey: subscription.p256dh,
-        authKey: subscription.auth,
+        p256dh: subscription.p256dh,
+        auth: subscription.auth,
       })
       .onConflictDoUpdate({
         target: pushSubscriptions.endpoint,
         set: {
-          p256dhKey: subscription.p256dh,
-          authKey: subscription.auth,
-          updatedAt: new Date(),
+          p256dh: subscription.p256dh,
+          auth: subscription.auth,
         },
       })
       .returning();
@@ -866,8 +864,6 @@ export class DatabaseStorage implements IStorage {
 
     return results.map((result) => ({
       ...result.push_subscriptions,
-      p256dh: result.push_subscriptions.p256dhKey,
-      auth: result.push_subscriptions.authKey,
       user: result.users || undefined,
     }));
   }
@@ -897,18 +893,13 @@ export class DatabaseStorage implements IStorage {
       .then(rows => rows.map(row => ({
         userId: row.push_subscriptions.userId,
         endpoint: row.push_subscriptions.endpoint,
-        p256dh: row.push_subscriptions.p256dhKey,
-        auth: row.push_subscriptions.authKey,
+        p256dh: row.push_subscriptions.p256dh,
+        auth: row.push_subscriptions.auth,
         createdAt: row.push_subscriptions.createdAt
       })));
   }
 
-  async getAllAdminSubscriptions() {
-    return await db.select().from(pushSubscriptions)
-      .innerJoin(users, eq(pushSubscriptions.userId, users.id))
-      .where(inArray(users.role, ['superadmin', 'branch-admin']))
-      .then(rows => rows.map(row => row.push_subscriptions));
-  }
+
 
   async getAllPushSubscriptions() {
     return await db.select().from(pushSubscriptions);
