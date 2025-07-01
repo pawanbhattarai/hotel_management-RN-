@@ -1,18 +1,68 @@
 console.log("🔧 Service Worker loaded");
 
-// Cache name
-const CACHE_NAME = "hotel-notifications-v2";
+// Cache names
+const CACHE_NAME = "hotel-pwa-v3";
+const STATIC_CACHE = "hotel-static-v3";
+const DYNAMIC_CACHE = "hotel-dynamic-v3";
+const API_CACHE = "hotel-api-v3";
+
+// Resources to cache
+const STATIC_ASSETS = [
+  '/',
+  '/dashboard',
+  '/manifest.json',
+  '/icon-192x192.png',
+  '/icon-512x512.png',
+  '/icon-72x72.png',
+  '/icon-96x96.png',
+  '/icon-128x128.png',
+  '/icon-144x144.png',
+  '/icon-152x152.png',
+  '/icon-384x384.png'
+];
+
+// API endpoints to cache for offline access
+const CACHEABLE_API_PATTERNS = [
+  '/api/auth/user',
+  '/api/branches',
+  '/api/hotel-settings',
+  '/api/restaurant/orders',
+  '/api/restaurant/categories',
+  '/api/restaurant/dishes',
+  '/api/reservations'
+];
 
 // Install event
 self.addEventListener("install", (event) => {
   console.log("🔧 Service Worker installing...");
-  // For iOS Safari, skip waiting immediately
-  self.skipWaiting();
+  
+  event.waitUntil(
+    Promise.all([
+      // Cache static assets
+      caches.open(STATIC_CACHE).then(cache => {
+        console.log("📦 Caching static assets...");
+        return cache.addAll(STATIC_ASSETS).catch(err => {
+          console.warn("⚠️ Some static assets failed to cache:", err);
+          // Continue without failing the installation
+        });
+      }),
+      // Initialize other caches
+      caches.open(DYNAMIC_CACHE),
+      caches.open(API_CACHE)
+    ]).then(() => {
+      console.log("✅ Service Worker installed successfully");
+      // For iOS Safari and better PWA experience, skip waiting immediately
+      return self.skipWaiting();
+    }).catch(err => {
+      console.error("❌ Service Worker installation failed:", err);
+    })
+  );
 });
 
 // Activate event
 self.addEventListener("activate", (event) => {
   console.log("🔧 Service Worker activating...");
+  
   event.waitUntil(
     Promise.resolve()
       .then(() => {
@@ -24,9 +74,10 @@ self.addEventListener("activate", (event) => {
         return caches.keys();
       })
       .then((cacheNames) => {
+        const currentCaches = [CACHE_NAME, STATIC_CACHE, DYNAMIC_CACHE, API_CACHE];
         return Promise.all(
           cacheNames.map((cacheName) => {
-            if (cacheName !== CACHE_NAME) {
+            if (!currentCaches.includes(cacheName)) {
               console.log("🗑️ Deleting old cache:", cacheName);
               return caches.delete(cacheName);
             }
@@ -40,6 +91,104 @@ self.addEventListener("activate", (event) => {
         console.error("❌ Service Worker activation error:", error);
       })
   );
+});
+
+// Fetch event handler for offline functionality
+self.addEventListener('fetch', (event) => {
+  const url = new URL(event.request.url);
+  
+  // Skip non-GET requests and non-HTTP(S) URLs
+  if (event.request.method !== 'GET' || !url.protocol.startsWith('http')) {
+    return;
+  }
+
+  // Handle API requests
+  if (url.pathname.startsWith('/api/')) {
+    event.respondWith(
+      // Network-first strategy for API calls
+      fetch(event.request)
+        .then(response => {
+          // Cache successful responses for offline access
+          if (response.ok && CACHEABLE_API_PATTERNS.some(pattern => url.pathname.startsWith(pattern))) {
+            const responseClone = response.clone();
+            caches.open(API_CACHE).then(cache => {
+              cache.put(event.request, responseClone);
+            });
+          }
+          return response;
+        })
+        .catch(() => {
+          // Try to serve from cache when network fails
+          return caches.match(event.request).then(response => {
+            if (response) {
+              console.log("📤 Serving API from cache:", url.pathname);
+              return response;
+            }
+            // Return offline response for critical API calls
+            if (url.pathname === '/api/auth/user') {
+              return new Response(JSON.stringify({ error: 'Offline' }), {
+                status: 503,
+                headers: { 'Content-Type': 'application/json' }
+              });
+            }
+            throw new Error('Network unavailable and no cached response');
+          });
+        })
+    );
+    return;
+  }
+
+  // Handle static assets (cache-first strategy)
+  if (url.pathname.includes('.') || STATIC_ASSETS.some(asset => url.pathname === asset)) {
+    event.respondWith(
+      caches.match(event.request).then(response => {
+        if (response) {
+          console.log("📤 Serving static asset from cache:", url.pathname);
+          return response;
+        }
+        
+        // Fetch and cache static assets
+        return fetch(event.request).then(response => {
+          if (response.ok) {
+            const responseClone = response.clone();
+            caches.open(STATIC_CACHE).then(cache => {
+              cache.put(event.request, responseClone);
+            });
+          }
+          return response;
+        });
+      })
+    );
+    return;
+  }
+
+  // Handle navigation requests (network-first with cache fallback)
+  if (event.request.mode === 'navigate') {
+    event.respondWith(
+      fetch(event.request)
+        .then(response => {
+          // Cache successful navigation responses
+          if (response.ok) {
+            const responseClone = response.clone();
+            caches.open(DYNAMIC_CACHE).then(cache => {
+              cache.put(event.request, responseClone);
+            });
+          }
+          return response;
+        })
+        .catch(() => {
+          // Serve cached page or offline fallback
+          return caches.match(event.request).then(response => {
+            if (response) {
+              console.log("📤 Serving page from cache:", url.pathname);
+              return response;
+            }
+            // Serve cached main page as fallback for PWA navigation
+            return caches.match('/');
+          });
+        })
+    );
+  }
 });
 
 // Push event handler
