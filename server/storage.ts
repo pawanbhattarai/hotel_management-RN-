@@ -804,23 +804,74 @@ export class DatabaseStorage implements IStorage {
   async createPushSubscription(
     subscription: InsertPushSubscription,
   ): Promise<PushSubscription> {
-    const [result] = await db
-      .insert(pushSubscriptions)
-      .values({
-        userId: subscription.userId,
-        endpoint: subscription.endpoint,
-        p256dh: subscription.p256dh,
-        auth: subscription.auth,
-      })
-      .onConflictDoUpdate({
-        target: pushSubscriptions.endpoint,
-        set: {
+    try {
+      // First try to insert with conflict resolution
+      const [result] = await db
+        .insert(pushSubscriptions)
+        .values({
+          userId: subscription.userId,
+          endpoint: subscription.endpoint,
           p256dh: subscription.p256dh,
           auth: subscription.auth,
-        },
-      })
-      .returning();
-    return result;
+        })
+        .onConflictDoUpdate({
+          target: [pushSubscriptions.userId, pushSubscriptions.endpoint],
+          set: {
+            p256dh: subscription.p256dh,
+            auth: subscription.auth,
+          },
+        })
+        .returning();
+      return result;
+    } catch (error: any) {
+      // If the unique constraint doesn't exist, try without conflict resolution
+      if (error.code === '42P10') {
+        console.log('⚠️ Unique constraint not found, checking for existing subscription manually...');
+        
+        // Check if subscription already exists
+        const existing = await db
+          .select()
+          .from(pushSubscriptions)
+          .where(
+            and(
+              eq(pushSubscriptions.userId, subscription.userId),
+              eq(pushSubscriptions.endpoint, subscription.endpoint)
+            )
+          )
+          .limit(1);
+
+        if (existing.length > 0) {
+          // Update existing subscription
+          const [result] = await db
+            .update(pushSubscriptions)
+            .set({
+              p256dh: subscription.p256dh,
+              auth: subscription.auth,
+            })
+            .where(
+              and(
+                eq(pushSubscriptions.userId, subscription.userId),
+                eq(pushSubscriptions.endpoint, subscription.endpoint)
+              )
+            )
+            .returning();
+          return result;
+        } else {
+          // Insert new subscription
+          const [result] = await db
+            .insert(pushSubscriptions)
+            .values({
+              userId: subscription.userId,
+              endpoint: subscription.endpoint,
+              p256dh: subscription.p256dh,
+              auth: subscription.auth,
+            })
+            .returning();
+          return result;
+        }
+      }
+      throw error;
+    }
   }
 
   async getPushSubscription(
