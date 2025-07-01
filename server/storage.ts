@@ -1024,8 +1024,7 @@ export class DatabaseStorage implements IStorage {
     const days = parseInt(period.replace("d", ""));
     const startDate = new Date();
     startDate.setDate(startDate.getDate() - days);
-    const startDateString = startDate.toISOString```python
-().split("T")[0];
+    const startDateString = startDate.toISOString().split("T")[0];
 
     let query = db
       .select({
