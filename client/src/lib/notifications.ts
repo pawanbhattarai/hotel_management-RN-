@@ -4,16 +4,36 @@ export class NotificationManager {
   private static vapidPublicKey: string | null = null;
   private static registration: ServiceWorkerRegistration | null = null;
 
-  static isSupported(): { supported: boolean; reason?: string } {
+  static isSupported(): { supported: boolean; reason?: string; requiresHomescreenInstall?: boolean } {
     // Check for iOS devices (iPhone/iPad)
     const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent);
     const isMacOS = /Macintosh|MacIntel|MacPPC|Mac68K/.test(navigator.platform);
+    const isSafari = /Safari/.test(navigator.userAgent) && !/Chrome|Chromium|Edge/.test(navigator.userAgent);
+    
+    // Check if running as PWA (iOS 16.4+ requirement)
+    const isStandalone = window.navigator.standalone || 
+                        window.matchMedia('(display-mode: standalone)').matches ||
+                        window.matchMedia('(display-mode: fullscreen)').matches;
+
+    // Check iOS version for 16.4+ support
+    const iOSVersionMatch = navigator.userAgent.match(/OS (\d+)_(\d+)/);
+    const iOSVersion = iOSVersionMatch ? parseFloat(`${iOSVersionMatch[1]}.${iOSVersionMatch[2]}`) : 0;
     
     if (isIOS && !isMacOS) {
-      return { 
-        supported: false, 
-        reason: 'Push notifications are not supported on iOS devices (iPhone/iPad). This is a limitation of iOS Safari and all iOS browsers.' 
-      };
+      if (iOSVersion < 16.4) {
+        return { 
+          supported: false, 
+          reason: `iOS ${iOSVersion} detected. Push notifications require iOS 16.4 or later. Please update your device.` 
+        };
+      }
+      
+      if (!isStandalone) {
+        return { 
+          supported: true,
+          requiresHomescreenInstall: true,
+          reason: 'To receive push notifications on iOS, you must first add this app to your home screen. Tap the Share button and select "Add to Home Screen".' 
+        };
+      }
     }
 
     // Check basic browser support

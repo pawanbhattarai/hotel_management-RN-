@@ -26,11 +26,12 @@ import {
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Separator } from "@/components/ui/separator";
 import { Badge } from "@/components/ui/badge";
-import { Building, Globe, Clock, FileText, Save, Hotel } from "lucide-react";
+import { Building, Globe, Clock, FileText, Save, Hotel, Smartphone } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest } from "@/lib/queryClient";
 import { NotificationManager } from '@/components/NotificationManager';
 import { NotificationDebugger } from '@/components/NotificationDebugger';
+import { IOSInstallInstructions } from '@/components/InstallBanner';
 
 const hotelSettingsSchema = z.object({
   branchId: z.number().optional(),
@@ -264,7 +265,7 @@ export default function Settings() {
             onValueChange={setActiveTab}
             className="space-y-6"
           >
-            <TabsList className="grid w-full grid-cols-4">
+            <TabsList className="grid w-full grid-cols-5">
               <TabsTrigger value="general" className="flex items-center gap-2">
                 <Building className="h-4 w-4" />
                 <span className="hidden sm:inline">General</span>
@@ -283,6 +284,10 @@ export default function Settings() {
               <TabsTrigger value="policies" className="flex items-center gap-2">
                 <FileText className="h-4 w-4" />
                 <span className="hidden sm:inline">Policies</span>
+              </TabsTrigger>
+              <TabsTrigger value="mobile" className="flex items-center gap-2">
+                <Smartphone className="h-4 w-4" />
+                <span className="hidden sm:inline">Mobile App</span>
               </TabsTrigger>
             </TabsList>
 
@@ -737,6 +742,63 @@ export default function Settings() {
 
 
 
+                  </CardContent>
+                </Card>
+              </TabsContent>
+
+              <TabsContent value="mobile" className="space-y-6">
+                <Card>
+                  <CardHeader>
+                    <CardTitle className="flex items-center gap-2">
+                      <Smartphone className="h-5 w-5" />
+                      Mobile App & Push Notifications
+                    </CardTitle>
+                    <CardDescription>
+                      Configure push notifications and mobile app installation for your staff
+                    </CardDescription>
+                  </CardHeader>
+                  <CardContent className="space-y-6">
+                    <NotificationManager />
+                    
+                    <Separator />
+                    
+                    <IOSInstallInstructions />
+                    
+                    <Separator />
+                    
+                    <div className="bg-gray-50 p-4 rounded-lg">
+                      <h4 className="font-medium mb-2">App Features</h4>
+                      <div className="grid gap-2 text-sm text-gray-600">
+                        <div className="flex items-center gap-2">
+                          <span className="w-2 h-2 bg-green-500 rounded-full"></span>
+                          <span>Real-time order notifications</span>
+                        </div>
+                        <div className="flex items-center gap-2">
+                          <span className="w-2 h-2 bg-green-500 rounded-full"></span>
+                          <span>Offline access to essential features</span>
+                        </div>
+                        <div className="flex items-center gap-2">
+                          <span className="w-2 h-2 bg-green-500 rounded-full"></span>
+                          <span>Faster loading and performance</span>
+                        </div>
+                        <div className="flex items-center gap-2">
+                          <span className="w-2 h-2 bg-green-500 rounded-full"></span>
+                          <span>Native app-like experience</span>
+                        </div>
+                      </div>
+                    </div>
+
+                    <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-4">
+                      <h4 className="font-medium text-yellow-800 mb-2">Important Notes</h4>
+                      <div className="text-sm text-yellow-700 space-y-1">
+                        <p>• Push notifications work best on desktop browsers and installed mobile apps</p>
+                        <p>• iOS devices require app installation for push notifications</p>
+                        <p>• Notifications help staff stay updated on orders, reservations, and maintenance requests</p>
+                        <p>• Only admin users can subscribe to push notifications</p>
+                      </div>
+                    </div>
+
+                    <NotificationDebugger />
                   </CardContent>
                 </Card>
               </TabsContent>

@@ -192,9 +192,38 @@ export function NotificationManager() {
     return null;
   }
 
-  // Show warning for unsupported platforms
+  // Show warning for unsupported platforms or installation requirement
   if (!isSupported) {
     const supportCheck = NotificationManagerService.isSupported();
+    
+    // Special handling for iOS homescreen installation requirement
+    if (supportCheck.requiresHomescreenInstall) {
+      return (
+        <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
+          <div className="flex items-start gap-3">
+            <Bell className="h-5 w-5 text-blue-600 mt-0.5" />
+            <div>
+              <h3 className="font-medium text-blue-800">
+                Install App for Push Notifications
+              </h3>
+              <p className="text-sm text-blue-700 mt-1">
+                {supportCheck.reason}
+              </p>
+              <div className="mt-3 text-xs text-blue-600 space-y-1">
+                <p><strong>Installation Steps:</strong></p>
+                <p>1. Tap the Share button (□↗) in Safari</p>
+                <p>2. Select "Add to Home Screen"</p>
+                <p>3. Tap "Add" to confirm installation</p>
+                <p>4. Open the app from your home screen</p>
+                <p>5. Enable notifications when prompted</p>
+              </div>
+            </div>
+          </div>
+        </div>
+      );
+    }
+    
+    // Regular unsupported platform message
     return (
       <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-4">
         <div className="flex items-start gap-3">
@@ -208,7 +237,8 @@ export function NotificationManager() {
             </p>
             <div className="mt-2 text-xs text-yellow-600">
               <p>• Desktop browsers: Chrome, Firefox, Safari (macOS 13+) ✓</p>
-              <p>• iOS devices (iPhone/iPad): Not supported ✗</p>
+              <p>• iOS 16.4+ devices: Requires app installation ⚠️</p>
+              <p>• Older iOS devices: Not supported ✗</p>
             </div>
           </div>
         </div>

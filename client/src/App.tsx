@@ -5,6 +5,7 @@ import { Toaster } from "@/components/ui/toaster";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { useAuth } from "@/hooks/useAuth";
 import { useWebSocket } from "@/hooks/useWebSocket";
+import { InstallBanner } from "@/components/InstallBanner";
 import NotFound from "@/pages/not-found";
 import Login from "@/pages/login";
 import Dashboard from "@/pages/dashboard";
@@ -33,7 +34,7 @@ import MeasuringUnits from "@/pages/measuring-units";
 import Suppliers from "@/pages/suppliers";
 import StockConsumption from "@/pages/stock-consumption";
 import DishIngredients from "@/pages/dish-ingredients";
-import { lazy, Suspense } from "react";
+import { lazy, Suspense, useState } from "react";
 import QROrderPage from "@/pages/qr-order";
 import RoomOrders from "@/pages/room-orders";
 
@@ -42,9 +43,14 @@ const RestaurantAnalytics = lazy(() => import("./pages/restaurant-analytics"));
 function Router() {
   const { isAuthenticated, isLoading, user } = useAuth();
   useWebSocket(user);
+  const [showInstallBanner, setShowInstallBanner] = useState(true);
 
   return (
-    <Switch>
+    <>
+      {showInstallBanner && (
+        <InstallBanner onDismiss={() => setShowInstallBanner(false)} />
+      )}
+      <Switch>
       {/* Public QR order page - no authentication required */}
       <Route path="/order/:token">
         <Suspense fallback={
@@ -100,6 +106,7 @@ function Router() {
       )}
       <Route component={NotFound} />
     </Switch>
+    </>
   );
 }
 
