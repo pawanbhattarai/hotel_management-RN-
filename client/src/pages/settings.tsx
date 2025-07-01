@@ -743,8 +743,21 @@ export default function Settings() {
             </form>
           </Tabs>
         </main>
-         {/* Notification Debugger - Development Only */}
-         {process.env.NODE_ENV === 'development' && (
+         {/* Notification Management */}
+        <Card>
+          <CardHeader>
+            <CardTitle>Push Notifications</CardTitle>
+            <CardDescription>
+              Manage your browser notification settings
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            <NotificationManager />
+          </CardContent>
+        </Card>
+
+        {/* Notification Debugger - Development Only */}
+        {process.env.NODE_ENV === 'development' && (
           <Card>
             <CardHeader>
               <CardTitle>Development Tools</CardTitle>

@@ -108,6 +108,37 @@ export function NotificationDebugger() {
     }
   };
 
+  const subscribeToNotifications = async () => {
+    setTesting(true);
+    try {
+      const initialized = await NotificationManagerService.initialize();
+      if (!initialized) {
+        throw new Error('Failed to initialize notification service');
+      }
+
+      const subscribed = await NotificationManagerService.subscribe();
+      if (subscribed) {
+        toast({
+          title: "Subscribed Successfully",
+          description: "You will now receive push notifications",
+        });
+        // Refresh diagnostics
+        await runDiagnostics();
+      } else {
+        throw new Error('Failed to subscribe to notifications');
+      }
+    } catch (error) {
+      console.error('Subscription failed:', error);
+      toast({
+        title: "Subscription Failed",
+        description: error.message,
+        variant: "destructive",
+      });
+    } finally {
+      setTesting(false);
+    }
+  };
+
   const StatusBadge = ({ condition, label }: { condition: boolean | undefined, label: string }) => (
     <Badge variant={condition ? "default" : "destructive"} className="flex items-center gap-1">
       {condition ? <CheckCircle className="h-3 w-3" /> : <XCircle className="h-3 w-3" />}
@@ -121,42 +152,45 @@ export function NotificationDebugger() {
   }
 
   return (
-    <Card className="w-full max-w-2xl">
+    <Card>
       <CardHeader>
         <CardTitle className="flex items-center gap-2">
           <Bell className="h-5 w-5" />
-          Notification System Debugger
+          Notification Debugger
         </CardTitle>
       </CardHeader>
       <CardContent className="space-y-4">
-        <div className="flex gap-2">
-          <Button onClick={runDiagnostics} disabled={testing} variant="outline">
-            {testing ? "Running..." : "Run Diagnostics"}
+        <div className="flex gap-2 flex-wrap">
+          <Button onClick={runDiagnostics} disabled={testing} size="sm">
+            Run Diagnostics
           </Button>
-          <Button onClick={sendTestNotification} disabled={testing}>
-            <TestTube className="h-4 w-4 mr-2" />
+          <Button onClick={subscribeToNotifications} disabled={testing} size="sm" variant="outline">
+            Subscribe to Notifications
+          </Button>
+          <Button onClick={sendTestNotification} disabled={testing} size="sm" className="flex items-center gap-2">
+            <TestTube className="h-4 w-4" />
             Send Test Notification
           </Button>
         </div>
 
         {debugInfo && (
-          <div className="space-y-3">
+          <div className="space-y-4 mt-4">
             <div>
               <h4 className="font-medium mb-2">Browser Support</h4>
-              <div className="flex flex-wrap gap-2">
-                <StatusBadge condition={debugInfo.browserSupport?.serviceWorker} label="Service Worker" />
-                <StatusBadge condition={debugInfo.browserSupport?.pushManager} label="Push Manager" />
-                <StatusBadge condition={debugInfo.browserSupport?.notifications} label="Notifications" />
+              <div className="flex gap-2 flex-wrap">
+                <StatusBadge condition={debugInfo.browserSupport.serviceWorker} label="Service Worker" />
+                <StatusBadge condition={debugInfo.browserSupport.pushManager} label="Push Manager" />
+                <StatusBadge condition={debugInfo.browserSupport.notifications} label="Notifications" />
               </div>
             </div>
 
             <div>
               <h4 className="font-medium mb-2">Service Worker</h4>
-              <div className="flex flex-wrap gap-2">
-                <StatusBadge condition={debugInfo.serviceWorker?.registered} label="Registered" />
-                <StatusBadge condition={debugInfo.serviceWorker?.active} label="Active" />
+              <div className="flex gap-2 flex-wrap">
+                <StatusBadge condition={debugInfo.serviceWorker.registered} label="Registered" />
+                <StatusBadge condition={debugInfo.serviceWorker.active} label="Active" />
               </div>
-              {debugInfo.serviceWorker?.scope && (
+              {debugInfo.serviceWorker.scope && (
                 <p className="text-sm text-muted-foreground mt-1">
                   Scope: {debugInfo.serviceWorker.scope}
                 </p>
@@ -164,26 +198,21 @@ export function NotificationDebugger() {
             </div>
 
             <div>
-              <h4 className="font-medium mb-2">Permission & Subscription</h4>
-              <div className="flex flex-wrap gap-2">
-                <Badge variant={debugInfo.permission?.current === 'granted' ? "default" : "destructive"}>
-                  Permission: {debugInfo.permission?.current}
-                </Badge>
-                <StatusBadge condition={debugInfo.subscription?.subscribed} label="Subscribed" />
-              </div>
+              <h4 className="font-medium mb-2">Permission</h4>
+              <Badge variant={debugInfo.permission.current === 'granted' ? 'default' : 'destructive'}>
+                {debugInfo.permission.current}
+              </Badge>
             </div>
 
-            {(debugInfo.serviceWorker?.error || debugInfo.subscription?.error) && (
-              <div>
-                <h4 className="font-medium mb-2 text-destructive">Errors</h4>
-                {debugInfo.serviceWorker?.error && (
-                  <p className="text-sm text-destructive">SW: {debugInfo.serviceWorker.error}</p>
-                )}
-                {debugInfo.subscription?.error && (
-                  <p className="text-sm text-destructive">Sub: {debugInfo.subscription.error}</p>
-                )}
-              </div>
-            )}
+            <div>
+              <h4 className="font-medium mb-2">Subscription</h4>
+              <StatusBadge condition={debugInfo.subscription.subscribed} label="Subscribed" />
+              {debugInfo.subscription.error && (
+                <p className="text-sm text-red-600 mt-1">
+                  Error: {debugInfo.subscription.error}
+                </p>
+              )}
+            </div>
           </div>
         )}
       </CardContent>
