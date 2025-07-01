@@ -9,9 +9,9 @@ export default function Footer() {
         <Card>
           <CardContent className="p-3 sm:p-4">
             {/* Powered by section with contact icons */}
-            <div className="flex flex-col sm:flex-row items-center justify-between gap-2 sm:gap-4">
+            <div className="flex items-center justify-between gap-2">
               {/* Left: Powered by */}
-              <div className="flex items-center text-xs sm:text-sm text-gray-500 text-center sm:text-left">
+              <div className="flex items-center text-xs text-gray-500">
                 Powered by{" "}
                 <a
                   href="https://maptechnepal.com"
@@ -22,7 +22,7 @@ export default function Footer() {
                   <img
                     src="https://maptechnepal.com/_next/static/media/company__logo.388080d1.webp"
                     alt="MapTech Nepal"
-                    className="h-3 sm:h-4 w-auto inline"
+                    className="h-3 w-auto inline"
                   />
                 </a>
               </div>
@@ -31,46 +31,46 @@ export default function Footer() {
               <div className="flex items-center gap-1">
                 <a
                   href="mailto:support@maptechnepal.com"
-                  className="p-1 text-red-500 hover:text-red-600 transition-colors"
+                  className="p-0.5 text-red-500 hover:text-red-600 transition-colors"
                   title="Email"
                 >
-                  <Mail className="w-4 h-4" />
+                  <Mail className="w-3.5 h-3.5" />
                 </a>
                 <a
                   href="https://wa.me/9779745673009"
                   target="_blank"
                   rel="noopener noreferrer"
-                  className="p-1 text-green-500 hover:text-green-600 transition-colors"
+                  className="p-0.5 text-green-500 hover:text-green-600 transition-colors"
                   title="WhatsApp"
                 >
-                  <MessageCircle className="w-4 h-4" />
+                  <MessageCircle className="w-3.5 h-3.5" />
                 </a>
                 <a
                   href="https://www.facebook.com/maptech.np/"
                   target="_blank"
                   rel="noopener noreferrer"
-                  className="p-1 text-blue-600 hover:text-blue-700 transition-colors"
+                  className="p-0.5 text-blue-600 hover:text-blue-700 transition-colors"
                   title="Facebook"
                 >
-                  <Facebook className="w-4 h-4" />
+                  <Facebook className="w-3.5 h-3.5" />
                 </a>
                 <a
                   href="https://www.instagram.com/maptech.np/"
                   target="_blank"
                   rel="noopener noreferrer"
-                  className="p-1 text-pink-500 hover:text-pink-600 transition-colors"
+                  className="p-0.5 text-pink-500 hover:text-pink-600 transition-colors"
                   title="Instagram"
                 >
-                  <Instagram className="w-4 h-4" />
+                  <Instagram className="w-3.5 h-3.5" />
                 </a>
                 <a
                   href="https://maptechnepal.com"
                   target="_blank"
                   rel="noopener noreferrer"
-                  className="p-1 text-gray-600 hover:text-gray-700 transition-colors"
+                  className="p-0.5 text-gray-600 hover:text-gray-700 transition-colors"
                   title="Website"
                 >
-                  <Globe className="w-4 h-4" />
+                  <Globe className="w-3.5 h-3.5" />
                 </a>
               </div>
             </div>
