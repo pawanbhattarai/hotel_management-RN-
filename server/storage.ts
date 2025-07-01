@@ -1030,7 +1030,7 @@ export class DatabaseStorage implements IStorage {
         ),
       )
       .groupBy(sql`DATE(${reservations.createdAt})`)
-      .orderBy(sqlnumber>`DATE(${reservations.createdAt})`);
+      .orderBy(sql`DATE(${reservations.createdAt})`);
 
     const dailyRevenue = await query;
 

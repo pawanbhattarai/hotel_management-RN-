@@ -1,6 +1,8 @@
 import { apiRequest } from './queryClient';
 
-export class NotificationManager {
+export import { apiRequest } from './queryClient';
+
+class NotificationManager {
   private static vapidPublicKey: string | null = null;
   private static registration: ServiceWorkerRegistration | null = null;
 
@@ -203,27 +205,70 @@ export class NotificationManager {
     }
 
     try {
+      // For iOS, check if we're in standalone mode
+      const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent);
+      const isMacOS = /Macintosh|MacIntel|MacPPC|Mac68K/.test(navigator.platform);
+      const isIOSDevice = isIOS && !isMacOS;
+      const isStandalone = (window.navigator as any).standalone || 
+                          window.matchMedia('(display-mode: standalone)').matches;
+
+      if (isIOSDevice && !isStandalone) {
+        console.error('❌ iOS device not in standalone mode - push notifications require PWA installation');
+        throw new Error('iOS push notifications require app installation to home screen');
+      }
+
       // Check if already subscribed
       console.log('🔍 Checking existing subscription...');
       const existingSubscription = await this.registration.pushManager.getSubscription();
+      
       if (existingSubscription) {
+        // For iOS, verify the existing subscription works
+        if (isIOSDevice) {
+          try {
+            // Test the existing subscription by sending it to server
+            const subscriptionData = {
+              endpoint: existingSubscription.endpoint,
+              p256dh: this.arrayBufferToBase64(existingSubscription.getKey('p256dh')),
+              auth: this.arrayBufferToBase64(existingSubscription.getKey('auth')),
+            };
+            
+            const response = await fetch('/api/notifications/subscribe', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify(subscriptionData)
+            });
+            
+            if (response.ok) {
+              console.log('✅ Existing iOS subscription verified and working');
+              return true;
+            }
+          } catch (verifyError) {
+            console.warn('⚠️ Existing subscription verification failed, creating new one');
+          }
+        }
+        
         console.log('🔄 Found existing subscription, unsubscribing...');
-        console.log('🔧 Existing subscription endpoint:', existingSubscription.endpoint.substring(0, 50) + '...');
         await existingSubscription.unsubscribe();
         console.log('✅ Unsubscribed from existing subscription');
       }
 
-      // Wait a moment to ensure unsubscription is complete
-      await new Promise(resolve => setTimeout(resolve, 500));
+      // Wait for iOS Safari to process unsubscription
+      if (isIOSDevice) {
+        await new Promise(resolve => setTimeout(resolve, 1000));
+      } else {
+        await new Promise(resolve => setTimeout(resolve, 500));
+      }
 
-      // Create new subscription
+      // Create new subscription with iOS-specific options
       console.log('📝 Creating new push subscription...');
       console.log('🔑 Using VAPID key:', this.vapidPublicKey.substring(0, 20) + '...');
 
-      const subscription = await this.registration.pushManager.subscribe({
+      const subscribeOptions: PushSubscriptionOptions = {
         userVisibleOnly: true,
         applicationServerKey: this.urlBase64ToUint8Array(this.vapidPublicKey),
-      });
+      };
+
+      const subscription = await this.registration.pushManager.subscribe(subscribeOptions);
 
       console.log('✅ Push subscription created successfully!');
       console.log('🔧 Subscription details:', {
@@ -232,7 +277,7 @@ export class NotificationManager {
         authLength: subscription.getKey('auth')?.byteLength || 0
       });
 
-      // Send subscription to server
+      // Send subscription to server with retry for iOS
       console.log('📤 Sending subscription to server...');
       const subscriptionData = {
         endpoint: subscription.endpoint,
@@ -240,17 +285,51 @@ export class NotificationManager {
         auth: this.arrayBufferToBase64(subscription.getKey('auth')),
       };
 
-      console.log('📤 Subscription data prepared:', {
-        endpoint: subscriptionData.endpoint.substring(0, 50) + '...',
-        p256dhLength: subscriptionData.p256dh.length,
-        authLength: subscriptionData.auth.length
-      });
+      let retries = isIOSDevice ? 3 : 1;
+      let response;
+      
+      for (let i = 0; i < retries; i++) {
+        try {
+          response = await fetch('/api/notifications/subscribe', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(subscriptionData)
+          });
+          
+          if (response.ok) {
+            break;
+          } else if (i === retries - 1) {
+            throw new Error(`Server subscription failed: ${response.status}`);
+          }
+        } catch (fetchError) {
+          if (i === retries - 1) throw fetchError;
+          await new Promise(resolve => setTimeout(resolve, 1000));
+        }
+      }
 
-      const response = await apiRequest('POST', '/api/notifications/subscribe', subscriptionData);
-      console.log('✅ Subscription saved to server:', response);
+      const responseData = await response!.json();
+      console.log('✅ Subscription saved to server:', responseData);
+
+      // For iOS, send a test notification to verify it works
+      if (isIOSDevice) {
+        console.log('🧪 Testing iOS notification...');
+        try {
+          const testResponse = await fetch('/api/notifications/test', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' }
+          });
+          
+          if (testResponse.ok) {
+            console.log('✅ iOS test notification sent successfully');
+          } else {
+            console.warn('⚠️ iOS test notification failed, but subscription is active');
+          }
+        } catch (testError) {
+          console.warn('⚠️ Could not send test notification:', testError);
+        }
+      }
 
       console.log('✅ Successfully subscribed to push notifications');
-
       return true;
     } catch (error) {
       console.error('❌ Failed to subscribe to push notifications:', error);

@@ -57,8 +57,8 @@ self.addEventListener("push", (event) => {
       notificationData = {
         title: "Hotel Management",
         body: "You have a new notification",
-        icon: "/favicon.ico",
-        badge: "/favicon.ico",
+        icon: "/icon-192x192.png",
+        badge: "/icon-192x192.png",
         tag: "default-notification",
       };
     }
@@ -67,34 +67,41 @@ self.addEventListener("push", (event) => {
     notificationData = {
       title: "Hotel Management",
       body: "You have a new notification",
-      icon: "/favicon.ico",
-      badge: "/favicon.ico",
+      icon: "/icon-192x192.png",
+      badge: "/icon-192x192.png",
       tag: "default-notification",
     };
   }
 
+  // Detect iOS Safari
+  const isIOS = /iPad|iPhone|iPod/.test(self.navigator.userAgent);
+  
   // iOS Safari-optimized notification options
   const notificationOptions = {
     body: notificationData.body,
-    icon: notificationData.icon || "/favicon.ico",
-    badge: notificationData.badge || "/favicon.ico",
+    icon: notificationData.icon || "/icon-192x192.png",
+    badge: notificationData.badge || "/icon-192x192.png",
     tag: notificationData.tag || "hotel-notification",
     data: notificationData.data || {},
-    requireInteraction: false, // iOS Safari works better with false
-    actions: notificationData.actions || [
-      {
-        action: "view",
-        title: "View",
-      }
-    ],
+    requireInteraction: isIOS ? true : false, // iOS needs true for reliable display
     silent: false,
     timestamp: Date.now(),
   };
 
-  // Add vibration only for non-iOS devices
-  const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent);
-  if (!isIOS) {
+  // Add iOS-specific options
+  if (isIOS) {
+    // iOS Safari requires simpler notification options
+    notificationOptions.actions = undefined; // Remove actions for iOS
+    notificationOptions.image = undefined; // Remove image for iOS
+  } else {
+    // Add features for non-iOS devices
     notificationOptions.vibrate = [200, 100, 200];
+    notificationOptions.actions = notificationData.actions || [
+      {
+        action: "view",
+        title: "View",
+      }
+    ];
   }
 
   console.log("📤 Showing notification:", notificationData.title, notificationOptions);
@@ -107,15 +114,26 @@ self.addEventListener("push", (event) => {
       })
       .then(() => {
         console.log("✅ Notification shown successfully");
+        
+        // For iOS, also log to help debug
+        if (isIOS) {
+          console.log("🍎 iOS notification displayed with options:", notificationOptions);
+        }
       })
       .catch((error) => {
         console.error("❌ Error showing notification:", error);
-        // Fallback: try with minimal options for iOS
-        return self.registration.showNotification(notificationData.title, {
+        
+        // iOS-specific fallback with minimal options
+        const fallbackOptions = {
           body: notificationData.body,
-          icon: "/favicon.ico",
-          tag: "hotel-notification-fallback"
-        });
+          icon: "/icon-192x192.png",
+          tag: "hotel-notification-fallback",
+          requireInteraction: true,
+          silent: false
+        };
+        
+        console.log("🔄 Trying fallback notification options:", fallbackOptions);
+        return self.registration.showNotification(notificationData.title, fallbackOptions);
       })
   );
 });
