@@ -814,7 +814,7 @@ export class DatabaseStorage implements IStorage {
         authKey: subscription.auth,
       })
       .onConflictDoUpdate({
-        target: [pushSubscriptions.userId, pushSubscriptions.endpoint],
+        target: pushSubscriptions.endpoint,
         set: {
           p256dhKey: subscription.p256dh,
           authKey: subscription.auth,
