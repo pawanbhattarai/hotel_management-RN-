@@ -1,4 +1,3 @@
-
 import React, { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -45,18 +44,48 @@ export function NotificationDebugger() {
 
       // Check permission
       info.permission = {
-        current: Notification.permission,
-        canRequest: Notification.permission === 'default'
+        status: Notification.permission,
+        granted: Notification.permission === 'granted'
+      };
+
+      // Check user authentication
+      info.authentication = {
+        loggedIn: !!user,
+        email: user?.email || 'Not logged in',
+        role: user?.role || 'No role',
+        isAdmin: user?.role === 'superadmin' || user?.role === 'branch-admin'
       };
 
       // Check subscription
+      if ('serviceWorker' in navigator) {
+        try {
+          const registration = await navigator.serviceWorker.getRegistration();
+          if (registration) {
+            const subscription = await registration.pushManager.getSubscription();
+            info.subscription = {
+              exists: !!subscription,
+              endpoint: subscription?.endpoint.substring(0, 50) + '...' || 'none'
+            };
+          }
+        } catch (error) {
+          info.subscription = { error: error.message };
+        }
+      }
+
+      // Check server subscription count
       try {
-        const isSubscribed = await NotificationManagerService.isSubscribed();
-        info.subscription = {
-          subscribed: isSubscribed
-        };
+        const response = await fetch('/api/notifications/debug/subscriptions');
+        if (response.ok) {
+          const data = await response.json();
+          info.serverSubscriptions = {
+            total: data.total || 0,
+            adminSubscriptions: data.adminSubscriptions || 0
+          };
+        } else {
+          info.serverSubscriptions = { error: `HTTP ${response.status}` };
+        }
       } catch (error) {
-        info.subscription = { error: error.message };
+        info.serverSubscriptions = { error: error.message };
       }
 
       setDebugInfo(info);
@@ -83,7 +112,7 @@ export function NotificationDebugger() {
       });
 
       const result = await response.json();
-      
+
       if (result.success) {
         toast({
           title: "Test Notification Sent",
@@ -205,13 +234,27 @@ export function NotificationDebugger() {
             </div>
 
             <div>
-              <h4 className="font-medium mb-2">Subscription</h4>
-              <StatusBadge condition={debugInfo.subscription.subscribed} label="Subscribed" />
-              {debugInfo.subscription.error && (
-                <p className="text-sm text-red-600 mt-1">
-                  Error: {debugInfo.subscription.error}
-                </p>
-              )}
+              <h4 className="font-medium mb-2">Subscription Status</h4>
+              <div className="flex gap-2 flex-wrap">
+                <StatusBadge condition={debugInfo.subscription.exists} label="Browser Subscribed" />
+                {debugInfo.subscription.endpoint && (
+                  <Badge variant="outline">
+                    {debugInfo.subscription.endpoint}
+                  </Badge>
+                )}
+              </div>
+            </div>
+
+            <div>
+              <h4 className="font-medium mb-2">Server Subscriptions</h4>
+              <div className="flex gap-2 flex-wrap">
+                <Badge variant="outline" className="flex items-center gap-1">
+                  Total: {debugInfo.serverSubscriptions.total || 0}
+                </Badge>
+                <Badge variant="outline" className="flex items-center gap-1">
+                  Admin: {debugInfo.serverSubscriptions.adminSubscriptions || 0}
+                </Badge>
+              </div>
             </div>
           </div>
         )}

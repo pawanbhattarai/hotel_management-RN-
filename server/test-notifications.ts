@@ -5,6 +5,14 @@ export async function testNotifications() {
   console.log('🧪 Testing notification system...');
   
   try {
+    const { storage } = await import('./storage');
+    
+    // Check subscription counts first
+    const allSubscriptions = await storage.getAllPushSubscriptions();
+    const adminSubscriptions = await storage.getAllAdminSubscriptions();
+    
+    console.log(`📊 Subscription counts: ${allSubscriptions.length} total, ${adminSubscriptions.length} admin`);
+    
     // Test notification data
     const testNotification = {
       title: '🧪 Test Notification',
@@ -21,7 +29,14 @@ export async function testNotifications() {
     await NotificationService.sendToAllAdmins(testNotification, 'test');
     console.log('✅ Test notification sent successfully');
     
-    return { success: true, message: 'Test notification sent successfully' };
+    return { 
+      success: true, 
+      message: `Test notification sent successfully to ${adminSubscriptions.length} admin subscribers`,
+      subscriptionCounts: {
+        total: allSubscriptions.length,
+        admins: adminSubscriptions.length
+      }
+    };
   } catch (error: any) {
     console.error('❌ Test notification failed:', error);
     return { 

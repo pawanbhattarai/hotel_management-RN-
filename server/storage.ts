@@ -1,6 +1,6 @@
 import { drizzle } from "drizzle-orm/postgres-js";
 import postgres from "postgres";
-import { eq, and, gte, lt, desc, sql, isNull, or } from "drizzle-orm";
+import { eq, and, gte, lt, desc, sql, isNull, or, inArray } from "drizzle-orm";
 import {
   users,
   branches,
@@ -152,6 +152,7 @@ export interface IStorage {
   deletePushSubscription(userId: string, endpoint: string): Promise<void>;
   getAllAdminSubscriptions(): Promise<(PushSubscription & { user?: User })[]>;
   getBranchAdminSubscriptions(branchId?: number): Promise<PushSubscription[]>;
+  getAllPushSubscriptions(): Promise<PushSubscription[]>;
 
   // Notification History operations
   saveNotificationHistory(
@@ -902,6 +903,17 @@ export class DatabaseStorage implements IStorage {
       })));
   }
 
+  async getAllAdminSubscriptions() {
+    return await db.select().from(pushSubscriptions)
+      .innerJoin(users, eq(pushSubscriptions.userId, users.id))
+      .where(inArray(users.role, ['superadmin', 'branch-admin']))
+      .then(rows => rows.map(row => row.push_subscriptions));
+  }
+
+  async getAllPushSubscriptions() {
+    return await db.select().from(pushSubscriptions);
+  }
+
   // Notification History operations
   async saveNotificationHistory(
     notification: InsertNotificationHistory,
@@ -1012,7 +1024,8 @@ export class DatabaseStorage implements IStorage {
     const days = parseInt(period.replace("d", ""));
     const startDate = new Date();
     startDate.setDate(startDate.getDate() - days);
-    const startDateString = startDate.toISOString().split("T")[0];
+    const startDateString = startDate.toISOString```python
+().split("T")[0];
 
     let query = db
       .select({
@@ -1477,7 +1490,7 @@ export class DatabaseStorage implements IStorage {
           .select()
           .from(reservationRooms)
           .leftJoin(rooms, eq(reservationRooms.roomId, rooms.id))
-          .leftJoin(roomTypes, eq(rooms.roomTypeId, roomTypes.id))
+          .leftJoin(roomTypes, eq(roomTypes.roomTypeId, roomTypes.id))
           .where(eq(reservationRooms.reservationId, reservation.id));
 
         const reservationRoomsData = roomResults.map((roomResult) => ({
