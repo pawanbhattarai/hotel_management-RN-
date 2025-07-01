@@ -1,4 +1,4 @@
-import { Switch, Route } from "wouter";
+import { Switch, Route, useLocation } from "wouter";
 import { queryClient } from "./lib/queryClient";
 import { QueryClientProvider } from "@tanstack/react-query";
 import { Toaster } from "@/components/ui/toaster";
@@ -37,6 +37,7 @@ import DishIngredients from "@/pages/dish-ingredients";
 import { lazy, Suspense, useState } from "react";
 import QROrderPage from "@/pages/qr-order";
 import RoomOrders from "@/pages/room-orders";
+import Footer from "@/components/Footer"; // Import Footer
 
 const RestaurantAnalytics = lazy(() => import("./pages/restaurant-analytics"));
 
@@ -111,12 +112,19 @@ function Router() {
 }
 
 function App() {
+  const [location] = useLocation();
+
+  // Pages that should not show the footer (they have their own)
+  const noFooterPages = ["/order"]; // Corrected route to match the actual route
+  const shouldShowFooter = !noFooterPages.some(page => location.startsWith(page));
+
   return (
     <div className="ios-pwa-viewport ios-status-bar-padding">
       <QueryClientProvider client={queryClient}>
         <TooltipProvider>
           <Toaster />
           <Router />
+          {shouldShowFooter && <Footer />} {/* Conditionally render Footer */}
         </TooltipProvider>
       </QueryClientProvider>
     </div>

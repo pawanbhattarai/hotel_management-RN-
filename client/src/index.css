@@ -11,13 +11,13 @@
     -webkit-tap-highlight-color: transparent;
     touch-action: manipulation;
   }
-  
+
   /* Fix iOS Safari address bar hiding/showing */
   .ios-pwa-viewport {
     height: 100vh;
     height: -webkit-fill-available;
   }
-  
+
   /* iOS PWA status bar padding */
   .ios-status-bar-padding {
     padding-top: env(safe-area-inset-top);
@@ -412,4 +412,14 @@ body {
 
 .reservation-no-show {
   @apply bg-gray-100 text-gray-700 border border-gray-300;
+}
+
+/* Main content area adjustments for sidebar */
+.main-content {
+  @apply lg:ml-64;
+}
+
+/* Ensure proper spacing for pages with footer */
+.page-content {
+  @apply min-h-[calc(100vh-200px)];
 }
