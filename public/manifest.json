@@ -2,7 +2,7 @@
   "name": "Hotel Restaurant Management System",
   "short_name": "Hotel PMS",
   "description": "Comprehensive hotel and restaurant management system with real-time notifications",
-  "start_url": "/?pwa=true",
+  "start_url": "/",
   "display": "standalone",
   "theme_color": "#2563eb",
   "background_color": "#ffffff",
@@ -121,5 +121,13 @@
       ]
     }
   ],
-  "prefer_related_applications": false
+  "prefer_related_applications": false,
+  "apple": {
+    "touch_icon": {
+      "href": "/icon-192x192.png"
+    }
+  },
+  "ios": {
+    "supports_standalone": true
+  }
 }

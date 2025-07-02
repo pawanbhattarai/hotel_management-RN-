@@ -10,7 +10,11 @@ async function registerServiceWorker() {
       const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent) || 
                     (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
       
-      console.log('🔧 Registering service worker...', { isIOS });
+      // Check if running in standalone mode
+      const isStandalone = window.navigator.standalone === true || 
+                          window.matchMedia('(display-mode: standalone)').matches;
+      
+      console.log('🔧 Registering service worker...', { isIOS, isStandalone });
       
       const registration = await navigator.serviceWorker.register('/sw.js', {
         scope: '/',
@@ -21,7 +25,12 @@ async function registerServiceWorker() {
       
       // iOS-specific handling
       if (isIOS) {
-        console.log('📱 iOS PWA mode detected - enhanced compatibility enabled');
+        if (isStandalone) {
+          console.log('✅ iOS PWA running in standalone mode');
+        } else {
+          console.log('📱 iOS Safari detected - PWA can be installed');
+          console.log('💡 To install: Share button → Add to Home Screen');
+        }
         
         // Force update check for iOS
         registration.addEventListener('updatefound', () => {

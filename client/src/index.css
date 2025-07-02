@@ -423,3 +423,38 @@ body {
 .page-content {
   @apply min-h-[calc(100vh-200px)];
 }
+
+/* iOS PWA Support */
+.ios-pwa-viewport {
+  /* iOS Safari viewport fix */
+  width: 100vw;
+  height: 100vh;
+  height: 100dvh; /* Dynamic viewport height for modern browsers */
+  overflow-x: hidden;
+}
+
+.ios-status-bar-padding {
+  /* iOS status bar safe area */
+  padding-top: env(safe-area-inset-top);
+  padding-bottom: env(safe-area-inset-bottom);
+  padding-left: env(safe-area-inset-left);
+  padding-right: env(safe-area-inset-right);
+}
+
+/* iOS PWA Display Mode Detection */
+@media (display-mode: standalone) {
+  body {
+    /* Hide address bar in standalone mode */
+    -webkit-touch-callout: none;
+    -webkit-user-select: none;
+    user-select: none;
+  }
+}
+
+/* iOS Safari specific fixes */
+@supports (-webkit-touch-callout: none) {
+  .ios-pwa-viewport {
+    /* Fix for iOS Safari */
+    min-height: -webkit-fill-available;
+  }
+}
