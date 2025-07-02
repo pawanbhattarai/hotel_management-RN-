@@ -16,7 +16,7 @@ export function NotificationManager() {
   const [autoSubscribeAttempted, setAutoSubscribeAttempted] = useState(false);
 
   // Only show for admin users
-  const isAdmin = user?.role === 'superadmin' || user?.role === 'branch-admin';
+  const isAdmin = (user as any)?.role === 'superadmin' || (user as any)?.role === 'branch-admin';
 
   useEffect(() => {
     if (!isAdmin) return;
@@ -25,7 +25,7 @@ export function NotificationManager() {
     const supportCheck = NotificationManagerService.isSupported();
     setIsSupported(supportCheck.supported);
 
-    if (supportCheck.supported) {
+    if (supportCheck.supported && typeof Notification !== 'undefined') {
       setPermission(Notification.permission);
       checkSubscriptionStatus();
     }
@@ -94,7 +94,7 @@ export function NotificationManager() {
   };
 
   const requestPermission = async () => {
-    if (!isSupported) return false;
+    if (!isSupported || typeof Notification === 'undefined') return false;
 
     try {
       const permission = await Notification.requestPermission();
@@ -128,7 +128,7 @@ export function NotificationManager() {
 
       if (success) {
         setIsSubscribed(true);
-        console.log(`✅ User ${user.email} successfully subscribed to notifications`);
+        console.log(`✅ User ${(user as any)?.email} successfully subscribed to notifications`);
         if (showToast) {
           toast({
             title: "Notifications Enabled",
@@ -168,7 +168,7 @@ export function NotificationManager() {
 
       if (success) {
         setIsSubscribed(false);
-        console.log(`✅ User ${user?.email} unsubscribed from notifications`);
+        console.log(`✅ User ${(user as any)?.email} unsubscribed from notifications`);
         toast({
           title: "Notifications Disabled",
           description: "You'll no longer receive push notifications.",

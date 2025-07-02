@@ -230,11 +230,15 @@ export function IOSInstallInstructions() {
             </div>
             <div className="flex items-start gap-2">
               <span className="font-medium bg-blue-200 text-blue-900 rounded-full w-6 h-6 flex items-center justify-center text-xs flex-shrink-0">5</span>
-              <p>Open the app from your <strong>home screen</strong> (not Safari)</p>
+              <p>Open the app from your <strong>home screen</strong> (not Safari) - this ensures standalone mode</p>
             </div>
             <div className="flex items-start gap-2">
               <span className="font-medium bg-blue-200 text-blue-900 rounded-full w-6 h-6 flex items-center justify-center text-xs flex-shrink-0">6</span>
               <p>Enable push notifications when prompted to receive real-time alerts</p>
+            </div>
+            <div className="flex items-start gap-2">
+              <span className="font-medium bg-blue-200 text-blue-900 rounded-full w-6 h-6 flex items-center justify-center text-xs flex-shrink-0">7</span>
+              <p><strong>Important:</strong> If app opens in Safari instead of standalone, delete and reinstall</p>
             </div>
           </div>
           <div className="mt-4 p-3 bg-blue-100 rounded-md">

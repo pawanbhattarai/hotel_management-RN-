@@ -6,6 +6,7 @@ import { TooltipProvider } from "@/components/ui/tooltip";
 import { useAuth } from "@/hooks/useAuth";
 import { useWebSocket } from "@/hooks/useWebSocket";
 import { InstallBanner } from "@/components/InstallBanner";
+import { PWAStandaloneDetector } from "@/components/PWAStandaloneDetector";
 import NotFound from "@/pages/not-found";
 import Login from "@/pages/login";
 import Dashboard from "@/pages/dashboard";
@@ -51,6 +52,7 @@ function Router() {
       {showInstallBanner && (
         <InstallBanner onDismiss={() => setShowInstallBanner(false)} />
       )}
+      <PWAStandaloneDetector />
       <Switch>
       {/* Public QR order page - no authentication required */}
       <Route path="/order/:token">
