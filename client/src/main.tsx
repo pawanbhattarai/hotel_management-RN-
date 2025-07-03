@@ -6,16 +6,24 @@ import "./index.css";
 async function registerServiceWorker() {
   if ('serviceWorker' in navigator) {
     try {
-      // iOS Safari PWA compatibility
+      // Enhanced iOS detection including all iPad models
       const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent) || 
-                    (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
+                    (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1) ||
+                    (navigator.userAgent.includes('Mac') && 'ontouchend' in document);
       
-      // Check if running in standalone mode
-      const isStandalone = window.navigator.standalone === true || 
-                          window.matchMedia('(display-mode: standalone)').matches;
+      // Check if running in standalone mode (iOS PWA)
+      const isStandalone = (window.navigator as any).standalone === true || 
+                          window.matchMedia('(display-mode: standalone)').matches ||
+                          window.matchMedia('(display-mode: fullscreen)').matches;
       
-      console.log('🔧 Registering service worker...', { isIOS, isStandalone });
+      console.log('🔧 Registering service worker...', { 
+        isIOS, 
+        isStandalone, 
+        userAgent: navigator.userAgent,
+        platform: navigator.platform 
+      });
       
+      // iOS-specific service worker registration
       const registration = await navigator.serviceWorker.register('/sw.js', {
         scope: '/',
         updateViaCache: 'none'
@@ -27,9 +35,17 @@ async function registerServiceWorker() {
       if (isIOS) {
         if (isStandalone) {
           console.log('✅ iOS PWA running in standalone mode');
+          console.log('🔔 Push notifications should be available');
+          
+          // Add iOS PWA class to body for CSS styling
+          document.body.classList.add('ios-pwa-standalone');
         } else {
           console.log('📱 iOS Safari detected - PWA can be installed');
-          console.log('💡 To install: Share button → Add to Home Screen');
+          console.log('💡 To install: Share button (□↗) → Add to Home Screen');
+          console.log('⚠️ Push notifications require installation as PWA');
+          
+          // Add iOS Safari class to body
+          document.body.classList.add('ios-safari-browser');
         }
         
         // Force update check for iOS
@@ -40,6 +56,9 @@ async function registerServiceWorker() {
             newWorker.addEventListener('statechange', () => {
               if (newWorker.state === 'installed' && navigator.serviceWorker.controller) {
                 console.log('🎯 New Service Worker ready for iOS');
+                if (isStandalone) {
+                  console.log('🔔 iOS PWA ready for push notifications');
+                }
               }
             });
           }

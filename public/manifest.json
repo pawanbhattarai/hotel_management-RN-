@@ -7,12 +7,13 @@
   "theme_color": "#2563eb",
   "background_color": "#ffffff",
   "scope": "/",
+  "start_url": "/?utm_source=pwa",
   "orientation": "portrait-primary",
   "categories": ["business", "productivity", "hospitality"],
   "lang": "en",
   "dir": "ltr",
-  "display_override": ["standalone", "minimal-ui", "browser"],
-  "id": "hotel-restaurant-management",
+  "display_override": ["standalone", "minimal-ui"],
+  "id": "hotel-restaurant-management-pwa",
   "protocol_handlers": [],
   "edge_side_panel": {
     "preferred_width": 480
@@ -122,6 +123,7 @@
     }
   ],
   "prefer_related_applications": false,
+  "related_applications": [],
   "apple": {
     "touch_icon": {
       "href": "/icon-192x192.png"
@@ -129,5 +131,8 @@
   },
   "ios": {
     "supports_standalone": true
+  },
+  "edge_side_panel": {
+    "preferred_width": 400
   }
 }
